@@ -1,11 +1,9 @@
 package io.github.adamw7.tools.data;
 
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;

@@ -7,5 +7,7 @@ public interface DataSource extends AutoCloseable {
 	public void open();
 	
 	public String[] nextRow() throws IOException;
+
+	public boolean hasMoreData();
 	
 }

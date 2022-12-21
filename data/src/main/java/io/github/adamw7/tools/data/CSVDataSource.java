@@ -11,7 +11,9 @@ public class CSVDataSource implements DataSource {
 	public final static String DEFAULT_DELIMITER = ",";
 	
 	protected final BufferedReader bufferedReader;
-	protected final String delimiter; 
+	protected final String delimiter;
+
+	private boolean hasMoreData = true; 
 	
 	public CSVDataSource(String fileName, String delimiter) throws FileNotFoundException {
 		bufferedReader = new BufferedReader(new FileReader(fileName));
@@ -31,14 +33,24 @@ public class CSVDataSource implements DataSource {
 	public String[] nextRow() throws IOException {
 		String line = bufferedReader.readLine();
 		if (line == null) {
+			hasMoreData = false;
 			return null;
 		} else {
-			return line.split(delimiter);
+			if (line.trim().startsWith("#")) {
+				return null;
+			} else {
+				return line.split(delimiter);				
+			}
 		}
 	}
 
 	@Override
 	public void close() throws Exception {
 		bufferedReader.close();
+	}
+
+	@Override
+	public boolean hasMoreData() {
+		return hasMoreData ;
 	}
 }

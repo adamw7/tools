@@ -1,9 +1,12 @@
 package io.github.adamw7.tools.data;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import io.github.adamw7.tools.data.interfaces.DataSource;
 
@@ -33,6 +36,7 @@ public class UniquenessCheck {
 
 	public Result exec(String...keyCandidates) throws Exception {
 		dataSource.open();
+		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
 		Map<Key, String[]> map = new HashMap<>();
 		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
 		while (dataSource.hasMoreData()) {
@@ -51,6 +55,16 @@ public class UniquenessCheck {
 		return new Result(true, keyCandidates, null);
 	}
 
+	private void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
+		Set<String> all =  new HashSet<>(Arrays.asList(allColumns));
+		
+		for (String candidate : keyCandidates) {
+			if (!all.contains(candidate)) {
+				throw new ColumnNotFoundException(candidate + " cannot be found in " + Arrays.toString(allColumns));
+			}
+		}
+	}
+
 	private Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
 		List<Integer> indicies = new ArrayList<>();
 		
@@ -62,7 +76,7 @@ public class UniquenessCheck {
 			}
 		}
 		
-		return indicies.toArray(new Integer[] {});
+		return indicies.toArray(new Integer[keyCandidates.length]);
 	}
 
 	private Key key(String[] keyCandidates, String[] row, Integer[] indicies) {

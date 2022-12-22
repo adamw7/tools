@@ -13,13 +13,26 @@ public class UniquenessCheckTest {
 
 	
 	@Test
-	public void happyPath() throws FileNotFoundException {
+	public void happyPathNotUnique() throws FileNotFoundException {
 		UniquenessCheck check = new UniquenessCheck();
 		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year");
 			assertEquals(result.unique, false);
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+	
+	@Test
+	public void happyPathUnique() throws FileNotFoundException {
+		UniquenessCheck check = new UniquenessCheck();
+		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		Result result;
+		try {
+			result = check.exec("year", "hlpi_name");
+			assertEquals(result.unique, true);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

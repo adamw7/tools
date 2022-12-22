@@ -1,4 +1,4 @@
-﻿hlpi_name,year,hlpi,tot_hhs,own,own_wm,own_prop,own_wm_prop,prop_hhs,age,size,income,expenditure,eqv_income,eqv_exp
+hlpi_name,year,hlpi,tot_hhs,own,own_wm,own_prop,own_wm_prop,prop_hhs,age,size,income,expenditure,eqv_income,eqv_exp
 All households,2008,allhh,1560859,1087580,574406,69.7,36.8,100,35.9,2.7,46704,42394,26869,25132
 Beneficiary,2008,benef,185965,71256,39405,38.3,21.2,11.9,29.9,2.6,23404,25270,14258,15824
 Income quintile 1 (low),2008,disq1,312376,191470,48424,61.3,15.5,20,40,2.3,16747,21145,13402,14408

@@ -66,4 +66,9 @@ public class CSVDataSource implements DataSource {
 	public boolean hasMoreData() {
 		return hasMoreData ;
 	}
+
+	@Override
+	public String[] getColumnNames() {
+		return columns;
+	}
 }

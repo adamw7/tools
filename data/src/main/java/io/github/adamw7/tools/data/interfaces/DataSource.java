@@ -10,4 +10,6 @@ public interface DataSource extends AutoCloseable {
 
 	public boolean hasMoreData();
 	
+	public String[] getColumnNames();
+	
 }

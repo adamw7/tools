@@ -4,7 +4,7 @@ import java.io.IOException;
 
 public interface DataSource extends AutoCloseable {
 
-	public void open();
+	public void open() throws IOException;
 	
 	public String[] nextRow() throws IOException;
 

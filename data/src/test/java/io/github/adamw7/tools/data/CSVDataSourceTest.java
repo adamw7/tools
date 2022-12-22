@@ -4,10 +4,6 @@ package io.github.adamw7.tools.data;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.interfaces.DataSource;
@@ -15,8 +11,8 @@ import io.github.adamw7.tools.data.interfaces.DataSource;
 public class CSVDataSourceTest {
 
 	@Test
-	public void happyPath() {
-		try (DataSource source = new CSVDataSource(getFileName("addresses.csv"))) {
+	public void happyPathNoColumns() {
+		try (DataSource source = new CSVDataSource(Utils.getFileName("addresses.csv"))) {
 			source.open();
 			
 			int i = 0;
@@ -24,7 +20,6 @@ public class CSVDataSourceTest {
 				String[] row = source.nextRow();
 				if (row != null) {
 					++i;
-					System.out.println(Arrays.toString(row));
 					assertEquals(6, row.length);					
 				}
 			}
@@ -33,9 +28,28 @@ public class CSVDataSourceTest {
 			fail(e.getMessage());
 		}
 	}
-
-	private String getFileName(String fileName) {
-		Path resourceDirectory = Paths.get("src", "test", "resources", fileName);
-		return resourceDirectory.toFile().getAbsolutePath();
+	
+	@Test
+	public void happyPathWithColumns() {
+		try (DataSource source = new CSVDataSource(householdFile(), 1)) {
+			source.open();
+			
+			int i = 0;
+			while (source.hasMoreData()) {
+				String[] row = source.nextRow();
+				if (row != null) {
+					++i;
+					assertEquals(15, row.length);					
+				}
+			}
+			assertEquals(70, i);
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
 	}
+
+	private String householdFile() {
+		return Utils.getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
+	}
+	
 }

@@ -12,26 +12,39 @@ public class CSVDataSource implements DataSource {
 	
 	protected final BufferedReader bufferedReader;
 	protected final String delimiter;
+	protected final int columnsRow;
+	protected int currentRow = 0;
+	protected String[] columns;
 
 	private boolean hasMoreData = true; 
 	
-	public CSVDataSource(String fileName, String delimiter) throws FileNotFoundException {
+	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
 		bufferedReader = new BufferedReader(new FileReader(fileName));
 		this.delimiter = delimiter;
+		this.columnsRow = columnsRow;
 	}
 	
 	public CSVDataSource(String fileName) throws FileNotFoundException {
-		this(fileName, DEFAULT_DELIMITER);
+		this(fileName, DEFAULT_DELIMITER, -1);
+	}
+	
+	public CSVDataSource(String fileName, int columnsRow) throws FileNotFoundException {
+		this(fileName, DEFAULT_DELIMITER, columnsRow);
 	}
 
 	@Override
-	public void open() {
-		
+	public void open() throws IOException {
+		if (columnsRow != -1) {
+			for (int i = 0; i < columnsRow; ++i) {
+				columns = nextRow();
+			}
+		}
 	}
 
 	@Override
 	public String[] nextRow() throws IOException {
 		String line = bufferedReader.readLine();
+		currentRow++;
 		if (line == null) {
 			hasMoreData = false;
 			return null;

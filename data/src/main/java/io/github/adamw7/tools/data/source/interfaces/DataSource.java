@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data.interfaces;
+package io.github.adamw7.tools.data.source.interfaces;
 
 import java.io.IOException;
 

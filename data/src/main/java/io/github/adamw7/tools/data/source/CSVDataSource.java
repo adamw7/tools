@@ -1,11 +1,11 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.source;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import io.github.adamw7.tools.data.interfaces.DataSource;
+import io.github.adamw7.tools.data.source.interfaces.DataSource;
 
 public class CSVDataSource implements DataSource {
 	public final static String DEFAULT_DELIMITER = ",";

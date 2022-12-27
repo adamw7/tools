@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.uniqueness;
 
 import java.util.Arrays;
 

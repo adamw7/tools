@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.uniqueness;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,23 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.adamw7.tools.data.interfaces.DataSource;
+import io.github.adamw7.tools.data.source.interfaces.DataSource;
 
 public class UniquenessCheck {
 	
 	private final DataSource dataSource;
-	
-	public static class Result {
-		final boolean unique;
-		final String[] columns;
-		final String[] row;
-		
-		public Result(boolean unique, String[] columns, String[] row) {
-			this.unique = unique;
-			this.columns = columns;
-			this.row = row;
-		}
-	}
 	
 	public UniquenessCheck(DataSource dataSource) {
 		this.dataSource = dataSource;

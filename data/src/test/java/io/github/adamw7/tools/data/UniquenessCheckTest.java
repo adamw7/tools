@@ -1,14 +1,17 @@
 package io.github.adamw7.tools.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.FileNotFoundException;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.data.UniquenessCheck.Result;
+import io.github.adamw7.tools.data.source.CSVDataSource;
+import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
+import io.github.adamw7.tools.data.uniqueness.Result;
+import io.github.adamw7.tools.data.uniqueness.UniquenessCheck;
 
 public class UniquenessCheckTest {
 
@@ -18,7 +21,7 @@ public class UniquenessCheckTest {
 		Result result;
 		try {
 			result = check.exec("year");
-			assertEquals(result.unique, false);
+			assertEquals(result.isUnique(), false);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
@@ -30,7 +33,7 @@ public class UniquenessCheckTest {
 		Result result;
 		try {
 			result = check.exec("year", "hlpi_name");
-			assertEquals(result.unique, true);
+			assertEquals(result.isUnique(), true);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

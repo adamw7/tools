@@ -6,7 +6,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.data.interfaces.DataSource;
+import io.github.adamw7.tools.data.source.CSVDataSource;
+import io.github.adamw7.tools.data.source.interfaces.DataSource;
 
 public class CSVDataSourceTest {
 

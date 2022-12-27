@@ -8,24 +8,16 @@ import java.io.IOException;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSource implements IterableDataSource {
+	
 	public final static String DEFAULT_DELIMITER = ",";
 	
-	protected BufferedReader bufferedReader;
 	protected final String delimiter;
 	protected final int columnsRow;
-	protected int currentRow = 0;
 	protected String[] columns;
-
-	private boolean hasMoreData = true;
-
-	private final String fileName; 
-	
-	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
-		bufferedReader = new BufferedReader(new FileReader(fileName));
-		this.delimiter = delimiter;
-		this.columnsRow = columnsRow;
-		this.fileName = fileName;
-	}
+	protected BufferedReader bufferedReader;
+	protected final String fileName; 
+	protected int currentRow = 0;
+	protected boolean hasMoreData = true;
 	
 	public CSVDataSource(String fileName) throws FileNotFoundException {
 		this(fileName, DEFAULT_DELIMITER, -1);
@@ -34,7 +26,24 @@ public class CSVDataSource implements IterableDataSource {
 	public CSVDataSource(String fileName, int columnsRow) throws FileNotFoundException {
 		this(fileName, DEFAULT_DELIMITER, columnsRow);
 	}
+	
+	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
+		bufferedReader = new BufferedReader(new FileReader(fileName));
+		this.delimiter = delimiter;
+		this.columnsRow = columnsRow;
+		this.fileName = fileName;
+	}
+	
+	@Override
+	public String[] getColumnNames() {
+		return columns;
+	}
 
+	@Override
+	public void close() throws Exception {
+		bufferedReader.close();
+	}
+	
 	@Override
 	public void open() throws IOException {		
 		if (columnsRow != -1 && columns == null) {
@@ -61,18 +70,8 @@ public class CSVDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void close() throws Exception {
-		bufferedReader.close();
-	}
-
-	@Override
 	public boolean hasMoreData() {
-		return hasMoreData ;
-	}
-
-	@Override
-	public String[] getColumnNames() {
-		return columns;
+		return hasMoreData;
 	}
 
 	@Override

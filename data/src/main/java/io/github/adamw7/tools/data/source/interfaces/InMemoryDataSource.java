@@ -1,6 +1,9 @@
 package io.github.adamw7.tools.data.source.interfaces;
 
-public interface InMemoryDataSource extends DataSource {
+import java.io.IOException;
+import java.util.List;
 
-	
+public interface InMemoryDataSource extends IterableDataSource {
+
+	public List<String[]> read() throws IOException;
 }

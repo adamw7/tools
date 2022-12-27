@@ -22,8 +22,15 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <module>data</module>
   </modules>
   
-  <dependencies>  
-
-  </dependencies>  
+  <dependencyManagement>  
+	<dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>5.9.1</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+  </dependencyManagement>  
   
 </project>  

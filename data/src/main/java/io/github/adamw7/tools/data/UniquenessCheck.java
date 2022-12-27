@@ -12,6 +12,8 @@ import io.github.adamw7.tools.data.interfaces.DataSource;
 
 public class UniquenessCheck {
 	
+	private final DataSource dataSource;
+	
 	public static class Result {
 		final boolean unique;
 		final String[] columns;
@@ -23,14 +25,8 @@ public class UniquenessCheck {
 			this.row = row;
 		}
 	}
-
-	private DataSource dataSource;
 	
-	public UniquenessCheck() {
-		
-	}
-
-	public void setDataSource(DataSource dataSource) {
+	public UniquenessCheck(DataSource dataSource) {
 		this.dataSource = dataSource;
 	}
 

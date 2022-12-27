@@ -14,8 +14,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	public void happyPathNotUnique() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck();
-		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year");
@@ -27,8 +26,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	public void happyPathUnique() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck();
-		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year", "hlpi_name");
@@ -40,8 +38,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	void negativeWrongColumn() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck();
-		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			check.exec(columnName);
@@ -54,8 +51,7 @@ public class UniquenessCheckTest {
 	
 	@Test
 	void negativeEmptyInputArray() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck();
-		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] {});
 		}, "Expected exec method to throw, but it didn't");
@@ -65,8 +61,7 @@ public class UniquenessCheckTest {
 	
 	@Test
 	void negativeNullsInInputArray() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck();
-		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] {"hlpi_name", null, "year"});
 		}, "Expected exec method to throw, but it didn't");

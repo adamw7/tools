@@ -36,8 +36,32 @@ public class UniquenessCheck {
 				}
 			}
 		}
-		dataSource.close();
-		return new Result(true, keyCandidates, null);
+
+		Result result = handleSucessfullCheck(keyCandidates);
+		dataSource.close();		
+		return result;
+	}
+
+	private Result handleSucessfullCheck(String[] keyCandidates) throws Exception {
+		List<Result> list = findPotentiallySmallerSetOfCanidates(keyCandidates);
+		return new Result(true, keyCandidates, null, list);
+	}
+
+	private List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {		
+		List<Result> list = new ArrayList<>();
+		for (String candidate : keyCandidates) {
+			Set<String> set = new HashSet<>();
+			set.addAll(Arrays.asList(keyCandidates));
+			set.remove(candidate);
+			if (!set.isEmpty()) {
+				dataSource.reset();
+				Result result = exec(set.toArray(new String[keyCandidates.length - 1]));
+				if (result.unique) {
+					list.add(result);
+				}				
+			}
+		}
+		return list;
 	}
 
 	private void check(String[] keyCandidates) {
@@ -84,7 +108,5 @@ public class UniquenessCheck {
 		
 		return new Key(values.toArray(new String[keyCandidates.length]));
 	}
-
-	
 	
 }

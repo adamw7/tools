@@ -10,18 +10,21 @@ import io.github.adamw7.tools.data.source.interfaces.DataSource;
 public class CSVDataSource implements DataSource {
 	public final static String DEFAULT_DELIMITER = ",";
 	
-	protected final BufferedReader bufferedReader;
+	protected BufferedReader bufferedReader;
 	protected final String delimiter;
 	protected final int columnsRow;
 	protected int currentRow = 0;
 	protected String[] columns;
 
-	private boolean hasMoreData = true; 
+	private boolean hasMoreData = true;
+
+	private final String fileName; 
 	
 	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
 		bufferedReader = new BufferedReader(new FileReader(fileName));
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
+		this.fileName = fileName;
 	}
 	
 	public CSVDataSource(String fileName) throws FileNotFoundException {
@@ -33,8 +36,8 @@ public class CSVDataSource implements DataSource {
 	}
 
 	@Override
-	public void open() throws IOException {
-		if (columnsRow != -1) {
+	public void open() throws IOException {		
+		if (columnsRow != -1 && columns == null) {
 			for (int i = 0; i < columnsRow; ++i) {
 				columns = nextRow();
 			}
@@ -70,5 +73,12 @@ public class CSVDataSource implements DataSource {
 	@Override
 	public String[] getColumnNames() {
 		return columns;
+	}
+
+	@Override
+	public void reset() throws IOException {
+		bufferedReader = new BufferedReader(new FileReader(fileName));
+		columns = null;
+		open();
 	}
 }

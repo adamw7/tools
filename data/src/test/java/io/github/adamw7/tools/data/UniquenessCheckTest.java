@@ -38,6 +38,19 @@ public class UniquenessCheckTest {
 			fail(e.getMessage());
 		}
 	}
+	
+	@Test
+	public void happyPathUniqueShouldFindBetterOptions() throws FileNotFoundException {
+		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Result result;
+		try {
+			result = check.exec("year", "hlpi_name", "income");
+			assertEquals(result.isUnique(), true);
+			assertEquals(3, result.getBetterOptions().size());			
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
 
 	@Test
 	void negativeWrongColumn() throws FileNotFoundException {

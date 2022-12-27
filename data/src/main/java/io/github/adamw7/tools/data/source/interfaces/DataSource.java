@@ -12,4 +12,6 @@ public interface DataSource extends AutoCloseable {
 	
 	public String[] getColumnNames();
 	
+	public void reset() throws IOException;
+	
 }

@@ -11,13 +11,14 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.data.source.CSVDataSource;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
 import io.github.adamw7.tools.data.uniqueness.Result;
-import io.github.adamw7.tools.data.uniqueness.UniquenessCheck;
+import io.github.adamw7.tools.data.uniqueness.Uniqueness;
+import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
 
 public class UniquenessCheckTest {
 
 	@Test
 	public void happyPathNotUnique() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year");
@@ -29,7 +30,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	public void happyPathUnique() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year", "hlpi_name");
@@ -41,7 +42,7 @@ public class UniquenessCheckTest {
 	
 	@Test
 	public void happyPathUniqueShouldFindBetterOptions() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year", "hlpi_name", "income");
@@ -54,7 +55,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	void negativeWrongColumn() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			check.exec(columnName);
@@ -67,7 +68,7 @@ public class UniquenessCheckTest {
 	
 	@Test
 	void negativeEmptyInputArray() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] {});
 		}, "Expected exec method to throw, but it didn't");
@@ -77,7 +78,7 @@ public class UniquenessCheckTest {
 	
 	@Test
 	void negativeNullsInInputArray() throws FileNotFoundException {
-		UniquenessCheck check = new UniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] {"hlpi_name", null, "year"});
 		}, "Expected exec method to throw, but it didn't");

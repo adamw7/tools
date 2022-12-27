@@ -2,7 +2,7 @@ package io.github.adamw7.tools.data.source.interfaces;
 
 import java.io.IOException;
 
-public interface DataSource extends AutoCloseable {
+public interface IterableDataSource extends DataSource {
 
 	public void open() throws IOException;
 	

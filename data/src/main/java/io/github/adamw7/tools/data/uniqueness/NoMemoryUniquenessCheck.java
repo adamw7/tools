@@ -8,16 +8,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.adamw7.tools.data.source.interfaces.DataSource;
+import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class UniquenessCheck {
+public class NoMemoryUniquenessCheck implements Uniqueness {
 	
-	private final DataSource dataSource;
+	private final IterableDataSource dataSource;
 	
-	public UniquenessCheck(DataSource dataSource) {
+	public NoMemoryUniquenessCheck(IterableDataSource dataSource) {
 		this.dataSource = dataSource;
 	}
 
+	@Override
 	public Result exec(String...keyCandidates) throws Exception {
 		check(keyCandidates);
 		dataSource.open();

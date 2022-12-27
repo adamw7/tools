@@ -5,9 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import io.github.adamw7.tools.data.source.interfaces.DataSource;
+import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class CSVDataSource implements DataSource {
+public class CSVDataSource implements IterableDataSource {
 	public final static String DEFAULT_DELIMITER = ",";
 	
 	protected BufferedReader bufferedReader;

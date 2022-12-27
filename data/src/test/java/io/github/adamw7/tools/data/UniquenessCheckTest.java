@@ -45,11 +45,33 @@ public class UniquenessCheckTest {
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			check.exec(columnName);
-		}, "Expected doThing() to throw, but it didn't");
+		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals(columnName
 				+ " cannot be found in [hlpi_name, year, hlpi, tot_hhs, own, own_wm, own_prop, own_wm_prop, prop_hhs, age, size, income, expenditure, eqv_income, eqv_exp]",
 				thrown.getMessage());
+	}
+	
+	@Test
+	void negativeEmptyInputArray() throws FileNotFoundException {
+		UniquenessCheck check = new UniquenessCheck();
+		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			check.exec(new String[] {});
+		}, "Expected exec method to throw, but it didn't");
+
+		assertEquals("Wrong input: []", thrown.getMessage());
+	}
+	
+	@Test
+	void negativeNullsInInputArray() throws FileNotFoundException {
+		UniquenessCheck check = new UniquenessCheck();
+		check.setDataSource(new CSVDataSource(getHouseholdFile(), 1));
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			check.exec(new String[] {"hlpi_name", null, "year"});
+		}, "Expected exec method to throw, but it didn't");
+
+		assertEquals("Input columns cannot be null", thrown.getMessage());
 	}
 
 	private String getHouseholdFile() {

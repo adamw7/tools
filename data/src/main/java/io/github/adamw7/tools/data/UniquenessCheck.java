@@ -35,6 +35,7 @@ public class UniquenessCheck {
 	}
 
 	public Result exec(String...keyCandidates) throws Exception {
+		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
 		Map<Key, String[]> map = new HashMap<>();
@@ -53,6 +54,17 @@ public class UniquenessCheck {
 		}
 		dataSource.close();
 		return new Result(true, keyCandidates, null);
+	}
+
+	private void check(String[] keyCandidates) {
+		if (keyCandidates == null || keyCandidates.length == 0) {
+			throw new IllegalArgumentException("Wrong input: " + Arrays.toString(keyCandidates));
+		}
+		for (String canidate : keyCandidates) {
+			if (canidate == null) {
+				throw new IllegalArgumentException("Input columns cannot be null");
+			}
+		}
 	}
 
 	private void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {

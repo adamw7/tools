@@ -71,14 +71,7 @@ public class UniquenessCheckTest {
 			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
 		Uniqueness uniqueness = uniquenessClass.getConstructor().newInstance();
-
-		if (uniqueness instanceof NoMemoryUniquenessCheck) {
-			((NoMemoryUniquenessCheck) uniqueness).setDataSource(source);
-		} else if (uniqueness instanceof InMemoryUniquenessCheck) {
-			((InMemoryUniquenessCheck) uniqueness).setDataSource((InMemoryCSVDataSource) source);
-		} else {
-			throw new RuntimeException("Unknown type: " + uniqueness);
-		}
+		uniqueness.setDataSource(source);
 		return uniqueness;
 	}
 

@@ -12,16 +12,10 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class NoMemoryUniquenessCheck extends Uniqueness {
 
-	private IterableDataSource dataSource;
-
 	public NoMemoryUniquenessCheck() { }
 	
 	public NoMemoryUniquenessCheck(IterableDataSource dataSource) {
 		this.dataSource = dataSource;
-	}
-	
-	public void setDataSource(IterableDataSource source) {
-		this.dataSource = source;
 	}
 
 	@Override
@@ -69,6 +63,11 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 			}
 		}
 		return list;
+	}
+
+	@Override
+	public <T extends IterableDataSource> void setDataSource(T source) {
+		this.dataSource = source;
 	}
 
 

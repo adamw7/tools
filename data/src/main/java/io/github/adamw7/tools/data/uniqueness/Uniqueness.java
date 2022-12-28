@@ -6,9 +6,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+
 public abstract class Uniqueness {
+	
+	protected IterableDataSource dataSource;
 
 	public abstract Result exec(String... keyCandidates) throws Exception;
+	
+	public abstract <T extends IterableDataSource> void setDataSource(T source);
 
 	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
 		Set<String> all = new HashSet<>(Arrays.asList(allColumns));

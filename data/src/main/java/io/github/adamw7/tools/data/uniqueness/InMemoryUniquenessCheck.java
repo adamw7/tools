@@ -1,25 +1,19 @@
 package io.github.adamw7.tools.data.uniqueness;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
+import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class InMemoryUniquenessCheck extends Uniqueness {
-	
-	private InMemoryDataSource dataSource;
 	
 	public InMemoryUniquenessCheck() {}
 
 	public InMemoryUniquenessCheck(InMemoryDataSource dataSource) {
 		setDataSource(dataSource);
-	}
-	
-	public void setDataSource(InMemoryDataSource dataSource) {
-		this.dataSource = dataSource;
 	}
 	
 	@Override
@@ -33,7 +27,7 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 	}
 
 	private Result findUnique(Integer[] inidices, String... keyCandidates) throws IOException {
-		List<String[]> data = dataSource.read();
+		List<String[]> data = ((InMemoryDataSource) dataSource).read();
 		Map<Key, String[]> map = new HashMap<>();
 		for (String[] row : data) {
 			if (row != null) {
@@ -46,5 +40,10 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 			}
 		}
 		return new Result(true, keyCandidates);
+	}
+	
+	@Override
+	public <T extends IterableDataSource> void setDataSource(T source) {
+		this.dataSource = (InMemoryDataSource)source;
 	}
 }

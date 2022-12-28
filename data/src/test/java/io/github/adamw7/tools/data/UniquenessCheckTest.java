@@ -23,7 +23,7 @@ import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 
 public class UniquenessCheckTest {
 	
-	static Stream<Arguments> happyPathNotUnique = Stream.of(
+	static Stream<Arguments> happyPath = Stream.of(
 			  Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1)),
 			  Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1))
 			);
@@ -47,8 +47,8 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPathNotUnique")
-	public void happyPathNotUnique(Class uniquenessClass, IterableDataSource source) throws Exception {
+	@VariableSource("happyPath")
+	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		
 		Result result;
@@ -60,8 +60,8 @@ public class UniquenessCheckTest {
 		}
 	}
 
-	private Uniqueness initUniquenessCheck(Class uniquenessClass, IterableDataSource source) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
-		Uniqueness uniqueness = (Uniqueness) uniquenessClass.getConstructor().newInstance();
+	private Uniqueness initUniquenessCheck(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+		Uniqueness uniqueness = uniquenessClass.getConstructor().newInstance();
 		
 		if (uniqueness instanceof NoMemoryUniquenessCheck) {
 			((NoMemoryUniquenessCheck) uniqueness).setDataSource(source);

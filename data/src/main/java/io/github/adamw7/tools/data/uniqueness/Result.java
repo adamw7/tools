@@ -12,7 +12,7 @@ public class Result {
 	private final List<Result> betterOptions;
 	
 	public Result(boolean unique, String[] columns) {
-		this(unique, columns, null, null);
+		this(unique, columns, null, new ArrayList<Result>());
 	}
 	
 	public Result(boolean unique, String[] columns, String[] row) {

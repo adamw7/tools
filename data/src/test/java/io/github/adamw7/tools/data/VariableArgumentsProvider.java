@@ -15,7 +15,7 @@ class VariableArgumentsProvider implements ArgumentsProvider, AnnotationConsumer
 	@Override
 	public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
 		return context.getTestClass().map(this::getField).map(this::getValue)
-				.orElseThrow(() -> new IllegalArgumentException("Failed to load test arguments"));
+				.orElseThrow(() -> new IllegalArgumentException("Failed to load test arguments for field"));
 	}
 
 	@Override

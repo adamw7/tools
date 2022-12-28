@@ -22,16 +22,23 @@ import io.github.adamw7.tools.data.uniqueness.Result;
 import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 
 public class UniquenessCheckTest {
-	
-	static Stream<Arguments> happyPath = Stream.of(
-			  Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1)),
-			  Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1))
-			);
+
+	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year" };
+	private static final String[] UNIQUE_COLUMNS = new String[] { "year", "hlpi_name" };
+
+	static Stream<Arguments> happyPathNotUnique = Stream.of(
+			Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), NOT_UNIQUE_COLUMNS),
+			Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
+					NOT_UNIQUE_COLUMNS));
+
+	static Stream<Arguments> happyPathUnique = Stream.of(
+			Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), UNIQUE_COLUMNS),
+			Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
+					UNIQUE_COLUMNS));
 
 	private static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {
-			IterableDataSource source = new CSVDataSource(file, columnsRow);
-			return source;
+			return new CSVDataSource(file, columnsRow);
 		} catch (Exception e) {
 			return null;
 		}
@@ -39,46 +46,51 @@ public class UniquenessCheckTest {
 
 	private static InMemoryCSVDataSource createInMemoryDataSource(String file, int columnsRow) {
 		try {
-			InMemoryCSVDataSource source = new InMemoryCSVDataSource(file, columnsRow);
-			return source;
+			return new InMemoryCSVDataSource(file, columnsRow);
 		} catch (Exception e) {
 			return null;
 		}
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
-	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+	@VariableSource("happyPathNotUnique")
+	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source, String[] columns)
+			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		
+
 		Result result;
 		try {
-			result = uniqueness.exec("year");
+			result = uniqueness.exec(columns);
 			assertEquals(result.isUnique(), false);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
 	}
 
-	private Uniqueness initUniquenessCheck(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+	private Uniqueness initUniquenessCheck(Class<Uniqueness> uniquenessClass, IterableDataSource source)
+			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+			NoSuchMethodException, SecurityException {
 		Uniqueness uniqueness = uniquenessClass.getConstructor().newInstance();
-		
+
 		if (uniqueness instanceof NoMemoryUniquenessCheck) {
 			((NoMemoryUniquenessCheck) uniqueness).setDataSource(source);
 		} else if (uniqueness instanceof InMemoryUniquenessCheck) {
-			((InMemoryUniquenessCheck) uniqueness).setDataSource((InMemoryCSVDataSource)source);
+			((InMemoryUniquenessCheck) uniqueness).setDataSource((InMemoryCSVDataSource) source);
 		} else {
 			throw new RuntimeException("Unknown type: " + uniqueness);
 		}
 		return uniqueness;
 	}
 
-	@Test
-	public void happyPathUnique() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+	@ParameterizedTest
+	@VariableSource("happyPathUnique")
+	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source, String[] columns)
+			throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+
 		Result result;
 		try {
-			result = check.exec("year", "hlpi_name");
+			result = uniqueness.exec(columns);
 			assertEquals(result.isUnique(), true);
 		} catch (Exception e) {
 			fail(e.getMessage());

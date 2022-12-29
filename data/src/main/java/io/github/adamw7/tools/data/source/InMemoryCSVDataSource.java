@@ -17,6 +17,10 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 		super(fileName, delimiter, columnsRow);
 	}
 
+	public InMemoryCSVDataSource(String fileName) throws FileNotFoundException {
+		super(fileName, DEFAULT_DELIMITER, -1);
+	}
+
 	@Override
 	public List<String[]> read() throws IOException {
 		open();

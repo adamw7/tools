@@ -13,7 +13,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 
 import io.github.adamw7.tools.data.source.CSVDataSource;
-import io.github.adamw7.tools.data.source.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
@@ -28,24 +27,8 @@ public class UniquenessCheckTest {
 
 	static Stream<Arguments> happyPath() {
 		return Stream.of(
-				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1)),
-				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1)));
-	}
-
-	private static IterableDataSource createDataSource(String file, int columnsRow) {
-		try {
-			return new CSVDataSource(file, columnsRow);
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	private static InMemoryCSVDataSource createInMemoryDataSource(String file, int columnsRow) {
-		try {
-			return new InMemoryCSVDataSource(file, columnsRow);
-		} catch (Exception e) {
-			return null;
-		}
+				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(Utils.getHouseholdFile(), 1)),
+				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1)));
 	}
 
 	@ParameterizedTest
@@ -88,7 +71,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	public void happyPathUniqueShouldFindBetterOptions() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
 		Result result;
 		try {
 			result = check.exec("year", "hlpi_name", "income");
@@ -101,7 +84,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	void negativeWrongColumn() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			check.exec(columnName);
@@ -114,7 +97,7 @@ public class UniquenessCheckTest {
 
 	@Test
 	void negativeEmptyInputArray() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] {});
 		}, "Expected exec method to throw, but it didn't");
@@ -124,15 +107,11 @@ public class UniquenessCheckTest {
 
 	@Test
 	void negativeNullsInInputArray() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(getHouseholdFile(), 1));
+		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			check.exec(new String[] { "hlpi_name", null, "year" });
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());
-	}
-
-	private static String getHouseholdFile() {
-		return Utils.getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
 	}
 }

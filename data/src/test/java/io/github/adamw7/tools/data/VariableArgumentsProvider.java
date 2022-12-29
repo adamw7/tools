@@ -1,6 +1,6 @@
 package io.github.adamw7.tools.data;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -14,8 +14,8 @@ class VariableArgumentsProvider implements ArgumentsProvider, AnnotationConsumer
 
 	@Override
 	public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
-		return context.getTestClass().map(this::getField).map(this::getValue)
-				.orElseThrow(() -> new IllegalArgumentException("Failed to load test arguments for field"));
+		return context.getTestClass().map(this::getMethod).map(this::getValue)
+				.orElseThrow(() -> new IllegalArgumentException("Failed to load test arguments for method: " + variableName));
 	}
 
 	@Override
@@ -23,19 +23,19 @@ class VariableArgumentsProvider implements ArgumentsProvider, AnnotationConsumer
 		variableName = variableSource.value();
 	}
 
-	private Field getField(Class<?> clazz) {
+	private Method getMethod(Class<?> clazz) {
 		try {
-			return clazz.getDeclaredField(variableName);
+			return clazz.getDeclaredMethod(variableName, null);
 		} catch (Exception e) {
 			return null;
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	private Stream<Arguments> getValue(Field field) {
+	private Stream<Arguments> getValue(Method method) {
 		Object value = null;
 		try {
-			value = field.get(null);
+			value = method.invoke(null, null);
 		} catch (Exception ignored) {
 		}
 

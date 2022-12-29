@@ -26,15 +26,20 @@ public class UniquenessCheckTest {
 	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year" };
 	private static final String[] UNIQUE_COLUMNS = new String[] { "year", "hlpi_name" };
 
-	static Stream<Arguments> happyPathNotUnique = Stream.of(
-			Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), NOT_UNIQUE_COLUMNS),
-			Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
-					NOT_UNIQUE_COLUMNS));
+	static Stream<Arguments> happyPathNotUnique() {
+		return Stream.of(
+				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1),
+						NOT_UNIQUE_COLUMNS),
+				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
+						NOT_UNIQUE_COLUMNS));
+	}
 
-	static Stream<Arguments> happyPathUnique = Stream.of(
-			Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), UNIQUE_COLUMNS),
-			Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
-					UNIQUE_COLUMNS));
+	static Stream<Arguments> happyPathUnique() {
+		return Stream.of(
+				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), UNIQUE_COLUMNS),
+				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
+						UNIQUE_COLUMNS));
+	}
 
 	private static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 
@@ -50,8 +49,8 @@ public class CSVDataSourceTest {
 	
 	@ParameterizedTest
 	@VariableSource("happyPathWithColumnsArgs")
-	public void happyPathWithColumns() {
-		try (IterableDataSource source = new CSVDataSource(householdFile(), 1)) {
+	public void happyPathWithColumns(IterableDataSource source) {
+		try {
 			source.open();
 			
 			int i = 0;
@@ -62,14 +61,11 @@ public class CSVDataSourceTest {
 					assertEquals(15, row.length);					
 				}
 			}
+			source.close();
 			assertEquals(70, i);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
-	}
-
-	private String householdFile() {
-		return Utils.getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
 	}
 	
 }

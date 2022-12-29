@@ -26,19 +26,10 @@ public class UniquenessCheckTest {
 	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year" };
 	private static final String[] UNIQUE_COLUMNS = new String[] { "year", "hlpi_name" };
 
-	static Stream<Arguments> happyPathNotUnique() {
+	static Stream<Arguments> happyPath() {
 		return Stream.of(
-				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1),
-						NOT_UNIQUE_COLUMNS),
-				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
-						NOT_UNIQUE_COLUMNS));
-	}
-
-	static Stream<Arguments> happyPathUnique() {
-		return Stream.of(
-				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1), UNIQUE_COLUMNS),
-				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1),
-						UNIQUE_COLUMNS));
+				Arguments.of(NoMemoryUniquenessCheck.class, createDataSource(getHouseholdFile(), 1)),
+				Arguments.of(InMemoryUniquenessCheck.class, createInMemoryDataSource(getHouseholdFile(), 1)));
 	}
 
 	private static IterableDataSource createDataSource(String file, int columnsRow) {
@@ -58,14 +49,14 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPathNotUnique")
-	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source, String[] columns)
+	@VariableSource("happyPath")
+	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 
 		Result result;
 		try {
-			result = uniqueness.exec(columns);
+			result = uniqueness.exec(NOT_UNIQUE_COLUMNS);
 			assertEquals(result.isUnique(), false);
 		} catch (Exception e) {
 			fail(e.getMessage());
@@ -81,14 +72,14 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPathUnique")
-	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source, String[] columns)
+	@VariableSource("happyPath")
+	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 
 		Result result;
 		try {
-			result = uniqueness.exec(columns);
+			result = uniqueness.exec(UNIQUE_COLUMNS);
 			assertEquals(result.isUnique(), true);
 		} catch (Exception e) {
 			fail(e.getMessage());

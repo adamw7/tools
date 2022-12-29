@@ -25,7 +25,7 @@ class VariableArgumentsProvider implements ArgumentsProvider, AnnotationConsumer
 
 	private Method getMethod(Class<?> clazz) {
 		try {
-			return clazz.getDeclaredMethod(variableName, null);
+			return clazz.getDeclaredMethod(variableName, (Class[])null);
 		} catch (Exception e) {
 			return null;
 		}
@@ -35,7 +35,7 @@ class VariableArgumentsProvider implements ArgumentsProvider, AnnotationConsumer
 	private Stream<Arguments> getValue(Method method) {
 		Object value = null;
 		try {
-			value = method.invoke(null, null);
+			value = method.invoke(null, (Object[])null);
 		} catch (Exception ignored) {
 		}
 

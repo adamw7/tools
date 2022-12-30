@@ -9,23 +9,27 @@ import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 
-import io.github.adamw7.tools.data.source.CSVDataSource;
+import io.github.adamw7.tools.data.source.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSourceTest {
 
 	static Stream<Arguments> happyPathArgs() {
+		IterableDataSource dataSource = Utils.createDataSource(Utils.getFileName("addresses.csv"));
+		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(Utils.getFileName("addresses.csv"));
 		return Stream.of(
-				Arguments.of(Utils.createDataSource(Utils.getFileName("addresses.csv"))),
-				Arguments.of(Utils.createInMemoryDataSource(Utils.getFileName("addresses.csv"))));
+				Arguments.of(Utils.named(dataSource)),
+				Arguments.of(Utils.named(inMemoryDataSource)));
 	}
 	
 	static Stream<Arguments> happyPathWithColumnsArgs() {
+		IterableDataSource dataSource = Utils.createDataSource(Utils.getHouseholdFile(), 1);
+		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1);
 		return Stream.of(
-				Arguments.of(Utils.createDataSource(Utils.getHouseholdFile(), 1)),
-				Arguments.of(Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1)));
+				Arguments.of(Utils.named(dataSource)),
+				Arguments.of(Utils.named(inMemoryDataSource)));
 	}
-	
+
 	@ParameterizedTest
 	@VariableSource("happyPathArgs")
 	public void happyPathNoColumns(IterableDataSource source) {

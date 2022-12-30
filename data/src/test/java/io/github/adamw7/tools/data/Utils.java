@@ -3,6 +3,8 @@ package io.github.adamw7.tools.data;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.junit.jupiter.api.Named;
+
 import io.github.adamw7.tools.data.source.CSVDataSource;
 import io.github.adamw7.tools.data.source.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -48,6 +50,10 @@ public class Utils {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	static Named<Object> named(Object dataSource) {
+		return Named.of(dataSource.getClass().getSimpleName(), dataSource);
 	}
 
 }

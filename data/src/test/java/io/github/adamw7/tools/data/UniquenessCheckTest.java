@@ -81,12 +81,13 @@ public class UniquenessCheckTest {
 		}
 	}
 
-	@Test
-	void negativeWrongColumn() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
+	@ParameterizedTest
+	@VariableSource("happyPath")
+	void negativeWrongColumn(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
-			check.exec(columnName);
+			uniqueness.exec(columnName);
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals(columnName
@@ -94,21 +95,23 @@ public class UniquenessCheckTest {
 				thrown.getMessage());
 	}
 
-	@Test
-	void negativeEmptyInputArray() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
+	@ParameterizedTest
+	@VariableSource("happyPath")
+	void negativeEmptyInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			check.exec(new String[] {});
+			uniqueness.exec(new String[] {});
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Wrong input: []", thrown.getMessage());
 	}
 
-	@Test
-	void negativeNullsInInputArray() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
+	@ParameterizedTest
+	@VariableSource("happyPath")
+	void negativeNullsInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			check.exec(new String[] { "hlpi_name", null, "year" });
+			uniqueness.exec(new String[] { "hlpi_name", null, "year" });
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());

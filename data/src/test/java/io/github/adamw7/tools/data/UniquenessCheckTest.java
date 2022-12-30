@@ -59,22 +59,21 @@ public class UniquenessCheckTest {
 	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-
-		Result result;
+		
 		try {
-			result = uniqueness.exec(UNIQUE_COLUMNS);
+			Result result = uniqueness.exec(UNIQUE_COLUMNS);
 			assertEquals(result.isUnique(), true);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
 	}
 
-	@Test
-	public void happyPathUniqueShouldFindBetterOptions() throws FileNotFoundException {
-		Uniqueness check = new NoMemoryUniquenessCheck(new CSVDataSource(Utils.getHouseholdFile(), 1));
-		Result result;
+	@ParameterizedTest
+	@VariableSource("happyPath")
+	public void happyPathUniqueShouldFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
-			result = check.exec("year", "hlpi_name", "income");
+			Result result = uniqueness.exec("year", "hlpi_name", "income");
 			assertEquals(result.isUnique(), true);
 			assertEquals(3, result.getBetterOptions().size());
 		} catch (Exception e) {

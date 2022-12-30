@@ -43,12 +43,7 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 		return result;
 	}
 
-	private Result handleSucessfullCheck(String[] keyCandidates) throws Exception {
-		List<Result> list = findPotentiallySmallerSetOfCanidates(keyCandidates);
-		return new Result(true, keyCandidates, null, list);
-	}
-
-	private List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
+	protected List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
 		List<Result> list = new ArrayList<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = new HashSet<>();

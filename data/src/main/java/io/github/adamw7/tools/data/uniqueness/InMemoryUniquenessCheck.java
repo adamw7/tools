@@ -1,9 +1,12 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -26,7 +29,7 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 		return findUnique(inidices, keyCandidates);
 	}
 
-	private Result findUnique(Integer[] inidices, String... keyCandidates) throws IOException {
+	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
 		List<String[]> data = ((InMemoryDataSource) dataSource).read();
 		Map<Key, String[]> map = new HashMap<>();
 		for (String[] row : data) {
@@ -39,7 +42,26 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 				}
 			}
 		}
-		return new Result(true, keyCandidates);
+		dataSource.close();
+		return handleSucessfullCheck(keyCandidates);
+	}
+	
+	protected List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
+		List<Result> list = new ArrayList<>();
+		for (String candidate : keyCandidates) {
+			Set<String> set = new HashSet<>();
+			set.addAll(Arrays.asList(keyCandidates));
+			set.remove(candidate);
+			if (!set.isEmpty()) {
+				String[] newCandidates = set.toArray(new String[keyCandidates.length - 1]);
+				Integer[] inidices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
+				Result result = findUnique(inidices, newCandidates);
+				if (result.unique) {
+					list.add(result);
+				}
+			}
+		}
+		return list;
 	}
 	
 	@Override

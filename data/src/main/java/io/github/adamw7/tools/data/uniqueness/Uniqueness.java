@@ -60,4 +60,11 @@ public abstract class Uniqueness {
 			}
 		}
 	}
+	
+	protected Result handleSucessfullCheck(String[] keyCandidates) throws Exception {
+		List<Result> list = findPotentiallySmallerSetOfCanidates(keyCandidates);
+		return new Result(true, keyCandidates, null, list);
+	}
+	
+	protected abstract List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;
 }

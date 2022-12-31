@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
@@ -29,7 +30,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
@@ -52,7 +53,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
@@ -66,7 +67,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	public void happyPathUniqueShouldFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
@@ -79,7 +80,7 @@ public class UniquenessCheckTest {
 	}
 	
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	public void happyPathUniqueShouldNotFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
@@ -92,7 +93,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	void negativeWrongColumn(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		String columnName = "notExistingColumn";
@@ -106,7 +107,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	void negativeEmptyInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
@@ -117,7 +118,7 @@ public class UniquenessCheckTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPath")
+	@MethodSource("happyPath")
 	void negativeNullsInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {

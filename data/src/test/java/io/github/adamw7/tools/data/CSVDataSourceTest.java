@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.source.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -31,7 +32,7 @@ public class CSVDataSourceTest {
 	}
 
 	@ParameterizedTest
-	@VariableSource("happyPathArgs")
+	@MethodSource("happyPathArgs")
 	public void happyPathNoColumns(IterableDataSource source) {
 		try {
 			source.open();
@@ -52,7 +53,7 @@ public class CSVDataSourceTest {
 	}
 	
 	@ParameterizedTest
-	@VariableSource("happyPathWithColumnsArgs")
+	@MethodSource("happyPathWithColumnsArgs")
 	public void happyPathWithColumns(IterableDataSource source) {
 		try {
 			source.open();

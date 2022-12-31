@@ -4,15 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 
-import io.github.adamw7.tools.data.source.CSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
@@ -76,6 +73,19 @@ public class UniquenessCheckTest {
 			Result result = uniqueness.exec("year", "hlpi_name", "income");
 			assertEquals(result.isUnique(), true);
 			assertEquals(3, result.getBetterOptions().size());
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+	
+	@ParameterizedTest
+	@VariableSource("happyPath")
+	public void happyPathUniqueShouldNotFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+		try {
+			Result result = uniqueness.exec("income");
+			assertEquals(result.isUnique(), true);
+			assertEquals(0, result.getBetterOptions().size());
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

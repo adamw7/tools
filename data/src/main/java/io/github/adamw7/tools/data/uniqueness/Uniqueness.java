@@ -62,9 +62,16 @@ public abstract class Uniqueness {
 	}
 	
 	protected Result handleSucessfullCheck(String[] keyCandidates) throws Exception {
-		List<Result> list = findPotentiallySmallerSetOfCanidates(keyCandidates);
-		return new Result(true, keyCandidates, null, list);
+		Set<Result> set = findPotentiallySmallerSetOfCanidates(keyCandidates);
+		return new Result(true, keyCandidates, null, set);
 	}
 	
-	protected abstract List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;
+	protected Set<String> createSmallerSet(String[] keyCandidates, String candidate) {
+		Set<String> set = new HashSet<>();
+		set.addAll(Arrays.asList(keyCandidates));
+		set.remove(candidate);
+		return set;
+	}
+	
+	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;
 }

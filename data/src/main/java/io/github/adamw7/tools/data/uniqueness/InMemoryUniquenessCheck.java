@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +30,7 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 
 	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
 		List<String[]> data = ((InMemoryDataSource) dataSource).read();
+		dataSource.close();
 		Map<Key, String[]> map = new HashMap<>();
 		for (String[] row : data) {
 			if (row != null) {
@@ -42,26 +42,25 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 				}
 			}
 		}
-		dataSource.close();
+
 		return handleSucessfullCheck(keyCandidates);
 	}
 	
-	protected List<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
-		List<Result> list = new ArrayList<>();
+	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
+		Set<Result> uniqueCanidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
-			Set<String> set = new HashSet<>();
-			set.addAll(Arrays.asList(keyCandidates));
-			set.remove(candidate);
+			Set<String> set = createSmallerSet(keyCandidates, candidate);
 			if (!set.isEmpty()) {
 				String[] newCandidates = set.toArray(new String[keyCandidates.length - 1]);
 				Integer[] inidices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
 				Result result = findUnique(inidices, newCandidates);
 				if (result.unique) {
-					list.add(result);
+					uniqueCanidates.add(result);
 				}
 			}
 		}
-		return list;
+		
+		return uniqueCanidates;
 	}
 	
 	@Override

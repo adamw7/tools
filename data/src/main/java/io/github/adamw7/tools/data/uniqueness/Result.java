@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.data.uniqueness;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class Result {
@@ -32,5 +34,28 @@ public class Result {
 
 	public Set<Result> getBetterOptions() {
 		return betterOptions;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(columns);
+		result = prime * result + Arrays.hashCode(row);
+		result = prime * result + Objects.hash(betterOptions, unique);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Result other = (Result) obj;
+		return Objects.equals(betterOptions, other.betterOptions) && Arrays.equals(columns, other.columns)
+				&& Arrays.equals(row, other.row) && unique == other.unique;
 	}
 }

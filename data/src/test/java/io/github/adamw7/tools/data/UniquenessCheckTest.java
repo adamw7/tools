@@ -2,9 +2,11 @@ package io.github.adamw7.tools.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,7 +75,9 @@ public class UniquenessCheckTest {
 		try {
 			Result result = uniqueness.exec("year", "hlpi_name", "income");
 			assertEquals(result.isUnique(), true);
-			assertEquals(3, result.getBetterOptions().size());
+			Set<Result> betterOptions = result.getBetterOptions();
+			assertEquals(3, betterOptions.size());
+			assertTrue(betterOptions.contains(new Result(true, new String[] {"year", "hlpi_name"})));
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

@@ -78,6 +78,7 @@ public class CSVDataSource implements IterableDataSource {
 	public void reset() throws IOException {
 		bufferedReader = new BufferedReader(new FileReader(fileName));
 		columns = null;
+		hasMoreData = true;
 		open();
 	}
 }

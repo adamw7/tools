@@ -50,6 +50,7 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);
 			if (!set.isEmpty()) {
+				dataSource.reset();
 				String[] newCandidates = set.toArray(new String[keyCandidates.length - 1]);
 				Integer[] inidices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
 				Result result = findUnique(inidices, newCandidates);

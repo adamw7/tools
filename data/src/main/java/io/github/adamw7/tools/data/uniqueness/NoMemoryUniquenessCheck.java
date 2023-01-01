@@ -34,7 +34,7 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 				}
 			}
 		}
-
+		
 		Result result = handleSucessfullCheck(keyCandidates);
 		dataSource.close();
 		return result;

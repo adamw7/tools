@@ -12,12 +12,6 @@ public class Result {
 	final String[] columns;
 	final String[] row;
 	private final Set<Result> betterOptions;
-	
-	@Override
-	public String toString() {
-		return "Result [unique=" + unique + ", columns=" + Arrays.toString(columns) + ", row=" + Arrays.toString(row)
-				+ ", betterOptions=" + betterOptions + "]";
-	}
 
 	public Result(boolean unique, String[] columns) {
 		this(unique, columns, null, new HashSet<Result>());
@@ -63,5 +57,11 @@ public class Result {
 		Result other = (Result) obj;
 		return Objects.equals(betterOptions, other.betterOptions) && Arrays.equals(columns, other.columns)
 				&& Arrays.equals(row, other.row) && unique == other.unique;
+	}
+	
+	@Override
+	public String toString() {
+		return "Result [unique=" + unique + ", columns=" + Arrays.toString(columns) + ", row=" + Arrays.toString(row)
+				+ ", betterOptions=" + betterOptions + "]";
 	}
 }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -78,6 +79,9 @@ public class UniquenessCheckTest {
 			Set<Result> betterOptions = result.getBetterOptions();
 			assertEquals(3, betterOptions.size());
 			assertTrue(betterOptions.contains(new Result(true, new String[] {"year", "hlpi_name"})));
+			Set<Result> incomeOnly = new HashSet<>();
+			incomeOnly.add(new Result(true, new String[] {"income"}));
+			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "year"}, null, incomeOnly)));	
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

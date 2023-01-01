@@ -13,6 +13,12 @@ public class Result {
 	final String[] row;
 	private final Set<Result> betterOptions;
 	
+	@Override
+	public String toString() {
+		return "Result [unique=" + unique + ", columns=" + Arrays.toString(columns) + ", row=" + Arrays.toString(row)
+				+ ", betterOptions=" + betterOptions + "]";
+	}
+
 	public Result(boolean unique, String[] columns) {
 		this(unique, columns, null, new HashSet<Result>());
 	}

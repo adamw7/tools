@@ -116,6 +116,17 @@ public class UniquenessCheckTest {
 
 		assertEquals("Wrong input: []", thrown.getMessage());
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPath")
+	void negativeNullInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			uniqueness.exec((String[])null);
+		}, "Expected exec method to throw, but it didn't");
+
+		assertEquals("Wrong input: null", thrown.getMessage());
+	}
 
 	@ParameterizedTest
 	@MethodSource("happyPath")

@@ -28,7 +28,7 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 	}
 
 	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
-		List<String[]> data = ((InMemoryDataSource) dataSource).read();
+		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		dataSource.close();
 		Map<Key, String[]> map = new HashMap<>();
 		for (String[] row : data) {

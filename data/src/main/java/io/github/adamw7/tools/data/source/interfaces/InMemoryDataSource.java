@@ -5,5 +5,5 @@ import java.util.List;
 
 public interface InMemoryDataSource extends IterableDataSource {
 
-	public List<String[]> read() throws IOException;
+	public List<String[]> readAll() throws IOException;
 }

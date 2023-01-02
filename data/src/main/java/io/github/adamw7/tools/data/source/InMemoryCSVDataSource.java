@@ -22,7 +22,7 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 	}
 
 	@Override
-	public List<String[]> read() throws IOException {
+	public List<String[]> readAll() throws IOException {
 		open();
 		List<String[]> data = new ArrayList<>();
 		while (hasMoreData()) {

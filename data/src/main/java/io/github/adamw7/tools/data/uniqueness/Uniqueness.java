@@ -51,6 +51,11 @@ public abstract class Uniqueness {
 	}
 	
 	protected void check(String[] keyCandidates) {
+		handleNullsAndEmpty(keyCandidates);
+		handleDuplicates(keyCandidates);
+	}
+
+	private void handleNullsAndEmpty(String[] keyCandidates) {
 		if (keyCandidates == null || keyCandidates.length == 0) {
 			throw new IllegalArgumentException("Wrong input: " + Arrays.toString(keyCandidates));
 		}
@@ -59,6 +64,9 @@ public abstract class Uniqueness {
 				throw new IllegalArgumentException("Input columns cannot be null");
 			}
 		}
+	}
+
+	private void handleDuplicates(String[] keyCandidates) {
 		Set<String> set = new HashSet<>();
 		for (String canidate : keyCandidates) {
 			if (set.contains(canidate)) {

@@ -59,6 +59,14 @@ public abstract class Uniqueness {
 				throw new IllegalArgumentException("Input columns cannot be null");
 			}
 		}
+		Set<String> set = new HashSet<>();
+		for (String canidate : keyCandidates) {
+			if (set.contains(canidate)) {
+				throw new IllegalArgumentException("Duplicate in input: " + canidate);
+			} else {
+				set.add(canidate);
+			}
+		}
 	}
 	
 	protected Result handleSucessfullCheck(String[] keyCandidates) throws Exception {

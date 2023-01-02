@@ -146,4 +146,15 @@ public class UniquenessCheckTest {
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPath")
+	void negativeDuplicatesInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			uniqueness.exec(new String[] { "year", "year" });
+		}, "Expected exec method to throw, but it didn't");
+
+		assertEquals("Duplicate in input: year", thrown.getMessage());
+	}
 }

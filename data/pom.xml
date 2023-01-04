@@ -11,10 +11,7 @@
 	<packaging>jar</packaging>
 	<name>Tooling for data</name>
 	<url>http://maven.apache.org</url>
-	<properties>
-		<maven.compiler.source>16</maven.compiler.source>
-		<maven.compiler.target>16</maven.compiler.target>
-	</properties>
+
 	<build>
 		<plugins>
 			<plugin>

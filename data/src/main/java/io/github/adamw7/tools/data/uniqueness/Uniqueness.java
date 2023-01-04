@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -87,6 +88,18 @@ public abstract class Uniqueness {
 		set.addAll(Arrays.asList(keyCandidates));
 		set.remove(candidate);
 		return set;
+	}
+	
+	protected Result processRow(Map<Key, String[]> map, String[] row, String[] keyCandidates, Integer[] inidices) {
+		if (row != null) {
+			Key key = key(keyCandidates, row, inidices);
+			if (map.get(key) != null) {
+				return new Result(false, keyCandidates, row);
+			} else {
+				map.put(key, row);
+			}
+		}
+		return null;
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;

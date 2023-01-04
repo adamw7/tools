@@ -25,13 +25,9 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 
-			if (row != null) {
-				Key key = key(keyCandidates, row, inidices);
-				if (map.get(key) != null) {
-					return new Result(false, keyCandidates, row);
-				} else {
-					map.put(key, row);
-				}
+			Result result = processRow(map, row, keyCandidates, inidices);
+			if (result != null) {
+				return result;
 			}
 		}
 		

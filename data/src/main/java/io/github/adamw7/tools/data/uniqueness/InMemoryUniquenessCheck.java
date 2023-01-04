@@ -32,19 +32,15 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 		dataSource.close();
 		Map<Key, String[]> map = new HashMap<>();
 		for (String[] row : data) {
-			if (row != null) {
-				Key key = key(keyCandidates, row, inidices);
-				if (map.get(key) != null) {
-					return new Result(false, keyCandidates, row);
-				} else {
-					map.put(key, row);
-				}
+			Result result = processRow(map, row, keyCandidates, inidices);
+			if (result != null) {
+				return result;
 			}
 		}
 
 		return handleSucessfullCheck(keyCandidates);
 	}
-	
+
 	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
 		Set<Result> uniqueCanidates = new HashSet<>();
 		for (String candidate : keyCandidates) {

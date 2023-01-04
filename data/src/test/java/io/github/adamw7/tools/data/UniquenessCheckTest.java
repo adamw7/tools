@@ -82,6 +82,7 @@ public class UniquenessCheckTest {
 			Set<Result> incomeOnly = new HashSet<>();
 			incomeOnly.add(new Result(true, new String[] {"income"}));
 			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "year"}, null, incomeOnly)));	
+			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "hlpi_name"}, null, incomeOnly)));	
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

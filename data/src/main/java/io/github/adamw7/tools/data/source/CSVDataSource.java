@@ -12,6 +12,7 @@ public class CSVDataSource implements IterableDataSource {
 	public final static String DEFAULT_DELIMITER = ",";
 	
 	protected final String delimiter;
+	protected final String regex;
 	protected final int columnsRow;
 	protected String[] columns;
 	protected BufferedReader bufferedReader;
@@ -32,6 +33,7 @@ public class CSVDataSource implements IterableDataSource {
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
 		this.fileName = fileName;
+		regex = delimiter + "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
 	}
 	
 	@Override
@@ -64,7 +66,7 @@ public class CSVDataSource implements IterableDataSource {
 			if (line.trim().startsWith("#")) {
 				return null;
 			} else {
-				return line.split(delimiter);				
+				return line.split(regex);				
 			}
 		}
 	}

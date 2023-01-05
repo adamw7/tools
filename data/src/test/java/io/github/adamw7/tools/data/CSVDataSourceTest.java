@@ -30,6 +30,14 @@ public class CSVDataSourceTest {
 				Arguments.of(Utils.named(dataSource)),
 				Arguments.of(Utils.named(inMemoryDataSource)));
 	}
+	
+	static Stream<Arguments> happyPathWithQuotesNoColumnsArgs() {
+		IterableDataSource dataSource = Utils.createDataSource(Utils.getSampleFile());
+		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(Utils.getSampleFile());
+		return Stream.of(
+				Arguments.of(Utils.named(dataSource)),
+				Arguments.of(Utils.named(inMemoryDataSource)));
+	}
 
 	@ParameterizedTest
 	@MethodSource("happyPathArgs")
@@ -51,6 +59,28 @@ public class CSVDataSourceTest {
 			fail(e.getMessage());
 		}
 	}
+
+	@ParameterizedTest
+	@MethodSource("happyPathWithQuotesNoColumnsArgs")
+	public void happyPathQuotesNoColumns(IterableDataSource source) {
+		try {
+			source.open();
+			
+			int i = 0;
+			while (source.hasMoreData()) {
+				String[] row = source.nextRow();
+				if (row != null) {
+					++i;
+					assertEquals(10, row.length);					
+				}
+			}
+			source.close();
+			assertEquals(100, i);
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+	}
+
 	
 	@ParameterizedTest
 	@MethodSource("happyPathWithColumnsArgs")

@@ -20,6 +20,10 @@ public class Utils {
 		return getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
 	}
 
+	public static String getSampleFile() {
+		return getFileName("sample.csv");
+	}
+
 	static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {
 			return new CSVDataSource(file, columnsRow);
@@ -27,7 +31,7 @@ public class Utils {
 			return null;
 		}
 	}
-	
+
 	static IterableDataSource createDataSource(String file) {
 		try {
 			return new CSVDataSource(file);
@@ -43,7 +47,7 @@ public class Utils {
 			return null;
 		}
 	}
-	
+
 	static InMemoryCSVDataSource createInMemoryDataSource(String file) {
 		try {
 			return new InMemoryCSVDataSource(file);

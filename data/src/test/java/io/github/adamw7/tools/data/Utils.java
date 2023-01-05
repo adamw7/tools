@@ -23,6 +23,10 @@ public class Utils {
 	public static String getSampleFile() {
 		return getFileName("sample.csv");
 	}
+	
+	public static String getIndustryFile() {
+		return getFileName("industry_sic.csv");
+	}
 
 	static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {

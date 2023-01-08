@@ -89,16 +89,16 @@ public abstract class Uniqueness {
 		return set;
 	}
 	
-	protected Result processRow(Set<Key> set, String[] row, String[] keyCandidates, Integer[] inidices) {
+	protected boolean found(Set<Key> set, String[] row, Integer[] inidices) {
 		if (row != null) {
 			Key key = key(row, inidices);
 			if (set.contains(key)) {
-				return new Result(false, keyCandidates, row);
+				return true;
 			} else {
 				set.add(key);
 			}
 		}
-		return null;
+		return false;
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;

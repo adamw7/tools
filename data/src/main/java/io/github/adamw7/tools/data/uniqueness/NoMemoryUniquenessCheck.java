@@ -22,10 +22,8 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
-
-			Result result = processRow(keySet, row, keyCandidates, inidices);
-			if (result != null) {
-				return result;
+			if (found(keySet, row, inidices)) {
+				return new Result(false, keyCandidates, row);
 			}
 		}
 		

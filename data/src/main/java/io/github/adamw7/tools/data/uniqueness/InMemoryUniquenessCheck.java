@@ -30,9 +30,8 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 		dataSource.close();
 		Set<Key> keySet = new HashSet<>();
 		for (String[] row : data) {
-			Result result = processRow(keySet, row, keyCandidates, inidices);
-			if (result != null) {
-				return result;
+			if (found(keySet, row, inidices)) {
+				return new Result(false, keyCandidates, row);
 			}
 		}
 

@@ -26,14 +26,14 @@ public abstract class Uniqueness {
 		}
 	}
 	
-	protected Key key(String[] keyCandidates, String[] row, Integer[] indicies) {
-		List<String> values = new ArrayList<>(keyCandidates.length);
+	protected Key key(String[] row, Integer[] indicies) {
+		List<String> values = new ArrayList<>(indicies.length);
 
 		for (Integer index : indicies) {
 			values.add(row[index]);
 		}
 
-		return new Key(values.toArray(new String[keyCandidates.length]));
+		return new Key(values.toArray(new String[indicies.length]));
 	}
 	
 	protected Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
@@ -91,7 +91,7 @@ public abstract class Uniqueness {
 	
 	protected Result processRow(Set<Key> set, String[] row, String[] keyCandidates, Integer[] inidices) {
 		if (row != null) {
-			Key key = key(keyCandidates, row, inidices);
+			Key key = key(row, inidices);
 			if (set.contains(key)) {
 				return new Result(false, keyCandidates, row);
 			} else {

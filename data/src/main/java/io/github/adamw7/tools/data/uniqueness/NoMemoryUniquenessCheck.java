@@ -1,8 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -20,12 +18,12 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
-		Map<Key, String[]> map = new HashMap<>();
+		Set<Key> keySet = new HashSet<>();
 		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 
-			Result result = processRow(map, row, keyCandidates, inidices);
+			Result result = processRow(keySet, row, keyCandidates, inidices);
 			if (result != null) {
 				return result;
 			}

@@ -1,9 +1,7 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
@@ -30,9 +28,9 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		dataSource.close();
-		Map<Key, String[]> map = new HashMap<>();
+		Set<Key> keySet = new HashSet<>();
 		for (String[] row : data) {
-			Result result = processRow(map, row, keyCandidates, inidices);
+			Result result = processRow(keySet, row, keyCandidates, inidices);
 			if (result != null) {
 				return result;
 			}

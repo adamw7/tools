@@ -18,11 +18,11 @@ public class NoMemoryUniquenessCheck extends Uniqueness {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
-		Set<Key> keySet = new HashSet<>();
 		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
+		KeyFinder finder = new KeyFinder(inidices);
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
-			if (found(keySet, row, inidices)) {
+			if (finder.found(row)) {
 				return new Result(false, keyCandidates, row);
 			}
 		}

@@ -26,16 +26,6 @@ public abstract class Uniqueness {
 		}
 	}
 	
-	protected Key key(String[] row, Integer[] indicies) {
-		List<String> values = new ArrayList<>(indicies.length);
-
-		for (Integer index : indicies) {
-			values.add(row[index]);
-		}
-
-		return new Key(values.toArray(new String[indicies.length]));
-	}
-	
 	protected Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
 		List<Integer> indicies = new ArrayList<>();
 
@@ -87,18 +77,6 @@ public abstract class Uniqueness {
 		set.addAll(Arrays.asList(keyCandidates));
 		set.remove(candidate);
 		return set;
-	}
-	
-	protected boolean found(Set<Key> set, String[] row, Integer[] inidices) {
-		if (row != null) {
-			Key key = key(row, inidices);
-			if (set.contains(key)) {
-				return true;
-			} else {
-				set.add(key);
-			}
-		}
-		return false;
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;

@@ -28,9 +28,9 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		dataSource.close();
-		Set<Key> keySet = new HashSet<>();
+		KeyFinder finder = new KeyFinder(inidices);
 		for (String[] row : data) {
-			if (found(keySet, row, inidices)) {
+			if (finder.found(row)) {
 				return new Result(false, keyCandidates, row);
 			}
 		}

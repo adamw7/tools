@@ -5,9 +5,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSource implements IterableDataSource {
+	
+	private final static Logger log = LogManager.getLogger(CSVDataSource.class.getName());
 	
 	public final static String DEFAULT_DELIMITER = ",";
 	
@@ -47,7 +52,8 @@ public class CSVDataSource implements IterableDataSource {
 	}
 	
 	@Override
-	public void open() throws IOException {		
+	public void open() throws IOException {
+		log.info("Opening: " + fileName);
 		if (columnsRow != -1 && columns == null) {
 			for (int i = 0; i < columnsRow; ++i) {
 				columns = nextRow();

@@ -27,6 +27,10 @@ public class Utils {
 	public static String getIndustryFile() {
 		return getFileName("industry_sic.csv");
 	}
+	
+	public static String getIndustryFileZipped() {
+		return getFileName("industry_sic.csv.gz");
+	}
 
 	public static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {

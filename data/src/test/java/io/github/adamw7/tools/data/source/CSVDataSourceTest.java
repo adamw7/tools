@@ -16,11 +16,19 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 public class CSVDataSourceTest {
 
 	static Stream<Arguments> happyPathArgs() {
-		IterableDataSource dataSource = Utils.createDataSource(Utils.getFileName("addresses.csv"));
-		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(Utils.getFileName("addresses.csv"));
+		String fileName = Utils.getFileName("addresses.csv");
+		String fileNameZipped = Utils.getFileName("addresses.csv.gz");
+		IterableDataSource dataSource = Utils.createDataSource(fileName);
+		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(fileName);
+		IterableDataSource dataSourceZipped = Utils.createDataSource(fileNameZipped);
+		InMemoryCSVDataSource inMemoryDataSourceZipped = Utils.createInMemoryDataSource(fileNameZipped);
+		
 		return Stream.of(
-				Arguments.of(Utils.named(dataSource)),
-				Arguments.of(Utils.named(inMemoryDataSource)));
+				Arguments.of(Utils.named(dataSource)), 
+				Arguments.of(Utils.named(dataSourceZipped)),
+				Arguments.of(Utils.named(inMemoryDataSource)),
+				Arguments.of(Utils.named(inMemoryDataSourceZipped))
+				);
 	}
 	
 	static Stream<Arguments> happyPathWithColumnsArgs() {
@@ -42,9 +50,14 @@ public class CSVDataSourceTest {
 	static Stream<Arguments> happyPathWithQuotesAndColumnsArgs() {
 		IterableDataSource dataSource = Utils.createDataSource(Utils.getIndustryFile(), 1);
 		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(Utils.getIndustryFile(), 1);
+		IterableDataSource dataSourceZipped = Utils.createDataSource(Utils.getIndustryFileZipped(), 1);
+		InMemoryCSVDataSource inMemoryDataSourceZipped = Utils.createInMemoryDataSource(Utils.getIndustryFileZipped(), 1);
+
 		return Stream.of(
 				Arguments.of(Utils.named(dataSource)),
-				Arguments.of(Utils.named(inMemoryDataSource)));
+				Arguments.of(Utils.named(dataSourceZipped)),				
+				Arguments.of(Utils.named(inMemoryDataSource)),
+				Arguments.of(Utils.named(inMemoryDataSourceZipped)));
 	}
 
 	@ParameterizedTest
@@ -130,6 +143,7 @@ public class CSVDataSourceTest {
 			source.close();
 			assertEquals(70, i);
 		} catch (Exception e) {
+			e.printStackTrace();
 			fail(e.getMessage());
 		}
 	}

@@ -1,13 +1,14 @@
 package io.github.adamw7.tools.data.source;
 
-import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.util.Scanner;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import io.github.adamw7.tools.data.compression.ZipUtils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSource implements IterableDataSource {
@@ -20,7 +21,7 @@ public class CSVDataSource implements IterableDataSource {
 	protected final String regex;
 	protected final int columnsRow;
 	protected String[] columns;
-	protected BufferedReader bufferedReader;
+	protected Scanner scanner;
 	protected final String fileName; 
 	protected int currentRow = 0;
 	protected boolean hasMoreData = true;
@@ -34,11 +35,15 @@ public class CSVDataSource implements IterableDataSource {
 	}
 	
 	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
-		bufferedReader = new BufferedReader(new FileReader(fileName));
+		scanner = createScanner(fileName);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
 		this.fileName = fileName;
 		regex = delimiter + "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
+	}
+
+	private Scanner createScanner(String fileName) throws FileNotFoundException {
+		return new Scanner(ZipUtils.unzipIfNeeded(new FileInputStream(fileName), fileName), "UTF-8");
 	}
 	
 	@Override
@@ -48,7 +53,7 @@ public class CSVDataSource implements IterableDataSource {
 
 	@Override
 	public void close() throws Exception {
-		bufferedReader.close();
+		scanner.close();
 	}
 	
 	@Override
@@ -63,17 +68,18 @@ public class CSVDataSource implements IterableDataSource {
 
 	@Override
 	public String[] nextRow() throws IOException {
-		String line = bufferedReader.readLine();
-		currentRow++;
-		if (line == null) {
-			hasMoreData = false;
-			return null;
-		} else {
+		if (scanner.hasNextLine()) {
+			String line = scanner.nextLine();
+			currentRow++;			
 			if (line.trim().startsWith("#")) {
 				return null;
 			} else {
 				return line.split(regex);				
 			}
+		}
+		else {
+			hasMoreData = false;
+			return null;
 		}
 	}
 
@@ -84,7 +90,7 @@ public class CSVDataSource implements IterableDataSource {
 
 	@Override
 	public void reset() throws IOException {
-		bufferedReader = new BufferedReader(new FileReader(fileName));
+		scanner = createScanner(fileName);
 		columns = null;
 		hasMoreData = true;
 		open();

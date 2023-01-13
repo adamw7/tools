@@ -34,14 +34,13 @@ public class ZipUtilsTest {
 			InputStream inputStream = ZipUtils.unzipIfNeeded(new FileInputStream(zippedIndustryFile),
 					zippedIndustryFile);
 			assertNotNull(inputStream);
-			assertEquals(inputStream.getClass(), GZIPInputStream.class);
+			assertEquals(GZIPInputStream.class, inputStream.getClass());
 			GZIPInputStream gzipInputStream = (GZIPInputStream) inputStream;
 			byte[] bytes = gzipInputStream.readAllBytes();
 			String content = new String(bytes);
 			String expectedContent = "SIC Code,Description";
 			assertEquals(expectedContent, content.substring(0, expectedContent.length()));
 		} catch (Exception e) {
-			e.printStackTrace();
 			fail(e);
 		}
 	}

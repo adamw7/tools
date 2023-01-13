@@ -16,7 +16,7 @@ public class Utils {
 		return resourceDirectory.toFile().getAbsolutePath();
 	}
 
-	static String getHouseholdFile() {
+	public static String getHouseholdFile() {
 		return getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
 	}
 
@@ -28,7 +28,7 @@ public class Utils {
 		return getFileName("industry_sic.csv");
 	}
 
-	static IterableDataSource createDataSource(String file, int columnsRow) {
+	public static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {
 			return new CSVDataSource(file, columnsRow);
 		} catch (Exception e) {
@@ -36,7 +36,7 @@ public class Utils {
 		}
 	}
 
-	static IterableDataSource createDataSource(String file) {
+	public static IterableDataSource createDataSource(String file) {
 		try {
 			return new CSVDataSource(file);
 		} catch (Exception e) {
@@ -44,7 +44,7 @@ public class Utils {
 		}
 	}
 
-	static InMemoryCSVDataSource createInMemoryDataSource(String file, int columnsRow) {
+	public static InMemoryCSVDataSource createInMemoryDataSource(String file, int columnsRow) {
 		try {
 			return new InMemoryCSVDataSource(file, columnsRow);
 		} catch (Exception e) {
@@ -52,7 +52,7 @@ public class Utils {
 		}
 	}
 
-	static InMemoryCSVDataSource createInMemoryDataSource(String file) {
+	public static InMemoryCSVDataSource createInMemoryDataSource(String file) {
 		try {
 			return new InMemoryCSVDataSource(file);
 		} catch (Exception e) {
@@ -60,7 +60,7 @@ public class Utils {
 		}
 	}
 
-	static Named<Object> named(Object dataSource) {
+	public static Named<Object> named(Object dataSource) {
 		return Named.of(dataSource.getClass().getSimpleName(), dataSource);
 	}
 

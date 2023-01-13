@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.uniqueness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,12 +14,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
-import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
-import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
-import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
-import io.github.adamw7.tools.data.uniqueness.Result;
-import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 
 public class UniquenessCheckTest {
 

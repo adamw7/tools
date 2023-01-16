@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
 
@@ -41,6 +42,19 @@ public class ZipUtilsTest {
 			String expectedContent = "SIC Code,Description";
 			assertEquals(expectedContent, content.substring(0, expectedContent.length()));
 		} catch (Exception e) {
+			fail(e);
+		}
+	}
+	
+	@Test
+	public void testAlreadyGZippedStream() {		
+		String zippedIndustryFile = Utils.getFileName("industry_sic.csv.gz");
+
+		try {
+			GZIPInputStream fileInputStream = new GZIPInputStream(new FileInputStream(zippedIndustryFile));
+			InputStream inputStream = ZipUtils.unzipIfNeeded(fileInputStream, zippedIndustryFile);
+			assertEquals(inputStream, fileInputStream);
+		} catch (IOException e) {
 			fail(e);
 		}
 	}

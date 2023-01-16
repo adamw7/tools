@@ -8,5 +8,8 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/
 
+data/logs
+
 .project
 .classpath
+.settings

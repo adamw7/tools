@@ -22,7 +22,9 @@ public class IterableSQLDataSource implements IterableDataSource {
 
 	@Override
 	public void close() throws Exception {
-		connection.close();
+		if (resultSet != null) {
+			resultSet.close();
+		}
 	}
 
 	@Override

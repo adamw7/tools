@@ -14,6 +14,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	private final String query;
 	private final Connection connection;
 	private ResultSet resultSet;
+	private boolean hasMoreData = true;
 
 	public IterableSQLDataSource(Connection connection, String query) {
 		this.connection = connection;
@@ -54,7 +55,8 @@ public class IterableSQLDataSource implements IterableDataSource {
 	@Override
 	public String[] nextRow() throws IOException {
 		try {
-			resultSet.next();
+			hasMoreData = resultSet.next();
+
 			String[] row = new String[getColumnNames().length];
 			for (int i = 0; i < getColumnNames().length; ++i) {
 				row[i] = resultSet.getString(getColumnNames()[i]);
@@ -67,17 +69,13 @@ public class IterableSQLDataSource implements IterableDataSource {
 
 	@Override
 	public boolean hasMoreData() {
-		try {
-			return resultSet.next();
-		} catch (SQLException e) {
-			e.printStackTrace(); // TODO
-			return false;
-		} 
+		return hasMoreData;
 	}
 
 	@Override
 	public void reset() throws IOException {
-		
+		hasMoreData = true;
+		open();
 	}
 
 }

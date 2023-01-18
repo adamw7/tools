@@ -64,8 +64,8 @@ public class Utils {
 		}
 	}
 
-	public static Named<Object> named(Object dataSource) {
-		return Named.of(dataSource.getClass().getSimpleName(), dataSource);
+	public static Named<Object> named(Object object) {
+		return Named.of(object.getClass().getSimpleName(), object);
 	}
 
 }

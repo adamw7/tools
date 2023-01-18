@@ -5,8 +5,8 @@ import java.nio.file.Paths;
 
 import org.junit.jupiter.api.Named;
 
-import io.github.adamw7.tools.data.source.CSVDataSource;
-import io.github.adamw7.tools.data.source.InMemoryCSVDataSource;
+import io.github.adamw7.tools.data.source.file.CSVDataSource;
+import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class Utils {

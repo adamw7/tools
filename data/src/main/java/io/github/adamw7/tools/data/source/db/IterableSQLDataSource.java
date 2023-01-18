@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data.source;
+package io.github.adamw7.tools.data.source.db;
 
 import java.io.IOException;
 import java.sql.Connection;

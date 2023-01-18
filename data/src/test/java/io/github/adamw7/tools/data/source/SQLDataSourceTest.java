@@ -20,8 +20,15 @@ public class SQLDataSourceTest {
 	    DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
 	    connection = DriverManager.getConnection(connectionURL);
 	    createTables();
+	    insertData();
 	}
 	
+	private static void insertData() throws SQLException {
+		Statement statement = connection.createStatement();
+		statement.executeUpdate("insert into people(ID,NAME,SURNAME) values(1,'Adam','W')");
+		connection.commit();
+	}
+
 	private static void createTables() throws SQLException {
 		Statement statement = connection.createStatement();
 		statement.executeUpdate(createTableSQL());
@@ -41,10 +48,15 @@ public class SQLDataSourceTest {
 			String query = "SELECT * FROM PEOPLE";
 			IterableSQLDataSource source = new IterableSQLDataSource(connection, query);
 			source.open();
+			
 			assertEquals("ID", source.getColumnNames()[0]);			
 			assertEquals("NAME", source.getColumnNames()[1]);
 			assertEquals("SURNAME", source.getColumnNames()[2]);
 
+			String[] row = source.nextRow();
+			assertEquals("1", row[0]);			
+			assertEquals("Adam", row[1]);
+			assertEquals("W", row[2]);	
 			source.close();
 		} catch (Exception e) {
 			fail(e.getMessage());

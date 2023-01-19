@@ -9,12 +9,26 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import io.github.adamw7.tools.data.Utils;
 
 public class SQLDataSourceTest {
+	
+	static Stream<Arguments> happyPathSources() {
+		String query = "SELECT * FROM PEOPLE";
+		IterableSQLDataSource dataSource = new IterableSQLDataSource(connection, query);
+		return Stream.of(
+				Arguments.of(Utils.named(dataSource)));
+	}
+	
 	private static Connection connection;
 	
 	@BeforeAll
@@ -50,11 +64,10 @@ public class SQLDataSourceTest {
                 + "PRIMARY KEY ( id ))";
 	}
 	
-	@Test
-	public void happyPath() {
+	@ParameterizedTest
+	@MethodSource("happyPathSources")
+	public void happyPath(IterableSQLDataSource source) {
 		try {
-			String query = "SELECT * FROM PEOPLE";
-			IterableSQLDataSource source = new IterableSQLDataSource(connection, query);
 			source.open();
 			
 			assertEquals("ID", source.getColumnNames()[0]);			

@@ -11,10 +11,8 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class IterableSQLDataSource implements IterableDataSource {
 
-	private final String query;
-	private final Connection connection;
 	private ResultSet resultSet;
-	private boolean hasMoreData = true;
+	protected boolean hasMoreData = true;
 
 	public IterableSQLDataSource(Connection connection, String query) {
 		this.connection = connection;
@@ -31,12 +29,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	@Override
 	public String[] getColumnNames() {
 		try {
-			ResultSetMetaData meta = resultSet.getMetaData();
-			String[] columns = new String[meta.getColumnCount()];
-			for (int i = 0; i < columns.length; ++i) {
-				columns[i] = meta.getColumnName(i + 1);
-			}
-			return columns;
+			return getColumnsFrom(resultSet);
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
 		}
@@ -57,11 +50,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 		try {
 			hasMoreData = resultSet.next();
 
-			String[] row = new String[getColumnNames().length];
-			for (int i = 0; i < getColumnNames().length; ++i) {
-				row[i] = resultSet.getString(getColumnNames()[i]);
-			}
-			return row;
+			return getNextFrom(resultSet);
 		} catch (SQLException e) {
 			throw new IOException(e);
 		}
@@ -76,6 +65,27 @@ public class IterableSQLDataSource implements IterableDataSource {
 	public void reset() throws IOException {
 		hasMoreData = true;
 		open();
+	}
+	
+	protected final String query;
+	protected final Connection connection;
+	
+	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
+		String[] columns = getColumnsFrom(resultSet);
+		String[] row = new String[columns.length];
+		for (int i = 0; i < columns.length; ++i) {
+			row[i] = resultSet.getString(columns[i]);
+		}
+		return row;
+	}
+	
+	protected static String[] getColumnsFrom(ResultSet resultSet) throws SQLException {
+		ResultSetMetaData meta = resultSet.getMetaData();
+		String[] columns = new String[meta.getColumnCount()];
+		for (int i = 0; i < columns.length; ++i) {
+			columns[i] = meta.getColumnName(i + 1);
+		}
+		return columns;
 	}
 
 }

@@ -24,9 +24,11 @@ public class SQLDataSourceTest {
 	
 	static Stream<Arguments> happyPathSources() {
 		String query = "SELECT * FROM PEOPLE";
-		IterableSQLDataSource dataSource = new IterableSQLDataSource(connection, query);
+		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
+		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
 		return Stream.of(
-				Arguments.of(Utils.named(dataSource)));
+				Arguments.of(Utils.named(iterableSource)),
+				Arguments.of(Utils.named(inMemorySource)));
 	}
 	
 	private static Connection connection;

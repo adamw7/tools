@@ -14,18 +14,22 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.adamw7.tools.data.DBTest;
 import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class UniquenessCheckTest {
+public class UniquenessCheckTest extends DBTest {
 
-	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year" };
-	private static final String[] UNIQUE_COLUMNS = new String[] { "year", "hlpi_name" };
+	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year1" };
+	private static final String[] UNIQUE_COLUMNS = new String[] { "year1", "hlpi_name" };
 
-	static Stream<Arguments> happyPath() {
+	static Stream<Arguments> happyPath() throws Exception {
+		String householdFile = Utils.getHouseholdFile();
+		
 		return Stream.of(
-				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(Utils.getHouseholdFile(), 1)),
-				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1)));
+				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(householdFile, 1)),
+				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, 1))
+				);
 	}
 
 	@ParameterizedTest
@@ -70,14 +74,14 @@ public class UniquenessCheckTest {
 	public void happyPathUniqueShouldFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
-			Result result = uniqueness.exec("year", "hlpi_name", "income");
+			Result result = uniqueness.exec("year1", "hlpi_name", "income");
 			assertEquals(result.isUnique(), true);
 			Set<Result> betterOptions = result.getBetterOptions();
 			assertEquals(3, betterOptions.size());
-			assertTrue(betterOptions.contains(new Result(true, new String[] {"year", "hlpi_name"})));
+			assertTrue(betterOptions.contains(new Result(true, new String[] {"year1", "hlpi_name"})));
 			Set<Result> incomeOnly = new HashSet<>();
 			incomeOnly.add(new Result(true, new String[] {"income"}));
-			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "year"}, null, incomeOnly)));	
+			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "year1"}, null, incomeOnly)));	
 			assertTrue(betterOptions.contains(new Result(true, new String[] {"income", "hlpi_name"}, null, incomeOnly)));	
 		} catch (Exception e) {
 			fail(e.getMessage());
@@ -105,10 +109,10 @@ public class UniquenessCheckTest {
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			uniqueness.exec(columnName);
 		}, "Expected exec method to throw, but it didn't");
-
-		assertEquals(columnName
-				+ " cannot be found in [hlpi_name, year, hlpi, tot_hhs, own, own_wm, own_prop, own_wm_prop, prop_hhs, age, size, income, expenditure, eqv_income, eqv_exp]",
-				thrown.getMessage());
+		String expectedMessage = columnName
+				+ " cannot be found in [hlpi_name, year1, hlpi, tot_hhs, own, own_wm, own_prop, own_wm_prop, prop_hhs, age, size, income, expenditure, eqv_income, eqv_exp]";
+		assertEquals(expectedMessage.toLowerCase(),
+				thrown.getMessage().toLowerCase());
 	}
 
 	@ParameterizedTest
@@ -138,7 +142,7 @@ public class UniquenessCheckTest {
 	void negativeNullsInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec(new String[] { "hlpi_name", null, "year" });
+			uniqueness.exec(new String[] { "hlpi_name", null, "year1" });
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());
@@ -149,9 +153,9 @@ public class UniquenessCheckTest {
 	void negativeDuplicatesInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec(new String[] { "year", "year" });
+			uniqueness.exec(new String[] { "year1", "year1" });
 		}, "Expected exec method to throw, but it didn't");
 
-		assertEquals("Duplicate in input: year", thrown.getMessage());
+		assertEquals("Duplicate in input: year1", thrown.getMessage());
 	}
 }

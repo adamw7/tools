@@ -17,15 +17,23 @@ public abstract class Uniqueness {
 	public abstract <T extends IterableDataSource> void setDataSource(T source);
 
 	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
-		Set<String> all = new HashSet<>(Arrays.asList(allColumns));
+		Set<String> all = new HashSet<>(Arrays.asList(toLower(allColumns)));
 
 		for (String candidate : keyCandidates) {
-			if (!all.contains(candidate)) {
+			if (!all.contains(candidate.toLowerCase())) {
 				throw new ColumnNotFoundException(candidate + " cannot be found in " + Arrays.toString(allColumns));
 			}
 		}
 	}
 	
+	protected String[] toLower(String[] items) {
+		String[] arrayToLower = new String[items.length];
+		for (int i = 0; i < items.length; ++i) {
+			arrayToLower[i] = items[i] == null ? null : items[i].toLowerCase();
+		}
+		return arrayToLower;
+	}
+
 	protected Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
 		List<Integer> indicies = new ArrayList<>();
 

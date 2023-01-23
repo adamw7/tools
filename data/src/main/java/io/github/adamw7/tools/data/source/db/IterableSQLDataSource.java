@@ -49,8 +49,11 @@ public class IterableSQLDataSource implements IterableDataSource {
 	public String[] nextRow() throws IOException {
 		try {
 			hasMoreData = resultSet.next();
-
-			return getNextFrom(resultSet);
+			if (hasMoreData) {
+				return getNextFrom(resultSet);				
+			} else {
+				return null;
+			}
 		} catch (SQLException e) {
 			throw new IOException(e);
 		}

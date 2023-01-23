@@ -2,9 +2,12 @@ package io.github.adamw7.tools.data;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
 
 import org.junit.jupiter.api.Named;
 
+import io.github.adamw7.tools.data.source.db.InMemorySQLDataSource;
+import io.github.adamw7.tools.data.source.db.IterableSQLDataSource;
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -68,4 +71,11 @@ public class Utils {
 		return Named.of(object.getClass().getSimpleName(), object);
 	}
 
+	public static IterableSQLDataSource createIterableSQLDataSource(Connection connection, String query) {
+		return new IterableSQLDataSource(connection, query);				
+	}
+	
+	public static IterableSQLDataSource createInMemorySQLDataSource(Connection connection, String query) {
+		return new InMemorySQLDataSource(connection, query);				
+	}
 }

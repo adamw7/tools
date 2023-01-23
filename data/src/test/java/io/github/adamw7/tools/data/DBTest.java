@@ -67,14 +67,33 @@ public class DBTest {
 			sql.append(column);
 			sql.append(", ");
 		}
-		sql.delete(sql.length() - 3, sql.length() - 1);
+		sql.delete(sql.length() - 2, sql.length() - 1);
 		sql.append("FROM ");
 		sql.append(table);
 		return sql.toString();
 	}
 
-	private static void insertDataToDB(List<String[]> readAll) {
-		
+	private static void insertDataToDB(List<String[]> all) throws SQLException {
+		Statement statement = connection.createStatement();
+		for (String[] row : all) {
+			if (row != null) {
+				String sql = createInsertSQL(row);
+				statement.executeUpdate(sql);
+			}
+		}
+		connection.commit();
+	}
+
+	private static String createInsertSQL(String[] row) {		
+		StringBuilder insert = new StringBuilder("INSERT INTO FROM_CSV VALUES (");
+		for (String value : row) {
+			insert.append("'");
+			insert.append(value);
+			insert.append("',");			
+		}
+		insert.delete(insert.length() - 1, insert.length()); 
+		insert.append(")");
+		return insert.toString();
 	}
 
 	private static void createTable(String[] columnNames) throws SQLException {

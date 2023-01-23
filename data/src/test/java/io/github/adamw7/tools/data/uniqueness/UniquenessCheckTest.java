@@ -28,7 +28,8 @@ public class UniquenessCheckTest extends DBTest {
 		
 		return Stream.of(
 				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(householdFile, 1)),
-				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, 1))
+				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, 1)),
+				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createIterableSQLDataSource(connection, query))				
 				);
 	}
 
@@ -65,6 +66,7 @@ public class UniquenessCheckTest extends DBTest {
 			Result result = uniqueness.exec(UNIQUE_COLUMNS);
 			assertEquals(result.isUnique(), true);
 		} catch (Exception e) {
+			e.printStackTrace();
 			fail(e.getMessage());
 		}
 	}

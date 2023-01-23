@@ -39,7 +39,7 @@ public abstract class Uniqueness {
 
 		for (int i = 0; i < allColumns.length; ++i) {
 			for (int j = 0; j < keyCandidates.length; ++j) {
-				if (allColumns[i].equals(keyCandidates[j])) {
+				if (allColumns[i].equalsIgnoreCase(keyCandidates[j])) {
 					indicies.add(i);
 				}
 			}

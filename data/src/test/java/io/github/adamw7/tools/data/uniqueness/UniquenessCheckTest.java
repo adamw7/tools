@@ -29,7 +29,8 @@ public class UniquenessCheckTest extends DBTest {
 		return Stream.of(
 				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(householdFile, 1)),
 				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, 1)),
-				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createIterableSQLDataSource(connection, query))				
+				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createIterableSQLDataSource(connection, query)),
+				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemorySQLDataSource(connection, query))
 				);
 	}
 

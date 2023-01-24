@@ -8,9 +8,15 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
 public class InMemorySQLDataSource extends IterableSQLDataSource implements InMemoryDataSource {
+	
+	private final static Logger log = LogManager.getLogger(InMemorySQLDataSource.class.getName());
+
 	
 	public InMemorySQLDataSource(Connection connection, String query) {
 		super(connection, query);
@@ -28,8 +34,8 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 			}
 			return allData;
 		} catch (SQLException e) {
-			e.printStackTrace();
-			return new ArrayList<>();
+			log.warn(e);
+			throw new IOException(e);
 		}
 
 	}

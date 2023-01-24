@@ -2,7 +2,7 @@ package io.github.adamw7.tools.data;
 
 public class SQLCreator {
 
-	static String table(String tableName, String[] columnNames) {
+	public static String table(String tableName, String[] columnNames) {
 		StringBuilder sql = new StringBuilder("CREATE TABLE ");
 		sql.append(tableName);
 		sql.append(" (");
@@ -15,7 +15,7 @@ public class SQLCreator {
 		return sql.toString();
 	}
 
-	static String table() {
+	public static String table() {
 		return "CREATE TABLE PEOPLE " + "(id INTEGER not NULL, " + " Name VARCHAR(255), " + " Surname VARCHAR(255),"
 				+ "PRIMARY KEY ( id ))";
 	}
@@ -24,7 +24,7 @@ public class SQLCreator {
 		return "insert into people(ID,NAME,SURNAME) values(1,'Adam','W')";
 	}
 
-	static String insert(String tableName, String[] row) {		
+	public static String insert(String tableName, String[] row) {		
 		StringBuilder insert = new StringBuilder("INSERT INTO ");
 		insert.append(tableName);
 		insert.append(" VALUES (");
@@ -39,7 +39,7 @@ public class SQLCreator {
 		return insert.toString();
 	}
 
-	static String createSelectQueryBasedOn(String table, String[] columnNames) {
+	public static String createSelectQueryBasedOn(String table, String[] columnNames) {
 		StringBuilder sql = new StringBuilder("SELECT ");
 		
 		for (String column : columnNames) {

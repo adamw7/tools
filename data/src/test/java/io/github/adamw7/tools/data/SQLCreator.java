@@ -15,15 +15,6 @@ public class SQLCreator {
 		return sql.toString();
 	}
 
-	public static String table() {
-		return "CREATE TABLE PEOPLE " + "(id INTEGER not NULL, " + " Name VARCHAR(255), " + " Surname VARCHAR(255),"
-				+ "PRIMARY KEY ( id ))";
-	}
-
-	public static String insert() {
-		return "insert into people(ID,NAME,SURNAME) values(1,'Adam','W')";
-	}
-
 	public static String insert(String tableName, String[] row) {		
 		StringBuilder insert = new StringBuilder("INSERT INTO ");
 		insert.append(tableName);

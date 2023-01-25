@@ -20,8 +20,8 @@ public class DBTest {
 		String connectionURL = "jdbc:derby:memory:testDB;create=true";
 		DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
 		connection = DriverManager.getConnection(connectionURL);
-		createTables();
-		insertPlaceholderData();
+		createPeopleTable();
+		insertPeopleData();
 		query = insertDataToDBFromCSV(Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1));		
 	}
 
@@ -35,16 +35,16 @@ public class DBTest {
 		}
 	}
 	
-	private static void insertPlaceholderData() throws SQLException {
+	private static void insertPeopleData() throws SQLException {
 		Statement statement = connection.createStatement();
-		statement.executeUpdate(SQLCreator.insert());
+		statement.executeUpdate(SQLCreator.insert("PEOPLE", new String[] {"1", "Adam", "W"}));
 		connection.commit();
 		statement.close();
 	}
 
-	private static void createTables() throws SQLException {
+	private static void createPeopleTable() throws SQLException {
 		Statement statement = connection.createStatement();
-		statement.executeUpdate(SQLCreator.table());
+		statement.executeUpdate(SQLCreator.table("PEOPLE", new String[] {"ID", "Name", "Surname"}));
 		statement.close();
 	}
 	

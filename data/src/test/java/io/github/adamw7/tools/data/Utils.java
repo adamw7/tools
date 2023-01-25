@@ -39,7 +39,7 @@ public class Utils {
 		try {
 			return new CSVDataSource(file, columnsRow);
 		} catch (Exception e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -47,7 +47,7 @@ public class Utils {
 		try {
 			return new CSVDataSource(file);
 		} catch (Exception e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -55,7 +55,7 @@ public class Utils {
 		try {
 			return new InMemoryCSVDataSource(file, columnsRow);
 		} catch (Exception e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -63,7 +63,7 @@ public class Utils {
 		try {
 			return new InMemoryCSVDataSource(file);
 		} catch (Exception e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 	}
 

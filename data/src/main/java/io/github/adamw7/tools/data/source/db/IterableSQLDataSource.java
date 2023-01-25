@@ -7,12 +7,20 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class IterableSQLDataSource implements IterableDataSource {
+	
+	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
+
 
 	private ResultSet resultSet;
 	protected boolean hasMoreData = true;
+	protected final String query;
+	protected final Connection connection;
 
 	public IterableSQLDataSource(Connection connection, String query) {
 		this.connection = connection;
@@ -39,6 +47,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	public void open() throws IOException {
 		try {
 			Statement statement = connection.createStatement();
+			log.info("Executing query: " + query);
 			resultSet = statement.executeQuery(query);
 		} catch (SQLException e) {
 			throw new IOException(e);
@@ -69,9 +78,6 @@ public class IterableSQLDataSource implements IterableDataSource {
 		hasMoreData = true;
 		open();
 	}
-	
-	protected final String query;
-	protected final Connection connection;
 	
 	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
 		String[] columns = getColumnsFrom(resultSet);

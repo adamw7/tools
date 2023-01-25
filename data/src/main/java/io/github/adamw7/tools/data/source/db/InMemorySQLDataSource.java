@@ -24,14 +24,14 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 	
 	@Override
 	public List<String[]> readAll() throws IOException {
-		Statement statement;
 		try {
-			statement = connection.createStatement();
+			Statement statement = connection.createStatement();
 			ResultSet resultSet = statement.executeQuery(query);
 			List<String[]> allData = new ArrayList<>();
 			while (resultSet.next()) {
 				allData.add(getNextFrom(resultSet));
 			}
+			log.info("Loaded " + allData.size() + " rows into memory");
 			return allData;
 		} catch (SQLException e) {
 			log.warn(e);

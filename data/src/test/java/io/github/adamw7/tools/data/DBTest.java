@@ -14,10 +14,12 @@ import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 public class DBTest {
 	protected static Connection connection;
 	protected static String query;
+	
+	protected final static String URL_PREFIX = "jdbc:derby:memory:testDB;";
 
 	@BeforeAll
 	public static void setup() throws Exception {
-		String connectionURL = "jdbc:derby:memory:testDB;create=true";
+		String connectionURL = URL_PREFIX + "create=true";
 		DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
 		connection = DriverManager.getConnection(connectionURL);
 		createPeopleTable();
@@ -29,7 +31,7 @@ public class DBTest {
 	public static void tearDown() throws SQLException {
 		connection.close();
 		try {
-			DriverManager.getConnection("jdbc:derby:memory:testDB;drop=true");
+			DriverManager.getConnection(URL_PREFIX + "drop=true");
 		} catch (Exception ignored) {
 			
 		}

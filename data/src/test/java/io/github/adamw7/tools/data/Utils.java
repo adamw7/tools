@@ -20,7 +20,7 @@ public class Utils {
 	}
 
 	public static String getHouseholdFile() {
-		return getFileName("Household-living-costs-price-indexes-September-2022-quarter-group-facts.csv");
+		return getFileName("Household.csv");
 	}
 
 	public static String getSampleFile() {

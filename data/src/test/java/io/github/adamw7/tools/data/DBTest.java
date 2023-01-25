@@ -52,9 +52,9 @@ public class DBTest {
 	
 	protected static String insertDataToDBFromCSV(InMemoryCSVDataSource inMemoryDataSource) throws Exception {
 		inMemoryDataSource.open();
-		createTable(inMemoryDataSource.getColumnNames());
-		insertDataToDB("FROM_CSV", inMemoryDataSource.readAll());
-		return SQLCreator.createSelectQueryBasedOn("FROM_CSV", inMemoryDataSource.getColumnNames());
+		createTable(inMemoryDataSource.getFileName(), inMemoryDataSource.getColumnNames());
+		insertDataToDB(inMemoryDataSource.getFileName(), inMemoryDataSource.readAll());
+		return SQLCreator.createSelectQueryBasedOn(inMemoryDataSource.getFileName(), inMemoryDataSource.getColumnNames());
 	}
 
 	private static void insertDataToDB(String tableName, List<String[]> all) throws SQLException {
@@ -68,8 +68,8 @@ public class DBTest {
 		connection.commit();
 	}
 
-	private static void createTable(String[] columnNames) throws SQLException {
-		String sql = SQLCreator.table("FROM_CSV", columnNames);
+	private static void createTable(String table, String[] columnNames) throws SQLException {
+		String sql = SQLCreator.table(table, columnNames);
 		Statement statement = connection.createStatement();
 		statement.executeUpdate(sql);
 		statement.close();

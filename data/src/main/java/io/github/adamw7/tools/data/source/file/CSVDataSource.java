@@ -3,6 +3,7 @@ package io.github.adamw7.tools.data.source.file;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Scanner;
 
 import org.apache.logging.log4j.LogManager;
@@ -94,5 +95,9 @@ public class CSVDataSource implements IterableDataSource {
 		columns = null;
 		hasMoreData = true;
 		open();
+	}
+	
+	public String getFileName () {
+		return Paths.get(fileName).getFileName().toString();
 	}
 }

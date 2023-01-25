@@ -16,7 +16,7 @@ public class ZipUtils {
 		if (isZipped(fileName) && !(stream instanceof GZIPInputStream)) {
 			try {
 				return new GZIPInputStream(stream);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new RuntimeException("Error creating GZIP stream", e);
 			}
 		} else {

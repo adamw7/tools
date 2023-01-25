@@ -38,23 +38,20 @@ public class DBTest {
 	}
 	
 	private static void insertPeopleData() throws SQLException {
-		Statement statement = connection.createStatement();
-		statement.executeUpdate(SQLCreator.insert("PEOPLE", new String[] {"1", "Adam", "W"}));
-		connection.commit();
-		statement.close();
+		executeUpdate(SQLCreator.insert("PEOPLE", new String[] {"1", "Adam", "W"}));
 	}
 
 	private static void createPeopleTable() throws SQLException {
-		Statement statement = connection.createStatement();
-		statement.executeUpdate(SQLCreator.table("PEOPLE", new String[] {"ID", "Name", "Surname"}));
-		statement.close();
+		executeUpdate(SQLCreator.table("PEOPLE", new String[] {"ID", "Name", "Surname"}));
 	}
 	
 	protected static String insertDataToDBFromCSV(InMemoryCSVDataSource inMemoryDataSource) throws Exception {
 		inMemoryDataSource.open();
-		createTable(inMemoryDataSource.getFileName(), inMemoryDataSource.getColumnNames());
-		insertDataToDB(inMemoryDataSource.getFileName(), inMemoryDataSource.readAll());
-		return SQLCreator.createSelectQueryBasedOn(inMemoryDataSource.getFileName(), inMemoryDataSource.getColumnNames());
+		String fileName = inMemoryDataSource.getFileName();
+		String[] columnNames = inMemoryDataSource.getColumnNames();
+		createTable(fileName, columnNames);
+		insertDataToDB(fileName, inMemoryDataSource.readAll());
+		return SQLCreator.createSelectQueryBasedOn(fileName, columnNames);
 	}
 
 	private static void insertDataToDB(String tableName, List<String[]> all) throws SQLException {
@@ -70,6 +67,10 @@ public class DBTest {
 
 	private static void createTable(String table, String[] columnNames) throws SQLException {
 		String sql = SQLCreator.table(table, columnNames);
+		executeUpdate(sql);
+	}
+
+	private static void executeUpdate(String sql) throws SQLException {
 		Statement statement = connection.createStatement();
 		statement.executeUpdate(sql);
 		statement.close();

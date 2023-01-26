@@ -10,12 +10,14 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.DBTest;
 import io.github.adamw7.tools.data.Utils;
+import io.github.adamw7.tools.data.source.db.IterableSQLDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class UniquenessCheckTest extends DBTest {
@@ -160,5 +162,15 @@ public class UniquenessCheckTest extends DBTest {
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Duplicate in input: year1", thrown.getMessage());
+	}
+	
+	@Test
+	public void negativeInMemorySourceVsNoMemoryCheck() {
+		Uniqueness uniqueness = new InMemoryUniquenessCheck();
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			uniqueness.setDataSource(new IterableSQLDataSource(connection, query));
+		}, "Expected setDataSource method to throw, but it didn't");
+
+		assertEquals("Expected InMemoryDataSource and got: IterableSQLDataSource", thrown.getMessage());
 	}
 }

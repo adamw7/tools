@@ -8,13 +8,14 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class InMemoryUniquenessCheck extends Uniqueness {
-	
-	public InMemoryUniquenessCheck() {}
+
+	public InMemoryUniquenessCheck() {
+	}
 
 	public InMemoryUniquenessCheck(InMemoryDataSource dataSource) {
 		setDataSource(dataSource);
 	}
-	
+
 	@Override
 	public Result exec(String... keyCandidates) throws Exception {
 		check(keyCandidates);
@@ -52,12 +53,17 @@ public class InMemoryUniquenessCheck extends Uniqueness {
 				}
 			}
 		}
-		
+
 		return uniqueCanidates;
 	}
-	
+
 	@Override
 	public <T extends IterableDataSource> void setDataSource(T source) {
-		this.dataSource = (InMemoryDataSource)source;
+		if (source instanceof InMemoryDataSource) {
+			this.dataSource = (InMemoryDataSource) source;
+		} else {
+			String message = source == null ? null : source.getClass().getSimpleName();
+			throw new IllegalArgumentException("Expected InMemoryDataSource and got: " + message);
+		}
 	}
 }

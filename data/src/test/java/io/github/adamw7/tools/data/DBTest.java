@@ -22,9 +22,23 @@ public class DBTest {
 		String connectionURL = URL_PREFIX + "create=true";
 		DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
 		connection = DriverManager.getConnection(connectionURL);
+		prepareData();		
+	}
+
+	private static void prepareData() throws Exception {
 		createPeopleTable();
 		insertPeopleData();
-		query = insertDataToDBFromCSV(Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1));		
+		createSalaryTable();
+		insertSalaryData();
+		query = insertDataToDBFromCSV(Utils.createInMemoryDataSource(Utils.getHouseholdFile(), 1));
+	}
+
+	private static void insertSalaryData() throws SQLException {
+		executeUpdate(SQLCreator.insert("SALARY", new String[] {"1", "1000"}));
+	}
+
+	private static void createSalaryTable() throws SQLException {
+		executeUpdate(SQLCreator.table("SALARY", new String[] {"ID", "Value"}));
 	}
 
 	@AfterAll

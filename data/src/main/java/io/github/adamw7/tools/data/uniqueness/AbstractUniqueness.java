@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -71,7 +72,7 @@ public abstract class AbstractUniqueness implements Uniqueness {
 		}
 	}
 	
-	protected Result handleSucessfullCheck(String[] keyCandidates) throws Exception {
+	protected Result handleSucessfullCheck(String[] keyCandidates) throws IOException {
 		Set<Result> set = findPotentiallySmallerSetOfCanidates(keyCandidates);
 		return new Result(true, keyCandidates, null, set);
 	}
@@ -83,5 +84,13 @@ public abstract class AbstractUniqueness implements Uniqueness {
 		return set;
 	}
 	
-	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception;
+	protected void close(IterableDataSource dataSource) {
+		try {
+			dataSource.close();
+		} catch (Exception ignored) {
+			
+		}
+	}
+	
+	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws IOException;
 }

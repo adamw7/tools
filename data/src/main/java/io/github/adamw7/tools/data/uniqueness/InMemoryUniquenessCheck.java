@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,7 +18,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	@Override
-	public Result exec(String... keyCandidates) throws Exception {
+	public Result exec(String... keyCandidates) throws IOException {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
@@ -26,9 +27,9 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return findUnique(inidices, keyCandidates);
 	}
 
-	private Result findUnique(Integer[] inidices, String... keyCandidates) throws Exception {
+	private Result findUnique(Integer[] inidices, String... keyCandidates) throws IOException {
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
-		dataSource.close();
+		close(dataSource);
 		KeyFinder finder = new KeyFinder(inidices);
 		for (String[] row : data) {
 			if (finder.found(row)) {
@@ -39,7 +40,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return handleSucessfullCheck(keyCandidates);
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
+	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws IOException {
 		Set<Result> uniqueCanidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);

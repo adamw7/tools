@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,7 +15,7 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	@Override
-	public Result exec(String... keyCandidates) throws Exception {
+	public Result exec(String... keyCandidates) throws IOException {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
@@ -28,11 +29,11 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 		}
 		
 		Result result = handleSucessfullCheck(keyCandidates);
-		dataSource.close();
+		close(dataSource);
 		return result;
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws Exception {
+	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws IOException {
 		Set<Result> uniqueCanidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);

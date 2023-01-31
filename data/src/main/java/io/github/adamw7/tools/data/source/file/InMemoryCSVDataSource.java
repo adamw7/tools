@@ -26,7 +26,10 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 		open();
 		List<String[]> data = new ArrayList<>();
 		while (hasMoreData()) {
-			data.add(nextRow());
+			String[] row = nextRow();
+			if (row != null) {
+				data.add(row);	
+			}
 		}
 		return data;
 	}

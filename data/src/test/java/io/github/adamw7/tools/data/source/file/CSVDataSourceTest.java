@@ -4,8 +4,10 @@ package io.github.adamw7.tools.data.source.file;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -143,7 +145,19 @@ public class CSVDataSourceTest {
 			source.close();
 			assertEquals(70, i);
 		} catch (Exception e) {
-			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
+	@Test
+	public void inMemoryReadAll() {
+		String fileName = Utils.getHouseholdFile();
+		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(fileName, 1);
+		try {
+			List<String[]> data = inMemoryDataSource.readAll();
+			inMemoryDataSource.close();
+			assertEquals(70, data.size());
+		} catch (Exception e) {
 			fail(e.getMessage());
 		}
 	}

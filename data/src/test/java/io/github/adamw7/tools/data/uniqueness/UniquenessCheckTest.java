@@ -38,9 +38,9 @@ public class UniquenessCheckTest extends DBTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	public void happyPathNotUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
+	public void happyPathNotUnique(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 
 		Result result;
 		try {
@@ -51,19 +51,19 @@ public class UniquenessCheckTest extends DBTest {
 		}
 	}
 
-	private Uniqueness initUniquenessCheck(Class<Uniqueness> uniquenessClass, IterableDataSource source)
+	private AbstractUniqueness initUniquenessCheck(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
-		Uniqueness uniqueness = uniquenessClass.getConstructor().newInstance();
+		AbstractUniqueness uniqueness = uniquenessClass.getConstructor().newInstance();
 		uniqueness.setDataSource(source);
 		return uniqueness;
 	}
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	public void happyPathUnique(Class<Uniqueness> uniquenessClass, IterableDataSource source)
+	public void happyPathUnique(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		
 		try {
 			Result result = uniqueness.exec(UNIQUE_COLUMNS);
@@ -76,8 +76,8 @@ public class UniquenessCheckTest extends DBTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	public void happyPathUniqueShouldFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	public void happyPathUniqueShouldFindBetterOptions(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
 			Result result = uniqueness.exec("year1", "hlpi_name", "income");
 			assertEquals(result.isUnique(), true);
@@ -95,8 +95,8 @@ public class UniquenessCheckTest extends DBTest {
 	
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	public void happyPathUniqueShouldNotFindBetterOptions(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	public void happyPathUniqueShouldNotFindBetterOptions(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		try {
 			Result result = uniqueness.exec("income");
 			assertEquals(result.isUnique(), true);
@@ -108,8 +108,8 @@ public class UniquenessCheckTest extends DBTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	void negativeWrongColumn(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	void negativeWrongColumn(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		String columnName = "notExistingColumn";
 		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
 			uniqueness.exec(columnName);
@@ -122,8 +122,8 @@ public class UniquenessCheckTest extends DBTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	void negativeEmptyInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	void negativeEmptyInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			uniqueness.exec(new String[] {});
 		}, "Expected exec method to throw, but it didn't");
@@ -133,8 +133,8 @@ public class UniquenessCheckTest extends DBTest {
 	
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	void negativeNullInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	void negativeNullInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			uniqueness.exec((String[])null);
 		}, "Expected exec method to throw, but it didn't");
@@ -144,8 +144,8 @@ public class UniquenessCheckTest extends DBTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	void negativeNullsInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	void negativeNullsInInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			uniqueness.exec(new String[] { "hlpi_name", null, "year1" });
 		}, "Expected exec method to throw, but it didn't");
@@ -155,8 +155,8 @@ public class UniquenessCheckTest extends DBTest {
 	
 	@ParameterizedTest
 	@MethodSource("happyPath")
-	void negativeDuplicatesInInputArray(Class<Uniqueness> uniquenessClass, IterableDataSource source) throws Exception {
-		Uniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
+	void negativeDuplicatesInInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
+		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			uniqueness.exec(new String[] { "year1", "year1" });
 		}, "Expected exec method to throw, but it didn't");
@@ -166,7 +166,7 @@ public class UniquenessCheckTest extends DBTest {
 	
 	@Test
 	public void negativeInMemorySourceVsNoMemoryCheck() {
-		Uniqueness uniqueness = new InMemoryUniquenessCheck();
+		AbstractUniqueness uniqueness = new InMemoryUniquenessCheck();
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
 			uniqueness.setDataSource(new IterableSQLDataSource(connection, query));
 		}, "Expected setDataSource method to throw, but it didn't");

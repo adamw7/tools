@@ -7,7 +7,7 @@ import java.util.Set;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class InMemoryUniquenessCheck extends Uniqueness {
+public class InMemoryUniquenessCheck extends AbstractUniqueness {
 
 	public InMemoryUniquenessCheck() {
 	}

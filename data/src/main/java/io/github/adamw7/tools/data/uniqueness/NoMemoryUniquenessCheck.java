@@ -5,7 +5,7 @@ import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class NoMemoryUniquenessCheck extends Uniqueness {
+public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 
 	public NoMemoryUniquenessCheck() { }
 	

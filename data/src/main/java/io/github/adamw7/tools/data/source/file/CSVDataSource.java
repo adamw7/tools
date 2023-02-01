@@ -3,6 +3,7 @@ package io.github.adamw7.tools.data.source.file;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Paths;
 import java.util.Scanner;
 
@@ -53,12 +54,12 @@ public class CSVDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void close() throws Exception {
+	public void close() throws IOException {
 		scanner.close();
 	}
 	
 	@Override
-	public void open() throws IOException {
+	public void open() {
 		log.info("Opening: " + fileName);
 		if (columnsRow != -1 && columns == null) {
 			for (int i = 0; i < columnsRow; ++i) {
@@ -68,7 +69,7 @@ public class CSVDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public String[] nextRow() throws IOException {
+	public String[] nextRow() {
 		if (scanner.hasNextLine()) {
 			String line = scanner.nextLine();
 			currentRow++;			
@@ -90,8 +91,12 @@ public class CSVDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void reset() throws IOException {
-		scanner = createScanner(fileName);
+	public void reset() {
+		try {
+			scanner = createScanner(fileName);
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
+		}
 		columns = null;
 		hasMoreData = true;
 		open();

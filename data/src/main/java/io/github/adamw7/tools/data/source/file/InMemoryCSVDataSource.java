@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 	}
 
 	@Override
-	public List<String[]> readAll() throws IOException {
+	public List<String[]> readAll() {
 		open();
 		List<String[]> data = new ArrayList<>();
 		while (hasMoreData()) {

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.db;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,7 +24,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 	}
 	
 	@Override
-	public List<String[]> readAll() throws IOException {
+	public List<String[]> readAll() {
 		try {
 			Statement statement = connection.createStatement();
 			ResultSet resultSet = statement.executeQuery(query);
@@ -35,7 +36,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 			return allData;
 		} catch (SQLException e) {
 			log.warn(e);
-			throw new IOException(e);
+			throw new UncheckedIOException(new IOException(e));
 		}
 
 	}

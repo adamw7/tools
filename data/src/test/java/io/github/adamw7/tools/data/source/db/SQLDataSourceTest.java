@@ -2,9 +2,8 @@ package io.github.adamw7.tools.data.source.db;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,18 +19,16 @@ public class SQLDataSourceTest extends DBTest {
 		String query = "SELECT * FROM PEOPLE";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
 		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
-		return Stream.of(Arguments.of(Utils.named(iterableSource)), 
-				Arguments.of(Utils.named(inMemorySource)));
+		return Stream.of(Arguments.of(Utils.named(iterableSource)), Arguments.of(Utils.named(inMemorySource)));
 	}
-	
+
 	static Stream<Arguments> happyPathMultiTableSources() {
 		String query = "SELECT * FROM SALARY INNER JOIN PEOPLE ON PEOPLE.ID = SALARY.ID";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
 		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
-		return Stream.of(Arguments.of(Utils.named(iterableSource)), 
-				Arguments.of(Utils.named(inMemorySource)));
+		return Stream.of(Arguments.of(Utils.named(iterableSource)), Arguments.of(Utils.named(inMemorySource)));
 	}
-	
+
 	static Stream<Arguments> wrongQuerySources() {
 		String query = "SELECT * FROM NON_EXISTING_TABLE";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
@@ -42,48 +39,41 @@ public class SQLDataSourceTest extends DBTest {
 	@ParameterizedTest
 	@MethodSource("happyPathSources")
 	public void happyPath(IterableSQLDataSource source) {
-		try {
-			source.open();
+		source.open();
 
-			assertEquals("ID", source.getColumnNames()[0]);
-			assertEquals("NAME", source.getColumnNames()[1]);
-			assertEquals("SURNAME", source.getColumnNames()[2]);
+		assertEquals("ID", source.getColumnNames()[0]);
+		assertEquals("NAME", source.getColumnNames()[1]);
+		assertEquals("SURNAME", source.getColumnNames()[2]);
 
-			String[] row = source.nextRow();
-			assertEquals("1", row[0]);
-			assertEquals("Adam", row[1]);
-			assertEquals("W", row[2]);
-			source.close();
-		} catch (Exception e) {
-			fail(e.getMessage());
-		}
+		String[] row = source.nextRow();
+		assertEquals("1", row[0]);
+		assertEquals("Adam", row[1]);
+		assertEquals("W", row[2]);
+		Utils.close(source);
 	}
-	
+
 	@ParameterizedTest
 	@MethodSource("happyPathMultiTableSources")
 	public void happyPathMultiTable(IterableSQLDataSource source) {
-		try {
-			source.open();
+		source.open();
 
-			assertEquals("ID", source.getColumnNames()[0]);
-			assertEquals("VALUE", source.getColumnNames()[1]);
+		assertEquals("ID", source.getColumnNames()[0]);
+		assertEquals("VALUE", source.getColumnNames()[1]);
 
-			String[] row = source.nextRow();
-			assertEquals("1", row[0]);
-			assertEquals("1000", row[1]);
-			source.close();
-		} catch (Exception e) {
-			fail(e.getMessage());
-		}
+		String[] row = source.nextRow();
+		assertEquals("1", row[0]);
+		assertEquals("1000", row[1]);
+		Utils.close(source);
 	}
 
 	@ParameterizedTest
 	@MethodSource("wrongQuerySources")
-	public void wrongQuery(IterableSQLDataSource source) throws Exception {
-		IOException thrown = assertThrows(IOException.class, () -> {
+	public void wrongQuery(IterableSQLDataSource source) {
+		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, () -> {
 			source.open();
 		}, "Expected open method to throw, but it didn't");
 
-		assertEquals("java.sql.SQLSyntaxErrorException: Table/View 'NON_EXISTING_TABLE' does not exist.", thrown.getMessage());
+		assertEquals("java.io.IOException: java.sql.SQLSyntaxErrorException: Table/View 'NON_EXISTING_TABLE' does not exist.",
+				thrown.getMessage());
 	}
 }

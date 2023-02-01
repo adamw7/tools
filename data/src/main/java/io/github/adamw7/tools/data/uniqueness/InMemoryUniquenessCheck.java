@@ -27,7 +27,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return findUnique(inidices, keyCandidates);
 	}
 
-	private Result findUnique(Integer[] inidices, String... keyCandidates) throws IOException {
+	private Result findUnique(Integer[] inidices, String... keyCandidates) {
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		close(dataSource);
 		KeyFinder finder = new KeyFinder(inidices);
@@ -40,7 +40,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return handleSucessfullCheck(keyCandidates);
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) throws IOException {
+	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) {
 		Set<Result> uniqueCanidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data;
 
+import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -79,5 +80,12 @@ public class Utils {
 	
 	public static IterableSQLDataSource createInMemorySQLDataSource(Connection connection, String query) {
 		return new InMemorySQLDataSource(connection, query);				
+	}
+
+	public static void close(Closeable source) {
+		try {
+			source.close();
+		} catch (Exception ignored) {
+		}
 	}
 }

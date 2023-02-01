@@ -41,7 +41,7 @@ public class ZipUtilsTest {
 			String content = new String(bytes);
 			String expectedContent = "SIC Code,Description";
 			assertEquals(expectedContent, content.substring(0, expectedContent.length()));
-		} catch (Exception e) {
+		} catch (IOException e) {
 			fail(e);
 		}
 	}

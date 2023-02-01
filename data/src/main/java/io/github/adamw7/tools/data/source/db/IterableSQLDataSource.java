@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.db;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -13,9 +14,8 @@ import org.apache.logging.log4j.Logger;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class IterableSQLDataSource implements IterableDataSource {
-	
-	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
 
+	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
 
 	private ResultSet resultSet;
 	protected boolean hasMoreData = true;
@@ -28,9 +28,13 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void close() throws Exception {
+	public void close() throws IOException {
 		if (resultSet != null) {
-			resultSet.close();
+			try {
+				resultSet.close();
+			} catch (SQLException e) {
+				throw new IOException(e);
+			}
 		}
 	}
 
@@ -44,27 +48,27 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void open() throws IOException {
+	public void open() {
 		try {
 			Statement statement = connection.createStatement();
 			log.info("Executing query: " + query);
 			resultSet = statement.executeQuery(query);
 		} catch (SQLException e) {
-			throw new IOException(e);
+			throw new UncheckedIOException(new IOException(e));
 		}
 	}
 
 	@Override
-	public String[] nextRow() throws IOException {
+	public String[] nextRow() {
 		try {
 			hasMoreData = resultSet.next();
 			if (hasMoreData) {
-				return getNextFrom(resultSet);				
+				return getNextFrom(resultSet);
 			} else {
 				return null;
 			}
 		} catch (SQLException e) {
-			throw new IOException(e);
+			throw new UncheckedIOException(new IOException(e));
 		}
 	}
 
@@ -74,11 +78,11 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void reset() throws IOException {
+	public void reset() {
 		hasMoreData = true;
 		open();
 	}
-	
+
 	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
 		String[] columns = getColumnsFrom(resultSet);
 		String[] row = new String[columns.length];
@@ -87,7 +91,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 		}
 		return row;
 	}
-	
+
 	protected static String[] getColumnsFrom(ResultSet resultSet) throws SQLException {
 		ResultSetMetaData meta = resultSet.getMetaData();
 		String[] columns = new String[meta.getColumnCount()];

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.data.compression;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.logging.log4j.LogManager;
@@ -17,7 +18,7 @@ public class ZipUtils {
 			try {
 				return new GZIPInputStream(stream);
 			} catch (IOException e) {
-				throw new RuntimeException("Error creating GZIP stream", e);
+				throw new UncheckedIOException("Error creating GZIP stream", e);
 			}
 		} else {
 			return stream;
@@ -25,9 +26,8 @@ public class ZipUtils {
 	}
 
 	private static boolean isZipped(String fileName) {
-		RandomAccessFile raf;
 		try {
-			raf = new RandomAccessFile(fileName, "r");
+			RandomAccessFile raf = new RandomAccessFile(fileName, "r");
 			byte first = raf.readByte();
 			byte second = raf.readByte();
 

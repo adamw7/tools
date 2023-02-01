@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.data;
 
+import java.io.FileNotFoundException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -38,32 +40,32 @@ public class Utils {
 	public static IterableDataSource createDataSource(String file, int columnsRow) {
 		try {
 			return new CSVDataSource(file, columnsRow);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	public static IterableDataSource createDataSource(String file) {
 		try {
 			return new CSVDataSource(file);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	public static InMemoryCSVDataSource createInMemoryDataSource(String file, int columnsRow) {
 		try {
 			return new InMemoryCSVDataSource(file, columnsRow);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	public static InMemoryCSVDataSource createInMemoryDataSource(String file) {
 		try {
 			return new InMemoryCSVDataSource(file);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 

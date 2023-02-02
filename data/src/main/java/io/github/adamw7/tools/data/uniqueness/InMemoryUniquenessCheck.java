@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,7 +17,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	@Override
-	public Result exec(String... keyCandidates) throws IOException {
+	public Result exec(String... keyCandidates) {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());

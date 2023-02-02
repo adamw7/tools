@@ -60,7 +60,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 	@Override
 	public <T extends IterableDataSource> void setDataSource(T source) {
 		if (source instanceof InMemoryDataSource) {
-			this.dataSource = (InMemoryDataSource) source;
+			this.dataSource = source;
 		} else {
 			String message = source == null ? null : source.getClass().getSimpleName();
 			throw new IllegalArgumentException("Expected InMemoryDataSource and got: " + message);

@@ -1,9 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.lang.reflect.InvocationTargetException;
@@ -43,7 +40,7 @@ public class UniquenessCheckTest extends DBTest {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 
 		Result result = uniqueness.exec(NOT_UNIQUE_COLUMNS);
-		assertEquals(result.isUnique(), false);
+		assertFalse(result.isUnique());
 	}
 
 	private AbstractUniqueness initUniquenessCheck(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
@@ -60,7 +57,7 @@ public class UniquenessCheckTest extends DBTest {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 
 		Result result = uniqueness.exec(UNIQUE_COLUMNS);
-		assertEquals(result.isUnique(), true);
+		assertTrue(result.isUnique());
 	}
 
 	@ParameterizedTest
@@ -69,7 +66,7 @@ public class UniquenessCheckTest extends DBTest {
 			IterableDataSource source) throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		Result result = uniqueness.exec("year1", "hlpi_name", "income");
-		assertEquals(result.isUnique(), true);
+		assertTrue(result.isUnique());
 		Set<Result> betterOptions = result.getBetterOptions();
 		assertEquals(3, betterOptions.size());
 		assertTrue(betterOptions.contains(new Result(true, new String[] { "year1", "hlpi_name" })));
@@ -85,7 +82,7 @@ public class UniquenessCheckTest extends DBTest {
 			IterableDataSource source) throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		Result result = uniqueness.exec("income");
-		assertEquals(result.isUnique(), true);
+		assertTrue(result.isUnique());
 		assertEquals(0, result.getBetterOptions().size());
 	}
 
@@ -108,7 +105,7 @@ public class UniquenessCheckTest extends DBTest {
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec(new String[] {});
+			uniqueness.exec();
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Wrong input: []", thrown.getMessage());
@@ -131,7 +128,7 @@ public class UniquenessCheckTest extends DBTest {
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec(new String[] { "hlpi_name", null, "year1" });
+			uniqueness.exec("hlpi_name", null, "year1");
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());
@@ -143,7 +140,7 @@ public class UniquenessCheckTest extends DBTest {
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec(new String[] { "year1", "year1" });
+			uniqueness.exec("year1", "year1");
 		}, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Duplicate in input: year1", thrown.getMessage());

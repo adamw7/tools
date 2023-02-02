@@ -2,6 +2,8 @@ package io.github.adamw7.tools.data.source.db;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.of;
+
 
 import java.io.UncheckedIOException;
 import java.util.stream.Stream;
@@ -19,21 +21,21 @@ public class SQLDataSourceTest extends DBTest {
 		String query = "SELECT * FROM PEOPLE";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
 		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
-		return Stream.of(Arguments.of(Utils.named(iterableSource)), Arguments.of(Utils.named(inMemorySource)));
+		return Stream.of(of(Utils.named(iterableSource)), of(Utils.named(inMemorySource)));
 	}
 
 	static Stream<Arguments> happyPathMultiTableSources() {
 		String query = "SELECT * FROM SALARY INNER JOIN PEOPLE ON PEOPLE.ID = SALARY.ID";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
 		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
-		return Stream.of(Arguments.of(Utils.named(iterableSource)), Arguments.of(Utils.named(inMemorySource)));
+		return Stream.of(of(Utils.named(iterableSource)), of(Utils.named(inMemorySource)));
 	}
 
 	static Stream<Arguments> wrongQuerySources() {
 		String query = "SELECT * FROM NON_EXISTING_TABLE";
 		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query);
 		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query);
-		return Stream.of(Arguments.of(Utils.named(iterableSource)), Arguments.of(Utils.named(inMemorySource)));
+		return Stream.of(of(Utils.named(iterableSource)), of(Utils.named(inMemorySource)));
 	}
 
 	@ParameterizedTest

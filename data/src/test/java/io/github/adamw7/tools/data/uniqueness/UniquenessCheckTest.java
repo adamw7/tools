@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.junit.jupiter.params.provider.Arguments.of;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,16 +23,17 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class UniquenessCheckTest extends DBTest {
 
+	private static final int COLUMNS_ROW = 1;
 	private static final String[] NOT_UNIQUE_COLUMNS = new String[] { "year1" };
 	private static final String[] UNIQUE_COLUMNS = new String[] { "year1", "hlpi_name" };
 
 	static Stream<Arguments> happyPath() {
 		String householdFile = Utils.getHouseholdFile();
 
-		return Stream.of(Arguments.of(NoMemoryUniquenessCheck.class, Utils.createDataSource(householdFile, 1)),
-				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, 1)),
-				Arguments.of(NoMemoryUniquenessCheck.class, Utils.createIterableSQLDataSource(connection, query)),
-				Arguments.of(InMemoryUniquenessCheck.class, Utils.createInMemorySQLDataSource(connection, query)));
+		return Stream.of(of(NoMemoryUniquenessCheck.class, Utils.createDataSource(householdFile, COLUMNS_ROW)),
+				of(InMemoryUniquenessCheck.class, Utils.createInMemoryDataSource(householdFile, COLUMNS_ROW)),
+				of(NoMemoryUniquenessCheck.class, Utils.createIterableSQLDataSource(connection, query)),
+				of(InMemoryUniquenessCheck.class, Utils.createInMemorySQLDataSource(connection, query)));
 	}
 
 	@ParameterizedTest

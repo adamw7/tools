@@ -77,8 +77,7 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	}
 	
 	protected Set<String> createSmallerSet(String[] keyCandidates, String candidate) {
-		Set<String> set = new HashSet<>();
-		set.addAll(Arrays.asList(keyCandidates));
+		Set<String> set = new HashSet<>(Arrays.asList(keyCandidates));
 		set.remove(candidate);
 		return set;
 	}

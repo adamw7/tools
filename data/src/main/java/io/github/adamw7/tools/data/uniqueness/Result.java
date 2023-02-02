@@ -14,11 +14,11 @@ public class Result {
 	private final Set<Result> betterOptions;
 
 	public Result(boolean unique, String[] columns) {
-		this(unique, columns, null, new HashSet<Result>());
+		this(unique, columns, null, new HashSet<>());
 	}
 	
 	public Result(boolean unique, String[] columns, String[] row) {
-		this(unique, columns, row, new HashSet<Result>());
+		this(unique, columns, row, new HashSet<>());
 	}
 
 	public Result(boolean unique, String[] columns, String[] row, Set<Result> betterOptions) {

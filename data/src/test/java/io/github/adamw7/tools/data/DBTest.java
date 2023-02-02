@@ -61,14 +61,12 @@ public class DBTest {
 	
 	protected static String insertDataToDBFromCSV(InMemoryCSVDataSource inMemoryDataSource) throws Exception {
 		inMemoryDataSource.open();
-		try {
+		try (inMemoryDataSource) {
 			String fileName = inMemoryDataSource.getFileName();
 			String[] columnNames = inMemoryDataSource.getColumnNames();
 			createTable(fileName, columnNames);
-			insertDataToDB(fileName, inMemoryDataSource.readAll());	
+			insertDataToDB(fileName, inMemoryDataSource.readAll());
 			return SQLCreator.createSelectQueryBasedOn(fileName, columnNames);
-		} finally {
-			inMemoryDataSource.close();
 		}
 	}
 

@@ -18,8 +18,8 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
-		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
-		KeyFinder finder = new KeyFinder(inidices);
+		Integer[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
+		KeyFinder finder = new KeyFinder(indices);
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 			if (finder.found(row)) {
@@ -33,18 +33,18 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) {
-		Set<Result> uniqueCanidates = new HashSet<>();
+		Set<Result> uniqueCandidates  = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);
 			if (!set.isEmpty()) {
 				dataSource.reset();
 				Result result = exec(set.toArray(new String[keyCandidates.length - 1]));
 				if (result.unique) {
-					uniqueCanidates.add(result);
+					uniqueCandidates.add(result);
 				}
 			}
 		}
-		return uniqueCanidates;
+		return uniqueCandidates;
 	}
 
 	@Override

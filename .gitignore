@@ -13,3 +13,5 @@ data/logs
 .project
 .classpath
 .settings
+
+.idea/

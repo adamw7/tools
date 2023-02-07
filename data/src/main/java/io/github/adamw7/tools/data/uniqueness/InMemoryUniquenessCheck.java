@@ -26,10 +26,10 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return findUnique(inidices, keyCandidates);
 	}
 
-	private Result findUnique(Integer[] inidices, String... keyCandidates) {
+	private Result findUnique(Integer[] indices, String... keyCandidates) {
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		close(dataSource);
-		KeyFinder finder = new KeyFinder(inidices);
+		KeyFinder finder = new KeyFinder(indices);
 		for (String[] row : data) {
 			if (finder.found(row)) {
 				return new Result(false, keyCandidates, row);
@@ -40,7 +40,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) {
-		Set<Result> uniqueCanidates = new HashSet<>();
+		Set<Result> uniqueCandidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);
 			if (!set.isEmpty()) {
@@ -49,12 +49,12 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 				Integer[] inidices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
 				Result result = findUnique(inidices, newCandidates);
 				if (result.unique) {
-					uniqueCanidates.add(result);
+					uniqueCandidates.add(result);
 				}
 			}
 		}
 
-		return uniqueCanidates;
+		return uniqueCandidates;
 	}
 
 	@Override

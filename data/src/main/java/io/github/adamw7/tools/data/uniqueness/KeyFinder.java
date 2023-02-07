@@ -7,16 +7,16 @@ import java.util.Set;
 
 public class KeyFinder {
 
-	private final Integer[] indicies;
+	private final Integer[] indices;
 	private final Set<Key> set = new HashSet<>();
 
-	public KeyFinder(Integer[] indicies) {
-		this.indicies = indicies;
+	public KeyFinder(Integer[] indices) {
+		this.indices = indices;
 	}
 
 	public boolean found(String[] row) {
 		if (row != null) {
-			Key key = key(row, indicies);
+			Key key = key(row, indices);
 			if (set.contains(key)) {
 				return true;
 			} else {

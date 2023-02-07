@@ -92,6 +92,7 @@ public class CSVDataSource implements IterableDataSource {
 
 	@Override
 	public void reset() {
+		close();
 		try {
 			scanner = createScanner(fileName);
 		} catch (FileNotFoundException e) {

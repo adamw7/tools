@@ -28,12 +28,12 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		if (resultSet != null) {
 			try {
 				resultSet.close();
 			} catch (SQLException e) {
-				throw new IOException(e);
+				throw new UncheckedIOException(new IOException(e));
 			}
 		}
 	}
@@ -79,6 +79,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 
 	@Override
 	public void reset() {
+		close();
 		hasMoreData = true;
 		open();
 	}

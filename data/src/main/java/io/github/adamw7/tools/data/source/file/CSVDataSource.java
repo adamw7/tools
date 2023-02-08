@@ -61,11 +61,23 @@ public class CSVDataSource implements IterableDataSource {
 	@Override
 	public void open() {
 		log.info("Opening: " + fileName);
-		if (columnsRow != -1 && columns == null) {
-			for (int i = 0; i < columnsRow; ++i) {
-				columns = nextRow();
-			}
+		if (columnsExist() && !columnsAreLoaded()) {
+			loadColumns();
 		}
+	}
+
+	private void loadColumns() {
+		for (int i = 0; i < columnsRow; ++i) {
+			columns = nextRow();
+		}
+	}
+
+	private boolean columnsAreLoaded() {
+		return columns != null;
+	}
+
+	private boolean columnsExist() {
+		return columnsRow != -1;
 	}
 
 	@Override

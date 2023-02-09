@@ -48,7 +48,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			int hash = hash(key, i);
 			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];
 			
-			if (wrapper.key.equals(key)) {
+			if (valid(wrapper) && wrapper.key.equals(key)) {
 				return wrapper.value;
 			}
 		}
@@ -67,11 +67,13 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public V put(K key, V value) {
 		for (int i = 0; i < array.length; ++i) {
 			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];
+			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];			
 			if (wrapper == null) {
 				array[hash] = new Wrapper<K, V>(key, value);
 				size++;
 				return value;
+			} else if (wrapper.removed) {
+				continue;
 			} else if (wrapper.key.equals(key)) {
 				array[hash] = new Wrapper<K, V>(key, value); // overwrite
 				return value;
@@ -79,10 +81,20 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		}
 		return null;
 	}
+	
 
 	@Override
 	public V remove(Object key) {
-		// TODO Auto-generated method stub
+		for (int i = 0; i < array.length; ++i) {
+			int hash = hash(key, i);
+			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];
+			
+			if (wrapper.key.equals(key)) {
+				wrapper.removed = true;
+				size--;
+				return wrapper.value;
+			}
+		}
 		return null;
 	}
 

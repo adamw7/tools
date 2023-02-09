@@ -62,4 +62,15 @@ public class MapTest {
 		}
 		return false;
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void remove(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		map.remove(1);
+		assertTrue(map.size() == 1);
+		assertTrue(map.get(1) == null);
+		assertTrue(map.get(2).equals("B"));
+	}
 }

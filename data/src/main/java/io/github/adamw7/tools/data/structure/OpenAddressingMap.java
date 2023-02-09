@@ -32,8 +32,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public boolean containsKey(Object key) {
-		// TODO Auto-generated method stub
-		return false;
+		return get(key) != null;
 	}
 
 	@Override

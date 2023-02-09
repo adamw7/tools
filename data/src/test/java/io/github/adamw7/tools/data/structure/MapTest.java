@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.structure;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -72,5 +73,16 @@ public class MapTest {
 		assertTrue(map.size() == 1);
 		assertTrue(map.get(1) == null);
 		assertTrue(map.get(2).equals("B"));
+	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void containsKey(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		assertTrue(map.containsKey(1));
+		assertTrue(map.containsKey(2));
+		assertFalse(map.containsKey(3));
+
 	}
 }

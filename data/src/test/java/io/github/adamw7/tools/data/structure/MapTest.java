@@ -102,4 +102,27 @@ public class MapTest {
 			assertTrue(keySet.contains(key), key + " is missing in keys");
 		}
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void putAll(Map<Integer, String> map) {
+		final int size = 50;
+		map.putAll(sampleMap(size));
+		for (int i = 0; i < size; ++i) {
+			String value = map.get(i);
+			assertTrue(value != null);
+			assertTrue(value.equals(String.valueOf(i)));
+		}
+		assertTrue(map.size() == size);
+	}
+
+	private Map<? extends Integer, ? extends String> sampleMap(int size) {
+		Map<Integer, String> map = new HashMap<>();
+		for (int i = 0; i < size; ++i) {
+			map.put(i, String.valueOf(i));
+		}
+		return map;
+	}
+	
+	
 }

@@ -100,9 +100,11 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	@Override
-	public void putAll(Map<? extends K, ? extends V> m) {
-		// TODO Auto-generated method stub
-
+	public void putAll(Map<? extends K, ? extends V> map) {
+		Set<? extends K> keys = map.keySet();
+		for (K key : keys) {
+			put(key, map.get(key));
+		}
 	}
 
 	@Override

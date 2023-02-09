@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.structure;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -13,7 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class MapTest {
 	static Stream<Arguments> happyPathImplementations() {
 		return Stream.of(Arguments.of(new HashMap<Integer, String>()),
-				Arguments.of(new OpenAdressingMap<Integer, String>()));
+				Arguments.of(new OpenAddressingMap<Integer, String>()));
 	}
 
 	@ParameterizedTest
@@ -37,5 +38,28 @@ public class MapTest {
 		map.put(1, "B");
 		assertTrue(map.size() == 1);
 		assertTrue(map.get(1).equals("B"));
+	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void values(Map<Integer, String> map) {
+		int size = 50;
+		for (int i = 0; i < size; ++i) {
+			map.put(i, String.valueOf(i));
+		}
+		
+		Collection<String> values = map.values();
+		for (int i = 0; i < size; ++i) {
+			assertTrue(exists(String.valueOf(i), values), i + " is missing in values");
+		}
+	}
+
+	private <V> boolean exists(V value, Collection<V> values) {
+		for (V item : values) {
+			if (value.equals(item)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

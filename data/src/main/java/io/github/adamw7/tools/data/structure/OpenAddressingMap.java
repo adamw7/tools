@@ -1,20 +1,22 @@
 package io.github.adamw7.tools.data.structure;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OpenAdressingMap<K, V> implements Map<K, V> {
+public class OpenAddressingMap<K, V> implements Map<K, V> {
 	
 	private static final int DEFAULT_SIZE = 64;
 	protected Wrapper[] array;
 	protected int size;
 	
-	public OpenAdressingMap(int size) {
+	public OpenAddressingMap(int size) {
 		array = new Wrapper[size];
 	}
 
-	public OpenAdressingMap() {
+	public OpenAddressingMap() {
 		this(DEFAULT_SIZE);
 	}
 
@@ -104,8 +106,18 @@ public class OpenAdressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Collection<V> values() {
-		// TODO Auto-generated method stub
-		return null;
+		List<V> values = new ArrayList<>();
+		for (int i = 0; i < array.length; ++i) {
+			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			if (valid(wrapper)) {
+				values.add(wrapper.value);
+			}
+		}
+		return values;
+	}
+
+	private boolean valid(Wrapper<K, V> wrapper) {
+		return wrapper != null && !wrapper.removed;
 	}
 
 	@Override

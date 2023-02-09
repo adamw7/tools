@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.structure;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -57,7 +58,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		if (key == null) {
 			throw new IllegalArgumentException("Key is null");
 		} else {
-			return key.hashCode() % array.length;
+			// double hashing
+			int hashCode = key.hashCode();
+			return Math.abs((hashCode + (iteration * hashCode)) % array.length);
 		}
 	}
 
@@ -110,8 +113,14 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<K> keySet() {
-		// TODO Auto-generated method stub
-		return null;
+		Set<K> keys = new HashSet<>();
+		for (int i = 0; i < array.length; ++i) {
+			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			if (valid(wrapper)) {
+				keys.add(wrapper.key);
+			}
+		}
+		return keys;
 	}
 
 	@Override

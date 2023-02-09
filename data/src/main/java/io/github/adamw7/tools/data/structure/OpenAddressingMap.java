@@ -37,8 +37,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public boolean containsValue(Object value) {
-		// TODO Auto-generated method stub
-		return false;
+		return values().contains(value);
 	}
 
 	@Override

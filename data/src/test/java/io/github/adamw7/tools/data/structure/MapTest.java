@@ -51,17 +51,8 @@ public class MapTest {
 		
 		Collection<String> values = map.values();
 		for (int i = 0; i < size; ++i) {
-			assertTrue(exists(String.valueOf(i), values), i + " is missing in values");
+			assertTrue(values.contains(String.valueOf(i)), i + " is missing in values");
 		}
-	}
-
-	private <V> boolean exists(V value, Collection<V> values) {
-		for (V item : values) {
-			if (value.equals(item)) {
-				return true;
-			}
-		}
-		return false;
 	}
 	
 	@ParameterizedTest
@@ -83,6 +74,17 @@ public class MapTest {
 		assertTrue(map.containsKey(1));
 		assertTrue(map.containsKey(2));
 		assertFalse(map.containsKey(3));
+
+	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void containsValue(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		assertTrue(map.containsValue("A"));
+		assertTrue(map.containsValue("B"));
+		assertFalse(map.containsValue("C"));
 
 	}
 }

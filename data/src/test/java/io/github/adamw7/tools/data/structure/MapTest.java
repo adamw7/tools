@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -136,7 +137,17 @@ public class MapTest {
 			String value = map.get(i);
 			assertTrue(value == null);
 		}
-		
 	}
 	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void entrySet(Map<Integer, String> map) {
+		final int size = 50;
+		map.putAll(sampleMap(size));
+		Set<Entry<Integer, String>> entrySet = map.entrySet();
+		assertTrue(entrySet.size() == size);
+		for (Entry<Integer, String> entry : entrySet) {
+			assertTrue(map.get(entry.getKey()).equals(entry.getValue()));
+		}
+	}
 }

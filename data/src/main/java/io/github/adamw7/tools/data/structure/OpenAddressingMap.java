@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class OpenAddressingMap<K, V> implements Map<K, V> {
-	
+
 	private static final int DEFAULT_SIZE = 64;
 	protected Wrapper[] array;
 	protected int size;
@@ -147,8 +147,15 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		// TODO Auto-generated method stub
-		return null;
+		Set<Entry<K, V>> entrySet = new HashSet<>(size);
+		for (int i = 0; i < array.length; ++i) {
+			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			if (valid(wrapper)) {
+				entrySet.add(wrapper);
+			}
+		}
+		
+		return entrySet;
 	}
 
 }

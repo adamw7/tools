@@ -163,4 +163,23 @@ public class MapTest {
 			assertEquals(value, String.valueOf(i));
 		}
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void resizeVsRemovals(Map<Integer, String> map) {
+		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
+		int keyToRemove = -10000;
+		String valueToRemove = "ItemToRemove";
+		map.put(keyToRemove, valueToRemove);
+		assertEquals(1, map.size());
+		String removed = map.remove(keyToRemove);
+		assertEquals(0, map.size());
+		assertEquals(removed, valueToRemove);
+		map.putAll(sampleMap(size)); 
+		assertEquals(size, map.size());
+		for (int i = 0; i < size; ++i) {
+			String value = map.get(i);
+			assertEquals(value, String.valueOf(i));
+		}
+	}
 }

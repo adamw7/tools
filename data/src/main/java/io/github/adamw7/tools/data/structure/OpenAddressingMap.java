@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
-	static final int DEFAULT_SIZE = 64;
+	static final int DEFAULT_SIZE = 63;
 	protected Wrapper<K, V>[] array;
 	protected int size;
 	
@@ -89,10 +89,10 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void checkIfResizeNeeded() {
-		if (size == array.length) {
-			size = size * 2;
-			OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size);
+		if (size + 1 >= array.length) {
+			OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size + 1);
 			newMap.putAll(this);
+			size++;
 			clear();
 			putAll(newMap);
 			newMap.clear();
@@ -124,7 +124,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public void clear() {
-		initArray(size);
+		initArray(size >= array.length ? array.length * 2 : size);
 		size = 0;
 	}
 

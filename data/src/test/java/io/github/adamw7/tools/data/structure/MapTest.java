@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.structure;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -148,6 +149,18 @@ public class MapTest {
 		assertTrue(entrySet.size() == size);
 		for (Entry<Integer, String> entry : entrySet) {
 			assertTrue(map.get(entry.getKey()).equals(entry.getValue()));
+		}
+	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void resize(Map<Integer, String> map) {
+		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
+		map.putAll(sampleMap(size)); 
+		assertEquals(size, map.size());
+		for (int i = 0; i < size; ++i) {
+			String value = map.get(i);
+			assertEquals(value, String.valueOf(i));
 		}
 	}
 }

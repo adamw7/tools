@@ -10,7 +10,7 @@ import java.util.Set;
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	private static final int DEFAULT_SIZE = 64;
-	protected Wrapper[] array;
+	protected Wrapper<K, V>[] array;
 	protected int size;
 	
 	public OpenAddressingMap(int size) {

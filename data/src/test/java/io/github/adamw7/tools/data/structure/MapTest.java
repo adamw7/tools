@@ -124,5 +124,19 @@ public class MapTest {
 		return map;
 	}
 	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void clear(Map<Integer, String> map) {
+		final int size = 50;
+		map.putAll(sampleMap(size));
+		map.clear();
+		
+		assertTrue(map.size() == 0);
+		for (int i = 0; i < size; ++i) {
+			String value = map.get(i);
+			assertTrue(value == null);
+		}
+		
+	}
 	
 }

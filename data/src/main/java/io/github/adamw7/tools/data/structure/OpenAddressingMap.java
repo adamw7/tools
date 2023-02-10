@@ -14,6 +14,10 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	protected int size;
 	
 	public OpenAddressingMap(int size) {
+		initArray(size);
+	}
+
+	private void initArray(int size) {
 		array = new Wrapper[size];
 	}
 
@@ -109,8 +113,8 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public void clear() {
-		// TODO Auto-generated method stub
-
+		initArray(DEFAULT_SIZE);
+		size = 0;
 	}
 
 	@Override

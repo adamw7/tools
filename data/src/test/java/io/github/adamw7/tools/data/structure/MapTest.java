@@ -158,10 +158,7 @@ public class MapTest {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
 		map.putAll(sampleMap(size)); 
 		assertEquals(size, map.size());
-		for (int i = 0; i < size; ++i) {
-			String value = map.get(i);
-			assertEquals(value, String.valueOf(i));
-		}
+		checkValues(map, size);
 	}
 	
 	@ParameterizedTest
@@ -177,6 +174,19 @@ public class MapTest {
 		assertEquals(removed, valueToRemove);
 		map.putAll(sampleMap(size)); 
 		assertEquals(size, map.size());
+		checkValues(map, size);
+	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementations")
+	public void multipleResize(Map<Integer, String> map) {
+		final int size = OpenAddressingMap.DEFAULT_SIZE * 4; // forcing resize
+		map.putAll(sampleMap(size));
+		assertEquals(size, map.size());
+		checkValues(map, size);
+	}
+
+	private void checkValues(Map<Integer, String> map, final int size) {
 		for (int i = 0; i < size; ++i) {
 			String value = map.get(i);
 			assertEquals(value, String.valueOf(i));

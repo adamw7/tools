@@ -124,8 +124,12 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public void clear() {
-		initArray(size >= array.length ? array.length * 2 : size);
+		initArray(size >= array.length ? newSize() : size);
 		size = 0;
+	}
+
+	private int newSize() {
+		return array.length * 2; // TODO make it prime
 	}
 
 	@Override

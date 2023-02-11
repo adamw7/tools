@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static io.github.adamw7.tools.data.Utils.named;
+import static org.junit.jupiter.params.provider.Arguments.of;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,17 +18,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+
 public class MapTest {
 	private static final int CUSTOM_SIZE = 64;
 	
 	static Stream<Arguments> happyPathImplementations() {
-		return Stream.of(Arguments.of(new HashMap<Integer, String>()),
-				Arguments.of(new OpenAddressingMap<Integer, String>()));
+		return Stream.of(of(named(new HashMap<Integer, String>(), 16)),
+				of(named(new OpenAddressingMap<Integer, String>(), OpenAddressingMap.DEFAULT_SIZE)));
 	}
 	
 	static Stream<Arguments> happyPathImplementationsWithCustomSize() {
-		return Stream.of(Arguments.of(new HashMap<Integer, String>(CUSTOM_SIZE)),
-				Arguments.of(new OpenAddressingMap<Integer, String>(CUSTOM_SIZE)));
+		int size = CUSTOM_SIZE;
+		return Stream.of(of(named(new HashMap<Integer, String>(size), size)),
+				of(named(new OpenAddressingMap<Integer, String>(size), size)));
 	}
 
 	static Stream<Arguments> allImplementations() {

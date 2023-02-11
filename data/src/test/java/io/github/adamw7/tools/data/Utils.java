@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.util.Map;
 
 import org.junit.jupiter.api.Named;
 
@@ -72,6 +73,10 @@ public class Utils {
 
 	public static Named<Object> named(Object object) {
 		return Named.of(object.getClass().getSimpleName(), object);
+	}
+	
+	public static <K, V> Named<Map<K, V>> named(Map<K, V> map, int size) {
+		return Named.of(map.getClass().getSimpleName() + " with default size: " + size , map);
 	}
 
 	public static IterableSQLDataSource createIterableSQLDataSource(Connection connection, String query) {

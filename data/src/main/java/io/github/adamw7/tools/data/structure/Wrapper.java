@@ -5,7 +5,7 @@ import java.util.Map.Entry;
 public class Wrapper<K, V> implements Entry<K, V>{
 
 
-	K key;
+	final K key;
 	V value;
 	boolean removed = false;
 	

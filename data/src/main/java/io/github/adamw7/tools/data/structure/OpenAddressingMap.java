@@ -49,7 +49,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public V get(Object key) {
 		for (int i = 0; i < array.length; ++i) {
 			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];
+			Wrapper<K, V> wrapper = array[hash];
 			
 			if (valid(wrapper) && wrapper.key.equals(key)) {
 				return wrapper.value;
@@ -73,17 +73,15 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		checkIfResizeNeeded();
 		for (int i = 0; i < array.length; ++i) {
 			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];			
+			Wrapper<K, V> wrapper = array[hash];
 			if (wrapper == null) {
 				array[hash] = new Wrapper<K, V>(key, value);
 				size++;
 				return value;
-			} else if (wrapper.removed) {
-				continue;
 			} else if (wrapper.key.equals(key)) {
 				array[hash] = new Wrapper<K, V>(key, value); // overwrite
 				return value;
-			}
+			} // removed are skipped
 		}
 		return null;
 	}
@@ -103,7 +101,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public V remove(Object key) {
 		for (int i = 0; i < array.length; ++i) {
 			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[hash];
+			Wrapper<K, V> wrapper = array[hash];
 			
 			if (wrapper.key.equals(key)) {
 				wrapper.removed = true;
@@ -136,7 +134,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public Set<K> keySet() {
 		Set<K> keys = new HashSet<>();
 		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			Wrapper<K, V> wrapper = array[i];
 			if (valid(wrapper)) {
 				keys.add(wrapper.key);
 			}
@@ -148,7 +146,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public Collection<V> values() {
 		List<V> values = new ArrayList<>();
 		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			Wrapper<K, V> wrapper = array[i];
 			if (valid(wrapper)) {
 				values.add(wrapper.value);
 			}
@@ -164,7 +162,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public Set<Entry<K, V>> entrySet() {
 		Set<Entry<K, V>> entrySet = new HashSet<>(size);
 		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = (Wrapper<K, V>)array[i];
+			Wrapper<K, V> wrapper = array[i];
 			if (valid(wrapper)) {
 				entrySet.add(wrapper);
 			}

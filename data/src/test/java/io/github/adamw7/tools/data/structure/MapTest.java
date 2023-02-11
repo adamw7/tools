@@ -1,10 +1,7 @@
 package io.github.adamw7.tools.data.structure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static io.github.adamw7.tools.data.Utils.named;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.util.Collection;
@@ -42,23 +39,23 @@ public class MapTest {
 	@MethodSource("allImplementations")
 	public void happyPath(Map<Integer, String> map) {
 		map.put(1, "A");
-		assertTrue(map.size() == 1);
-		assertTrue(map.get(1).equals("A"));
+		assertEquals(1, map.size());
+		assertEquals("A", map.get(1));
 		map.put(2, "B");
-		assertTrue(map.size() == 2);
-		assertTrue(map.get(1).equals("A"));
-		assertTrue(map.get(2).equals("B"));
+		assertEquals(2, map.size());
+		assertEquals("A", map.get(1));
+		assertEquals("B", map.get(2));
 	}
 
 	@ParameterizedTest
 	@MethodSource("allImplementations")
 	public void overwrite(Map<Integer, String> map) {
 		map.put(1, "A");
-		assertTrue(map.size() == 1);
-		assertTrue(map.get(1).equals("A"));
+		assertEquals(1, map.size());
+		assertEquals("A", map.get(1));
 		map.put(1, "B");
-		assertTrue(map.size() == 1);
-		assertTrue(map.get(1).equals("B"));
+		assertEquals(1, map.size());
+		assertEquals("B", map.get(1));
 	}
 
 	@ParameterizedTest
@@ -81,9 +78,9 @@ public class MapTest {
 		map.put(1, "A");
 		map.put(2, "B");
 		map.remove(1);
-		assertTrue(map.size() == 1);
-		assertTrue(map.get(1) == null);
-		assertTrue(map.get(2).equals("B"));
+		assertEquals(1, map.size());
+		assertNull(map.get(1));
+		assertEquals("B", map.get(2));
 	}
 
 	@ParameterizedTest
@@ -127,10 +124,10 @@ public class MapTest {
 		map.putAll(sampleMap(size));
 		for (int i = 0; i < size; ++i) {
 			String value = map.get(i);
-			assertTrue(value != null);
-			assertTrue(value.equals(String.valueOf(i)));
+			assertNotNull(value);
+			assertEquals(value, String.valueOf(i));
 		}
-		assertTrue(map.size() == size);
+		assertEquals(size, map.size());
 	}
 
 	private Map<? extends Integer, ? extends String> sampleMap(int size) {
@@ -147,11 +144,11 @@ public class MapTest {
 		final int size = 50;
 		map.putAll(sampleMap(size));
 		map.clear();
-		
-		assertTrue(map.size() == 0);
+
+		assertEquals(0, map.size());
 		for (int i = 0; i < size; ++i) {
 			String value = map.get(i);
-			assertTrue(value == null);
+			assertNull(value);
 		}
 	}
 	
@@ -161,9 +158,9 @@ public class MapTest {
 		final int size = 50;
 		map.putAll(sampleMap(size));
 		Set<Entry<Integer, String>> entrySet = map.entrySet();
-		assertTrue(entrySet.size() == size);
+		assertEquals(size, entrySet.size());
 		for (Entry<Integer, String> entry : entrySet) {
-			assertTrue(map.get(entry.getKey()).equals(entry.getValue()));
+			assertEquals(map.get(entry.getKey()), entry.getValue());
 		}
 	}
 	

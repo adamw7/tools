@@ -16,13 +16,25 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class MapTest {
+	private static final int CUSTOM_SIZE = 64;
+	
 	static Stream<Arguments> happyPathImplementations() {
 		return Stream.of(Arguments.of(new HashMap<Integer, String>()),
 				Arguments.of(new OpenAddressingMap<Integer, String>()));
 	}
+	
+	static Stream<Arguments> happyPathImplementationsWithCustomSize() {
+		return Stream.of(Arguments.of(new HashMap<Integer, String>(CUSTOM_SIZE)),
+				Arguments.of(new OpenAddressingMap<Integer, String>(CUSTOM_SIZE)));
+	}
 
+	static Stream<Arguments> allImplementations() {
+		return Stream.concat(happyPathImplementations(), 
+				happyPathImplementationsWithCustomSize());
+	}
+	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void happyPath(Map<Integer, String> map) {
 		map.put(1, "A");
 		assertTrue(map.size() == 1);
@@ -34,7 +46,7 @@ public class MapTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void overwrite(Map<Integer, String> map) {
 		map.put(1, "A");
 		assertTrue(map.size() == 1);
@@ -45,7 +57,7 @@ public class MapTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void values(Map<Integer, String> map) {
 		int size = 50;
 		for (int i = 0; i < size; ++i) {
@@ -59,7 +71,7 @@ public class MapTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void remove(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");
@@ -70,29 +82,27 @@ public class MapTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void containsKey(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");
 		assertTrue(map.containsKey(1));
 		assertTrue(map.containsKey(2));
 		assertFalse(map.containsKey(3));
-
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void containsValue(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");
 		assertTrue(map.containsValue("A"));
 		assertTrue(map.containsValue("B"));
 		assertFalse(map.containsValue("C"));
-
 	}
 
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void keySet(Map<Integer, String> map) {
 		int[] keys = new int[] {-1, 0, 1, 5, 1000};
 		
@@ -106,7 +116,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void putAll(Map<Integer, String> map) {
 		final int size = 50;
 		map.putAll(sampleMap(size));
@@ -127,7 +137,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void clear(Map<Integer, String> map) {
 		final int size = 50;
 		map.putAll(sampleMap(size));
@@ -141,7 +151,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void entrySet(Map<Integer, String> map) {
 		final int size = 50;
 		map.putAll(sampleMap(size));
@@ -153,7 +163,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void resize(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
 		map.putAll(sampleMap(size)); 
@@ -178,7 +188,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void multipleResize(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 4; // forcing resize
 		map.putAll(sampleMap(size));
@@ -192,4 +202,17 @@ public class MapTest {
 			assertEquals(value, String.valueOf(i));
 		}
 	}
+	
+	@ParameterizedTest
+	@MethodSource("happyPathImplementationsWithCustomSize")
+	public void customNonPrimeSize(Map<Integer, String> map) {
+		int maxSize = CUSTOM_SIZE * 4;
+		map.putAll(sampleMap(maxSize));
+		assertEquals(maxSize, map.size());
+		checkValues(map, maxSize);
+		map.remove(5);
+		assertEquals(maxSize - 1, map.size());
+	}
+	
+	
 }

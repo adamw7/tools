@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
-	static final int DEFAULT_SIZE = 63;
+	static final int DEFAULT_SIZE = 64;
 	int prime;
 	
 	protected Wrapper<K, V>[] array;
@@ -20,8 +20,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void initArray(int size) {
-		array = new Wrapper[size];
-		prime = Primes.findMaxSmallerThan(size);
+		int newSize = Math.max(size, 3); // array of size 2 would force prime = 1
+		array = new Wrapper[newSize];
+		prime = Primes.findMaxSmallerThan(newSize);
 	}
 
 	public OpenAddressingMap() {

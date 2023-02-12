@@ -1,7 +1,11 @@
 package io.github.adamw7.tools.data.structure;
 
 import static io.github.adamw7.tools.data.Utils.named;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.util.Collection;
@@ -33,6 +37,11 @@ public class MapTest {
 	static Stream<Arguments> allImplementations() {
 		return Stream.concat(happyPathImplementations(), 
 				happyPathImplementationsWithCustomSize());
+	}
+	
+	static Stream<Arguments> confictingHashImplementations() {
+		return Stream.of(of(named(new HashMap<ConflictingKey, String>())),
+				of(named(new OpenAddressingMap<ConflictingKey, String>())));
 	}
 	
 	@ParameterizedTest
@@ -216,5 +225,26 @@ public class MapTest {
 		assertEquals(maxSize - 1, map.size());
 	}
 	
-	
+	@ParameterizedTest
+	@MethodSource("confictingHashImplementations")
+	public void conflicts(Map<ConflictingKey, String> map) {
+		ConflictingKey key10 = new ConflictingKey(10, "10");
+		String value10 = "Value10";
+		map.put(key10, value10);
+		ConflictingKey key12 = new ConflictingKey(12, "12");
+		String value12 = "Value12";
+		map.put(key12, value12);
+		
+		assertEquals(2, map.size());
+		Set<ConflictingKey> keySet = map.keySet();
+		assertTrue(keySet.contains(key10));
+		assertTrue(keySet.contains(key12));
+		
+		Collection<String> values = map.values();
+		assertTrue(values.contains(value10));
+		assertTrue(values.contains(value12));
+		
+		map.clear();
+		assertEquals(0, map.size());
+	}
 }

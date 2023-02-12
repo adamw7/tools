@@ -10,6 +10,8 @@ import java.util.Set;
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	static final int DEFAULT_SIZE = 63;
+	int prime;
+	
 	protected Wrapper<K, V>[] array;
 	protected int size;
 	
@@ -19,6 +21,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	private void initArray(int size) {
 		array = new Wrapper[size];
+		prime = Primes.findMaxSmallerThan(size);
 	}
 
 	public OpenAddressingMap() {
@@ -64,8 +67,18 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		} else {
 			// double hashing
 			int hashCode = key.hashCode();
-			return Math.abs((hashCode + (iteration * hashCode)) % array.length);
+			int h1 = h1(hashCode);
+			int h2 = h2(hashCode);
+			return Math.abs((h1 + (iteration * h2)) % array.length);
 		}
+	}
+
+	private int h2(int hashCode) {
+		return hashCode % array.length;
+	}
+
+	private int h1(int hashCode) {
+		return prime - (hashCode % prime);
 	}
 
 	@Override
@@ -83,18 +96,23 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 				return value;
 			} // removed are skipped
 		}
-		return null;
+		resize();
+		return put(key, value);
 	}
 
 	private void checkIfResizeNeeded() {
 		if (size + 1 >= array.length) {
-			OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size + 1);
-			newMap.putAll(this);
-			size++;
-			clear();
-			putAll(newMap);
-			newMap.clear();
+			resize();
 		}
+	}
+
+	private void resize() {
+		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size + 1);
+		newMap.putAll(this);
+		size++;
+		clear();
+		putAll(newMap);
+		newMap.clear();
 	}
 
 	@Override
@@ -127,7 +145,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private int newSize() {
-		return array.length * 2; // TODO make it prime
+		return array.length * 2;
 	}
 
 	@Override

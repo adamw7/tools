@@ -174,7 +174,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementations")
+	@MethodSource("allImplementations")
 	public void resizeVsRemovals(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
 		int keyToRemove = -10000;
@@ -206,7 +206,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("happyPathImplementationsWithCustomSize")
+	@MethodSource("allImplementations")
 	public void customNonPrimeSize(Map<Integer, String> map) {
 		int maxSize = CUSTOM_SIZE * 4;
 		map.putAll(sampleMap(maxSize));

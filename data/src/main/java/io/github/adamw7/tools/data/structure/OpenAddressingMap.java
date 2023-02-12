@@ -88,11 +88,11 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			int hash = hash(key, i);
 			Wrapper<K, V> wrapper = array[hash];
 			if (wrapper == null) {
-				array[hash] = new Wrapper<K, V>(key, value);
+				array[hash] = new Wrapper<>(key, value);
 				size++;
 				return value;
 			} else if (wrapper.key.equals(key)) {
-				array[hash] = new Wrapper<K, V>(key, value); // overwrite
+				array[hash] = new Wrapper<>(key, value); // overwrite
 				return value;
 			} // removed are skipped
 		}

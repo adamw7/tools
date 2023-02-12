@@ -1,19 +1,18 @@
 package io.github.adamw7.tools.data.structure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class PrimesTest {
 
 	@Test
 	public void happyPath() {
-		assertEquals(true, Primes.isPrime(5));
-		assertEquals(false, Primes.isPrime(10));
+		assertTrue(Primes.isPrime(5));
+		assertFalse(Primes.isPrime(10));
 		assertEquals(7, Primes.findMaxSmallerThan(10));
-		assertEquals(true, Primes.isPrime(7907));
-		assertEquals(false, Primes.isPrime(7920));
+		assertTrue(Primes.isPrime(7907));
+		assertFalse(Primes.isPrime(7920));
 	}
 	
 	@Test

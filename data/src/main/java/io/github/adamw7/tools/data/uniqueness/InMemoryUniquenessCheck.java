@@ -39,7 +39,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		return handleSucessfullCheck(keyCandidates);
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates) {
+	protected Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates) {
 		Set<Result> uniqueCandidates = new HashSet<>();
 		for (String candidate : keyCandidates) {
 			Set<String> set = createSmallerSet(keyCandidates, candidate);

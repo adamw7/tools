@@ -53,8 +53,8 @@ public abstract class AbstractUniqueness implements Uniqueness {
 		if (keyCandidates == null || keyCandidates.length == 0) {
 			throw new IllegalArgumentException("Wrong input: " + Arrays.toString(keyCandidates));
 		}
-		for (String canidate : keyCandidates) {
-			if (canidate == null) {
+		for (String candidate : keyCandidates) {
+			if (candidate == null) {
 				throw new IllegalArgumentException("Input columns cannot be null");
 			}
 		}
@@ -62,17 +62,17 @@ public abstract class AbstractUniqueness implements Uniqueness {
 
 	private void handleDuplicates(String[] keyCandidates) {
 		Set<String> set = new HashSet<>();
-		for (String canidate : keyCandidates) {
-			if (set.contains(canidate)) {
-				throw new IllegalArgumentException("Duplicate in input: " + canidate);
+		for (String candidate : keyCandidates) {
+			if (set.contains(candidate)) {
+				throw new IllegalArgumentException("Duplicate in input: " + candidate);
 			} else {
-				set.add(canidate);
+				set.add(candidate);
 			}
 		}
 	}
 	
 	protected Result handleSucessfullCheck(String[] keyCandidates) {
-		Set<Result> set = findPotentiallySmallerSetOfCanidates(keyCandidates);
+		Set<Result> set = findPotentiallySmallerSetOfCandidates(keyCandidates);
 		return new Result(true, keyCandidates, null, set);
 	}
 	
@@ -90,5 +90,5 @@ public abstract class AbstractUniqueness implements Uniqueness {
 		}
 	}
 	
-	protected abstract Set<Result> findPotentiallySmallerSetOfCanidates(String[] keyCandidates);
+	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);
 }

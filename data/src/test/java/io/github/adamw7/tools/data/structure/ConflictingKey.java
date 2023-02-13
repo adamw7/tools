@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class ConflictingKey {
 
-	private int number;
-	private String string;
+	private final int number;
+	private final String string;
 	
 	public ConflictingKey(int number, String string) {
 		this.number = number;

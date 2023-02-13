@@ -20,6 +20,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void initArray(int size) {
+		if (size <= 0) {
+			throw new IllegalArgumentException("Wrong size: " + size);
+		}
 		int newSize = Math.max(size, 3); // array of size 2 would force prime = 1
 		array = new Wrapper[newSize];
 		prime = Primes.findMaxSmallerThan(newSize);

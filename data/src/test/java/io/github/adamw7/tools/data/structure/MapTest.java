@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
@@ -15,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -244,7 +246,7 @@ public class MapTest {
 	@MethodSource("allImplementations")
 	public void multipleClear(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 5; // forcing resize
-		for (int i = 0; i < 4; ++i) {
+		for (int i = 1; i < 6; ++i) {
 			putData(map, size * i);
 			map.clear();
 			assertEquals(0, map.size());	
@@ -255,5 +257,14 @@ public class MapTest {
 		map.putAll(sampleMap(size));
 		assertEquals(size, map.size());
 		checkValues(map, size);
+	}
+	
+	@Test
+	public void negativeTooLowNumber() {
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
+			new OpenAddressingMap<>(-10);
+		}, "Expected constructor method to throw, but it didn't");
+
+		assertEquals(thrown.getMessage(), "Wrong size: -10");
 	}
 }

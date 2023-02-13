@@ -39,7 +39,7 @@ public class MapTest {
 				happyPathImplementationsWithCustomSize());
 	}
 	
-	static Stream<Arguments> confictingHashImplementations() {
+	static Stream<Arguments> conflictingHashImplementations() {
 		return Stream.of(of(named(new HashMap<ConflictingKey, String>())),
 				of(named(new OpenAddressingMap<ConflictingKey, String>())));
 	}
@@ -226,7 +226,7 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
-	@MethodSource("confictingHashImplementations")
+	@MethodSource("conflictingHashImplementations")
 	public void conflicts(Map<ConflictingKey, String> map) {
 		ConflictingKey key10 = new ConflictingKey(10, "10");
 		String value10 = "Value10";

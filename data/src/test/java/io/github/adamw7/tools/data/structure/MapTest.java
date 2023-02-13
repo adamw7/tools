@@ -177,9 +177,7 @@ public class MapTest {
 	@MethodSource("allImplementations")
 	public void resize(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 2; // forcing resize
-		map.putAll(sampleMap(size)); 
-		assertEquals(size, map.size());
-		checkValues(map, size);
+		putData(map, size);
 	}
 	
 	@ParameterizedTest
@@ -193,18 +191,14 @@ public class MapTest {
 		String removed = map.remove(keyToRemove);
 		assertEquals(0, map.size());
 		assertEquals(removed, valueToRemove);
-		map.putAll(sampleMap(size)); 
-		assertEquals(size, map.size());
-		checkValues(map, size);
+		putData(map, size);
 	}
 	
 	@ParameterizedTest
 	@MethodSource("allImplementations")
 	public void multipleResize(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 4; // forcing resize
-		map.putAll(sampleMap(size));
-		assertEquals(size, map.size());
-		checkValues(map, size);
+		putData(map, size);
 	}
 
 	private void checkValues(Map<Integer, String> map, final int size) {
@@ -218,9 +212,7 @@ public class MapTest {
 	@MethodSource("allImplementations")
 	public void customNonPrimeSize(Map<Integer, String> map) {
 		int maxSize = CUSTOM_SIZE * 4;
-		map.putAll(sampleMap(maxSize));
-		assertEquals(maxSize, map.size());
-		checkValues(map, maxSize);
+		putData(map, maxSize);
 		map.remove(5);
 		assertEquals(maxSize - 1, map.size());
 	}
@@ -246,5 +238,22 @@ public class MapTest {
 		
 		map.clear();
 		assertEquals(0, map.size());
+	}
+	
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void multipleClear(Map<Integer, String> map) {
+		final int size = OpenAddressingMap.DEFAULT_SIZE * 5; // forcing resize
+		for (int i = 0; i < 4; ++i) {
+			putData(map, size * i);
+			map.clear();
+			assertEquals(0, map.size());	
+		}	
+	}
+
+	private void putData(Map<Integer, String> map, final int size) {
+		map.putAll(sampleMap(size));
+		assertEquals(size, map.size());
+		checkValues(map, size);
 	}
 }

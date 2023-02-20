@@ -1,0 +1,1 @@
+for /f %%f in ('dir /ad /b %~dp0') do cd /d %~dp0\%%f & start /b cmd /c git pull & cd ..

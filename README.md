@@ -17,7 +17,7 @@ It contains:
 Examples:
 In memory check:
 ```java
-		InMemoryUniquenessCheck check = new InMemoryUniquenessCheck();
+		AbstractUniqueness check = new InMemoryUniquenessCheck();
 		check.setDataSource(new InMemorySQLDataSource(connection, query));
 		Result result = check.exec("COLUM1", "COLUMN2", "COLUMN3");
 		log.info(result.isUnique());

@@ -19,6 +19,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		initArray(size);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void initArray(int size) {
 		if (size <= 0) {
 			throw new IllegalArgumentException("Wrong size: " + size);

@@ -13,3 +13,16 @@ It contains:
   - supports in memory and iterative processing
 - data structures
   - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing
+  
+Examples:
+In memory check:
+```java
+		InMemoryUniquenessCheck check = new InMemoryUniquenessCheck();
+		check.setDataSource(new InMemorySQLDataSource(connection, query));
+		Result result = check.exec("COLUM1", "COLUMN2", "COLUMN3");
+		log.info(result.isUnique());
+		Set<Result> betterOptions = result.getBetterOptions();
+		for (Result betterOption : betterOptions) {
+			log.info(betterOption);	
+		}
+```

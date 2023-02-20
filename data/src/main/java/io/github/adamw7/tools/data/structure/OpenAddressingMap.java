@@ -9,6 +9,7 @@ import java.util.Set;
 
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
+	private static final double MULTIPLIER = 1.2;
 	static final int DEFAULT_SIZE = 64;
 	int prime;
 	
@@ -112,9 +113,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void resize() {
-		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size + 1);
+		size = newSize();
+		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size);
 		newMap.putAll(this);
-		size++;
 		clear();
 		putAll(newMap);
 		newMap.clear();
@@ -150,7 +151,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private int newSize() {
-		return array.length * 2;
+		return (int) (array.length * MULTIPLIER);
 	}
 
 	@Override

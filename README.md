@@ -26,3 +26,7 @@ In memory check:
 			log.info(betterOption);	
 		}
 ```
+
+Notes:
+In memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
+Iterative (no memory) checks are keeping only one row at the time so they require very tiny heapsize but for the recursive checks need to read the source many times. 

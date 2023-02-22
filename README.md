@@ -12,7 +12,7 @@ It contains:
   - the tool also tries to find a better (smaller) answer
   - supports in memory and iterative processing
 - data structures
-  - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing
+  - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
   
 Examples:
 In memory check:

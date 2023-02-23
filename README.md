@@ -15,7 +15,7 @@ It contains:
   - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
   
 Examples:
-In memory check:
+in memory check:
 ```java
 		AbstractUniqueness check = new InMemoryUniquenessCheck();
 		check.setDataSource(new InMemorySQLDataSource(connection, query));
@@ -26,7 +26,27 @@ In memory check:
 			log.info(betterOption);	
 		}
 ```
+In order to add a new data source for example for XML, JSON, etc you just need to implement this interface:
+```java
+public interface IterableDataSource extends AutoCloseable, Closeable {
+	public String[] getColumnNames();
+	
+	public void open();
+	
+	public String[] nextRow();
+
+	public boolean hasMoreData();
+	
+	public void reset();
+}
+```
+If you would need a in memory source you need to implement one more method:
+```java
+public interface InMemoryDataSource extends IterableDataSource {
+	public List<String[]> readAll();
+}
+```
 
 Notes:
-In memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
+in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heapsize but for the recursive checks need to read the source many times. 

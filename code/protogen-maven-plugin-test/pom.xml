@@ -24,6 +24,7 @@
 			<plugin>
 				<groupId>io.github.adamw7</groupId>
 				<artifactId>protogen-maven-plugin</artifactId>
+				<version>${project.version}</version>
 				<executions>
 					<execution>
 						<phase>generate-sources</phase>

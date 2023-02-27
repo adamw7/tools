@@ -9,6 +9,7 @@ buildNumber.properties
 .mvn/
 
 data/logs
+code/logs
 
 .project
 .classpath

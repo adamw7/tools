@@ -69,7 +69,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateHeader() {
-		StringBuilder builder = new StringBuilder("public class ").append(className);
+		StringBuilder builder = new StringBuilder("public class ").append(className).append("Builder");
 		builder.append(" {").append(lineSeparator());
 		return builder;
 	}

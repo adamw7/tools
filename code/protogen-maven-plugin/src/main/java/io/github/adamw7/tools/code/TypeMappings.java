@@ -24,13 +24,11 @@ public class TypeMappings {
 	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {
 		for (Class<? extends GeneratedMessageV3> clazz : allMessages) {
 			mappings.put(clazz.getSimpleName(), clazz.getSimpleName());
-			System.err.println("putting by " + clazz.getSimpleName());
 		}
 	}
 
 	public String get(FieldDescriptor field) {
 		String key = field.getType().getJavaType().name();
-		System.err.println("getting by " + key);
 		
 		return mappings.get(key);
 	}

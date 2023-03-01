@@ -31,7 +31,7 @@ public class Code {
 		typeMappings = new TypeMappings(allMessages);
 		for (Class<? extends GeneratedMessageV3> c : allMessages) {
 			try {
-				write(genBuilder(c), c.getSimpleName());
+				write(genBuilder(c), c.getSimpleName() + "Builder");
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
 				e.printStackTrace();
 			}

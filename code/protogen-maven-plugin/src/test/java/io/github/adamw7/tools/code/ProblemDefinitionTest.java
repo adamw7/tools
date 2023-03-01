@@ -22,7 +22,7 @@ public class ProblemDefinitionTest {
 			personBuilder.build();
 		}, "Expected build method to throw, but it didn't");
 
-		assertEquals("Message missing required fields: id", thrown.getMessage());
+		assertEquals("Message missing required fields: id, department", thrown.getMessage());
 
 	}
 }

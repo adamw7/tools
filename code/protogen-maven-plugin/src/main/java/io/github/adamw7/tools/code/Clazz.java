@@ -13,11 +13,17 @@ public class Clazz {
 	public static final String PKG = "io.github.adamw7.tools.code";
 	private final String className;
 	private final TypeMappings typeMappings;
+	private final List<FieldDescriptor> requiredFields;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings) {
 		this.descriptor = descriptor;
 		className = getClassName();
 		this.typeMappings = typeMappings;
+		requiredFields = getRequiredFields();
+	}
+
+	private List<FieldDescriptor> getRequiredFields() {
+		return descriptor.getFields().stream().filter(f -> f.isRequired()).toList();		
 	}
 
 	private String getClassName() {
@@ -29,11 +35,43 @@ public class Clazz {
 		StringBuilder imports = generateImports();
 		StringBuilder header = generateHeader();
 		StringBuilder fields = generateFields();
+		StringBuilder interfaces = generateInterfaces();		
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports).append(header).append(fields).append(footer);
+		full.append(pkg).append(imports).append(header).append(fields).append(interfaces).append(footer);
 		return full.toString();
+	}
+
+	private StringBuilder generateInterfaces() {
+		StringBuilder interfaces = new StringBuilder("");
+		
+		for (FieldDescriptor requiredField : requiredFields) {
+			interfaces.append(generateInteface(requiredField)).append("\n");
+		}
+		return interfaces;
+	}
+
+	private StringBuilder generateInteface(FieldDescriptor requiredField) {
+		StringBuilder ifc = new StringBuilder("");
+		ifc.append("static interface ");
+		ifc.append(firstToUpper(requiredField.getName()));
+		ifc.append("Ifc {").append("\n\t");
+		ifc.append(getNextIfc()).append(" ");
+		ifc.append("set").append(firstToUpper(requiredField.getName()));
+		ifc.append("(").append(typeMappings.get(requiredField));
+		ifc.append(" ").append(requiredField.getName()).append(");");
+		ifc.append("\n").append("}");
+				
+		return ifc;
+	}
+
+	private String firstToUpper(String string) {
+		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1, string.length()));
+	}
+
+	private StringBuilder getNextIfc() {
+		return new StringBuilder("DepartmentIfc");
 	}
 
 	private StringBuilder generatePackage() {

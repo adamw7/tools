@@ -14,20 +14,14 @@ public class Clazz {
 	private final String className;
 	private final TypeMappings typeMappings;
 	private final List<FieldDescriptor> requiredFields;
-	private final Package pkg;
-	private final String pkgPrefix;
+	private final String pkg;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		this.descriptor = descriptor;
-		this.pkg = pkg;
 		className = getClassName();
 		this.typeMappings = typeMappings;
 		requiredFields = getRequiredFields();
-		pkgPrefix = getPkgPrefix();
-	}
-	
-	private String getPkgPrefix() {
-		return pkg.getName() + ".";
+		this.pkg = pkg.getName();
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
@@ -88,10 +82,10 @@ public class Clazz {
 
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(pkgPrefix).append(className).append(".Builder ");
+		builder.append(className).append(".Builder ");
 		
 		builder.append(className.toLowerCase()).append("Builder = ");
-		builder.append(pkgPrefix).append(className).append(".newBuilder();\n");
+		builder.append(className).append(".newBuilder();\n");
 		return builder;
 	}
 
@@ -106,7 +100,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateImports() {
-		return new StringBuilder();
+		return new StringBuilder("import ").append(pkg).append(";\n");
 	}
 
 }

@@ -46,7 +46,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateInterfaces() {
-		StringBuilder interfaces = new StringBuilder("");
+		StringBuilder interfaces = new StringBuilder();
 		
 		for (FieldDescriptor requiredField : requiredFields) {
 			interfaces.append(generateInteface(requiredField)).append("\n");
@@ -55,7 +55,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateInteface(FieldDescriptor requiredField) {
-		StringBuilder ifc = new StringBuilder("");
+		StringBuilder ifc = new StringBuilder();
 		ifc.append("static interface ");
 		ifc.append(firstToUpper(requiredField.getName()));
 		ifc.append("Ifc {").append("\n\t");
@@ -69,7 +69,7 @@ public class Clazz {
 	}
 
 	private String firstToUpper(String string) {
-		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1, string.length()));
+		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1));
 	}
 
 	private StringBuilder getNextIfc() {

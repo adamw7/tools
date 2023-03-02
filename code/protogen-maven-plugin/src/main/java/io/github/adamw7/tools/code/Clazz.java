@@ -10,13 +10,15 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Clazz {
 
 	private final Descriptor descriptor;
-	public static final String PKG = "io.github.adamw7.tools.code";
+	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String className;
 	private final TypeMappings typeMappings;
 	private final List<FieldDescriptor> requiredFields;
+	private final Package pkg;
 	 
-	public Clazz(Descriptor descriptor, TypeMappings typeMappings) {
+	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		this.descriptor = descriptor;
+		this.pkg = pkg;
 		className = getClassName();
 		this.typeMappings = typeMappings;
 		requiredFields = getRequiredFields();
@@ -75,31 +77,16 @@ public class Clazz {
 	}
 
 	private StringBuilder generatePackage() {
-		return new StringBuilder("package ").append(PKG).append(";").append(lineSeparator());
+		return new StringBuilder("package ").append(OUTPUT_PKG).append(";").append(lineSeparator());
 	}
 
 	private StringBuilder generateFields() {
-		List<FieldDescriptor> fields = descriptor.getFields();
-		StringBuilder builder = new StringBuilder();
-		for (FieldDescriptor field : fields) {
-			builder.append(generateField(field));
-			builder.append(lineSeparator());
-		}
+		StringBuilder builder = new StringBuilder("private final ");
+		builder.append(pkg.getName()).append(".Builder ");
+		
+		builder.append(className.toLowerCase()).append("Builder = ");
+		builder.append(pkg.getName()).append(".").append(className).append(".newBuilder();\n");
 		return builder;
-	}
-
-	private StringBuilder generateField(FieldDescriptor field) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("private ");
-		builder.append(getTypeName(field));
-		builder.append(" ");
-		builder.append(field.getName());
-		builder.append(";");
-		return builder;
-	}
-
-	private String getTypeName(FieldDescriptor field) {
-		return typeMappings.get(field);
 	}
 
 	private StringBuilder generateFooter() {

@@ -18,7 +18,7 @@ public class Code {
 
 	public Code() {
 		outputDir = "target/generated-sources/";
-		createPkg(Clazz.PKG);
+		createPkg(Clazz.OUTPUT_PKG);
 	}
 
 	private void createPkg(String pkg) {
@@ -39,7 +39,7 @@ public class Code {
 	}
 
 	private void write(String code, String className) {
-		try (FileWriter myWriter = new FileWriter(outputDir + Clazz.PKG + "/" + className + ".java")) {
+		try (FileWriter myWriter = new FileWriter(outputDir + Clazz.OUTPUT_PKG + "/" + className + ".java")) {
 			myWriter.write(code);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -55,14 +55,14 @@ public class Code {
 		}
 		if (object instanceof Descriptor) {
 			Descriptor descriptor = (Descriptor) object;
-			return genBuilder(descriptor);
+			return genBuilder(descriptor, c.getPackage());
 		} else {
 			throw new IllegalStateException("Wrong return type of the getDescriptor method: " + object.getClass());
 		}
 	}
 
-	private String genBuilder(Descriptor descriptor) {
-		Clazz clazz = new Clazz(descriptor, typeMappings);
+	private String genBuilder(Descriptor descriptor, Package pkg) {
+		Clazz clazz = new Clazz(descriptor, typeMappings, pkg);
 		return clazz.generate();
 	}
 

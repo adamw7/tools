@@ -67,7 +67,7 @@ public class ExampleTest {
 	}
 	
 	private static class PersonBuilder implements IdIfc {
-		private final Builder personOrBuilder = Person.newBuilder();
+		private final Builder personBuilder = Person.newBuilder();
 		
 		public PersonBuilder() {
 			
@@ -75,8 +75,8 @@ public class ExampleTest {
 
 		@Override
 		public DepartmentIfc setId(int id) {
-			personOrBuilder.setId(id);
-			return new DepartmentImpl(personOrBuilder);
+			personBuilder.setId(id);
+			return new DepartmentImpl(personBuilder);
 		}
 	}
 	

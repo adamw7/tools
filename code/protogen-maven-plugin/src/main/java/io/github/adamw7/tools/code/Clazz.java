@@ -82,7 +82,7 @@ public class Clazz {
 
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(pkg.getName()).append(".Builder ");
+		builder.append(pkg.getName()).append(".").append(className).append(".Builder ");
 		
 		builder.append(className.toLowerCase()).append("Builder = ");
 		builder.append(pkg.getName()).append(".").append(className).append(".newBuilder();\n");

@@ -46,7 +46,7 @@
 						<configuration>
 							<protocVersion>3.1.0</protocVersion>
 							<inputDirectories>
-								<include>src/main/proto</include>
+								<include>../protogen-maven-plugin/src/main/proto</include>
 							</inputDirectories>
 						</configuration>
 					</execution>

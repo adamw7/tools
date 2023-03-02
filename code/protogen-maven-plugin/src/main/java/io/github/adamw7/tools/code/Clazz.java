@@ -15,6 +15,7 @@ public class Clazz {
 	private final TypeMappings typeMappings;
 	private final List<FieldDescriptor> requiredFields;
 	private final Package pkg;
+	private final String pkgPrefix;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		this.descriptor = descriptor;
@@ -22,6 +23,11 @@ public class Clazz {
 		className = getClassName();
 		this.typeMappings = typeMappings;
 		requiredFields = getRequiredFields();
+		pkgPrefix = getPkgPrefix();
+	}
+	
+	private String getPkgPrefix() {
+		return pkg.getName() + ".";
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
@@ -82,10 +88,10 @@ public class Clazz {
 
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(pkg.getName()).append(".").append(className).append(".Builder ");
+		builder.append(pkgPrefix).append(className).append(".Builder ");
 		
 		builder.append(className.toLowerCase()).append("Builder = ");
-		builder.append(pkg.getName()).append(".").append(className).append(".newBuilder();\n");
+		builder.append(pkgPrefix).append(className).append(".newBuilder();\n");
 		return builder;
 	}
 

@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ExampleTest {
 
-	static interface RestIfc {
-		RestIfc setEmail(String email);
-		RestIfc setName(String name);
+	static interface OptionalIfc {
+		OptionalIfc setEmail(String email);
+		OptionalIfc setName(String name);
 		Person build();
 	}
 	
@@ -24,7 +24,7 @@ public class ExampleTest {
 		}
 
 		@Override
-		public RestIfc setDepartment(String department) {
+		public OptionalIfc setDepartment(String department) {
 			personOrBuilder.setDepartment(department);
 			return new RestImpl(personOrBuilder);
 		}
@@ -32,14 +32,14 @@ public class ExampleTest {
 	}
 	
 	static interface DepartmentIfc {
-		RestIfc setDepartment(String department);
+		OptionalIfc setDepartment(String department);
 	}
 	
 	static interface IdIfc {
 		DepartmentIfc setId(int id);
 	}
 	
-	static class RestImpl implements RestIfc {
+	static class RestImpl implements OptionalIfc {
 		
 		private final Builder builder;
 
@@ -48,13 +48,13 @@ public class ExampleTest {
 		}
 
 		@Override
-		public RestIfc setEmail(String email) {
+		public OptionalIfc setEmail(String email) {
 			builder.setEmail(email);
 			return this;
 		}
 
 		@Override
-		public RestIfc setName(String name) {
+		public OptionalIfc setName(String name) {
 			builder.setName(name);
 			return this;
 		}
@@ -69,10 +69,6 @@ public class ExampleTest {
 	private static class PersonBuilder implements IdIfc {
 		private final Builder personBuilder = Person.newBuilder();
 		
-		public PersonBuilder() {
-			
-		}
-
 		@Override
 		public DepartmentIfc setId(int id) {
 			personBuilder.setId(id);

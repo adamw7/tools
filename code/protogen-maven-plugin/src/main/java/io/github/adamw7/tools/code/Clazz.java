@@ -14,6 +14,7 @@ public class Clazz {
 	private final String className;
 	private final TypeMappings typeMappings;
 	private final List<FieldDescriptor> requiredFields;
+	private final List<FieldDescriptor> optionalFields;	
 	private final String pkg;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
@@ -21,11 +22,16 @@ public class Clazz {
 		className = getClassName();
 		this.typeMappings = typeMappings;
 		requiredFields = getRequiredFields();
-		this.pkg = pkg.getName();
+		optionalFields = getOptionalFields();
+		this.pkg = pkg.getName();		
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
 		return descriptor.getFields().stream().filter(f -> f.isRequired()).toList();		
+	}
+	
+	private List<FieldDescriptor> getOptionalFields() {
+		return descriptor.getFields().stream().filter(f -> f.isOptional()).toList();		
 	}
 
 	private String getClassName() {
@@ -37,15 +43,39 @@ public class Clazz {
 		StringBuilder imports = generateImports();
 		StringBuilder header = generateHeader();
 		StringBuilder fields = generateFields();
-		StringBuilder interfaces = generateInterfaces();		
+		StringBuilder requiredInterfaces = generateRequiredInterfaces();	
+		StringBuilder optionalInterface = generateOptionalInterface();	
+		
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports).append(header).append(fields).append(interfaces).append(footer);
+		full.append(pkg).append(imports).append(header).append(fields).append(optionalInterface).append(requiredInterfaces).append(footer);
 		return full.toString();
 	}
 
-	private StringBuilder generateInterfaces() {
+	private StringBuilder generateOptionalInterface() {
+		StringBuilder builder = new StringBuilder("\tstatic interface OptionalIfc {\n");
+		
+		for (FieldDescriptor optionalField : optionalFields) {
+			builder.append("\t\tOptionalIfc ");
+			builder.append(generateSetter(optionalField));
+		}
+		
+		builder.append("\t\t").append(className).append(" build();\n");
+		builder.append("\t}\n");
+		
+		return builder;
+	}
+
+	private StringBuilder generateSetter(FieldDescriptor field) {
+		StringBuilder builder = new StringBuilder("set");
+		builder.append(firstToUpper(field.getName()));
+		builder.append("(").append(typeMappings.get(field));
+		builder.append(" ").append(field.getName()).append(");\n");
+		return builder;
+	}
+
+	private StringBuilder generateRequiredInterfaces() {
 		StringBuilder interfaces = new StringBuilder();
 		
 		for (FieldDescriptor requiredField : requiredFields) {
@@ -60,10 +90,8 @@ public class Clazz {
 		ifc.append(firstToUpper(requiredField.getName()));
 		ifc.append("Ifc {").append("\n\t\t");
 		ifc.append(getNextIfc()).append(" ");
-		ifc.append("set").append(firstToUpper(requiredField.getName()));
-		ifc.append("(").append(typeMappings.get(requiredField));
-		ifc.append(" ").append(requiredField.getName()).append(");");
-		ifc.append("\n").append("\t}");
+		ifc.append(generateSetter(requiredField));
+		ifc.append("\t}");
 				
 		return ifc;
 	}

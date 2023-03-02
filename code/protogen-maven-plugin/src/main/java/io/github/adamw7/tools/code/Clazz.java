@@ -56,14 +56,14 @@ public class Clazz {
 
 	private StringBuilder generateInteface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder();
-		ifc.append("static interface ");
+		ifc.append("\tstatic interface ");
 		ifc.append(firstToUpper(requiredField.getName()));
-		ifc.append("Ifc {").append("\n\t");
+		ifc.append("Ifc {").append("\n\t\t");
 		ifc.append(getNextIfc()).append(" ");
 		ifc.append("set").append(firstToUpper(requiredField.getName()));
 		ifc.append("(").append(typeMappings.get(requiredField));
 		ifc.append(" ").append(requiredField.getName()).append(");");
-		ifc.append("\n").append("}");
+		ifc.append("\n").append("\t}");
 				
 		return ifc;
 	}
@@ -81,7 +81,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateFields() {
-		StringBuilder builder = new StringBuilder("private final ");
+		StringBuilder builder = new StringBuilder("\tprivate final ");
 		builder.append(className).append(".Builder ");
 		
 		builder.append(className.toLowerCase()).append("Builder = ");

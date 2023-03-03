@@ -116,7 +116,7 @@ public class Clazz {
 		ifc.append("\tstatic interface ");
 		ifc.append(firstToUpper(requiredField.getName()));
 		ifc.append("Ifc {").append("\n\t\t");
-		ifc.append(getNextIfc()).append(" ");
+		ifc.append(getNextIfc(requiredField)).append(" ");
 		ifc.append(generateSetter(requiredField));
 		ifc.append(";\n\t}");
 				
@@ -127,8 +127,13 @@ public class Clazz {
 		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1));
 	}
 
-	private StringBuilder getNextIfc() {
-		return new StringBuilder("DepartmentIfc");
+	private String getNextIfc(FieldDescriptor requiredField) {
+		for (int i = 0; i < requiredFields.size(); ++i) {
+			if (requiredFields.get(i).equals(requiredField)) {
+				return i == requiredFields.size() - 1 ? "OptionalIfc" : firstToUpper(requiredFields.get(i + 1).getName()) + "Ifc";
+			}
+		}
+		return "OptionalIfc";
 	}
 
 	private StringBuilder generatePackage() {
@@ -149,9 +154,14 @@ public class Clazz {
 	}
 
 	private StringBuilder generateHeader() {
-		StringBuilder builder = new StringBuilder("public class ").append(className).append("Builder");
+		StringBuilder builder = new StringBuilder("public class ").append(className).append("Builder implements ");
+		builder.append(firstInterface());
 		builder.append(" {").append(lineSeparator());
 		return builder;
+	}
+
+	private String firstInterface() {
+		return requiredFields.size() == 0 ? "OptionalIfc" : firstToUpper(requiredFields.get(0).getName()) + "Ifc";
 	}
 
 	private StringBuilder generateImports() {

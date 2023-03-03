@@ -169,7 +169,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generateImports() {
-		return new StringBuilder("import ").append(pkg).append(";\n");
+		return new StringBuilder("import ").append(pkg).append(".*;\n");
 	}
 
 }

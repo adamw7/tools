@@ -66,7 +66,7 @@ public class ExampleTest {
 		
 	}
 	
-	private static class PersonBuilder implements IdIfc {
+	private static class PersonBuilderExample implements IdIfc {
 		private final Builder personBuilder = Person.newBuilder();
 		
 		@Override
@@ -78,7 +78,7 @@ public class ExampleTest {
 	
 	@Test
 	public void happyPath() {
-		PersonBuilder builder = new PersonBuilder();
+		PersonBuilderExample builder = new PersonBuilderExample();
 		Person person = builder.setId(1).setDepartment("dep").setEmail("sth@sth.net").setName("Adam").build();
 		assertEquals(1, person.getId());
 		assertEquals("dep", person.getDepartment());

@@ -114,8 +114,8 @@ public class Clazz {
 	private StringBuilder generateInterface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder();
 		ifc.append("\tstatic interface ");
-		ifc.append(firstToUpper(requiredField.getName()));
-		ifc.append("Ifc {").append("\n\t\t");
+		ifc.append(toIfc(requiredField));
+		ifc.append(" {").append("\n\t\t");
 		ifc.append(getNextIfc(requiredField)).append(" ");
 		ifc.append(generateSetter(requiredField));
 		ifc.append(";\n\t}");
@@ -130,10 +130,14 @@ public class Clazz {
 	private String getNextIfc(FieldDescriptor requiredField) {
 		for (int i = 0; i < requiredFields.size(); ++i) {
 			if (requiredFields.get(i).equals(requiredField)) {
-				return i == requiredFields.size() - 1 ? "OptionalIfc" : firstToUpper(requiredFields.get(i + 1).getName()) + "Ifc";
+				return i == requiredFields.size() - 1 ? "OptionalIfc" : toIfc(requiredFields.get(i + 1));
 			}
 		}
 		return "OptionalIfc";
+	}
+
+	private String toIfc(FieldDescriptor fieldDescriptor) {
+		return firstToUpper(fieldDescriptor.getName()) + "Ifc";
 	}
 
 	private StringBuilder generatePackage() {
@@ -161,7 +165,7 @@ public class Clazz {
 	}
 
 	private String firstInterface() {
-		return requiredFields.size() == 0 ? "OptionalIfc" : firstToUpper(requiredFields.get(0).getName()) + "Ifc";
+		return requiredFields.size() == 0 ? "OptionalIfc" : toIfc(requiredFields.get(0));
 	}
 
 	private StringBuilder generateImports() {

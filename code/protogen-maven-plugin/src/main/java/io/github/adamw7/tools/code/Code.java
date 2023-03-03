@@ -59,8 +59,7 @@ public class Code {
 		if (object == null) {
 			throw new IllegalStateException("getDescriptor method return null");
 		}
-		if (object instanceof Descriptor) {
-			Descriptor descriptor = (Descriptor) object;
+		if (object instanceof Descriptor descriptor) {
 			return genBuilder(descriptor, c.getPackage());
 		} else {
 			throw new IllegalStateException("Wrong return type of the getDescriptor method: " + object.getClass());

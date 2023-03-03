@@ -27,11 +27,11 @@ public class Clazz {
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
-		return descriptor.getFields().stream().filter(f -> f.isRequired()).toList();		
+		return descriptor.getFields().stream().filter(FieldDescriptor::isRequired).toList();
 	}
 	
 	private List<FieldDescriptor> getOptionalFields() {
-		return descriptor.getFields().stream().filter(f -> f.isOptional()).toList();		
+		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
 	}
 
 	private String getClassName() {
@@ -106,12 +106,12 @@ public class Clazz {
 		StringBuilder interfaces = new StringBuilder();
 		
 		for (FieldDescriptor requiredField : requiredFields) {
-			interfaces.append(generateInteface(requiredField)).append("\n");
+			interfaces.append(generateInterface(requiredField)).append("\n");
 		}
 		return interfaces;
 	}
 
-	private StringBuilder generateInteface(FieldDescriptor requiredField) {
+	private StringBuilder generateInterface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder();
 		ifc.append("\tstatic interface ");
 		ifc.append(firstToUpper(requiredField.getName()));

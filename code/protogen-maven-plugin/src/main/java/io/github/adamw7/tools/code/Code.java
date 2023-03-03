@@ -8,11 +8,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.GeneratedMessageV3;
 
 public class Code {
 
+	private final static Logger log = LogManager.getLogger(Code.class.getName());
+	
 	private final String outputDir;
 	private TypeMappings typeMappings;
 
@@ -25,6 +30,7 @@ public class Code {
 		File dir = new File(outputDir + "/" + pkg);
 		dir.delete();
 		dir.mkdirs();
+		log.info(dir + " created");
 	}
 
 	public void genBuilders(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -33,7 +39,7 @@ public class Code {
 			try {
 				write(genBuilder(c), c.getSimpleName() + "Builder");
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-				e.printStackTrace();
+				log.error(e);
 			}
 		}
 	}

@@ -45,12 +45,38 @@ public class Clazz {
 		StringBuilder fields = generateFields();
 		StringBuilder requiredInterfaces = generateRequiredInterfaces();	
 		StringBuilder optionalInterface = generateOptionalInterface();	
+		StringBuilder optionalImpl = generateOptionalImpl();	
 		
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports).append(header).append(fields).append(optionalInterface).append(requiredInterfaces).append(footer);
+		full.append(pkg).append(imports).append(header).append(fields).append(optionalInterface);
+		full.append(optionalImpl).append(requiredInterfaces).append(footer);
 		return full.toString();
+	}
+
+	private StringBuilder generateOptionalImpl() {
+		StringBuilder builder = new StringBuilder("\tstatic class OptionalImpl implements OptionalIfc {\n");
+		builder.append("\t\tprivate final Builder builder;\n");
+		builder.append("\t\tpublic OptionalImpl(Builder builder) {\n");
+		builder.append("\t\t\tthis.builder = builder;\n\t\t}\n");
+		builder.append(generateSetters());
+		builder.append("\t\t@Override\n").append("\t\tpublic ").append(className).append(" build() {\n");
+		builder.append("\t\t\treturn builder.build();\n\t\t}\n\t}\n");
+		return builder;
+	}
+
+	private StringBuilder generateSetters() {
+		StringBuilder builder = new StringBuilder();
+		for (FieldDescriptor field : optionalFields) {
+			builder.append("\t\t@Override\n");
+			builder.append("\t\tpublic OptionalIfc ");
+			builder.append(generateSetter(field)).append(" {\n");
+			builder.append("\t\t\tbuilder.set").append(firstToUpper(field.getName()));
+			builder.append("(").append(field.getName()).append(");\n");
+			builder.append("\t\t\treturn this;\n\t\t}\n");
+		}
+		return builder;
 	}
 
 	private StringBuilder generateOptionalInterface() {
@@ -59,6 +85,7 @@ public class Clazz {
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append("\t\tOptionalIfc ");
 			builder.append(generateSetter(optionalField));
+			builder.append(";\n");
 		}
 		
 		builder.append("\t\t").append(className).append(" build();\n");
@@ -71,7 +98,7 @@ public class Clazz {
 		StringBuilder builder = new StringBuilder("set");
 		builder.append(firstToUpper(field.getName()));
 		builder.append("(").append(typeMappings.get(field));
-		builder.append(" ").append(field.getName()).append(");\n");
+		builder.append(" ").append(field.getName()).append(")");
 		return builder;
 	}
 
@@ -91,7 +118,7 @@ public class Clazz {
 		ifc.append("Ifc {").append("\n\t\t");
 		ifc.append(getNextIfc()).append(" ");
 		ifc.append(generateSetter(requiredField));
-		ifc.append("\t}");
+		ifc.append(";\n\t}");
 				
 		return ifc;
 	}

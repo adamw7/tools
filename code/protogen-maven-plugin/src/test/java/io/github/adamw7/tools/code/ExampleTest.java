@@ -26,7 +26,7 @@ public class ExampleTest {
 		@Override
 		public OptionalIfc setDepartment(String department) {
 			personOrBuilder.setDepartment(department);
-			return new RestImpl(personOrBuilder);
+			return new OptionalImpl(personOrBuilder);
 		}
 		
 	}
@@ -39,11 +39,11 @@ public class ExampleTest {
 		DepartmentIfc setId(int id);
 	}
 	
-	static class RestImpl implements OptionalIfc {
+	static class OptionalImpl implements OptionalIfc {
 		
 		private final Builder builder;
 
-		public RestImpl(Builder builder) {
+		public OptionalImpl(Builder builder) {
 			this.builder = builder;
 		}
 

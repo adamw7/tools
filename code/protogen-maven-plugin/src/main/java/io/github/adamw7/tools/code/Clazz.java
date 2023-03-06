@@ -54,11 +54,11 @@ public class Clazz {
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
 		full.append(header).append(fields);
-		full.append(optionalImpl).append(mandatorySetter()).append(footer);
+		full.append(optionalImpl).append(requiredSetter()).append(footer);
 		return full.toString();
 	}
 
-	private StringBuilder mandatorySetter() {
+	private StringBuilder requiredSetter() {
 		if (requiredFields.size() == 0) {
 			return new StringBuilder();
 		} else {
@@ -75,15 +75,13 @@ public class Clazz {
 	
 	private StringBuilder generateRequiredImpl() {
 		StringBuilder builder = new StringBuilder();
-		if (requiredFields.size() <= 1) {
-			return builder;
-		} else {
+		if (requiredFields.size() > 1) {
 			for (int i = 1; i < requiredFields.size(); ++i) { // skipping first since already handled
 				String classOrBuilder = firstToLower(className) + "OrBuilder";
 				FieldDescriptor field = requiredFields.get(i);
 				String ifcName = firstToUpper(field.getName()) + "Ifc";
 				String implName = firstToUpper(field.getName()) + "Impl";
-				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");				
+				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append("\tpublic ").append(implName).append("(Builder ").append(classOrBuilder);
 				builder.append(") {\n");
@@ -91,8 +89,8 @@ public class Clazz {
 				builder.append(generateRequiredSetter(classOrBuilder, field));
 				builder.append("\n}\n");
 			}
-			return builder;
 		}
+		return builder;
 	}
 
 	private StringBuilder generateRequiredSetter(String classOrBuilder, FieldDescriptor field) {

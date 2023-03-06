@@ -223,7 +223,11 @@ public class Clazz {
 	}
 
 	private StringBuilder generateImports() {
-		return new StringBuilder("import ").append(pkg).append(".*;\n");
+		StringBuilder builder = new StringBuilder();
+		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".").append(className);
+		builder.append(prefix).append(";\n");
+		builder.append(prefix).append(".Builder").append(";\n");		
+		return builder;
 	}
 
 }

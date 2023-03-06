@@ -52,8 +52,23 @@ public class Clazz {
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces);
 		full.append(header).append(fields);
-		full.append(optionalImpl).append(footer);
+		full.append(optionalImpl).append(mandatorySetter()).append(footer);
 		return full.toString();
+	}
+
+	private StringBuilder mandatorySetter() {
+		if (requiredFields.size() == 0) {
+			return new StringBuilder();
+		} else {
+			StringBuilder setter = new StringBuilder("\t@Override\n\tpublic ");
+			FieldDescriptor field = requiredFields.get(0);
+			setter.append(getNextIfc(field)).append(" ");
+			setter.append(generateSetter(field).append(" {\n"));
+			setter.append("\t\tpersonBuilder.set").append(firstToUpper(field.getName())).append("(");
+			setter.append(field.getName()).append(");\n");
+			setter.append("\t\treturn new ").append(getNextImpl(field)).append("(personBuilder);\n\t}\n");
+			return setter;
+		}
 	}
 
 	private StringBuilder generateOptionalImpl() {
@@ -115,7 +130,7 @@ public class Clazz {
 	private StringBuilder generateInterface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder();
 		ifc.append("interface ");
-		ifc.append(toIfc(requiredField));
+		ifc.append(to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n\t");
 		ifc.append(getNextIfc(requiredField)).append(" ");
 		ifc.append(generateSetter(requiredField));
@@ -131,14 +146,23 @@ public class Clazz {
 	private String getNextIfc(FieldDescriptor requiredField) {
 		for (int i = 0; i < requiredFields.size(); ++i) {
 			if (requiredFields.get(i).equals(requiredField)) {
-				return i == requiredFields.size() - 1 ? "OptionalIfc" : toIfc(requiredFields.get(i + 1));
+				return i == requiredFields.size() - 1 ? "OptionalIfc" : to(requiredFields.get(i + 1), "Ifc");
 			}
 		}
 		return "OptionalIfc";
 	}
+	
+	private String getNextImpl(FieldDescriptor requiredField) {
+		for (int i = 0; i < requiredFields.size(); ++i) {
+			if (requiredFields.get(i).equals(requiredField)) {
+				return i == requiredFields.size() - 1 ? "OptionalImpl" : to(requiredFields.get(i + 1), "Impl");
+			}
+		}
+		return "OptionalImpl";
+	}
 
-	private String toIfc(FieldDescriptor fieldDescriptor) {
-		return firstToUpper(fieldDescriptor.getName()) + "Ifc";
+	private String to(FieldDescriptor fieldDescriptor, String suffix) {
+		return firstToUpper(fieldDescriptor.getName()) + suffix;
 	}
 
 	private StringBuilder generatePackage() {
@@ -166,7 +190,7 @@ public class Clazz {
 	}
 
 	private String firstInterface() {
-		return requiredFields.size() == 0 ? "OptionalIfc" : toIfc(requiredFields.get(0));
+		return requiredFields.size() == 0 ? "OptionalIfc" : to(requiredFields.get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {

@@ -7,14 +7,48 @@ import io.github.adamw7.tools.code.protos.Person.Builder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+interface OptionalIfc {
+	OptionalIfc setEmail(String email);
+	OptionalIfc setName(String name);
+	Person build();
+}
+
+interface DepartmentIfc {
+	OptionalIfc setDepartment(String department);
+}
+
+interface IdIfc {
+	DepartmentIfc setId(int id);
+}
+
+class OptionalImpl implements OptionalIfc {
+	
+	private final Builder builder;
+
+	public OptionalImpl(Builder builder) {
+		this.builder = builder;
+	}
+
+	@Override
+	public OptionalIfc setEmail(String email) {
+		builder.setEmail(email);
+		return this;
+	}
+
+	@Override
+	public OptionalIfc setName(String name) {
+		builder.setName(name);
+		return this;
+	}
+
+	@Override
+	public Person build() {
+		return builder.build();
+	}
+}
+
 public class ExampleTest {
 
-	static interface OptionalIfc {
-		OptionalIfc setEmail(String email);
-		OptionalIfc setName(String name);
-		Person build();
-	}
-	
 	static class DepartmentImpl implements DepartmentIfc {
 
 		private final Builder personOrBuilder;
@@ -27,43 +61,7 @@ public class ExampleTest {
 		public OptionalIfc setDepartment(String department) {
 			personOrBuilder.setDepartment(department);
 			return new OptionalImpl(personOrBuilder);
-		}
-		
-	}
-	
-	static interface DepartmentIfc {
-		OptionalIfc setDepartment(String department);
-	}
-	
-	static interface IdIfc {
-		DepartmentIfc setId(int id);
-	}
-	
-	static class OptionalImpl implements OptionalIfc {
-		
-		private final Builder builder;
-
-		public OptionalImpl(Builder builder) {
-			this.builder = builder;
-		}
-
-		@Override
-		public OptionalIfc setEmail(String email) {
-			builder.setEmail(email);
-			return this;
-		}
-
-		@Override
-		public OptionalIfc setName(String name) {
-			builder.setName(name);
-			return this;
-		}
-
-		@Override
-		public Person build() {
-			return builder.build();
-		}
-		
+		}	
 	}
 	
 	private static class PersonBuilderExample implements IdIfc {

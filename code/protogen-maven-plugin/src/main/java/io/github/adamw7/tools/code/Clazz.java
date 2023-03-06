@@ -41,17 +41,18 @@ public class Clazz {
 	public String generate() {
 		StringBuilder pkg = generatePackage();
 		StringBuilder imports = generateImports();
-		StringBuilder header = generateHeader();
-		StringBuilder fields = generateFields();
 		StringBuilder requiredInterfaces = generateRequiredInterfaces();	
-		StringBuilder optionalInterface = generateOptionalInterface();	
+		StringBuilder optionalInterface = generateOptionalInterface();
+		StringBuilder header = generateHeader();
+		StringBuilder fields = generateFields();	
 		StringBuilder optionalImpl = generateOptionalImpl();	
 		
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports).append(header).append(fields).append(optionalInterface);
-		full.append(optionalImpl).append(requiredInterfaces).append(footer);
+		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces);
+		full.append(header).append(fields);
+		full.append(optionalImpl).append(footer);
 		return full.toString();
 	}
 
@@ -80,16 +81,16 @@ public class Clazz {
 	}
 
 	private StringBuilder generateOptionalInterface() {
-		StringBuilder builder = new StringBuilder("\tstatic interface OptionalIfc {\n");
+		StringBuilder builder = new StringBuilder("interface OptionalIfc {\n");
 		
 		for (FieldDescriptor optionalField : optionalFields) {
-			builder.append("\t\tOptionalIfc ");
+			builder.append("\tOptionalIfc ");
 			builder.append(generateSetter(optionalField));
 			builder.append(";\n");
 		}
 		
-		builder.append("\t\t").append(className).append(" build();\n");
-		builder.append("\t}\n");
+		builder.append("\t").append(className).append(" build();\n");
+		builder.append("}\n");
 		
 		return builder;
 	}
@@ -113,12 +114,12 @@ public class Clazz {
 
 	private StringBuilder generateInterface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder();
-		ifc.append("\tstatic interface ");
+		ifc.append("interface ");
 		ifc.append(toIfc(requiredField));
-		ifc.append(" {").append("\n\t\t");
+		ifc.append(" {").append("\n\t");
 		ifc.append(getNextIfc(requiredField)).append(" ");
 		ifc.append(generateSetter(requiredField));
-		ifc.append(";\n\t}");
+		ifc.append(";\n}");
 				
 		return ifc;
 	}

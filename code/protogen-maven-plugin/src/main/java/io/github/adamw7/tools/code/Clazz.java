@@ -62,11 +62,11 @@ public class Clazz {
 		} else {
 			StringBuilder setter = new StringBuilder("\t@Override\n\tpublic ");
 			FieldDescriptor field = requiredFields.get(0);
-			setter.append(getNextIfc(field)).append(" ");
+			setter.append(getNext(field, "Ifc")).append(" ");
 			setter.append(generateSetter(field).append(" {\n"));
 			setter.append("\t\tpersonBuilder.set").append(firstToUpper(field.getName())).append("(");
 			setter.append(field.getName()).append(");\n");
-			setter.append("\t\treturn new ").append(getNextImpl(field)).append("(personBuilder);\n\t}\n");
+			setter.append("\t\treturn new ").append(getNext(field, "Impl")).append("(personBuilder);\n\t}\n");
 			return setter;
 		}
 	}
@@ -132,7 +132,7 @@ public class Clazz {
 		ifc.append("interface ");
 		ifc.append(to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n\t");
-		ifc.append(getNextIfc(requiredField)).append(" ");
+		ifc.append(getNext(requiredField, "Ifc")).append(" ");
 		ifc.append(generateSetter(requiredField));
 		ifc.append(";\n}");
 				
@@ -143,22 +143,13 @@ public class Clazz {
 		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1));
 	}
 
-	private String getNextIfc(FieldDescriptor requiredField) {
+	private String getNext(FieldDescriptor requiredField, String suffix) {
 		for (int i = 0; i < requiredFields.size(); ++i) {
 			if (requiredFields.get(i).equals(requiredField)) {
-				return i == requiredFields.size() - 1 ? "OptionalIfc" : to(requiredFields.get(i + 1), "Ifc");
+				return i == requiredFields.size() - 1 ? "Optional" + suffix : to(requiredFields.get(i + 1), suffix);
 			}
 		}
-		return "OptionalIfc";
-	}
-	
-	private String getNextImpl(FieldDescriptor requiredField) {
-		for (int i = 0; i < requiredFields.size(); ++i) {
-			if (requiredFields.get(i).equals(requiredField)) {
-				return i == requiredFields.size() - 1 ? "OptionalImpl" : to(requiredFields.get(i + 1), "Impl");
-			}
-		}
-		return "OptionalImpl";
+		return "Optional" + suffix;
 	}
 
 	private String to(FieldDescriptor fieldDescriptor, String suffix) {

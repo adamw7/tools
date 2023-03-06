@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.code;
+package io.github.adamw7.tools.code.example;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,22 +47,22 @@ class OptionalImpl implements OptionalIfc {
 	}
 }
 
-public class ExampleTest {
+class DepartmentImpl implements DepartmentIfc {
 
-	static class DepartmentImpl implements DepartmentIfc {
+	private final Builder personOrBuilder;
 
-		private final Builder personOrBuilder;
-
-		public DepartmentImpl(Builder personOrBuilder) {
-			this.personOrBuilder = personOrBuilder;
-		}
-
-		@Override
-		public OptionalIfc setDepartment(String department) {
-			personOrBuilder.setDepartment(department);
-			return new OptionalImpl(personOrBuilder);
-		}	
+	public DepartmentImpl(Builder personOrBuilder) {
+		this.personOrBuilder = personOrBuilder;
 	}
+
+	@Override
+	public OptionalIfc setDepartment(String department) {
+		personOrBuilder.setDepartment(department);
+		return new OptionalImpl(personOrBuilder);
+	}	
+}
+
+public class ExampleTest {
 	
 	private static class PersonBuilderExample implements IdIfc {
 		private final Builder personBuilder = Person.newBuilder();

@@ -53,8 +53,8 @@ public class Clazz {
 		
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
-		full.append(header).append(fields);
-		full.append(optionalImpl).append(requiredSetter()).append(footer);
+		full.append(optionalImpl).append(header).append(fields);
+		full.append(requiredSetter()).append(footer);
 		return full.toString();
 	}
 
@@ -104,13 +104,13 @@ public class Clazz {
 	}
 
 	private StringBuilder generateOptionalImpl() {
-		StringBuilder builder = new StringBuilder("\tstatic class OptionalImpl implements OptionalIfc {\n");
-		builder.append("\t\tprivate final Builder builder;\n");
-		builder.append("\t\tpublic OptionalImpl(Builder builder) {\n");
-		builder.append("\t\t\tthis.builder = builder;\n\t\t}\n");
+		StringBuilder builder = new StringBuilder("class OptionalImpl implements OptionalIfc {\n");
+		builder.append("\tprivate final Builder builder;\n");
+		builder.append("\tpublic OptionalImpl(Builder builder) {\n");
+		builder.append("\t\tthis.builder = builder;\n\t\t}\n");
 		builder.append(generateSetters());
-		builder.append("\t\t@Override\n").append("\t\tpublic ").append(className).append(" build() {\n");
-		builder.append("\t\t\treturn builder.build();\n\t\t}\n\t}\n");
+		builder.append("\t@Override\n").append("\t\tpublic ").append(className).append(" build() {\n");
+		builder.append("\t\treturn builder.build();\n\t\t}\n\t}\n");
 		return builder;
 	}
 

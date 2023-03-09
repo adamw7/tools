@@ -155,6 +155,7 @@ It contains:
   - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
   
 Examples:
+
 in memory check:
 ```java
 		AbstractUniqueness check = new InMemoryUniquenessCheck();
@@ -188,5 +189,6 @@ public interface InMemoryDataSource extends IterableDataSource {
 ```
 
 Notes:
+
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heapsize but for the recursive checks need to read the source many times. 

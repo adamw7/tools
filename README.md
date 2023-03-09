@@ -12,6 +12,23 @@ Solution:
 
 Move detection to compile time.
 Example of the problem:
+```proto
+syntax = "proto2";
+
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.protos";
+option java_outer_classname = "AddressBookProtos";
+
+message Person {
+  optional string name = 1;
+  required int32 id = 2;
+  optional string email = 3;
+  required string department = 4;
+}
+```
+and the builder that allows building the object without setting the required field "Id":
 ```java
 Person.Builder personBuilder = Person.newBuilder();
 
@@ -42,7 +59,7 @@ Solution:
 		</executions>
 </plugin>
 ```
-that generetes builders detecting missing mandatory fields compile time:
+that generetes builders detecting missing required fields compile time:
 ```java
 interface OptionalIfc {
 	OptionalIfc setEmail(String email);

@@ -25,6 +25,9 @@
 				<groupId>io.github.adamw7</groupId>
 				<artifactId>protogen-maven-plugin</artifactId>
 				<version>${project.version}</version>
+				<configuration>
+					<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
+				</configuration>
 				<executions>
 					<execution>
 						<phase>generate-sources</phase>

@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -18,19 +21,29 @@ public class Code {
 
 	private final static Logger log = LogManager.getLogger(Code.class.getName());
 	
-	private final String outputDir;
+	private final String generatedSourcesDir;
 	private TypeMappings typeMappings;
 
-	public Code() {
-		outputDir = "target/generated-sources/";
+	public Code(String generatedSourcesDir) {
+		this.generatedSourcesDir = generatedSourcesDir;
 		createPkg(Clazz.OUTPUT_PKG);
 	}
 
 	private void createPkg(String pkg) {
-		File dir = new File(outputDir + "/" + pkg);
+		File dir = new File(generatedSourcesDir + "/" + pkg);
 		dir.delete();
-		dir.mkdirs();
+		try {
+			Files.createDirectories(Paths.get(generatedSourcesDir).getParent());
+			Files.createDirectories(Paths.get(generatedSourcesDir));
+			Files.createDirectories(replace(generatedSourcesDir + "/" + pkg));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 		log.info(dir + " created");
+	}
+
+	private Path replace(String pkg) {
+		return Paths.get(pkg.replaceAll("\\.", "/"));
 	}
 
 	public void genBuilders(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -45,7 +58,7 @@ public class Code {
 	}
 
 	private void write(String code, String className) {
-		try (FileWriter myWriter = new FileWriter(outputDir + Clazz.OUTPUT_PKG + "/" + className + ".java")) {
+		try (FileWriter myWriter = new FileWriter(generatedSourcesDir + replace(Clazz.OUTPUT_PKG) + "/" + className + ".java")) {
 			myWriter.write(code);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

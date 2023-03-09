@@ -1,7 +1,130 @@
 # tools
 
 Library of tooling for various purposes.
-The main one is data.
+
+Code generation:
+
+Poblem:
+
+Generated builder java code for protobuffers detects missing required fields in runtime.
+
+Solution:
+
+Move detection to compile time.
+Example of the problem:
+```java
+Person.Builder personBuilder = Person.newBuilder();
+
+personBuilder.setEmail("email@sth.com");
+personBuilder.setName("Adam");
+
+UninitializedMessageException thrown = assertThrows(UninitializedMessageException.class, () -> {
+	personBuilder.build();
+}, "Expected build method to throw, but it didn't");
+
+assertEquals("Message missing required fields: id, department", thrown.getMessage());
+```
+Solution:
+```xml
+<plugin>
+	<groupId>io.github.adamw7</groupId>
+	<artifactId>protogen-maven-plugin</artifactId>
+	<configuration>
+		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
+	</configuration>
+		<executions>
+			<execution>
+				<phase>generate-sources</phase>
+				<goals>
+					<goal>code-generator</goal>
+				<goals>
+			</execution>
+		</executions>
+</plugin>
+```
+that generetes builders detecting missing mandatory fields compile time:
+```java
+interface OptionalIfc {
+	OptionalIfc setEmail(String email);
+	OptionalIfc setName(String name);
+	Person build();
+}
+
+interface DepartmentIfc {
+	OptionalIfc setDepartment(String department);
+}
+
+interface IdIfc {
+	DepartmentIfc setId(int id);
+}
+
+class OptionalImpl implements OptionalIfc {
+	
+	private final Builder builder;
+
+	public OptionalImpl(Builder builder) {
+		this.builder = builder;
+	}
+
+	@Override
+	public OptionalIfc setEmail(String email) {
+		builder.setEmail(email);
+		return this;
+	}
+
+	@Override
+	public OptionalIfc setName(String name) {
+		builder.setName(name);
+		return this;
+	}
+
+	@Override
+	public Person build() {
+		return builder.build();
+	}
+}
+
+class DepartmentImpl implements DepartmentIfc {
+
+	private final Builder personOrBuilder;
+
+	public DepartmentImpl(Builder personOrBuilder) {
+		this.personOrBuilder = personOrBuilder;
+	}
+
+	@Override
+	public OptionalIfc setDepartment(String department) {
+		personOrBuilder.setDepartment(department);
+		return new OptionalImpl(personOrBuilder);
+	}	
+}
+
+public class ExampleTest {
+	
+	private static class PersonBuilderExample implements IdIfc {
+		private final Builder personBuilder = Person.newBuilder();
+		
+		@Override
+		public DepartmentIfc setId(int id) {
+			personBuilder.setId(id);
+			return new DepartmentImpl(personBuilder);
+		}
+	}
+	
+	@Test
+	public void happyPath() {
+		PersonBuilderExample builder = new PersonBuilderExample();
+		Person person = builder.setId(1).setDepartment("dep").setEmail("sth@sth.net").setName("Adam").build();
+		assertEquals(1, person.getId());
+		assertEquals("dep", person.getDepartment());
+		assertEquals("sth@sth.net", person.getEmail());
+		assertEquals("Adam", person.getName());
+		
+	}
+}
+```
+
+The other one is data.
 It contains:
 - data sources
   - support relational data loading

@@ -36,9 +36,7 @@ Person.Builder personBuilder = Person.newBuilder();
 personBuilder.setEmail("email@sth.com");
 personBuilder.setName("Adam");
 
-UninitializedMessageException thrown = assertThrows(UninitializedMessageException.class, () -> {
-	personBuilder.build();
-}, "Expected build method to throw, but it didn't");
+UninitializedMessageException thrown = assertThrows(UninitializedMessageException.class, personBuilder::build, "Expected build method to throw, but it didn't");
 
 assertEquals("Message missing required fields: id, department", thrown.getMessage());
 ```

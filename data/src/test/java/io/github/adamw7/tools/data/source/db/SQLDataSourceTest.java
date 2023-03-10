@@ -71,9 +71,7 @@ public class SQLDataSourceTest extends DBTest {
 	@ParameterizedTest
 	@MethodSource("wrongQuerySources")
 	public void wrongQuery(IterableSQLDataSource source) {
-		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, () -> {
-			source.open();
-		}, "Expected open method to throw, but it didn't");
+		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, source::open, "Expected open method to throw, but it didn't");
 
 		assertEquals("java.io.IOException: java.sql.SQLSyntaxErrorException: Table/View 'NON_EXISTING_TABLE' does not exist.",
 				thrown.getMessage());

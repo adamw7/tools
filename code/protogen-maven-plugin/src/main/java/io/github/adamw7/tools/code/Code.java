@@ -33,8 +33,9 @@ public class Code {
 		File dir = new File(generatedSourcesDir + "/" + pkg);
 		dir.delete();
 		try {
-			Files.createDirectories(Paths.get(generatedSourcesDir).getParent());
-			Files.createDirectories(Paths.get(generatedSourcesDir));
+			Path path = Paths.get(generatedSourcesDir);
+			Files.createDirectories(path.getParent());
+			Files.createDirectories(path);
 			Files.createDirectories(replace(generatedSourcesDir + "/" + pkg));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

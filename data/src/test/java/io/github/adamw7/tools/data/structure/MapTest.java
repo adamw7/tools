@@ -261,9 +261,7 @@ public class MapTest {
 	
 	@Test
 	public void negativeTooLowNumber() {
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			new OpenAddressingMap<>(-10);
-		}, "Expected constructor method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new OpenAddressingMap<>(-10), "Expected constructor method to throw, but it didn't");
 
 		assertEquals(thrown.getMessage(), "Wrong size: -10");
 	}

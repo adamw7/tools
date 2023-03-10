@@ -91,9 +91,7 @@ public class UniquenessCheckTest extends DBTest {
 	void negativeWrongColumn(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
 		String columnName = "notExistingColumn";
-		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> {
-			uniqueness.exec(columnName);
-		}, "Expected exec method to throw, but it didn't");
+		ColumnNotFoundException thrown = assertThrows(ColumnNotFoundException.class, () -> uniqueness.exec(columnName), "Expected exec method to throw, but it didn't");
 		String expectedMessage = columnName
 				+ " cannot be found in [hlpi_name, year1, hlpi, tot_hhs, own, own_wm, own_prop, own_wm_prop, prop_hhs, age, size, income, expenditure, eqv_income, eqv_exp]";
 		assertEquals(expectedMessage.toLowerCase(), thrown.getMessage().toLowerCase());
@@ -104,9 +102,7 @@ public class UniquenessCheckTest extends DBTest {
 	void negativeEmptyInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec();
-		}, "Expected exec method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, uniqueness::exec, "Expected exec method to throw, but it didn't");
 
 		assertEquals("Wrong input: []", thrown.getMessage());
 	}
@@ -115,9 +111,7 @@ public class UniquenessCheckTest extends DBTest {
 	@MethodSource("happyPath")
 	void negativeNullInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source) throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec((String[]) null);
-		}, "Expected exec method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.exec((String[]) null), "Expected exec method to throw, but it didn't");
 
 		assertEquals("Wrong input: null", thrown.getMessage());
 	}
@@ -127,9 +121,7 @@ public class UniquenessCheckTest extends DBTest {
 	void negativeNullsInInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec("hlpi_name", null, "year1");
-		}, "Expected exec method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.exec("hlpi_name", null, "year1"), "Expected exec method to throw, but it didn't");
 
 		assertEquals("Input columns cannot be null", thrown.getMessage());
 	}
@@ -139,9 +131,7 @@ public class UniquenessCheckTest extends DBTest {
 	void negativeDuplicatesInInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.exec("year1", "year1");
-		}, "Expected exec method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.exec("year1", "year1"), "Expected exec method to throw, but it didn't");
 
 		assertEquals("Duplicate in input: year1", thrown.getMessage());
 	}
@@ -149,9 +139,7 @@ public class UniquenessCheckTest extends DBTest {
 	@Test
 	public void negativeInMemorySourceVsNoMemoryCheck() {
 		AbstractUniqueness uniqueness = new InMemoryUniquenessCheck();
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-			uniqueness.setDataSource(new IterableSQLDataSource(connection, query));
-		}, "Expected setDataSource method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.setDataSource(new IterableSQLDataSource(connection, query)), "Expected setDataSource method to throw, but it didn't");
 
 		assertEquals("Expected InMemoryDataSource and got: IterableSQLDataSource", thrown.getMessage());
 	}

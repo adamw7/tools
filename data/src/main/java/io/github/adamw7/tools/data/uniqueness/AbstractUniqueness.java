@@ -71,7 +71,7 @@ public abstract class AbstractUniqueness implements Uniqueness {
 		}
 	}
 	
-	protected Result handleSucessfullCheck(String[] keyCandidates) {
+	protected Result handleSuccessfullCheck(String[] keyCandidates) {
 		Set<Result> set = findPotentiallySmallerSetOfCandidates(keyCandidates);
 		return new Result(true, keyCandidates, null, set);
 	}

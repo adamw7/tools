@@ -20,7 +20,6 @@ package tutorial;
 
 option java_multiple_files = true;
 option java_package = "io.github.adamw7.tools.code.protos";
-option java_outer_classname = "AddressBookProtos";
 
 message Person {
   optional string name = 1;

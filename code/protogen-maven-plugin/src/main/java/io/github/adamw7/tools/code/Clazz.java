@@ -16,14 +16,16 @@ public class Clazz {
 	private final List<FieldDescriptor> requiredFields;
 	private final List<FieldDescriptor> optionalFields;	
 	private final String pkg;
+	private final Interfaces interfaces;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		this.descriptor = descriptor;
 		className = getClassName();
-		this.typeMappings = typeMappings;
 		requiredFields = getRequiredFields();
 		optionalFields = getOptionalFields();
-		this.pkg = pkg.getName();		
+		this.pkg = pkg.getName();	
+		this.typeMappings = typeMappings;
+		this.interfaces = new Interfaces(className, optionalFields, requiredFields, typeMappings);
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
@@ -41,8 +43,8 @@ public class Clazz {
 	public String generate() {
 		StringBuilder pkg = generatePackage();
 		StringBuilder imports = generateImports();
-		StringBuilder requiredInterfaces = generateRequiredInterfaces();	
-		StringBuilder optionalInterface = generateOptionalInterface();
+		StringBuilder requiredInterfaces = interfaces.generateRequired();	
+		StringBuilder optionalInterface = interfaces.generateOptional();
 		StringBuilder requiredImpl = generateRequiredImpl();
 		
 		StringBuilder header = generateHeader();
@@ -64,11 +66,11 @@ public class Clazz {
 		} else {
 			StringBuilder setter = new StringBuilder("\t@Override\n\tpublic ");
 			FieldDescriptor field = requiredFields.get(0);
-			setter.append(getNext(field, "Ifc")).append(" ");
-			setter.append(generateSetter(field).append(" {\n"));
-			setter.append("\t\tpersonBuilder.set").append(firstToUpper(field.getName())).append("(");
+			setter.append(Utils.getNext(requiredFields, field, "Ifc")).append(" ");
+			setter.append(Utils.generateSetter(field, typeMappings).append(" {\n"));
+			setter.append("\t\tpersonBuilder.set").append(Utils.firstToUpper(field.getName())).append("(");
 			setter.append(field.getName()).append(");\n");
-			setter.append("\t\treturn new ").append(getNext(field, "Impl")).append("(personBuilder);\n\t}\n");
+			setter.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(personBuilder);\n\t}\n");
 			return setter;
 		}
 	}
@@ -77,10 +79,10 @@ public class Clazz {
 		StringBuilder builder = new StringBuilder();
 		if (requiredFields.size() > 1) {
 			for (int i = 1; i < requiredFields.size(); ++i) { // skipping first since already handled
-				String classOrBuilder = firstToLower(className) + "OrBuilder";
+				String classOrBuilder = Utils.firstToLower(className) + "OrBuilder";
 				FieldDescriptor field = requiredFields.get(i);
-				String ifcName = firstToUpper(field.getName()) + "Ifc";
-				String implName = firstToUpper(field.getName()) + "Impl";
+				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
+				String implName = Utils.firstToUpper(field.getName()) + "Impl";
 				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append("\tpublic ").append(implName).append("(Builder ").append(classOrBuilder);
@@ -95,10 +97,10 @@ public class Clazz {
 
 	private StringBuilder generateRequiredSetter(String classOrBuilder, FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
-		builder.append("\tpublic ").append(getNext(field, "Ifc")).append(" ").append(generateSetter(field)).append(" {\n");
-		builder.append("\t\t").append(classOrBuilder).append(".set").append(firstToUpper(field.getName()));
+		builder.append("\tpublic ").append(Utils.getNext(requiredFields, field, "Ifc")).append(" ").append(Utils.generateSetter(field, typeMappings)).append(" {\n");
+		builder.append("\t\t").append(classOrBuilder).append(".set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
-		builder.append("\t\treturn new ").append(getNext(field, "Impl")).append("(").append(classOrBuilder).append(");\n");
+		builder.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(").append(classOrBuilder).append(");\n");
 		builder.append("\t}");
 		return builder;
 	}
@@ -119,77 +121,12 @@ public class Clazz {
 		for (FieldDescriptor field : optionalFields) {
 			builder.append("\t\t@Override\n");
 			builder.append("\t\tpublic OptionalIfc ");
-			builder.append(generateSetter(field)).append(" {\n");
-			builder.append("\t\t\tbuilder.set").append(firstToUpper(field.getName()));
+			builder.append(Utils.generateSetter(field, typeMappings)).append(" {\n");
+			builder.append("\t\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
 			builder.append("(").append(field.getName()).append(");\n");
 			builder.append("\t\t\treturn this;\n\t\t}\n");
 		}
 		return builder;
-	}
-
-	private StringBuilder generateOptionalInterface() {
-		StringBuilder builder = new StringBuilder("interface OptionalIfc {\n");
-		
-		for (FieldDescriptor optionalField : optionalFields) {
-			builder.append("\tOptionalIfc ");
-			builder.append(generateSetter(optionalField));
-			builder.append(";\n");
-		}
-		
-		builder.append("\t").append(className).append(" build();\n");
-		builder.append("}\n");
-		
-		return builder;
-	}
-
-	private StringBuilder generateSetter(FieldDescriptor field) {
-		StringBuilder builder = new StringBuilder("set");
-		builder.append(firstToUpper(field.getName()));
-		builder.append("(").append(typeMappings.get(field));
-		builder.append(" ").append(field.getName()).append(")");
-		return builder;
-	}
-
-	private StringBuilder generateRequiredInterfaces() {
-		StringBuilder interfaces = new StringBuilder();
-		
-		for (FieldDescriptor requiredField : requiredFields) {
-			interfaces.append(generateInterface(requiredField)).append("\n");
-		}
-		return interfaces;
-	}
-
-	private StringBuilder generateInterface(FieldDescriptor requiredField) {
-		StringBuilder ifc = new StringBuilder();
-		ifc.append("interface ");
-		ifc.append(to(requiredField, "Ifc"));
-		ifc.append(" {").append("\n\t");
-		ifc.append(getNext(requiredField, "Ifc")).append(" ");
-		ifc.append(generateSetter(requiredField));
-		ifc.append(";\n}");
-				
-		return ifc;
-	}
-
-	private String firstToUpper(String string) {
-		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1));
-	}
-	
-	private String firstToLower(String string) {
-		return (String.valueOf(string.charAt(0)).toLowerCase() + string.substring(1));
-	}
-
-	private String getNext(FieldDescriptor requiredField, String suffix) {
-		for (int i = 0; i < requiredFields.size(); ++i) {
-			if (requiredFields.get(i).equals(requiredField)) {
-				return i == requiredFields.size() - 1 ? "Optional" + suffix : to(requiredFields.get(i + 1), suffix);
-			}
-		}
-		return "Optional" + suffix;
-	}
-
-	private String to(FieldDescriptor fieldDescriptor, String suffix) {
-		return firstToUpper(fieldDescriptor.getName()) + suffix;
 	}
 
 	private StringBuilder generatePackage() {
@@ -217,7 +154,7 @@ public class Clazz {
 	}
 
 	private String firstInterface() {
-		return requiredFields.size() == 0 ? "OptionalIfc" : to(requiredFields.get(0), "Ifc");
+		return requiredFields.size() == 0 ? "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {

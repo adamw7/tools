@@ -69,9 +69,11 @@ public class Clazz {
 			FieldDescriptor field = requiredFields.get(0);
 			setter.append(Utils.getNext(requiredFields, field, "Ifc")).append(" ");
 			setter.append(Utils.generateSetter(field, typeMappings).append(" {\n"));
-			setter.append("\t\tpersonBuilder.set").append(Utils.firstToUpper(field.getName())).append("(");
+			String classNameLower = Utils.firstToLower(className);
+			setter.append("\t\t").append(classNameLower).append("Builder.set").append(Utils.firstToUpper(field.getName())).append("(");
 			setter.append(field.getName()).append(");\n");
-			setter.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(personBuilder);\n\t}\n");
+			setter.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(");
+			setter.append(classNameLower).append("Builder);\n\t}\n");
 			return setter;
 		}
 	}

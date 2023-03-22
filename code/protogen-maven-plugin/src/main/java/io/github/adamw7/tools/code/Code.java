@@ -30,11 +30,11 @@ public class Code {
 	}
 
 	private void createPkg(String pkg) {
-		File dir = new File(generatedSourcesDir + "/" + pkg);
+		String directory = generatedSourcesDir + "/" + pkg;
+		File dir = new File(directory);
 		dir.delete();
 		try {
-			Files.createDirectories(Paths.get(generatedSourcesDir));
-			Files.createDirectories(replace(generatedSourcesDir + "/" + pkg));
+			Files.createDirectories(replace(directory));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

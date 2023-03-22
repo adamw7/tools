@@ -11,6 +11,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 import com.google.protobuf.GeneratedMessageV3;
 
+import io.github.adamw7.tools.code.gen.Code;
+
 @Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class CodeMojo extends AbstractMojo {
 	

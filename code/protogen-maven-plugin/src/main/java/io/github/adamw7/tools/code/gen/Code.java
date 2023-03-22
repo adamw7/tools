@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.code;
+package io.github.adamw7.tools.code.gen;
 
 import java.io.File;
 import java.io.FileWriter;

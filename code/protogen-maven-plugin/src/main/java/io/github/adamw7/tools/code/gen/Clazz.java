@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.code;
+package io.github.adamw7.tools.code.gen;
 
 import static java.lang.System.lineSeparator;
 

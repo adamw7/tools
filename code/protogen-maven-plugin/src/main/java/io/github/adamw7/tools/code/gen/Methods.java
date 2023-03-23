@@ -17,7 +17,7 @@ public class Methods {
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
 		StringBuilder builder = new StringBuilder("\t\t@Override\n");
 		builder.append("\t\tpublic ").append(returnType).append(" ");
-		builder.append(Methods.generateSetter(field, typeMappings)).append(" {\n");
+		builder.append(generateSetter(field, typeMappings)).append(" {\n");
 		builder.append("\t\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\t\treturn this;\n\t\t}\n");
@@ -36,11 +36,22 @@ public class Methods {
 	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field, List<FieldDescriptor> requiredFields) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		builder.append("\tpublic ").append(Utils.getNext(requiredFields, field, "Ifc")).append(" ")
-				.append(Methods.generateSetter(field, typeMappings)).append(" {\n");
+				.append(generateSetter(field, typeMappings)).append(" {\n");
 		builder.append("\t\t").append(classOrBuilder).append(".set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(")
 				.append(classOrBuilder).append(");\n");
+		builder.append("\t}\n");
+		
+		return builder;
+	}
+	
+	public StringBuilder requiredHas(String classOrBuilder, FieldDescriptor field) {
+		StringBuilder builder = new StringBuilder("\t@Override\n");
+		String fieldToUpper = Utils.firstToUpper(field.getName());
+		builder.append("\tpublic boolean has").append(fieldToUpper);
+		builder.append("() {\n");
+		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(fieldToUpper).append("();\n");
 		builder.append("\t}");
 		
 		return builder;
@@ -58,8 +69,16 @@ public class Methods {
 	public StringBuilder declareSetter(FieldDescriptor field, String returnType) {
 		StringBuilder builder = new StringBuilder("\t");
 		builder.append(returnType).append(" ");
-		builder.append(Methods.generateSetter(field, typeMappings));
+		builder.append(generateSetter(field, typeMappings));
 		builder.append(";\n");
+		
+		return builder;
+	}
+	
+	public StringBuilder declareHas(FieldDescriptor field) {
+		StringBuilder builder = new StringBuilder("\tboolean has");
+		builder.append(Utils.firstToUpper(field.getName()));
+		builder.append("();\n");
 		
 		return builder;
 	}

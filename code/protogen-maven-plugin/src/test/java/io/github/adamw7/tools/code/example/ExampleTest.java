@@ -19,6 +19,8 @@ interface DepartmentIfc {
 
 interface IdIfc {
 	DepartmentIfc setId(int id);
+	
+	public boolean hasId();
 }
 
 class OptionalImpl implements OptionalIfc {
@@ -71,6 +73,11 @@ public class ExampleTest {
 		public DepartmentIfc setId(int id) {
 			personBuilder.setId(id);
 			return new DepartmentImpl(personBuilder);
+		}
+		
+		@Override 
+		public boolean hasId() {
+			return personBuilder.hasId();
 		}
 	}
 	

@@ -57,7 +57,7 @@ public class Clazz {
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
 		full.append(optionalImpl).append(header).append(fields);
-		full.append(requiredSetter()).append(footer);
+		full.append(requiredSetter()).append(requiredHas()).append(footer);
 		return full.toString();
 	}
 
@@ -66,6 +66,14 @@ public class Clazz {
 			return new StringBuilder();
 		} else {
 			return methods.requiredSetter(Utils.firstToLower(className) + "Builder", requiredFields.get(0), requiredFields);
+		}
+	}
+	
+	private StringBuilder requiredHas() {
+		if (requiredFields.size() == 0) {
+			return new StringBuilder();
+		} else {
+			return methods.requiredHas(Utils.firstToLower(className) + "Builder", requiredFields.get(0));
 		}
 	}
 

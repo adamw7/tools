@@ -31,6 +31,7 @@ public class Implementations {
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append(methods.constructor(implName, classOrBuilder));
 				builder.append(methods.requiredSetter(classOrBuilder, field, requiredFields));
+				builder.append(methods.requiredHas(classOrBuilder, field));				
 				builder.append("\n}\n");
 			}
 		}

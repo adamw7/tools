@@ -12,11 +12,11 @@ public class Clazz {
 	private final Descriptor descriptor;
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String className;
-	private final TypeMappings typeMappings;
 	private final List<FieldDescriptor> requiredFields;
 	private final String pkg;
 	private final Interfaces interfaces;
 	private final Implementations implementations;
+	private final Methods methods;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		this.descriptor = descriptor;
@@ -24,9 +24,9 @@ public class Clazz {
 		requiredFields = getRequiredFields();
 		List<FieldDescriptor> optionalFields = getOptionalFields();
 		this.pkg = pkg.getName();	
-		this.typeMappings = typeMappings;
 		this.interfaces = new Interfaces(className, optionalFields, requiredFields, typeMappings);
 		this.implementations = new Implementations(className, optionalFields, requiredFields, typeMappings);
+		this.methods = new Methods(typeMappings, className);
 	}
 
 	private List<FieldDescriptor> getRequiredFields() {
@@ -65,16 +65,7 @@ public class Clazz {
 		if (requiredFields.size() == 0) {
 			return new StringBuilder();
 		} else {
-			StringBuilder setter = new StringBuilder("\t@Override\n\tpublic ");
-			FieldDescriptor field = requiredFields.get(0);
-			setter.append(Utils.getNext(requiredFields, field, "Ifc")).append(" ");
-			setter.append(Utils.generateSetter(field, typeMappings).append(" {\n"));
-			String classNameLower = Utils.firstToLower(className);
-			setter.append("\t\t").append(classNameLower).append("Builder.set").append(Utils.firstToUpper(field.getName())).append("(");
-			setter.append(field.getName()).append(");\n");
-			setter.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(");
-			setter.append(classNameLower).append("Builder);\n\t}\n");
-			return setter;
+			return methods.requiredSetter(Utils.firstToLower(className) + "Builder", requiredFields.get(0), requiredFields);
 		}
 	}
 

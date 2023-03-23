@@ -27,12 +27,4 @@ public class Utils {
 		return "Optional" + suffix;
 	}
 
-	public static StringBuilder generateSetter(FieldDescriptor field, TypeMappings mappings) {
-		StringBuilder builder = new StringBuilder("set");
-		builder.append(firstToUpper(field.getName()));
-		builder.append("(").append(mappings.get(field));
-		builder.append(" ").append(field.getName()).append(")");
-		return builder;
-	}
-
 }

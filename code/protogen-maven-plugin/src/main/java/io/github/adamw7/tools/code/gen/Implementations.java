@@ -10,6 +10,7 @@ public class Implementations {
 	private final List<FieldDescriptor> optionalFields;
 	private final List<FieldDescriptor> requiredFields;
 	private final TypeMappings typeMappings;
+	private final Methods methods;
 
 	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
 			TypeMappings typeMappings) {
@@ -17,6 +18,7 @@ public class Implementations {
 		this.optionalFields = optionalFields;
 		this.requiredFields = requiredFields;
 		this.typeMappings = typeMappings;
+		methods = new Methods(typeMappings, className);
 	}
 
 	public StringBuilder generateRequired() {
@@ -58,20 +60,15 @@ public class Implementations {
 		builder.append("\tpublic OptionalImpl(Builder builder) {\n");
 		builder.append("\t\tthis.builder = builder;\n\t\t}\n");
 		builder.append(generateSetters());
-		builder.append("\t@Override\n").append("\t\tpublic ").append(className).append(" build() {\n");
-		builder.append("\t\treturn builder.build();\n\t\t}\n\t}\n");
+		builder.append(methods.build());
+		builder.append("\n\t}\n");
 		return builder;
 	}
 
 	private StringBuilder generateSetters() {
 		StringBuilder builder = new StringBuilder();
 		for (FieldDescriptor field : optionalFields) {
-			builder.append("\t\t@Override\n");
-			builder.append("\t\tpublic OptionalIfc ");
-			builder.append(Utils.generateSetter(field, typeMappings)).append(" {\n");
-			builder.append("\t\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
-			builder.append("(").append(field.getName()).append(");\n");
-			builder.append("\t\t\treturn this;\n\t\t}\n");
+			builder.append(methods.setter(field, "OptionalIfc"));
 		}
 		return builder;
 	}

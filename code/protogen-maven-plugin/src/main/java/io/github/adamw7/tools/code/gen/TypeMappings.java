@@ -14,6 +14,7 @@ public class TypeMappings {
 	void putJavaTypes() {
 		mappings.put("STRING", "String");
 		mappings.put("INT", "int");
+		mappings.put("LONG", "long");
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -30,6 +31,11 @@ public class TypeMappings {
 	public String get(FieldDescriptor field) {
 		String key = field.getType().getJavaType().name();
 		
-		return mappings.get(key);
+		String type = mappings.get(key);
+		if (type == null) {
+			throw new IllegalArgumentException("Could not find type mapping for key: " + key);
+		} else {
+			return type;
+		}
 	}
 }

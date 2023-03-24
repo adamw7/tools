@@ -15,6 +15,8 @@ interface OptionalIfc {
 
 interface DepartmentIfc {
 	OptionalIfc setDepartment(String department);
+	
+	public boolean hasDepartment();
 }
 
 interface IdIfc {
@@ -61,6 +63,11 @@ class DepartmentImpl implements DepartmentIfc {
 	public OptionalIfc setDepartment(String department) {
 		personOrBuilder.setDepartment(department);
 		return new OptionalImpl(personOrBuilder);
+	}
+
+	@Override
+	public boolean hasDepartment() {
+		return personOrBuilder.hasDepartment();
 	}	
 }
 

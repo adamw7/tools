@@ -33,6 +33,8 @@ public class CodeGenerationTest {
 		PersonBuilder builder = new PersonBuilder();
 		Person person = builder.setId(1).setDepartment("dep").setEmail("sth@sth.net").setName("Adam").build();
 		
+		assertTrue(builder.hasId());
+		
 		assertTrue(person.hasId());
 		assertTrue(person.hasDepartment());
 		assertTrue(person.hasEmail());

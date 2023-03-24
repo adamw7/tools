@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.code;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -31,6 +32,12 @@ public class CodeGenerationTest {
 	public void codeExecutes() {
 		PersonBuilder builder = new PersonBuilder();
 		Person person = builder.setId(1).setDepartment("dep").setEmail("sth@sth.net").setName("Adam").build();
+		
+		assertTrue(person.hasId());
+		assertTrue(person.hasDepartment());
+		assertTrue(person.hasEmail());
+		assertTrue(person.hasName());
+		
 		assertEquals(1, person.getId());
 		assertEquals("dep", person.getDepartment());
 		assertEquals("sth@sth.net", person.getEmail());

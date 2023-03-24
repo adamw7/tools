@@ -40,12 +40,12 @@ public class Implementations {
 
 	public StringBuilder generateOptional() {
 		StringBuilder builder = new StringBuilder("class OptionalImpl implements OptionalIfc {\n");
-		builder.append("\tprivate final Builder builder;\n");
+		builder.append("\tprivate final Builder builder;\n\n");
 		builder.append("\tpublic OptionalImpl(Builder builder) {\n");
-		builder.append("\t\tthis.builder = builder;\n\t\t}\n");
+		builder.append("\t\tthis.builder = builder;\n\t}\n");
 		builder.append(generateSetters());
 		builder.append(methods.build());
-		builder.append("\n\t}\n");
+		builder.append("\n}\n");
 		return builder;
 	}
 

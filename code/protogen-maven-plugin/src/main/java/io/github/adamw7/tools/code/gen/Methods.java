@@ -15,20 +15,20 @@ public class Methods {
 	}
 	
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder("\t\t@Override\n");
-		builder.append("\t\tpublic ").append(returnType).append(" ");
+		StringBuilder builder = new StringBuilder("\t@Override\n");
+		builder.append("\tpublic ").append(returnType).append(" ");
 		builder.append(generateSetter(field, typeMappings)).append(" {\n");
-		builder.append("\t\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
+		builder.append("\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
-		builder.append("\t\t\treturn this;\n\t\t}\n");
+		builder.append("\t\treturn this;\n\t}\n");
 		
 		return builder;
 	}
 
 	public StringBuilder build() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("\t@Override\n").append("\t\tpublic ").append(className).append(" build() {\n");
-		builder.append("\t\treturn builder.build();\n\t\t}");
+		builder.append("\t@Override\n").append("\tpublic ").append(className).append(" build() {\n");
+		builder.append("\t\treturn builder.build();\n\t}");
 		
 		return builder;
 	}

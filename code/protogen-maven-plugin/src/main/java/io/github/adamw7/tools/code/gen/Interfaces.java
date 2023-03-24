@@ -47,7 +47,7 @@ public class Interfaces {
 		ifc.append(methods.declareSetter(requiredField, Utils.getNext(requiredFields, requiredField, "Ifc")));
 		ifc.append(methods.declareHas(requiredField));
 		
-		ifc.append(";\n}");
+		ifc.append("\n}");
 				
 		return ifc;
 	}

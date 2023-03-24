@@ -73,7 +73,7 @@ public class Clazz {
 		if (requiredFields.size() == 0) {
 			return new StringBuilder();
 		} else {
-			return methods.requiredHas(Utils.firstToLower(className) + "Builder", requiredFields.get(0));
+			return methods.has(Utils.firstToLower(className) + "Builder", requiredFields.get(0));
 		}
 	}
 

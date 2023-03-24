@@ -46,13 +46,13 @@ public class Methods {
 		return builder;
 	}
 	
-	public StringBuilder requiredHas(String classOrBuilder, FieldDescriptor field) {
+	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		String fieldToUpper = Utils.firstToUpper(field.getName());
 		builder.append("\tpublic boolean has").append(fieldToUpper);
 		builder.append("() {\n");
 		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(fieldToUpper).append("();\n");
-		builder.append("\t}");
+		builder.append("\t}\n");
 		
 		return builder;
 	}

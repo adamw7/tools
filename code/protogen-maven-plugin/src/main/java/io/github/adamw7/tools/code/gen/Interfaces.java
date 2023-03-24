@@ -31,6 +31,7 @@ public class Interfaces {
 		
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, "OptionalIfc"));
+			builder.append(methods.declareHas(optionalField));	
 		}
 		
 		builder.append("\t").append(className).append(" build();\n");

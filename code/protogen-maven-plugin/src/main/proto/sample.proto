@@ -11,4 +11,5 @@ message Person {
   optional string email = 3;
   required string department = 4;
   optional int64 salary = 5;
+  optional float factor = 6;
 }

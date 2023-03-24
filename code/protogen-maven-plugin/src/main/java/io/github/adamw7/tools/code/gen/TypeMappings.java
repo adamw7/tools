@@ -15,6 +15,7 @@ public class TypeMappings {
 		mappings.put("STRING", "String");
 		mappings.put("INT", "int");
 		mappings.put("LONG", "long");
+		mappings.put("FLOAT", "float");
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {

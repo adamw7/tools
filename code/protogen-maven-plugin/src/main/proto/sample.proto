@@ -17,4 +17,5 @@ message Person {
   optional sint32 level = 9;
   optional sint64 grade = 10;
   optional fixed32 unit = 11;
+  optional fixed64 external = 12;
 }

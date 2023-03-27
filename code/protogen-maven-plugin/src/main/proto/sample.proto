@@ -12,4 +12,5 @@ message Person {
   required string department = 4;
   optional int64 salary = 5;
   optional float factor = 6;
+  optional uint32 gender = 7;
 }

@@ -15,4 +15,5 @@ message Person {
   optional uint32 gender = 7;
   optional uint64 phone = 8;
   optional sint32 level = 9;
+  optional sint64 grade = 10;
 }

@@ -2,7 +2,7 @@
 
 Library of tooling for various purposes.
 
-Code generation:
+## Code generation
 
 Poblem:
 
@@ -139,7 +139,7 @@ public class ExampleTest {
 }
 ```
 
-The other one is data.
+## Data
 It contains:
 - data sources
   - support relational data loading

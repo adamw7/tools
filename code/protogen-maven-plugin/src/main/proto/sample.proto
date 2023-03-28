@@ -21,4 +21,5 @@ message Person {
   optional bool active = 13;
   optional sfixed32 location = 14;
   optional sfixed64 cooridantes = 16;
+  optional double percent = 17;
 }

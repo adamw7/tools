@@ -17,6 +17,7 @@ public class TypeMappings {
 		mappings.put("LONG", "long");
 		mappings.put("FLOAT", "float");
 		mappings.put("BOOLEAN", "boolean");		
+		mappings.put("DOUBLE", "double");
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {

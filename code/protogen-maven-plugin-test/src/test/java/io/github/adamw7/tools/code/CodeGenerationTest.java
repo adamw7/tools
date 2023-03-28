@@ -33,7 +33,8 @@ public class CodeGenerationTest {
 		PersonBuilder builder = new PersonBuilder();
 		Person person = builder.setId(1).setDepartment("dep").setEmail("sth@sth.net").setName("Adam").
 				setSalary(1000L).setFactor(0f).setGender(1).setPhone(12345678L).setLevel(6).
-				setGrade(10L).setUnit(30).setExternal(500L).setActive(true).setLocation(17).build();
+				setGrade(10L).setUnit(30).setExternal(500L).setActive(true).setLocation(17).
+				setCooridantes(9999999L).build();
 		
 		assertTrue(builder.hasId());
 		
@@ -51,6 +52,7 @@ public class CodeGenerationTest {
 		assertTrue(person.hasExternal());
 		assertTrue(person.hasActive());
 		assertTrue(person.hasLocation());
+		assertTrue(person.hasCooridantes());
 		
 		assertEquals(1, person.getId());
 		assertEquals("dep", person.getDepartment());
@@ -65,6 +67,7 @@ public class CodeGenerationTest {
 		assertEquals(30, person.getUnit());
 		assertEquals(500L, person.getExternal());
 		assertEquals(true, person.getActive());		
-		assertEquals(17, person.getLocation());		
+		assertEquals(17, person.getLocation());	
+		assertEquals(9999999L, person.getCooridantes());			
 	}
 }

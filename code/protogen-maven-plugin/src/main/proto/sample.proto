@@ -20,4 +20,5 @@ message Person {
   optional fixed64 external = 12;
   optional bool active = 13;
   optional sfixed32 location = 14;
+  optional sfixed64 cooridantes = 16;
 }

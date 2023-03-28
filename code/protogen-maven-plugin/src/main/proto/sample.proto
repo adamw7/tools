@@ -19,4 +19,5 @@ message Person {
   optional fixed32 unit = 11;
   optional fixed64 external = 12;
   optional bool active = 13;
+  optional sfixed32 location = 14;
 }

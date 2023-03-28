@@ -16,7 +16,7 @@ Example of the problem:
 ```proto
 syntax = "proto2";
 
-package tutorial;
+package example;
 
 option java_multiple_files = true;
 option java_package = "io.github.adamw7.tools.code.protos";

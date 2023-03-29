@@ -15,7 +15,24 @@ public class Utils {
 	}
 
 	public static String firstToUpper(String string) {
-		return (String.valueOf(string.charAt(0)).toUpperCase() + string.substring(1));
+		return (firstUpper(string) + string.substring(1));
+	}
+
+	private static String firstUpper(String string) {
+		return String.valueOf(string.charAt(0)).toUpperCase();
+	}
+
+	public static String toUpperCamelCase(String s) {
+		String[] parts = s.split("_");
+		StringBuilder camelCase = new StringBuilder();
+		for (String part : parts) {
+			camelCase = camelCase.append(toProperCase(part));
+		}
+		return camelCase.toString();
+	}
+
+	static String toProperCase(String s) {
+		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 	}
 
 	public static String getNext(List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {

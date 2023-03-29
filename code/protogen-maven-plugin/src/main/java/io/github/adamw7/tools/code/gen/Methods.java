@@ -18,7 +18,7 @@ public class Methods {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		builder.append("\tpublic ").append(returnType).append(" ");
 		builder.append(generateSetter(field, typeMappings)).append(" {\n");
-		builder.append("\t\tbuilder.set").append(Utils.firstToUpper(field.getName()));
+		builder.append("\t\tbuilder.set").append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\treturn this;\n\t}\n");
 		
@@ -48,10 +48,9 @@ public class Methods {
 	
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
-		String fieldToUpper = Utils.firstToUpper(field.getName());
-		builder.append("\tpublic boolean has").append(fieldToUpper);
+		builder.append("\tpublic boolean has").append(Utils.firstToUpper(field.getName()));
 		builder.append("() {\n");
-		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(fieldToUpper).append("();\n");
+		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(Utils.toUpperCamelCase(field.getName())).append("();\n");
 		builder.append("\t}\n");
 		
 		return builder;

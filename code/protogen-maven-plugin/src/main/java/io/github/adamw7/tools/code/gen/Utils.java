@@ -26,7 +26,7 @@ public class Utils {
 		String[] parts = s.split("_");
 		StringBuilder camelCase = new StringBuilder();
 		for (String part : parts) {
-			camelCase = camelCase.append(toProperCase(part));
+			camelCase.append(toProperCase(part));
 		}
 		return camelCase.toString();
 	}

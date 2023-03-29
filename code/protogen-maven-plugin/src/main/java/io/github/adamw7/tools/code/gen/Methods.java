@@ -48,9 +48,10 @@ public class Methods {
 	
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
-		builder.append("\tpublic boolean has").append(Utils.firstToUpper(field.getName()));
+		String fieldName = Utils.toUpperCamelCase(field.getName());
+		builder.append("\tpublic boolean has").append(fieldName);
 		builder.append("() {\n");
-		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(Utils.toUpperCamelCase(field.getName())).append("();\n");
+		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(fieldName).append("();\n");
 		builder.append("\t}\n");
 		
 		return builder;
@@ -76,7 +77,7 @@ public class Methods {
 	
 	public StringBuilder declareHas(FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\tboolean has");
-		builder.append(Utils.firstToUpper(field.getName()));
+		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("();\n");
 		
 		return builder;
@@ -84,7 +85,7 @@ public class Methods {
 
 	private static StringBuilder generateSetter(FieldDescriptor field, TypeMappings mappings) {
 		StringBuilder builder = new StringBuilder("set");
-		builder.append(Utils.firstToUpper(field.getName()));
+		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(").append(mappings.get(field));
 		builder.append(" ").append(field.getName()).append(")");
 		

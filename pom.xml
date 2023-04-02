@@ -19,6 +19,12 @@
 			<url>http://www.opensource.org/licenses/mit-license.php</url>
 		</license>
 	</licenses>
+	<scm>
+		<connection>scm:git:git@github.com:adamw7/tools.git</connection>
+		<developerConnection>scm:git:git@github.com:adamw7/tools.git</developerConnection>
+		<url>https://github.com/adamw7/tools</url>
+		<tag>HEAD</tag>
+	</scm>
 	<modules>
 		<module>data</module>
 		<module>code</module>

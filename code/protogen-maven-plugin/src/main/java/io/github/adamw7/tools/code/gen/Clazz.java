@@ -102,7 +102,7 @@ public class Clazz {
 	}
 
 	private String firstInterface() {
-		return requiredFields.size() == 0 ? "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
+		return requiredFields.size() == 0 ? className + "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {

@@ -35,13 +35,13 @@ public class Utils {
 		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 	}
 
-	public static String getNext(List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {
+	public static String getNext(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {
 		for (int i = 0; i < fields.size(); ++i) {
 			if (fields.get(i).equals(requiredField)) {
-				return i == fields.size() - 1 ? "Optional" + suffix : to(fields.get(i + 1), suffix);
+				return i == fields.size() - 1 ? className + "Optional" + suffix : to(fields.get(i + 1), suffix);
 			}
 		}
-		return "Optional" + suffix;
+		return className + "Optional" + suffix;
 	}
 
 }

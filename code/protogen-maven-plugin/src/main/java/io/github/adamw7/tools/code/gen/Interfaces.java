@@ -9,12 +9,14 @@ public class Interfaces {
 	private final List<FieldDescriptor> optionalFields;
 	private final List<FieldDescriptor> requiredFields;
 	private final Methods methods;
+	private final String optionalIfcName;
 
 	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, TypeMappings typeMappings) {
 		this.className = className;
 		this.optionalFields = optionalFields;
 		this.requiredFields = requiredFields;
 		this.methods = new Methods(typeMappings, className);
+		optionalIfcName = className + "OptionalIfc";
 	}
 
 	public StringBuilder generateRequired() {
@@ -27,10 +29,11 @@ public class Interfaces {
 	}
 	
 	public StringBuilder generateOptional() {
-		StringBuilder builder = new StringBuilder("interface OptionalIfc {\n");
+		StringBuilder builder = new StringBuilder("interface ");
+		builder.append(optionalIfcName).append(" {\n");
 		
 		for (FieldDescriptor optionalField : optionalFields) {
-			builder.append(methods.declareSetter(optionalField, "OptionalIfc"));
+			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
 		}
 		
@@ -45,7 +48,7 @@ public class Interfaces {
 		ifc.append("interface ");
 		ifc.append(Utils.to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n");
-		ifc.append(methods.declareSetter(requiredField, Utils.getNext(requiredFields, requiredField, "Ifc")));
+		ifc.append(methods.declareSetter(requiredField, Utils.getNext(className, requiredFields, requiredField, "Ifc")));
 		ifc.append(methods.declareHas(requiredField));
 		
 		ifc.append("\n}");

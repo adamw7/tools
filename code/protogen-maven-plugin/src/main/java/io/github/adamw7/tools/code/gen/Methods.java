@@ -35,11 +35,11 @@ public class Methods {
 
 	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field, List<FieldDescriptor> requiredFields) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
-		builder.append("\tpublic ").append(Utils.getNext(requiredFields, field, "Ifc")).append(" ")
+		builder.append("\tpublic ").append(Utils.getNext(className, requiredFields, field, "Ifc")).append(" ")
 				.append(generateSetter(field, typeMappings)).append(" {\n");
 		builder.append("\t\t").append(classOrBuilder).append(".set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
-		builder.append("\t\treturn new ").append(Utils.getNext(requiredFields, field, "Impl")).append("(")
+		builder.append("\t\treturn new ").append(Utils.getNext(className, requiredFields, field, "Impl")).append("(")
 				.append(classOrBuilder).append(");\n");
 		builder.append("\t}\n");
 		

@@ -10,6 +10,8 @@ public class Implementations {
 	private final List<FieldDescriptor> optionalFields;
 	private final List<FieldDescriptor> requiredFields;
 	private final Methods methods;
+	private final String optionalImplName;
+	private final String optionalIfcName;
 
 	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
 			TypeMappings typeMappings) {
@@ -17,6 +19,8 @@ public class Implementations {
 		this.optionalFields = optionalFields;
 		this.requiredFields = requiredFields;
 		methods = new Methods(typeMappings, className);
+		this.optionalIfcName = className + "OptionalIfc";
+		this.optionalImplName = className + "OptionalImpl";		
 	}
 
 	public StringBuilder generateRequired() {
@@ -39,9 +43,14 @@ public class Implementations {
 	}
 
 	public StringBuilder generateOptional() {
-		StringBuilder builder = new StringBuilder("class OptionalImpl implements OptionalIfc {\n");
+		StringBuilder builder = new StringBuilder("class ");
+		builder.append(optionalImplName);
+		builder.append(" implements ");
+		builder.append(optionalIfcName);
+		builder.append(" {\n");
 		builder.append("\tprivate final Builder builder;\n\n");
-		builder.append("\tpublic OptionalImpl(Builder builder) {\n");
+		builder.append("\tpublic ").append(optionalImplName);
+		builder.append("(Builder builder) {\n");
 		builder.append("\t\tthis.builder = builder;\n\t}\n");
 		builder.append(generateMethods());
 		builder.append(methods.build());
@@ -52,7 +61,7 @@ public class Implementations {
 	private StringBuilder generateMethods() {
 		StringBuilder builder = new StringBuilder();
 		for (FieldDescriptor field : optionalFields) {
-			builder.append(methods.setter(field, "OptionalIfc"));
+			builder.append(methods.setter(field, optionalIfcName));
 			builder.append("\n");
 			builder.append(methods.has("builder", field));			
 		}

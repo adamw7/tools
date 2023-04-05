@@ -51,43 +51,32 @@ public class Clazz {
 		StringBuilder header = generateHeader();
 		StringBuilder fields = generateFields();	
 		StringBuilder optionalImpl = implementations.generateOptional();	
-		String optionalImplInMainClass = handleoptionalImplInMainClass();
+		String optionalImplInMainClass = handleMethodsInMainClass();
 				
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
 		full.append(optionalImpl).append(header).append(fields).append(optionalImplInMainClass);
-		full.append(requiredSetter()).append(requiredHas()).append(footer);
+		full.append(footer);
 		return full.toString();
 	}
 
-	private String handleoptionalImplInMainClass() {
+	private String handleMethodsInMainClass() {
+		StringBuilder builder = new StringBuilder();
 		if (requiredFields.isEmpty()) {
-			StringBuilder builder = new StringBuilder(implementations.generateOptionalBuilderField());
+			builder.append(implementations.generateOptionalBuilderField());
 			builder.append(implementations.generateOptionalBuilderConstructor(className + "Builder"));
 			builder.append(implementations.generateMethods());
 			builder.append(methods.build());
 			return builder.toString();
 		} else {
-			return "";
+			FieldDescriptor firstRequiredField = requiredFields.get(0);
+			String builderName = Utils.firstToLower(className) + "Builder";
+			builder.append(methods.has(builderName, firstRequiredField));
+			builder.append(methods.requiredSetter(builderName, firstRequiredField, requiredFields));
 		}
-	}
-
-	private StringBuilder requiredSetter() {
-		if (requiredFields.size() == 0) {
-			return new StringBuilder();
-		} else {
-			return methods.requiredSetter(Utils.firstToLower(className) + "Builder", requiredFields.get(0), requiredFields);
-		}
-	}
-	
-	private StringBuilder requiredHas() {
-		if (requiredFields.size() == 0) {
-			return new StringBuilder();
-		} else {
-			return methods.has(Utils.firstToLower(className) + "Builder", requiredFields.get(0));
-		}
+		return builder.toString();
 	}
 
 	private StringBuilder generatePackage() {

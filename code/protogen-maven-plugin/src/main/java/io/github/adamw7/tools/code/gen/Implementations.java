@@ -48,17 +48,23 @@ public class Implementations {
 		builder.append(" implements ");
 		builder.append(optionalIfcName);
 		builder.append(" {\n");
-		builder.append("\tprivate final Builder builder;\n\n");
-		builder.append("\tpublic ").append(optionalImplName);
-		builder.append("(Builder builder) {\n");
-		builder.append("\t\tthis.builder = builder;\n\t}\n");
+		builder.append(generateOptionalBuilderField());
+		builder.append(generateOptionalBuilderConstructor(optionalImplName));
 		builder.append(generateMethods());
 		builder.append(methods.build());
 		builder.append("\n}\n");
 		return builder;
 	}
 
-	private StringBuilder generateMethods() {
+	public StringBuilder generateOptionalBuilderConstructor(String name) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("\tpublic ").append(name);
+		builder.append("(Builder builder) {\n");
+		builder.append("\t\tthis.builder = builder;\n\t}\n");
+		return builder;
+	}
+
+	public StringBuilder generateMethods() {
 		StringBuilder builder = new StringBuilder();
 		for (FieldDescriptor field : optionalFields) {
 			builder.append(methods.setter(field, optionalIfcName));
@@ -66,5 +72,9 @@ public class Implementations {
 			builder.append(methods.has("builder", field));			
 		}
 		return builder;
+	}
+
+	public String generateOptionalBuilderField() {
+		return "\tprivate final Builder builder;\n\n";
 	}
 }

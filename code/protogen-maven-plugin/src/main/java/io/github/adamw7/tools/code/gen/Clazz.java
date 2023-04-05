@@ -51,14 +51,27 @@ public class Clazz {
 		StringBuilder header = generateHeader();
 		StringBuilder fields = generateFields();	
 		StringBuilder optionalImpl = implementations.generateOptional();	
-		
+		String optionalImplInMainClass = handleoptionalImplInMainClass();
+				
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
 		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
-		full.append(optionalImpl).append(header).append(fields);
+		full.append(optionalImpl).append(header).append(fields).append(optionalImplInMainClass);
 		full.append(requiredSetter()).append(requiredHas()).append(footer);
 		return full.toString();
+	}
+
+	private String handleoptionalImplInMainClass() {
+		if (requiredFields.isEmpty()) {
+			StringBuilder builder = new StringBuilder(implementations.generateOptionalBuilderField());
+			builder.append(implementations.generateOptionalBuilderConstructor(className + "Builder"));
+			builder.append(implementations.generateMethods());
+			builder.append(methods.build());
+			return builder.toString();
+		} else {
+			return "";
+		}
 	}
 
 	private StringBuilder requiredSetter() {

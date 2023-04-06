@@ -9,7 +9,6 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Clazz {
 
-	private final Descriptor descriptor;
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String className;
 	private final List<FieldDescriptor> requiredFields;
@@ -19,25 +18,24 @@ public class Clazz {
 	private final Methods methods;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
-		this.descriptor = descriptor;
-		className = getClassName();
-		requiredFields = getRequiredFields();
-		List<FieldDescriptor> optionalFields = getOptionalFields();
+		className = getClassName(descriptor);
+		requiredFields = getRequiredFields(descriptor);
+		List<FieldDescriptor> optionalFields = getOptionalFields(descriptor);
 		this.pkg = pkg.getName();	
 		this.interfaces = new Interfaces(className, optionalFields, requiredFields, typeMappings);
 		this.implementations = new Implementations(className, optionalFields, requiredFields, typeMappings);
 		this.methods = new Methods(typeMappings, className);
 	}
 
-	private List<FieldDescriptor> getRequiredFields() {
+	private List<FieldDescriptor> getRequiredFields(Descriptor descriptor) {
 		return descriptor.getFields().stream().filter(FieldDescriptor::isRequired).toList();
 	}
 	
-	private List<FieldDescriptor> getOptionalFields() {
+	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
 		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
 	}
 
-	private String getClassName() {
+	private String getClassName(Descriptor descriptor) {
 		return descriptor.getName();
 	}
 
@@ -69,7 +67,6 @@ public class Clazz {
 			builder.append(implementations.generateOptionalBuilderConstructor(className + "Builder"));
 			builder.append(implementations.generateMethods());
 			builder.append(methods.build());
-			return builder.toString();
 		} else {
 			FieldDescriptor firstRequiredField = requiredFields.get(0);
 			String builderName = Utils.firstToLower(className) + "Builder";

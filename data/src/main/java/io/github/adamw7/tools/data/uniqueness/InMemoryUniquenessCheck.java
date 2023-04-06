@@ -22,8 +22,8 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
 
-		Integer[] inidices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
-		return findUnique(inidices, keyCandidates);
+		Integer[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
+		return findUnique(indices, keyCandidates);
 	}
 
 	private Result findUnique(Integer[] indices, String... keyCandidates) {
@@ -46,8 +46,8 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 			if (!set.isEmpty()) {
 				dataSource.reset();
 				String[] newCandidates = set.toArray(new String[keyCandidates.length - 1]);
-				Integer[] inidices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
-				Result result = findUnique(inidices, newCandidates);
+				Integer[] indices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
+				Result result = findUnique(indices, newCandidates);
 				if (result.unique) {
 					uniqueCandidates.add(result);
 				}

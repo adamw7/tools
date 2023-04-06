@@ -4,6 +4,7 @@ import java.io.File;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.adamw7.tools.code.protos.Address;
 import io.github.adamw7.tools.code.protos.Person;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -102,5 +103,11 @@ public class CodeGenerationTest {
 		assertTrue(optional.hasLocation());
 		assertTrue(optional.hasCooridantes());
 		assertTrue(optional.hasPercent());
+	}
+	
+	@Test
+	public void defaultValues() {
+		assertEquals(10, Address.newBuilder().getNumber());
+		assertEquals("", Address.newBuilder().getStreet());		
 	}
 }

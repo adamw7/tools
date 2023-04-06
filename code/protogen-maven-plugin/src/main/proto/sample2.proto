@@ -7,5 +7,5 @@ option java_package = "io.github.adamw7.tools.code.protos";
 
 message Address {
   required string street = 1;
-  required int32 number = 2;
+  required int32 number = 2  [default = 10];
 }

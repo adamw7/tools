@@ -195,3 +195,8 @@ Iterative (no memory) checks are keeping only one row at the time so they requir
 ```
 mvn clean install
 ```
+The clean part is needed since the build contain code generation so if you remove a source of generation and do not use clean then the result of previous build may remain in target. If you do not remove anything you could benefit from faster:
+```
+mvn install
+```
+

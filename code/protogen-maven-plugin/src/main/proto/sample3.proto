@@ -8,4 +8,5 @@ option java_package = "io.github.adamw7.tools.code.protos";
 message City {
   optional string zipcode = 1;
   optional string name = 2;
+  optional bytes description = 3;
 }

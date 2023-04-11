@@ -18,6 +18,7 @@ public class TypeMappings {
 		mappings.put("FLOAT", "float");
 		mappings.put("BOOLEAN", "boolean");		
 		mappings.put("DOUBLE", "double");
+		mappings.put("BYTE_STRING", "com.google.protobuf.ByteString");
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {

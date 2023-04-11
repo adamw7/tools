@@ -1,13 +1,18 @@
 package io.github.adamw7.tools.code;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.File;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.code.protos.Address;
-import io.github.adamw7.tools.code.protos.Person;
+import com.google.protobuf.ByteString;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.github.adamw7.tools.code.protos.Address;
+import io.github.adamw7.tools.code.protos.City;
+import io.github.adamw7.tools.code.protos.Person;
 
 public class CodeGenerationTest {
 
@@ -109,5 +114,12 @@ public class CodeGenerationTest {
 	public void defaultValues() {
 		assertEquals(10, Address.newBuilder().getNumber());
 		assertEquals("", Address.newBuilder().getStreet());		
+	}
+	
+	@Test
+	public void byteString() {
+		City city = City.newBuilder().setDescription(ByteString.copyFrom("desc".getBytes())).build();
+		assertTrue(city.hasDescription());
+		assertEquals("desc", new String(city.getDescription().toByteArray()));
 	}
 }

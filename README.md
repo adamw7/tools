@@ -138,6 +138,7 @@ public class ExampleTest {
 	}
 }
 ```
+Since in proto3 there is no concept of required fields - this solution supports only proto2. 
 
 ## Data
 It contains:

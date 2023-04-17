@@ -35,7 +35,8 @@ public class Implementations {
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append(methods.constructor(implName, classOrBuilder));
 				builder.append(methods.requiredSetter(classOrBuilder, field, requiredFields));
-				builder.append(methods.has(classOrBuilder, field));				
+				builder.append(methods.has(classOrBuilder, field));	
+				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, requiredFields, field, "Ifc")));					
 				builder.append("\n}\n");
 			}
 		}
@@ -69,7 +70,8 @@ public class Implementations {
 		for (FieldDescriptor field : optionalFields) {
 			builder.append(methods.setter(field, optionalIfcName));
 			builder.append("\n");
-			builder.append(methods.has("builder", field));			
+			builder.append(methods.has("builder", field));
+			builder.append(methods.clear("builder", field, optionalIfcName));	
 		}
 		return builder;
 	}

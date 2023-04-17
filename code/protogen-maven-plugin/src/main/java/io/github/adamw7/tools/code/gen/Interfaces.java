@@ -35,6 +35,7 @@ public class Interfaces {
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
+			builder.append(methods.declareClear(optionalField, Utils.getNext(className, requiredFields, optionalField, "Ifc")));
 		}
 		
 		builder.append("\t").append(className).append(" build();\n");
@@ -48,8 +49,10 @@ public class Interfaces {
 		ifc.append("interface ");
 		ifc.append(Utils.to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n");
-		ifc.append(methods.declareSetter(requiredField, Utils.getNext(className, requiredFields, requiredField, "Ifc")));
+		String returnType = Utils.getNext(className, requiredFields, requiredField, "Ifc");
+		ifc.append(methods.declareSetter(requiredField, returnType));
 		ifc.append(methods.declareHas(requiredField));
+		ifc.append(methods.declareClear(requiredField, returnType));		
 		
 		ifc.append("\n}");
 				

@@ -13,7 +13,7 @@ public class Methods {
 		this.typeMappings = typeMappings;
 		this.className = className;
 	}
-	
+
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		builder.append("\tpublic ").append(returnType).append(" ");
@@ -21,7 +21,7 @@ public class Methods {
 		builder.append("\t\tbuilder.set").append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\treturn this;\n\t}\n");
-		
+
 		return builder;
 	}
 
@@ -29,23 +29,25 @@ public class Methods {
 		StringBuilder builder = new StringBuilder();
 		builder.append("\t@Override\n").append("\tpublic ").append(className).append(" build() {\n");
 		builder.append("\t\treturn builder.build();\n\t}");
-		
+
 		return builder;
 	}
 
-	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field, List<FieldDescriptor> requiredFields) {
+	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field,
+			List<FieldDescriptor> requiredFields) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
-		builder.append("\tpublic ").append(Utils.getNext(className, requiredFields, field, "Ifc")).append(" ")
-				.append(generateSetter(field, typeMappings)).append(" {\n");
+		String returnType = Utils.getNext(className, requiredFields, field, "Ifc");
+		builder.append("\tpublic ").append(returnType).append(" ").append(generateSetter(field, typeMappings))
+				.append(" {\n");
 		builder.append("\t\t").append(classOrBuilder).append(".set").append(Utils.firstToUpper(field.getName()));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\treturn new ").append(Utils.getNext(className, requiredFields, field, "Impl")).append("(")
 				.append(classOrBuilder).append(");\n");
 		builder.append("\t}\n");
-		
+
 		return builder;
 	}
-	
+
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		String fieldName = Utils.toUpperCamelCase(field.getName());
@@ -53,7 +55,22 @@ public class Methods {
 		builder.append("() {\n");
 		builder.append("\t\treturn ").append(classOrBuilder).append(".has").append(fieldName).append("();\n");
 		builder.append("\t}\n");
-		
+
+		return builder;
+	}
+
+	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
+		StringBuilder builder = new StringBuilder("\t@Override\n");
+		String fieldName = Utils.toUpperCamelCase(field.getName());
+		builder.append("\tpublic ").append(returnType);
+		builder.append(" clear").append(fieldName);
+		builder.append("() {\n");
+		builder.append("\t\t").append(classOrBuilder).append(".clear").append(fieldName).append("();\n");
+		builder.append("\t\treturn new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
+				.append(");\n");
+		builder.append("\t}\n");
+		;
+
 		return builder;
 	}
 
@@ -61,8 +78,7 @@ public class Methods {
 		StringBuilder builder = new StringBuilder("\tpublic ");
 		builder.append(implName).append("(Builder ").append(classOrBuilder);
 		builder.append(") {\n");
-		builder.append("\t\tthis.").append(classOrBuilder).append(" = ").append(classOrBuilder)
-				.append(";\n\t}\n");
+		builder.append("\t\tthis.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";\n\t}\n");
 		return builder;
 	}
 
@@ -71,15 +87,24 @@ public class Methods {
 		builder.append(returnType).append(" ");
 		builder.append(generateSetter(field, typeMappings));
 		builder.append(";\n");
-		
+
 		return builder;
 	}
-	
+
 	public StringBuilder declareHas(FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("\tboolean has");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("();\n");
-		
+
+		return builder;
+	}
+
+	public StringBuilder declareClear(FieldDescriptor field, String returnType) {
+		StringBuilder builder = new StringBuilder("\t");
+		builder.append(returnType).append(" clear");
+		builder.append(Utils.toUpperCamelCase(field.getName()));
+		builder.append("();\n");
+
 		return builder;
 	}
 
@@ -88,7 +113,7 @@ public class Methods {
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(").append(mappings.get(field));
 		builder.append(" ").append(field.getName()).append(")");
-		
+
 		return builder;
 	}
 

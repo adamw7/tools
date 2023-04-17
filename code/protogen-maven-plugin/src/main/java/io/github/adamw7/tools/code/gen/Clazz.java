@@ -72,6 +72,7 @@ public class Clazz {
 			String builderName = Utils.firstToLower(className) + "Builder";
 			builder.append(methods.has(builderName, firstRequiredField));
 			builder.append(methods.requiredSetter(builderName, firstRequiredField, requiredFields));
+			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNext(className, requiredFields, firstRequiredField, "Ifc")));			
 		}
 		return builder.toString();
 	}

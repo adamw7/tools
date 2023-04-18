@@ -15,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.GeneratedMessageV3;
 
 public class Code {
@@ -72,9 +73,17 @@ public class Code {
 			throw new IllegalStateException("getDescriptor method return null");
 		}
 		if (object instanceof Descriptor descriptor) {
+			checkSyntax(descriptor);
 			return genBuilder(descriptor, c.getPackage());
 		} else {
 			throw new IllegalStateException("Wrong return type of the getDescriptor method: " + object.getClass());
+		}
+	}
+
+	private void checkSyntax(Descriptor descriptor) {
+		FileDescriptor.Syntax syntax = descriptor.getFile().getSyntax();
+		if (!syntax.equals(FileDescriptor.Syntax.PROTO2)) {
+			throw new IllegalStateException("Only proto2 syntax suppotred. The input contains: " + syntax);
 		}
 	}
 

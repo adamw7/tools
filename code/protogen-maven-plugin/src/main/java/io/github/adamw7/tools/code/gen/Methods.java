@@ -69,7 +69,6 @@ public class Methods {
 		builder.append("\t\treturn new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
 				.append(");\n");
 		builder.append("\t}\n");
-		;
 
 		return builder;
 	}

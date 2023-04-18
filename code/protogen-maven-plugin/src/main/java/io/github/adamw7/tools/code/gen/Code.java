@@ -83,7 +83,7 @@ public class Code {
 	private void checkSyntax(Descriptor descriptor) {
 		FileDescriptor.Syntax syntax = descriptor.getFile().getSyntax();
 		if (!syntax.equals(FileDescriptor.Syntax.PROTO2)) {
-			throw new IllegalStateException("Only proto2 syntax suppotred. The input contains: " + syntax);
+			throw new IllegalStateException("Only proto2 syntax supported. The input contains: " + syntax);
 		}
 	}
 

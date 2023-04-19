@@ -19,6 +19,6 @@ public class PrimesTest {
 	public void negativeTooLowNumber() {
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> Primes.findMaxSmallerThan(2), "Expected findMaxSmallerThan method to throw, but it didn't");
 
-		assertEquals(thrown.getMessage(), "No primes smaller than 2");
+		assertEquals("No primes smaller than 2", thrown.getMessage());
 	}
 }

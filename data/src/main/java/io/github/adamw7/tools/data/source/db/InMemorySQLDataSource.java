@@ -25,8 +25,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 	
 	@Override
 	public List<String[]> readAll() {
-		try {
-			Statement statement = connection.createStatement();
+		try (Statement statement = connection.createStatement()) {
 			ResultSet resultSet = statement.executeQuery(query);
 			List<String[]> allData = new ArrayList<>();
 			while (resultSet.next()) {

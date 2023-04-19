@@ -74,8 +74,8 @@ public class CSVDataSourceTest {
 	@MethodSource("happyPathWithQuotesAndColumnsArgs")
 	public void happyPathQuotesAndColumns(IterableDataSource source) {
 		source.open();
-		assertEquals(source.getColumnNames()[0], "SIC Code");
-		assertEquals(source.getColumnNames()[1], "Description");
+		assertEquals("SIC Code", source.getColumnNames()[0]);
+		assertEquals("Description",source.getColumnNames()[1]);
 
 		int i = 0;
 		while (source.hasMoreData()) {

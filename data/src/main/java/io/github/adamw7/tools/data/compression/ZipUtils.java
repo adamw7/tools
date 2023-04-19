@@ -26,12 +26,9 @@ public class ZipUtils {
 	}
 
 	private static boolean isZipped(String fileName) {
-		try {
-			RandomAccessFile raf = new RandomAccessFile(fileName, "r");
+		try (RandomAccessFile raf = new RandomAccessFile(fileName, "r")) {
 			byte first = raf.readByte();
 			byte second = raf.readByte();
-
-			raf.close();
 
 			return ((first == (byte) (GZIPInputStream.GZIP_MAGIC))
 					&& (second == (byte) (GZIPInputStream.GZIP_MAGIC >> 8)));

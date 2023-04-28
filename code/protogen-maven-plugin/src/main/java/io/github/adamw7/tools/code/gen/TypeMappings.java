@@ -35,11 +35,19 @@ public class TypeMappings {
 	public String get(FieldDescriptor field) {
 		String key = field.getType().getJavaType().name();
 		
-		String type = mappings.get(key);
-		if (type == null) {
-			throw new IllegalArgumentException("Could not find type mapping for key: " + key);
+		if (key.equals("ENUM")) {
+			return handleEnums(field);
 		} else {
-			return type;
-		}
+			String type = mappings.get(key);
+			if (type == null) {
+				throw new IllegalArgumentException("Could not find type mapping for key: " + key);
+			} else {
+				return type;
+			}
+		}		
+	}
+
+	private String handleEnums(FieldDescriptor field) {
+		return Utils.getSuffixOf(field.getEnumType().getFullName(), 2, ".");
 	}
 }

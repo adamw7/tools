@@ -22,4 +22,12 @@ message Person {
   optional sfixed32 location = 14;
   optional sfixed64 cooridantes = 16;
   optional double percent = 17;
+  
+  enum CLASSIFICATION {
+  	legal = 0;
+  	it = 1;
+  	business = 2;
+  }
+  
+  optional CLASSIFICATION classification = 18;
 }

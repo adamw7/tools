@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.code.gen;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
@@ -42,6 +43,16 @@ public class Utils {
 			}
 		}
 		return className + "Optional" + suffix;
+	}
+	
+	public static String getSuffixOf(String type, int howMany, String delimiter) {
+		String[] tokens = type.split(Pattern.quote(delimiter));
+		String suffix = "";
+		for (int i = howMany; i > 0; i--) {
+			suffix += tokens[tokens.length - i];
+			suffix += delimiter;
+		}
+		return suffix.substring(0, suffix.length() - 1);
 	}
 
 }

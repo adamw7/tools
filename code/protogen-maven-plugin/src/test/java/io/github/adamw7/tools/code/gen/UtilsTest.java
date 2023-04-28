@@ -1,7 +1,8 @@
 package io.github.adamw7.tools.code.gen;
 
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 public class UtilsTest {
 
@@ -15,6 +16,12 @@ public class UtilsTest {
 	public void firstToLower() {
 		String firstToLower = Utils.firstToLower("Builder");
 		assertEquals("builder", firstToLower);
+	}
+	
+	@Test
+	public void suffix() {
+		String suffix = Utils.getSuffixOf("pkg.EnumType.field", 2, ".");
+		assertEquals("EnumType.field", suffix);
 	}
 
 }

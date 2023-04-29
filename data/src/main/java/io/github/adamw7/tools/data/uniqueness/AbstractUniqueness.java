@@ -85,9 +85,7 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	protected void close(IterableDataSource dataSource) {
 		try {
 			dataSource.close();
-		} catch (Exception ignored) {
-			
-		}
+		} catch (Exception ignored) {}
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);

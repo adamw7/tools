@@ -13,6 +13,8 @@ public class ZipUtils {
 
 	private final static Logger log = LogManager.getLogger(ZipUtils.class.getName());
 
+	private ZipUtils() {}
+	
 	public static InputStream unzipIfNeeded(InputStream stream, String fileName) {
 		if (isZipped(fileName) && !(stream instanceof GZIPInputStream)) {
 			try {

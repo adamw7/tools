@@ -11,7 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 
-public class DBTest {
+public abstract class DBTest {
 	protected static Connection connection;
 	protected static String query;
 	

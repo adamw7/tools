@@ -43,7 +43,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 		try {
 			return getColumnsFrom(resultSet);
 		} catch (SQLException e) {
-			throw new RuntimeException(e);
+			throw new UncheckedIOException(new IOException(e));
 		}
 	}
 

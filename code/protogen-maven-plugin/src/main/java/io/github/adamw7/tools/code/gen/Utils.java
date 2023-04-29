@@ -6,6 +6,8 @@ import java.util.regex.Pattern;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Utils {
+	
+	private Utils() {}
 
 	public static String to(FieldDescriptor fieldDescriptor, String suffix) {
 		return Utils.firstToUpper(fieldDescriptor.getName()) + suffix;
@@ -47,11 +49,12 @@ public class Utils {
 	
 	public static String getSuffixOf(String type, int howMany, String delimiter) {
 		String[] tokens = type.split(Pattern.quote(delimiter));
-		String suffix = "";
+		StringBuilder suffixBuilder = new StringBuilder();
 		for (int i = howMany; i > 0; i--) {
-			suffix += tokens[tokens.length - i];
-			suffix += delimiter;
+			suffixBuilder.append(tokens[tokens.length - i]);
+			suffixBuilder.append(delimiter);
 		}
+		String suffix = suffixBuilder.toString();
 		return suffix.substring(0, suffix.length() - 1);
 	}
 

@@ -13,6 +13,7 @@ import com.google.protobuf.ByteString;
 import io.github.adamw7.tools.code.protos.Address;
 import io.github.adamw7.tools.code.protos.City;
 import io.github.adamw7.tools.code.protos.Person;
+import io.github.adamw7.tools.code.protos.Person.CLASSIFICATION;
 
 public class CodeGenerationTest {
 
@@ -44,7 +45,7 @@ public class CodeGenerationTest {
 		Person person = optional.setEmail("sth@sth.net").setName("Adam").
 				setSalary(1000L).setFactor(0f).setGender(1).setPhone(12345678L).setLevel(6).
 				setGrade(10L).setUnit(30).setExternalId(500L).setActive(true).setLocation(17).
-				setCooridantes(9999999L).setPercent(0.4).build();
+				setCooridantes(9999999L).setPercent(0.4).setClassification(CLASSIFICATION.business).build();
 
 		assertOptional(optional);
 
@@ -72,6 +73,7 @@ public class CodeGenerationTest {
 		assertEquals(17, person.getLocation());
 		assertEquals(9999999L, person.getCooridantes());
 		assertEquals(0.4, person.getPercent());
+		assertEquals(CLASSIFICATION.business, person.getClassification());		
 	}
 
 	private static void assertPersonFieldsAreSet(Person person) {
@@ -91,6 +93,7 @@ public class CodeGenerationTest {
 		assertTrue(person.hasLocation());
 		assertTrue(person.hasCooridantes());
 		assertTrue(person.hasPercent());
+		assertTrue(person.hasClassification());		
 	}
 
 	private static void assertOptional(PersonOptionalIfc optional) {
@@ -108,6 +111,7 @@ public class CodeGenerationTest {
 		assertTrue(optional.hasLocation());
 		assertTrue(optional.hasCooridantes());
 		assertTrue(optional.hasPercent());
+		assertTrue(optional.hasClassification());
 	}
 	
 	@Test

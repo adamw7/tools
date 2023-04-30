@@ -39,7 +39,7 @@ public class Code {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		log.info(dir + " created");
+		log.info("{} created", dir);
 	}
 
 	private Path replace(String pkg) {

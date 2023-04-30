@@ -51,7 +51,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	public void open() {
 		try {
 			Statement statement = connection.createStatement();
-			log.info("Executing query: " + query);
+			log.info("Executing query: {}", query);
 			resultSet = statement.executeQuery(query);
 		} catch (SQLException e) {
 			throw new UncheckedIOException(new IOException(e));

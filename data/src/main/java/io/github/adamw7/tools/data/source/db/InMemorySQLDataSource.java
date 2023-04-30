@@ -31,7 +31,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 			while (resultSet.next()) {
 				allData.add(getNextFrom(resultSet));
 			}
-			log.info("Loaded " + allData.size() + " rows into memory");
+			log.info("Loaded {} rows into memory", allData::size);
 			return allData;
 		} catch (SQLException e) {
 			log.warn(e);

@@ -23,7 +23,7 @@ public class CodeMojo extends AbstractMojo {
 	
 	@Override
 	public void execute() {
-		log.info("Executing " + this + " maven plugin");
+		log.info("Executing {} maven plugin", this);
 		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder().execute();
 		new Code(generatedSourcesDir).genBuilders(allMessages);
 	}

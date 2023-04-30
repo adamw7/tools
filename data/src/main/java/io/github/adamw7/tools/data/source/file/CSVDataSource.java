@@ -60,7 +60,7 @@ public class CSVDataSource implements IterableDataSource {
 	
 	@Override
 	public void open() {
-		log.info("Opening: " + fileName);
+		log.info("Opening: {}", fileName);
 		if (columnsExist() && !columnsAreLoaded()) {
 			loadColumns();
 		}

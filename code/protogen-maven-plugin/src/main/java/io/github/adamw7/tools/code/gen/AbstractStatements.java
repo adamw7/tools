@@ -13,7 +13,7 @@ public abstract class AbstractStatements {
 	protected final String optionalIfcName;
 	protected final String optionalImplName;
 	
-	public AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
+	protected AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
 		this.className = className;
 		this.optionalFields = optionalFields;
 		this.requiredAndMapFields = union(requiredFields, mapFields);

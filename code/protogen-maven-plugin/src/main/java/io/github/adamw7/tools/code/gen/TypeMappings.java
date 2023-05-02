@@ -51,7 +51,7 @@ public class TypeMappings {
 		
 		if (key.equals("ENUM")) {
 			return handleEnum(field);
-		} if (key.equals("MESSAGE") && field.isMapField()) {
+		} else if (key.equals("MESSAGE") && field.isMapField()) {
 			return handleMap(field);
 		} else {
 			String type = mappings.get(key);

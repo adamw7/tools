@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +44,9 @@ public class CodeGenerationTest {
 		assertFalse(department.hasDepartment());
 		MappingIfc mapping = department.setDepartment("dep");
 		assertTrue(department.hasDepartment());
-		PersonOptionalIfc optional = mapping.setMapping(new HashMap<>());
+		Map<String, Integer> map = new HashMap<>();
+		map.put("S", 1);
+		PersonOptionalIfc optional = mapping.setMapping(map);		
 		Person person = optional.setEmail("sth@sth.net").setName("Adam").
 				setSalary(1000L).setFactor(0f).setGender(1).setPhone(12345678L).setLevel(6).
 				setGrade(10L).setUnit(30).setExternalId(500L).setActive(true).setLocation(17).
@@ -75,7 +78,8 @@ public class CodeGenerationTest {
 		assertEquals(17, person.getLocation());
 		assertEquals(9999999L, person.getCooridantes());
 		assertEquals(0.4, person.getPercent());
-		assertEquals(CLASSIFICATION.business, person.getClassification());		
+		assertEquals(CLASSIFICATION.business, person.getClassification());	
+		assertEquals(1, person.getMappingCount());
 	}
 
 	private static void assertPersonFieldsAreSet(Person person) {

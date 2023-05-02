@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
-public class AbstractStatements {
+public abstract class AbstractStatements {
 	protected final String className;
 	protected final List<FieldDescriptor> optionalFields;
 	protected final List<FieldDescriptor> requiredAndMapFields;

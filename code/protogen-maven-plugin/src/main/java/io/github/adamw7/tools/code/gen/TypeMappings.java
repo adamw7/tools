@@ -12,6 +12,7 @@ import com.google.protobuf.GeneratedMessageV3;
 public class TypeMappings {
 
 	private final Map<String, String> mappings = new HashMap<>();
+	private final Map<String, String> primitiveToObjectMap = new HashMap<>();
 	
 	void putJavaTypes() {
 		mappings.put("STRING", "String");
@@ -24,8 +25,19 @@ public class TypeMappings {
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {
-		putJavaTypes();
-		putCustomTypes(allMessages);
+		putJavaTypes();		
+		putPrimitiveTypes();
+		putCustomTypes(allMessages);		
+	}
+
+	private void putPrimitiveTypes() {
+		primitiveToObjectMap.put("int", Integer.class.getName());
+		primitiveToObjectMap.put("long", Long.class.getName());
+		primitiveToObjectMap.put("boolean", Boolean.class.getName());
+		primitiveToObjectMap.put("double", Double.class.getName());
+		primitiveToObjectMap.put("float", Float.class.getName());
+		primitiveToObjectMap.put("char", Character.class.getName());
+		primitiveToObjectMap.put("short", Short.class.getName());		
 	}
 
 	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -60,10 +72,11 @@ public class TypeMappings {
 	}
 
 	private String wrapIfNeeded(String type) {
-		if (type.equals("int")) {
-			return "Integer";
-		} else {
+		String value = primitiveToObjectMap.get(type);
+		if (value == null) {
 			return type;
+		} else {
+			return value;
 		}
 	}
 

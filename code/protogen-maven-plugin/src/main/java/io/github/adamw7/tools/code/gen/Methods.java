@@ -39,7 +39,7 @@ public class Methods {
 		String returnType = Utils.getNext(className, requiredFields, field, "Ifc");
 		builder.append("\tpublic ").append(returnType).append(" ").append(generateSetter(field, typeMappings))
 				.append(" {\n");
-		builder.append("\t\t").append(classOrBuilder).append(".set").append(Utils.firstToUpper(field.getName()));
+		builder.append("\t\t").append(classOrBuilder).append(builderMethodName(field));
 		builder.append("(").append(field.getName()).append(");\n");
 		builder.append("\t\treturn new ").append(Utils.getNext(className, requiredFields, field, "Impl")).append("(")
 				.append(classOrBuilder).append(");\n");
@@ -48,7 +48,19 @@ public class Methods {
 		return builder;
 	}
 
+	private String builderMethodName(FieldDescriptor field) {
+		String suffix = Utils.firstToUpper(field.getName());
+		if (field.isMapField()) {
+			return ".putAll" + suffix;
+		} else {
+			return ".set" + suffix;			
+		}
+	}
+
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
+		if (field.isMapField()) {
+			return new StringBuilder();
+		}
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		String fieldName = Utils.toUpperCamelCase(field.getName());
 		builder.append("\tpublic boolean has").append(fieldName);
@@ -91,6 +103,9 @@ public class Methods {
 	}
 
 	public StringBuilder declareHas(FieldDescriptor field) {
+		if (field.isMapField()) {
+			return new StringBuilder();
+		}
 		StringBuilder builder = new StringBuilder("\tboolean has");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("();\n");

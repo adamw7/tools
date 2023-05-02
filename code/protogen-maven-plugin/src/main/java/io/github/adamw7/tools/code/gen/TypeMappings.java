@@ -1,9 +1,11 @@
 package io.github.adamw7.tools.code.gen;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.GeneratedMessageV3;
 
@@ -36,7 +38,9 @@ public class TypeMappings {
 		String key = field.getType().getJavaType().name();
 		
 		if (key.equals("ENUM")) {
-			return handleEnums(field);
+			return handleEnum(field);
+		} if (key.equals("MESSAGE") && field.isMapField()) {
+			return handleMap(field);
 		} else {
 			String type = mappings.get(key);
 			if (type == null) {
@@ -47,7 +51,23 @@ public class TypeMappings {
 		}		
 	}
 
-	private String handleEnums(FieldDescriptor field) {
+	private String handleMap(FieldDescriptor field) {
+		List<Descriptor> nestedTypes = field.getContainingType().getNestedTypes();
+		List<FieldDescriptor> fields = nestedTypes.get(0).getFields();
+		String key = wrapIfNeeded(get(fields.get(0)));
+		String value = wrapIfNeeded(get(fields.get(1)));
+		return "java.util.Map<" + key + "," + value + ">";
+	}
+
+	private String wrapIfNeeded(String type) {
+		if (type.equals("int")) {
+			return "Integer";
+		} else {
+			return type;
+		}
+	}
+
+	private String handleEnum(FieldDescriptor field) {
 		return Utils.getSuffixOf(field.getEnumType().getFullName(), 2, ".");
 	}
 }

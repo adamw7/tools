@@ -12,6 +12,7 @@ public class Clazz {
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String className;
 	private final List<FieldDescriptor> requiredFields;
+	private final List<FieldDescriptor> mapFields;	
 	private final String pkg;
 	private final Interfaces interfaces;
 	private final Implementations implementations;
@@ -20,11 +21,16 @@ public class Clazz {
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		className = getClassName(descriptor);
 		requiredFields = getRequiredFields(descriptor);
+		mapFields = getMapFields(descriptor);
 		List<FieldDescriptor> optionalFields = getOptionalFields(descriptor);
 		this.pkg = pkg.getName();	
-		this.interfaces = new Interfaces(className, optionalFields, requiredFields, typeMappings);
-		this.implementations = new Implementations(className, optionalFields, requiredFields, typeMappings);
+		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, typeMappings);
+		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, typeMappings);
 		this.methods = new Methods(typeMappings, className);
+	}
+
+	private List<FieldDescriptor> getMapFields(Descriptor descriptor) {
+		return descriptor.getFields().stream().filter(FieldDescriptor::isMapField).toList();
 	}
 
 	private List<FieldDescriptor> getRequiredFields(Descriptor descriptor) {

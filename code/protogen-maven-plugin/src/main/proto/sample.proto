@@ -30,4 +30,5 @@ message Person {
   }
   
   optional CLASSIFICATION classification = 18;
+  map<string, int32> mapping = 19;
 }

@@ -4,25 +4,17 @@ import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
-public class Interfaces {
-	private final String className;
-	private final List<FieldDescriptor> optionalFields;
-	private final List<FieldDescriptor> requiredFields;
-	private final Methods methods;
-	private final String optionalIfcName;
+public class Interfaces extends AbstractStatements {
 
-	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, TypeMappings typeMappings) {
-		this.className = className;
-		this.optionalFields = optionalFields;
-		this.requiredFields = requiredFields;
-		this.methods = new Methods(typeMappings, className);
-		optionalIfcName = className + "OptionalIfc";
+	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
+			List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
+		super(className, optionalFields, requiredFields, mapFields, typeMappings);
 	}
 
 	public StringBuilder generateRequired() {
 		StringBuilder interfaces = new StringBuilder();
 		
-		for (FieldDescriptor requiredField : requiredFields) {
+		for (FieldDescriptor requiredField : requiredAndMapFields) {
 			interfaces.append(generateInterface(requiredField)).append("\n");
 		}
 		return interfaces;
@@ -35,7 +27,7 @@ public class Interfaces {
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
-			builder.append(methods.declareClear(optionalField, Utils.getNext(className, requiredFields, optionalField, "Ifc")));
+			builder.append(methods.declareClear(optionalField, Utils.getNext(className, requiredAndMapFields, optionalField, "Ifc")));
 		}
 		
 		builder.append("\t").append(className).append(" build();\n");
@@ -49,7 +41,7 @@ public class Interfaces {
 		ifc.append("interface ");
 		ifc.append(Utils.to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n");
-		String returnType = Utils.getNext(className, requiredFields, requiredField, "Ifc");
+		String returnType = Utils.getNext(className, requiredAndMapFields, requiredField, "Ifc");
 		ifc.append(methods.declareSetter(requiredField, returnType));
 		ifc.append(methods.declareHas(requiredField));
 		ifc.append(methods.declareClear(requiredField, returnType));		

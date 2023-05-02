@@ -4,39 +4,27 @@ import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
-public class Implementations {
-
-	private final String className;
-	private final List<FieldDescriptor> optionalFields;
-	private final List<FieldDescriptor> requiredFields;
-	private final Methods methods;
-	private final String optionalImplName;
-	private final String optionalIfcName;
+public class Implementations extends AbstractStatements {
 
 	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			TypeMappings typeMappings) {
-		this.className = className;
-		this.optionalFields = optionalFields;
-		this.requiredFields = requiredFields;
-		methods = new Methods(typeMappings, className);
-		this.optionalIfcName = className + "OptionalIfc";
-		this.optionalImplName = className + "OptionalImpl";		
+			List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
+		super(className, optionalFields, requiredFields, mapFields, typeMappings);
 	}
 
 	public StringBuilder generateRequired() {
 		StringBuilder builder = new StringBuilder();
-		if (requiredFields.size() > 1) {
-			for (int i = 1; i < requiredFields.size(); ++i) { // skipping first since already handled
+		if (requiredAndMapFields.size() > 1) {
+			for (int i = 1; i < requiredAndMapFields.size(); ++i) { // skipping first since already handled
 				String classOrBuilder = Utils.firstToLower(className) + "OrBuilder";
-				FieldDescriptor field = requiredFields.get(i);
+				FieldDescriptor field = requiredAndMapFields.get(i);
 				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
 				String implName = Utils.firstToUpper(field.getName()) + "Impl";
 				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append(methods.constructor(implName, classOrBuilder));
-				builder.append(methods.requiredSetter(classOrBuilder, field, requiredFields));
+				builder.append(methods.requiredSetter(classOrBuilder, field, requiredAndMapFields));
 				builder.append(methods.has(classOrBuilder, field));	
-				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, requiredFields, field, "Ifc")));					
+				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, requiredAndMapFields, field, "Ifc")));					
 				builder.append("\n}\n");
 			}
 		}

@@ -19,7 +19,7 @@ public class CodeMojo extends AbstractMojo {
 	private final static Logger log = LogManager.getLogger(CodeMojo.class.getName());
 
 	@Parameter(property = "generatedsourcesdir", required = true)
-	private String generatedSourcesDir;
+	protected String generatedSourcesDir;
 	
 	@Override
 	public void execute() {

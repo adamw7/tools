@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.protos";
+
+message Maps {
+	map<sint64, int64> sint64_to_int64_map = 1;
+}

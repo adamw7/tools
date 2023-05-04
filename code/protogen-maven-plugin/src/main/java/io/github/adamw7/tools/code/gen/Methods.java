@@ -49,7 +49,7 @@ public class Methods {
 	}
 
 	private String builderMethodName(FieldDescriptor field) {
-		String suffix = Utils.firstToUpper(field.getName());
+		String suffix = Utils.toUpperCamelCase(field.getName());
 		if (field.isMapField()) {
 			return ".putAll" + suffix;
 		} else {

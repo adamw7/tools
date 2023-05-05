@@ -7,4 +7,5 @@ option java_package = "io.github.adamw7.tools.code.protos";
 
 message Maps {
 	map<sint64, int64> sint64_to_int64_map = 1;
+	map<sint64, int32> sint64_to_int32_map = 2;
 }

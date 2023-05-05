@@ -64,11 +64,18 @@ public class TypeMappings {
 	}
 
 	private String handleMap(FieldDescriptor field) {
-		List<Descriptor> nestedTypes = field.getContainingType().getNestedTypes();
-		List<FieldDescriptor> fields = nestedTypes.get(0).getFields();
-		String key = wrapIfNeeded(get(fields.get(0)));
-		String value = wrapIfNeeded(get(fields.get(1)));
-		return "java.util.Map<" + key + "," + value + ">";
+		List<Descriptor> desciptors = field.getContainingType().getNestedTypes();
+		for (Descriptor descriptor : desciptors) {
+			if (descriptor.getFullName().toLowerCase().contains(field.getJsonName().toLowerCase())) {
+				FieldDescriptor keyDesc = descriptor.findFieldByName("key");
+				FieldDescriptor valueDesc = descriptor.findFieldByName("value");
+				
+				String key = wrapIfNeeded(get(keyDesc));		
+				String value = wrapIfNeeded(get(valueDesc));
+				return "java.util.Map<" + key + "," + value + ">";		
+			}
+		}
+		throw new IllegalStateException("Have not found types for map: " + field.getFullName());
 	}
 
 	private String wrapIfNeeded(String type) {

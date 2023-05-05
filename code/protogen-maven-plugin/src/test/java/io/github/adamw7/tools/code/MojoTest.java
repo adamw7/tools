@@ -26,11 +26,11 @@ public class MojoTest {
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
 		mojo.execute();
 		File dir = new File(GENERATED_SOURCES);
-		assertTrue(new HashSet<String>(Arrays.asList(dir.list())).contains("io"));
+		assertTrue(new HashSet<>(Arrays.asList(dir.list())).contains("io"));
 	}
 	
 	@AfterEach
-	public void cleanUp() throws IOException {
+	public void cleanUp() {
 		File dir = new File(GENERATED_SOURCES);
 		dir.delete();
 	}

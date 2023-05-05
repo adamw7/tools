@@ -64,8 +64,8 @@ public class TypeMappings {
 	}
 
 	private String handleMap(FieldDescriptor field) {
-		List<Descriptor> desciptors = field.getContainingType().getNestedTypes();
-		for (Descriptor descriptor : desciptors) {
+		List<Descriptor> descriptors = field.getContainingType().getNestedTypes();
+		for (Descriptor descriptor : descriptors) {
 			if (descriptor.getFullName().toLowerCase().contains(field.getJsonName().toLowerCase())) {
 				FieldDescriptor keyDesc = descriptor.findFieldByName("key");
 				FieldDescriptor valueDesc = descriptor.findFieldByName("value");

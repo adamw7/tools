@@ -66,7 +66,7 @@ public class TypeMappings {
 	private String handleMap(FieldDescriptor field) {
 		List<Descriptor> descriptors = field.getContainingType().getNestedTypes();
 		for (Descriptor descriptor : descriptors) {
-			if (descriptor.getFullName().toLowerCase().contains(field.getJsonName().toLowerCase())) {
+			if (belongsTo(field, descriptor)) {
 				FieldDescriptor keyDesc = descriptor.findFieldByName("key");
 				FieldDescriptor valueDesc = descriptor.findFieldByName("value");
 				
@@ -76,6 +76,10 @@ public class TypeMappings {
 			}
 		}
 		throw new IllegalStateException("Have not found types for map: " + field.getFullName());
+	}
+
+	private boolean belongsTo(FieldDescriptor field, Descriptor descriptor) {
+		return descriptor.getFullName().toLowerCase().contains(field.getJsonName().toLowerCase());
 	}
 
 	private String wrapIfNeeded(String type) {

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.GeneratedMessageV3;
@@ -15,13 +16,13 @@ public class TypeMappings {
 	private final Map<String, String> primitiveToObjectMap = new HashMap<>();
 	
 	void putJavaTypes() {
-		mappings.put("STRING", "String");
-		mappings.put("INT", "int");
-		mappings.put("LONG", "long");
-		mappings.put("FLOAT", "float");
-		mappings.put("BOOLEAN", "boolean");		
-		mappings.put("DOUBLE", "double");
-		mappings.put("BYTE_STRING", "com.google.protobuf.ByteString");
+		mappings.put("STRING", String.class.getSimpleName());
+		mappings.put("INT", int.class.getName());
+		mappings.put("LONG", long.class.getName());
+		mappings.put("FLOAT", float.class.getName());
+		mappings.put("BOOLEAN", boolean.class.getName());		
+		mappings.put("DOUBLE", double.class.getName());
+		mappings.put("BYTE_STRING", ByteString.class.getName());
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -31,13 +32,13 @@ public class TypeMappings {
 	}
 
 	private void putPrimitiveTypes() {
-		primitiveToObjectMap.put("int", Integer.class.getName());
-		primitiveToObjectMap.put("long", Long.class.getName());
-		primitiveToObjectMap.put("boolean", Boolean.class.getName());
-		primitiveToObjectMap.put("double", Double.class.getName());
-		primitiveToObjectMap.put("float", Float.class.getName());
-		primitiveToObjectMap.put("char", Character.class.getName());
-		primitiveToObjectMap.put("short", Short.class.getName());		
+		primitiveToObjectMap.put("int", Integer.class.getSimpleName());
+		primitiveToObjectMap.put("long", Long.class.getSimpleName());
+		primitiveToObjectMap.put("boolean", Boolean.class.getSimpleName());
+		primitiveToObjectMap.put("double", Double.class.getSimpleName());
+		primitiveToObjectMap.put("float", Float.class.getSimpleName());
+		primitiveToObjectMap.put("char", Character.class.getSimpleName());
+		primitiveToObjectMap.put("short", Short.class.getSimpleName());		
 	}
 
 	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -72,7 +73,7 @@ public class TypeMappings {
 				
 				String key = wrapIfNeeded(get(keyDesc));		
 				String value = wrapIfNeeded(get(valueDesc));
-				return "java.util.Map<" + key + "," + value + ">";		
+				return Map.class.getName() + "<" + key + "," + value + ">";		
 			}
 		}
 		throw new IllegalStateException("Have not found types for map: " + field.getFullName());

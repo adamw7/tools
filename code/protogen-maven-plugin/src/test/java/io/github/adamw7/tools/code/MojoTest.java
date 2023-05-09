@@ -1,14 +1,14 @@
 package io.github.adamw7.tools.code;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MojoTest {
 

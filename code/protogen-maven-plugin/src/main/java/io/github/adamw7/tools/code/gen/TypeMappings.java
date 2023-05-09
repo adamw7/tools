@@ -16,13 +16,21 @@ public class TypeMappings {
 	private final Map<String, String> primitiveToObjectMap = new HashMap<>();
 	
 	void putJavaTypes() {
-		mappings.put("STRING", String.class.getSimpleName());
-		mappings.put("INT", int.class.getName());
-		mappings.put("LONG", long.class.getName());
-		mappings.put("FLOAT", float.class.getName());
-		mappings.put("BOOLEAN", boolean.class.getName());		
-		mappings.put("DOUBLE", double.class.getName());
-		mappings.put("BYTE_STRING", ByteString.class.getName());
+		mappings.put("STRING", name(String.class));
+		mappings.put("INT", name(int.class));
+		mappings.put("LONG", name(long.class));
+		mappings.put("FLOAT", name(float.class));
+		mappings.put("BOOLEAN", name(boolean.class));		
+		mappings.put("DOUBLE", name(double.class));
+		mappings.put("BYTE_STRING", name(ByteString.class));
+	}
+
+	private static String name(Class<?> clazz) {
+		if (clazz.isPrimitive() || clazz.getPackage().getName().startsWith("java.lang")) {
+			return clazz.getSimpleName();
+		} else {
+			return clazz.getName();
+		}
 	}
 
 	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {
@@ -32,13 +40,13 @@ public class TypeMappings {
 	}
 
 	private void putPrimitiveTypes() {
-		primitiveToObjectMap.put("int", Integer.class.getSimpleName());
-		primitiveToObjectMap.put("long", Long.class.getSimpleName());
-		primitiveToObjectMap.put("boolean", Boolean.class.getSimpleName());
-		primitiveToObjectMap.put("double", Double.class.getSimpleName());
-		primitiveToObjectMap.put("float", Float.class.getSimpleName());
-		primitiveToObjectMap.put("char", Character.class.getSimpleName());
-		primitiveToObjectMap.put("short", Short.class.getSimpleName());		
+		primitiveToObjectMap.put("int", name(Integer.class));
+		primitiveToObjectMap.put("long", name(Long.class));
+		primitiveToObjectMap.put("boolean", name(Boolean.class));
+		primitiveToObjectMap.put("double", name(Double.class));
+		primitiveToObjectMap.put("float", name(Float.class));
+		primitiveToObjectMap.put("char", name(Character.class));
+		primitiveToObjectMap.put("short", name(Short.class));		
 	}
 
 	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {

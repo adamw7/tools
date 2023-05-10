@@ -112,9 +112,10 @@ public class Clazz {
 
 	private StringBuilder generateImports() {
 		StringBuilder builder = new StringBuilder();
-		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".").append(className);
-		builder.append(prefix).append(";\n");
-		builder.append(prefix).append(".Builder").append(";\n");		
+		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".");
+		builder.append(prefix).append("*;\n");
+		builder.append(prefix).append(className).append(";\n");
+		builder.append(prefix).append(className).append(".Builder").append(";\n");		
 		return builder;
 	}
 

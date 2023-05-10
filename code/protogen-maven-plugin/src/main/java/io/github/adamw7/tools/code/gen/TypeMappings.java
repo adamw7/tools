@@ -62,6 +62,8 @@ public class TypeMappings {
 			return handleEnum(field);
 		} else if (key.equals("MESSAGE") && field.isMapField()) {
 			return handleMap(field);
+		} else if (key.equals("MESSAGE")) { 
+			return handleMessage(field);
 		} else {
 			String type = mappings.get(key);
 			if (type == null) {
@@ -70,6 +72,10 @@ public class TypeMappings {
 				return type;
 			}
 		}		
+	}
+
+	private String handleMessage(FieldDescriptor field) {
+		return Utils.getSuffixOf(field.toProto().getTypeName(), 1, ".");
 	}
 
 	private String handleMap(FieldDescriptor field) {

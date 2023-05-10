@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package tutorial;
 
+import "sample.proto";
+
 option java_multiple_files = true;
 option java_package = "io.github.adamw7.tools.code.protos";
 
@@ -10,6 +12,8 @@ message Maps {
 	map<sint64, int32> sint64_to_int32_map = 2;
 	map<fixed32, Enumeration> fixed32_to_enumeration_map = 3;
 	map<sfixed64, uint64> sfixed64_to_uint64_map = 4;
+	map<sfixed32, Person> sfixed32_to_Person_map = 5;
+
 	
 	enum Enumeration {
   		zero = 0;

@@ -40,13 +40,13 @@ public class TypeMappings {
 	}
 
 	private void putPrimitiveTypes() {
-		primitiveToObjectMap.put("int", name(Integer.class));
-		primitiveToObjectMap.put("long", name(Long.class));
-		primitiveToObjectMap.put("boolean", name(Boolean.class));
-		primitiveToObjectMap.put("double", name(Double.class));
-		primitiveToObjectMap.put("float", name(Float.class));
-		primitiveToObjectMap.put("char", name(Character.class));
-		primitiveToObjectMap.put("short", name(Short.class));		
+		primitiveToObjectMap.put(name(int.class), name(Integer.class));
+		primitiveToObjectMap.put(name(long.class), name(Long.class));
+		primitiveToObjectMap.put(name(boolean.class), name(Boolean.class));
+		primitiveToObjectMap.put(name(double.class), name(Double.class));
+		primitiveToObjectMap.put(name(float.class), name(Float.class));
+		primitiveToObjectMap.put(name(char.class), name(Character.class));
+		primitiveToObjectMap.put(name(short.class), name(Short.class));		
 	}
 
 	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {

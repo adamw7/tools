@@ -22,10 +22,16 @@ public class Clazz {
 		requiredFields = getRequiredFields(descriptor);
 		List<FieldDescriptor> mapFields = getMapFields(descriptor);
 		List<FieldDescriptor> optionalFields = getOptionalFields(descriptor);
+		List<FieldDescriptor> repeatedFields = getRepeatedFields(descriptor);
+		
 		this.pkg = pkg.getName();	
-		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, typeMappings);
-		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, typeMappings);
+		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
+		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
 		this.methods = new Methods(typeMappings, className);
+	}
+
+	private List<FieldDescriptor> getRepeatedFields(Descriptor descriptor) {
+		return descriptor.getFields().stream().filter(f -> f.isRepeated() && !f.isMapField()).toList();
 	}
 
 	private List<FieldDescriptor> getMapFields(Descriptor descriptor) {

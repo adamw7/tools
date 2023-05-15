@@ -17,12 +17,23 @@ public class Methods {
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		builder.append("\tpublic ").append(returnType).append(" ");
-		builder.append(generateSetter(field, typeMappings)).append(" {\n");
-		builder.append("\t\tbuilder.set").append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("(").append(field.getName()).append(");\n");
+		builder.append(generateSetter(field)).append(" {\n");
+		builder.append("\t\tbuilder.");
+		if (isPureRepeated(field)) {
+			builder.append("addAll");
+		} else {
+			builder.append("set");
+		}
+		builder.append(Utils.toUpperCamelCase(field.getName()));
+		builder.append("(");
+		builder.append(field.getName()).append(");\n");			
 		builder.append("\t\treturn this;\n\t}\n");
 
 		return builder;
+	}
+
+	private boolean isPureRepeated(FieldDescriptor field) {
+		return field.isRepeated() && !field.isMapField();
 	}
 
 	public StringBuilder build() {
@@ -37,10 +48,11 @@ public class Methods {
 			List<FieldDescriptor> requiredFields) {
 		StringBuilder builder = new StringBuilder("\t@Override\n");
 		String returnType = Utils.getNext(className, requiredFields, field, "Ifc");
-		builder.append("\tpublic ").append(returnType).append(" ").append(generateSetter(field, typeMappings))
+		builder.append("\tpublic ").append(returnType).append(" ").append(generateSetter(field))
 				.append(" {\n");
 		builder.append("\t\t").append(classOrBuilder).append(builderMethodName(field));
-		builder.append("(").append(field.getName()).append(");\n");
+		builder.append("(");
+		builder.append(field.getName()).append(");\n");
 		builder.append("\t\treturn new ").append(Utils.getNext(className, requiredFields, field, "Impl")).append("(")
 				.append(classOrBuilder).append(");\n");
 		builder.append("\t}\n");
@@ -52,13 +64,15 @@ public class Methods {
 		String suffix = Utils.toUpperCamelCase(field.getName());
 		if (field.isMapField()) {
 			return ".putAll" + suffix;
+		} else if (field.isRepeated()) {
+			return ".addAll" + suffix;
 		} else {
 			return ".set" + suffix;			
 		}
 	}
 
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
-		if (field.isMapField()) {
+		if (!needsHas(field)) {
 			return new StringBuilder();
 		}
 		StringBuilder builder = new StringBuilder("\t@Override\n");
@@ -69,6 +83,10 @@ public class Methods {
 		builder.append("\t}\n");
 
 		return builder;
+	}
+
+	private boolean needsHas(FieldDescriptor field) {
+		return !field.isMapField() && !field.isRepeated();
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
@@ -96,14 +114,14 @@ public class Methods {
 	public StringBuilder declareSetter(FieldDescriptor field, String returnType) {
 		StringBuilder builder = new StringBuilder("\t");
 		builder.append(returnType).append(" ");
-		builder.append(generateSetter(field, typeMappings));
+		builder.append(generateSetter(field));
 		builder.append(";\n");
 
 		return builder;
 	}
 
 	public StringBuilder declareHas(FieldDescriptor field) {
-		if (field.isMapField()) {
+		if (!needsHas(field)) {
 			return new StringBuilder();
 		}
 		StringBuilder builder = new StringBuilder("\tboolean has");
@@ -122,10 +140,11 @@ public class Methods {
 		return builder;
 	}
 
-	private static StringBuilder generateSetter(FieldDescriptor field, TypeMappings mappings) {
+	private StringBuilder generateSetter(FieldDescriptor field) {
 		StringBuilder builder = new StringBuilder("set");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("(").append(mappings.get(field));
+		builder.append("(");
+		builder.append(typeMappings.get(field));					
 		builder.append(" ").append(field.getName()).append(")");
 
 		return builder;

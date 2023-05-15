@@ -58,7 +58,9 @@ public class TypeMappings {
 	public String get(FieldDescriptor field) {
 		String key = field.getType().getJavaType().name();
 		
-		if (key.equals("ENUM")) {
+		if (field.isRepeated() && !field.isMapField()) {
+			return handleRepeated(field);
+		} else if (key.equals("ENUM")) {
 			return handleEnum(field);
 		} else if (key.equals("MESSAGE") && field.isMapField()) {
 			return handleMap(field);
@@ -72,6 +74,11 @@ public class TypeMappings {
 				return type;
 			}
 		}		
+	}
+
+	private String handleRepeated(FieldDescriptor field) {
+		String innerType = field.getType().getJavaType().name();
+		return "java.util.List<" + wrapIfNeeded(mappings.get(innerType)) + ">";
 	}
 
 	private String handleMessage(FieldDescriptor field) {

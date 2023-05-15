@@ -8,24 +8,25 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public abstract class AbstractStatements {
 	protected final String className;
 	protected final List<FieldDescriptor> optionalFields;
-	protected final List<FieldDescriptor> requiredAndMapFields;
+	protected final List<FieldDescriptor> nonOptionalFields;
 	protected final Methods methods;
 	protected final String optionalIfcName;
 	protected final String optionalImplName;
 	
-	protected AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
+	protected AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
 		this.className = className;
 		this.optionalFields = optionalFields;
-		this.requiredAndMapFields = union(requiredFields, mapFields);
+		this.nonOptionalFields = union(requiredFields, mapFields, repeatedFields);
 		methods = new Methods(typeMappings, className);
 		this.optionalIfcName = className + "OptionalIfc";
 		this.optionalImplName = className + "OptionalImpl";				
 	}
 	
-	protected List<FieldDescriptor> union(List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields) {
+	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
 		List<FieldDescriptor> all = new ArrayList<>();
-		all.addAll(requiredFields);
-		all.addAll(mapFields);
+		for (List<FieldDescriptor> fieldsList : fieldsLists) {
+			all.addAll(fieldsList);
+		}
 		return all;
 	}
 

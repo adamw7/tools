@@ -7,14 +7,14 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Interfaces extends AbstractStatements {
 
 	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
-		super(className, optionalFields, requiredFields, mapFields, typeMappings);
+			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
+		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
 	}
 
 	public StringBuilder generateRequired() {
 		StringBuilder interfaces = new StringBuilder();
 		
-		for (FieldDescriptor requiredField : requiredAndMapFields) {
+		for (FieldDescriptor requiredField : nonOptionalFields) {
 			interfaces.append(generateInterface(requiredField)).append("\n");
 		}
 		return interfaces;
@@ -27,7 +27,7 @@ public class Interfaces extends AbstractStatements {
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
-			builder.append(methods.declareClear(optionalField, Utils.getNext(className, requiredAndMapFields, optionalField, "Ifc")));
+			builder.append(methods.declareClear(optionalField, Utils.getNext(className, nonOptionalFields, optionalField, "Ifc")));
 		}
 		
 		builder.append("\t").append(className).append(" build();\n");
@@ -41,7 +41,7 @@ public class Interfaces extends AbstractStatements {
 		ifc.append("interface ");
 		ifc.append(Utils.to(requiredField, "Ifc"));
 		ifc.append(" {").append("\n");
-		String returnType = Utils.getNext(className, requiredAndMapFields, requiredField, "Ifc");
+		String returnType = Utils.getNext(className, nonOptionalFields, requiredField, "Ifc");
 		ifc.append(methods.declareSetter(requiredField, returnType));
 		ifc.append(methods.declareHas(requiredField));
 		ifc.append(methods.declareClear(requiredField, returnType));		

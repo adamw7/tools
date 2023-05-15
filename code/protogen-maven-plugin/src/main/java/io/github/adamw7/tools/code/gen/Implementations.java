@@ -7,24 +7,24 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Implementations extends AbstractStatements {
 
 	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, TypeMappings typeMappings) {
-		super(className, optionalFields, requiredFields, mapFields, typeMappings);
+			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
+		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
 	}
 
 	public StringBuilder generateRequired() {
 		StringBuilder builder = new StringBuilder();
-		if (requiredAndMapFields.size() > 1) {
-			for (int i = 1; i < requiredAndMapFields.size(); ++i) { // skipping first since already handled
+		if (nonOptionalFields.size() > 1) {
+			for (int i = 1; i < nonOptionalFields.size(); ++i) { // skipping first since already handled
 				String classOrBuilder = Utils.firstToLower(className) + "OrBuilder";
-				FieldDescriptor field = requiredAndMapFields.get(i);
+				FieldDescriptor field = nonOptionalFields.get(i);
 				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
 				String implName = Utils.firstToUpper(field.getName()) + "Impl";
 				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");
 				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
 				builder.append(methods.constructor(implName, classOrBuilder));
-				builder.append(methods.requiredSetter(classOrBuilder, field, requiredAndMapFields));
+				builder.append(methods.requiredSetter(classOrBuilder, field, nonOptionalFields));
 				builder.append(methods.has(classOrBuilder, field));	
-				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, requiredAndMapFields, field, "Ifc")));					
+				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, nonOptionalFields, field, "Ifc")));					
 				builder.append("\n}\n");
 			}
 		}

@@ -78,7 +78,13 @@ public class TypeMappings {
 
 	private String handleRepeated(FieldDescriptor field) {
 		String innerType = field.getType().getJavaType().name();
-		return "java.util.List<" + wrapIfNeeded(mappings.get(innerType)) + ">";
+		if (innerType.equals("ENUM")) {
+			innerType = handleEnum(field);
+		} else {
+			innerType = wrapIfNeeded(mappings.get(innerType));			
+		}
+
+		return "java.util.List<" + innerType + ">";
 	}
 
 	private String handleMessage(FieldDescriptor field) {

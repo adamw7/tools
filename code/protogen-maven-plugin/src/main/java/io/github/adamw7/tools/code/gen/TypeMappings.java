@@ -84,7 +84,7 @@ public class TypeMappings {
 			innerType = wrapIfNeeded(mappings.get(innerType));			
 		}
 
-		return "java.util.List<" + innerType + ">";
+		return name(List.class) + "<" + innerType + ">";
 	}
 
 	private String handleMessage(FieldDescriptor field) {
@@ -100,7 +100,7 @@ public class TypeMappings {
 				
 				String key = wrapIfNeeded(get(keyDesc));		
 				String value = wrapIfNeeded(get(valueDesc));
-				return Map.class.getName() + "<" + key + "," + value + ">";		
+				return name(Map.class) + "<" + key + "," + value + ">";		
 			}
 		}
 		throw new IllegalStateException("Have not found types for map: " + field.getFullName());

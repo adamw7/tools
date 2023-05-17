@@ -12,17 +12,28 @@ import com.google.protobuf.GeneratedMessageV3;
 
 public class TypeMappings {
 
+	private static final String BYTE_STRING = "BYTE_STRING";
+	private static final String DOUBLE = "DOUBLE";
+	private static final String BOOLEAN = "BOOLEAN";
+	private static final String FLOAT = "FLOAT";
+	private static final String LONG = "LONG";
+	private static final String INT = "INT";
+	private static final String STRING = "STRING";
+	
+	private static final String MESSAGE = "MESSAGE";
+	private static final String ENUM = "ENUM";
+	
 	private final Map<String, String> mappings = new HashMap<>();
 	private final Map<String, String> primitiveToObjectMap = new HashMap<>();
 	
 	void putJavaTypes() {
-		mappings.put("STRING", name(String.class));
-		mappings.put("INT", name(int.class));
-		mappings.put("LONG", name(long.class));
-		mappings.put("FLOAT", name(float.class));
-		mappings.put("BOOLEAN", name(boolean.class));		
-		mappings.put("DOUBLE", name(double.class));
-		mappings.put("BYTE_STRING", name(ByteString.class));
+		mappings.put(STRING, name(String.class));
+		mappings.put(INT, name(int.class));
+		mappings.put(LONG, name(long.class));
+		mappings.put(FLOAT, name(float.class));
+		mappings.put(BOOLEAN, name(boolean.class));		
+		mappings.put(DOUBLE, name(double.class));
+		mappings.put(BYTE_STRING, name(ByteString.class));
 	}
 
 	private static String name(Class<?> clazz) {
@@ -60,11 +71,11 @@ public class TypeMappings {
 		
 		if (field.isRepeated() && !field.isMapField()) {
 			return handleRepeated(field);
-		} else if (key.equals("ENUM")) {
+		} else if (key.equals(ENUM)) {
 			return handleEnum(field);
-		} else if (key.equals("MESSAGE") && field.isMapField()) {
+		} else if (key.equals(MESSAGE) && field.isMapField()) {
 			return handleMap(field);
-		} else if (key.equals("MESSAGE")) { 
+		} else if (key.equals(MESSAGE)) { 
 			return handleMessage(field);
 		} else {
 			String type = mappings.get(key);
@@ -78,7 +89,7 @@ public class TypeMappings {
 
 	private String handleRepeated(FieldDescriptor field) {
 		String innerType = field.getType().getJavaType().name();
-		if (innerType.equals("ENUM")) {
+		if (innerType.equals(ENUM)) {
 			innerType = handleEnum(field);
 		} else {
 			innerType = wrapIfNeeded(mappings.get(innerType));			

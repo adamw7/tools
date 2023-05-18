@@ -51,7 +51,7 @@ public class CodeGenerationTest {
 		List<Integer> ids = new ArrayList<>();
 		ids.add(55);
 		List<CLASSIFICATION> classifications = new ArrayList<>();
-		PersonOptionalIfc optional = mapping.setMapping(map).setIds(ids).setClassifications(classifications);		
+		PersonOptionalIfc optional = mapping.setMapping(map).setIds(ids).setClassifications(classifications).setFriends(new ArrayList<>());		
 		Person person = optional.setEmail("sth@sth.net").setName("Adam").
 				setSalary(1000L).setFactor(0f).setGender(1).setPhone(12345678L).setLevel(6).
 				setGrade(10L).setUnit(30).setExternalId(500L).setActive(true).setLocation(17).
@@ -88,6 +88,7 @@ public class CodeGenerationTest {
 		assertEquals(55, person.getIds(0));
 		assertEquals(1, person.getIdsCount());
 		assertEquals(0, person.getClassificationsCount());		
+		assertEquals(0, person.getFriendsCount());				
 	}
 
 	private static void assertPersonFieldsAreSet(Person person) {

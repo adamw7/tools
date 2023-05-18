@@ -91,6 +91,8 @@ public class TypeMappings {
 		String innerType = field.getType().getJavaType().name();
 		if (innerType.equals(ENUM)) {
 			innerType = handleEnum(field);
+		} else if (innerType.equals(MESSAGE)) { 
+			innerType = handleMessage(field);
 		} else {
 			innerType = wrapIfNeeded(mappings.get(innerType));			
 		}

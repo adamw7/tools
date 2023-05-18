@@ -33,4 +33,5 @@ message Person {
   map<string, int32> mapping = 19;
   repeated int32 ids = 20;
   repeated CLASSIFICATION classifications = 21;
+  repeated Person friends = 22;
 }

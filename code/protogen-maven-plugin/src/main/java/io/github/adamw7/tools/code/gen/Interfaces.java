@@ -27,7 +27,8 @@ public class Interfaces extends AbstractStatements {
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
-			builder.append(methods.declareClear(optionalField, Utils.getNextIfc(className, nonOptionalFields, optionalField)));
+			String clearReturnType = Utils.getNextIfc(className, nonOptionalFields, optionalField);
+			builder.append(methods.declareClear(optionalField, clearReturnType));
 		}
 		
 		builder.append("\t").append(className).append(" build();\n");

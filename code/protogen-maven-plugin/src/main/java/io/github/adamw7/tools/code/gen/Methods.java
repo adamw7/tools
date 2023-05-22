@@ -62,13 +62,15 @@ public class Methods {
 
 	private String builderMethodName(FieldDescriptor field) {
 		String suffix = Utils.toUpperCamelCase(field.getName());
+		String method;
 		if (field.isMapField()) {
-			return ".putAll" + suffix;
+			method = ".putAll";
 		} else if (field.isRepeated()) {
-			return ".addAll" + suffix;
+			method = ".addAll";
 		} else {
-			return ".set" + suffix;			
+			method = ".set";			
 		}
+		return method + suffix;
 	}
 
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {

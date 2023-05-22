@@ -37,8 +37,16 @@ public class Utils {
 	static String toProperCase(String s) {
 		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 	}
+	
+	public static String getNextIfc(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {
+		return getNext(className, fields, requiredField, "Ifc");
+	}
+	
+	public static String getNextImpl(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {
+		return getNext(className, fields, requiredField, "Impl");
+	}
 
-	public static String getNext(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {
+	private static String getNext(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {
 		for (int i = 0; i < fields.size(); ++i) {
 			if (fields.get(i).equals(requiredField)) {
 				return i == fields.size() - 1 ? className + "Optional" + suffix : to(fields.get(i + 1), suffix);

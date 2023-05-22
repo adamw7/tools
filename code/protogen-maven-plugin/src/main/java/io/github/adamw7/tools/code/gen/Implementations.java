@@ -24,7 +24,7 @@ public class Implementations extends AbstractStatements {
 				builder.append(methods.constructor(implName, classOrBuilder));
 				builder.append(methods.requiredSetter(classOrBuilder, field, nonOptionalFields));
 				builder.append(methods.has(classOrBuilder, field));	
-				builder.append(methods.clear(classOrBuilder, field, Utils.getNext(className, nonOptionalFields, field, "Ifc")));					
+				builder.append(methods.clear(classOrBuilder, field, Utils.getNextIfc(className, nonOptionalFields, field)));					
 				builder.append("\n}\n");
 			}
 		}

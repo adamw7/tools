@@ -24,7 +24,7 @@ public class CodeMojo extends AbstractMojo {
 	@Override
 	public void execute() {
 		log.info("Executing {} maven plugin", this);
-		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder().execute();
+		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder("io.github.adamw7.tools.code.protos").execute();
 		new Code(generatedSourcesDir).genBuilders(allMessages);
 	}
 

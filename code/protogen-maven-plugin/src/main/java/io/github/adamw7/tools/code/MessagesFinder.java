@@ -11,9 +11,14 @@ import com.google.protobuf.GeneratedMessageV3;
 public class MessagesFinder {
 	
 	private final static Logger log = LogManager.getLogger(MessagesFinder.class.getName());
+	private final String pkg;
 
+	public MessagesFinder(String pkg) {
+		this.pkg = pkg;
+	}
+	
 	public Set<Class<? extends GeneratedMessageV3>> execute() {
-		Reflections reflections = new Reflections("io.github.adamw7.tools.code.protos");
+		Reflections reflections = new Reflections(pkg);
 		Set<Class<? extends GeneratedMessageV3>> classes = reflections.getSubTypesOf(GeneratedMessageV3.class);
 		log.info("Found these proto classes:");
 		for (Class<? extends GeneratedMessageV3> cl : classes) {

@@ -14,7 +14,7 @@ public class MessagesFinderTest {
 
 	@Test
 	public void happyPath() {
-		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder().execute();
+		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder("io.github.adamw7.tools.code.protos").execute();
 		assertTrue(allMessages.contains(Person.class));
 	}
 }

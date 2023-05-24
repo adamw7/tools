@@ -16,6 +16,9 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FileDescriptor;
+
+import io.github.adamw7.tools.code.format.Formatter;
+
 import com.google.protobuf.GeneratedMessageV3;
 
 public class Code {
@@ -50,7 +53,9 @@ public class Code {
 		typeMappings = new TypeMappings(allMessages);
 		for (Class<? extends GeneratedMessageV3> c : allMessages) {
 			try {
-				write(genBuilder(c), c.getSimpleName() + "Builder");
+				String code = genBuilder(c);
+				code = new Formatter().format(code);
+				write(code, c.getSimpleName() + "Builder");
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
 				log.error(e);
 			}

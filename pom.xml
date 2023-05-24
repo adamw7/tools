@@ -105,6 +105,11 @@
 				<artifactId>reflections</artifactId>
 				<version>0.10.2</version>
 			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jdt</groupId>
+				<artifactId>org.eclipse.jdt.core</artifactId>
+				<version>3.33.0</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<build>

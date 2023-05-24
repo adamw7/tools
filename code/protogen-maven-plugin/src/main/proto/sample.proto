@@ -31,7 +31,7 @@ message Person {
   
   optional CLASSIFICATION classification = 18;
   map<string, int32> mapping = 19;
-  repeated int32 ids = 20;
-  repeated CLASSIFICATION classifications = 21;
-  repeated Person friends = 22;
+  repeated int32 ids = 20 [packed=true];
+  repeated CLASSIFICATION classifications = 21 [packed=true];
+  repeated Person friends = 22 [packed=false];
 }

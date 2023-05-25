@@ -19,14 +19,14 @@ public class Implementations extends AbstractStatements {
 				FieldDescriptor field = nonOptionalFields.get(i);
 				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
 				String implName = Utils.firstToUpper(field.getName()) + "Impl";
-				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {\n");
-				builder.append("\tprivate final Builder ").append(classOrBuilder).append(";\n");
+				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {");
+				builder.append("private final Builder ").append(classOrBuilder).append(";");
 				builder.append(methods.constructor(implName, classOrBuilder));
 				builder.append(methods.requiredSetter(classOrBuilder, field, nonOptionalFields));
 				builder.append(methods.has(classOrBuilder, field));	
 				String clearReturnType = Utils.getNextIfc(className, nonOptionalFields, field);
 				builder.append(methods.clear(classOrBuilder, field, clearReturnType));					
-				builder.append("\n}\n");
+				builder.append("}");
 			}
 		}
 		return builder;
@@ -37,20 +37,20 @@ public class Implementations extends AbstractStatements {
 		builder.append(optionalImplName);
 		builder.append(" implements ");
 		builder.append(optionalIfcName);
-		builder.append(" {\n");
+		builder.append(" {");
 		builder.append(generateOptionalBuilderField());
 		builder.append(generateOptionalBuilderConstructor(optionalImplName));
 		builder.append(generateMethods());
 		builder.append(methods.build());
-		builder.append("\n}\n");
+		builder.append("}");
 		return builder;
 	}
 
 	public StringBuilder generateOptionalBuilderConstructor(String name) {
 		StringBuilder builder = new StringBuilder();
-		builder.append("\tpublic ").append(name);
-		builder.append("(Builder builder) {\n");
-		builder.append("\t\tthis.builder = builder;\n\t}\n");
+		builder.append("public ").append(name);
+		builder.append("(Builder builder) {");
+		builder.append("this.builder = builder;}");
 		return builder;
 	}
 
@@ -58,7 +58,7 @@ public class Implementations extends AbstractStatements {
 		StringBuilder builder = new StringBuilder();
 		for (FieldDescriptor field : optionalFields) {
 			builder.append(methods.setter(field, optionalIfcName));
-			builder.append("\n");
+			builder.append("");
 			builder.append(methods.has("builder", field));
 			builder.append(methods.clear("builder", field, optionalIfcName));	
 		}
@@ -66,6 +66,6 @@ public class Implementations extends AbstractStatements {
 	}
 
 	public String generateOptionalBuilderField() {
-		return "\tprivate final Builder builder;\n\n";
+		return "private final Builder builder;";
 	}
 }

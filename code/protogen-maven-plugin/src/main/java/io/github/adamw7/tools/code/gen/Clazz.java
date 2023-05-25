@@ -93,11 +93,11 @@ public class Clazz {
 	}
 
 	private StringBuilder generateFields() {
-		StringBuilder builder = new StringBuilder("\tprivate final ");
+		StringBuilder builder = new StringBuilder("private final ");
 		builder.append(className).append(".Builder ");
 		
 		builder.append(className.toLowerCase()).append("Builder = ");
-		builder.append(className).append(".newBuilder();\n");
+		builder.append(className).append(".newBuilder();");
 		return builder;
 	}
 
@@ -119,9 +119,9 @@ public class Clazz {
 	private StringBuilder generateImports() {
 		StringBuilder builder = new StringBuilder();
 		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".");
-		builder.append(prefix).append("*;\n");
-		builder.append(prefix).append(className).append(";\n");
-		builder.append(prefix).append(className).append(".Builder").append(";\n");		
+		builder.append(prefix).append("*;");
+		builder.append(prefix).append(className).append(";");
+		builder.append(prefix).append(className).append(".Builder").append(";");		
 		return builder;
 	}
 

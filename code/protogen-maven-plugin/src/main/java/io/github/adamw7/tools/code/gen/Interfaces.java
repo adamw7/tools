@@ -15,14 +15,14 @@ public class Interfaces extends AbstractStatements {
 		StringBuilder interfaces = new StringBuilder();
 		
 		for (FieldDescriptor requiredField : nonOptionalFields) {
-			interfaces.append(generateInterface(requiredField)).append("\n");
+			interfaces.append(generateInterface(requiredField)).append("");
 		}
 		return interfaces;
 	}
 	
 	public StringBuilder generateOptional() {
 		StringBuilder builder = new StringBuilder("interface ");
-		builder.append(optionalIfcName).append(" {\n");
+		builder.append(optionalIfcName).append(" {");
 		
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
@@ -31,8 +31,8 @@ public class Interfaces extends AbstractStatements {
 			builder.append(methods.declareClear(optionalField, clearReturnType));
 		}
 		
-		builder.append("\t").append(className).append(" build();\n");
-		builder.append("}\n");
+		builder.append("").append(className).append(" build();");
+		builder.append("}");
 		
 		return builder;
 	}
@@ -41,13 +41,13 @@ public class Interfaces extends AbstractStatements {
 		StringBuilder ifc = new StringBuilder();
 		ifc.append("interface ");
 		ifc.append(Utils.to(requiredField, "Ifc"));
-		ifc.append(" {").append("\n");
+		ifc.append(" {").append("");
 		String returnType = Utils.getNextIfc(className, nonOptionalFields, requiredField);
 		ifc.append(methods.declareSetter(requiredField, returnType));
 		ifc.append(methods.declareHas(requiredField));
 		ifc.append(methods.declareClear(requiredField, returnType));		
 		
-		ifc.append("\n}");
+		ifc.append("}");
 				
 		return ifc;
 	}

@@ -15,9 +15,9 @@ public class Methods {
 	}
 
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder("@Override\n");
+		StringBuilder builder = newOverride();
 		builder.append("public ").append(returnType).append(" ");
-		builder.append(generateSetter(field)).append(" {\n");
+		builder.append(generateSetter(field)).append(" {");
 		builder.append("builder.");
 		if (isPureRepeated(field)) {
 			builder.append("addAll");
@@ -26,8 +26,8 @@ public class Methods {
 		}
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(");
-		builder.append(field.getName()).append(");\n");			
-		builder.append("return this;\n}\n");
+		builder.append(field.getName()).append(");");			
+		builder.append("return this;}");
 
 		return builder;
 	}
@@ -37,25 +37,25 @@ public class Methods {
 	}
 
 	public StringBuilder build() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("@Override\n").append("public ").append(className).append(" build() {\n");
-		builder.append("return builder.build();\n}");
+		StringBuilder builder = newOverride();
+		builder.append("public ").append(className).append(" build() {");
+		builder.append("return builder.build();}");
 
 		return builder;
 	}
 
 	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field,
 			List<FieldDescriptor> requiredFields) {
-		StringBuilder builder = new StringBuilder("@Override\n");
+		StringBuilder builder = newOverride();
 		String returnType = Utils.getNextIfc(className, requiredFields, field);
 		builder.append("public ").append(returnType).append(" ").append(generateSetter(field))
-				.append(" {\n");
+				.append(" {");
 		builder.append("").append(classOrBuilder).append(builderMethodName(field));
 		builder.append("(");
-		builder.append(field.getName()).append(");\n");
+		builder.append(field.getName()).append(");");
 		builder.append("return new ").append(Utils.getNextImpl(className, requiredFields, field)).append("(")
-				.append(classOrBuilder).append(");\n");
-		builder.append("}\n");
+				.append(classOrBuilder).append(");");
+		builder.append("}");
 
 		return builder;
 	}
@@ -77,12 +77,12 @@ public class Methods {
 		if (!needsHas(field)) {
 			return new StringBuilder();
 		}
-		StringBuilder builder = new StringBuilder("@Override\n");
+		StringBuilder builder = newOverride();
 		String fieldName = Utils.toUpperCamelCase(field.getName());
 		builder.append("public boolean has").append(fieldName);
-		builder.append("() {\n");
-		builder.append("return ").append(classOrBuilder).append(".has").append(fieldName).append("();\n");
-		builder.append("}\n");
+		builder.append("() {");
+		builder.append("return ").append(classOrBuilder).append(".has").append(fieldName).append("();");
+		builder.append("}");
 
 		return builder;
 	}
@@ -92,24 +92,28 @@ public class Methods {
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder("@Override\n");
+		StringBuilder builder = newOverride();
 		String fieldName = Utils.toUpperCamelCase(field.getName());
 		builder.append("public ").append(returnType);
 		builder.append(" clear").append(fieldName);
-		builder.append("() {\n");
-		builder.append("").append(classOrBuilder).append(".clear").append(fieldName).append("();\n");
+		builder.append("() {");
+		builder.append("").append(classOrBuilder).append(".clear").append(fieldName).append("();");
 		builder.append("return new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
-				.append(");\n");
-		builder.append("}\n");
+				.append(");");
+		builder.append("}");
 
 		return builder;
+	}
+
+	private StringBuilder newOverride() {
+		return new StringBuilder("@Override").append(System.lineSeparator());
 	}
 
 	public StringBuilder constructor(String implName, String classOrBuilder) {
 		StringBuilder builder = new StringBuilder("public ");
 		builder.append(implName).append("(Builder ").append(classOrBuilder);
-		builder.append(") {\n");
-		builder.append("this.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";\n}\n");
+		builder.append(") {");
+		builder.append("this.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";}");
 		return builder;
 	}
 
@@ -117,7 +121,7 @@ public class Methods {
 		StringBuilder builder = new StringBuilder("");
 		builder.append(returnType).append(" ");
 		builder.append(generateSetter(field));
-		builder.append(";\n");
+		builder.append(";");
 
 		return builder;
 	}
@@ -128,7 +132,7 @@ public class Methods {
 		}
 		StringBuilder builder = new StringBuilder("boolean has");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("();\n");
+		builder.append("();");
 
 		return builder;
 	}
@@ -137,7 +141,7 @@ public class Methods {
 		StringBuilder builder = new StringBuilder("");
 		builder.append(returnType).append(" clear");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("();\n");
+		builder.append("();");
 
 		return builder;
 	}

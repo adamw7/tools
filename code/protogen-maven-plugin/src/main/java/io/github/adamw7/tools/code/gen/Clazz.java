@@ -1,7 +1,5 @@
 package io.github.adamw7.tools.code.gen;
 
-import static java.lang.System.lineSeparator;
-
 import java.util.List;
 
 import com.google.protobuf.Descriptors.Descriptor;
@@ -89,7 +87,7 @@ public class Clazz {
 	}
 
 	private StringBuilder generatePackage() {
-		return new StringBuilder("package ").append(OUTPUT_PKG).append(";").append(lineSeparator());
+		return new StringBuilder("package ").append(OUTPUT_PKG).append(";");
 	}
 
 	private StringBuilder generateFields() {
@@ -102,13 +100,13 @@ public class Clazz {
 	}
 
 	private StringBuilder generateFooter() {
-		return new StringBuilder("}").append(lineSeparator());
+		return new StringBuilder("}");
 	}
 
 	private StringBuilder generateHeader() {
 		StringBuilder builder = new StringBuilder("public class ").append(className).append("Builder implements ");
 		builder.append(firstInterface());
-		builder.append(" {").append(lineSeparator());
+		builder.append(" {");
 		return builder;
 	}
 

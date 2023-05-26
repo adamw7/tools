@@ -58,7 +58,6 @@ public class Implementations extends AbstractStatements {
 		StringBuilder builder = new StringBuilder();
 		for (FieldDescriptor field : optionalFields) {
 			builder.append(methods.setter(field, optionalIfcName));
-			builder.append("");
 			builder.append(methods.has("builder", field));
 			builder.append(methods.clear("builder", field, optionalIfcName));	
 		}

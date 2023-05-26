@@ -50,7 +50,7 @@ public class Methods {
 		String returnType = Utils.getNextIfc(className, requiredFields, field);
 		builder.append("public ").append(returnType).append(" ").append(generateSetter(field))
 				.append(" {");
-		builder.append("").append(classOrBuilder).append(builderMethodName(field));
+		builder.append(classOrBuilder).append(builderMethodName(field));
 		builder.append("(");
 		builder.append(field.getName()).append(");");
 		builder.append("return new ").append(Utils.getNextImpl(className, requiredFields, field)).append("(")
@@ -97,7 +97,7 @@ public class Methods {
 		builder.append("public ").append(returnType);
 		builder.append(" clear").append(fieldName);
 		builder.append("() {");
-		builder.append("").append(classOrBuilder).append(".clear").append(fieldName).append("();");
+		builder.append(classOrBuilder).append(".clear").append(fieldName).append("();");
 		builder.append("return new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
 				.append(");");
 		builder.append("}");
@@ -118,8 +118,8 @@ public class Methods {
 	}
 
 	public StringBuilder declareSetter(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder("");
-		builder.append(returnType).append(" ");
+		StringBuilder builder = new StringBuilder(returnType);
+		builder.append(" ");
 		builder.append(generateSetter(field));
 		builder.append(";");
 
@@ -138,8 +138,8 @@ public class Methods {
 	}
 
 	public StringBuilder declareClear(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder("");
-		builder.append(returnType).append(" clear");
+		StringBuilder builder = new StringBuilder(returnType);
+		builder.append(" clear");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("();");
 

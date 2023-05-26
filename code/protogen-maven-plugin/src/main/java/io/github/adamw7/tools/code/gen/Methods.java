@@ -38,8 +38,7 @@ public class Methods {
 
 	public StringBuilder build() {
 		StringBuilder builder = newOverride();
-		builder.append("public ").append(className).append(" build() {");
-		builder.append("return builder.build();}");
+		builder.append("public ").append(className).append(" build() {return builder.build();}");
 
 		return builder;
 	}
@@ -52,10 +51,9 @@ public class Methods {
 				.append(" {");
 		builder.append(classOrBuilder).append(builderMethodName(field));
 		builder.append("(");
-		builder.append(field.getName()).append(");");
-		builder.append("return new ").append(Utils.getNextImpl(className, requiredFields, field)).append("(")
-				.append(classOrBuilder).append(");");
-		builder.append("}");
+		builder.append(field.getName()).append("); return new ");
+		builder.append(Utils.getNextImpl(className, requiredFields, field)).append("(")
+				.append(classOrBuilder).append(");}");
 
 		return builder;
 	}
@@ -80,9 +78,7 @@ public class Methods {
 		StringBuilder builder = newOverride();
 		String fieldName = Utils.toUpperCamelCase(field.getName());
 		builder.append("public boolean has").append(fieldName);
-		builder.append("() {");
-		builder.append("return ").append(classOrBuilder).append(".has").append(fieldName).append("();");
-		builder.append("}");
+		builder.append("() {return ").append(classOrBuilder).append(".has").append(fieldName).append("();}");
 
 		return builder;
 	}
@@ -99,8 +95,7 @@ public class Methods {
 		builder.append("() {");
 		builder.append(classOrBuilder).append(".clear").append(fieldName).append("();");
 		builder.append("return new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
-				.append(");");
-		builder.append("}");
+				.append(");}");
 
 		return builder;
 	}
@@ -112,8 +107,7 @@ public class Methods {
 	public StringBuilder constructor(String implName, String classOrBuilder) {
 		StringBuilder builder = new StringBuilder("public ");
 		builder.append(implName).append("(Builder ").append(classOrBuilder);
-		builder.append(") {");
-		builder.append("this.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";}");
+		builder.append(") {this.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";}");
 		return builder;
 	}
 

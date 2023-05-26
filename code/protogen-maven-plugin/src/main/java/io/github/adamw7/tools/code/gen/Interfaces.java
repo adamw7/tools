@@ -31,8 +31,7 @@ public class Interfaces extends AbstractStatements {
 			builder.append(methods.declareClear(optionalField, clearReturnType));
 		}
 		
-		builder.append(className).append(" build();");
-		builder.append("}");
+		builder.append(className).append(" build();}");
 		
 		return builder;
 	}

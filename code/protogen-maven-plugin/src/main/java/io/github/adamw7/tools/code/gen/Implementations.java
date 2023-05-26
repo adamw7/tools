@@ -49,8 +49,7 @@ public class Implementations extends AbstractStatements {
 	public StringBuilder generateOptionalBuilderConstructor(String name) {
 		StringBuilder builder = new StringBuilder();
 		builder.append("public ").append(name);
-		builder.append("(Builder builder) {");
-		builder.append("this.builder = builder;}");
+		builder.append("(Builder builder) {this.builder = builder;}");
 		return builder;
 	}
 

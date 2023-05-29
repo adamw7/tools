@@ -47,7 +47,7 @@
 							<goal>run</goal>
 						</goals>
 						<configuration>
-							<protocVersion>3.1.0</protocVersion>
+							<protocVersion>3.11.4</protocVersion>
 							<inputDirectories>
 								<include>../protogen-maven-plugin/src/main/proto</include>
 							</inputDirectories>

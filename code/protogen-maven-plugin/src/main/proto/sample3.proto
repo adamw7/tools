@@ -9,4 +9,5 @@ message City {
   optional string zipcode = 1;
   optional string name = 2;
   optional bytes description = 3;
+  reserved 4 to 10;
 }

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.code.gen;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.Descriptor;
@@ -23,8 +24,9 @@ public class Clazz {
 		List<FieldDescriptor> repeatedFields = getRepeatedFields(descriptor);
 		
 		this.pkg = pkg.getName();	
-		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
-		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
+		String header = generatePackage().append(generateImports()).toString();
+		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
+		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
 		this.methods = new Methods(typeMappings, className);
 	}
 
@@ -48,24 +50,32 @@ public class Clazz {
 		return descriptor.getName();
 	}
 
-	public String generate() {
+	public List<ClassContainer> generate() {
+		List<ClassContainer> classes = new ArrayList<>();
 		StringBuilder pkg = generatePackage();
 		StringBuilder imports = generateImports();
-		StringBuilder requiredInterfaces = interfaces.generateRequired();	
-		StringBuilder optionalInterface = interfaces.generateOptional();
-		StringBuilder requiredImpl = implementations.generateRequired();
+		List<ClassContainer> requiredInterfaces = interfaces.generateRequired();	
+		List<ClassContainer> optionalInterface = interfaces.generateOptional();
+		List<ClassContainer> requiredImpl = implementations.generateRequired();
 		
 		StringBuilder header = generateHeader();
-		StringBuilder optionalImpl = implementations.generateOptional();	
+		List<ClassContainer> optionalImpl = implementations.generateOptional();	
 		String optionalImplInMainClass = handleMethodsInMainClass();
 				
 		StringBuilder footer = generateFooter();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports).append(optionalInterface).append(requiredInterfaces).append(requiredImpl);
-		full.append(optionalImpl).append(header).append(optionalImplInMainClass);
+		full.append(pkg).append(imports);
+		full.append(header).append(optionalImplInMainClass);
 		full.append(footer);
-		return full.toString();
+		
+		classes.addAll(optionalInterface);
+		classes.addAll(requiredInterfaces);
+		classes.addAll(optionalImpl);
+		classes.addAll(requiredImpl);
+		classes.add(new ClassContainer(className + "Builder", full.toString()));
+				
+		return classes;
 	}
 
 	private String handleMethodsInMainClass() {

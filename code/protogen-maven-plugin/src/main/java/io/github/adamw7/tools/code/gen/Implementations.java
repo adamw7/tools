@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.code.gen;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -7,19 +8,20 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Implementations extends AbstractStatements {
 
 	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
-		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
+			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings, String header) {
+		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
 	}
 
-	public StringBuilder generateRequired() {
-		StringBuilder builder = new StringBuilder();
+	public List<ClassContainer> generateRequired() {
+		List<ClassContainer> classes = new ArrayList<>();
 		if (nonOptionalFields.size() > 1) {
 			for (int i = 1; i < nonOptionalFields.size(); ++i) { // skipping first since already handled
 				String classOrBuilder = Utils.firstToLower(className) + "OrBuilder";
 				FieldDescriptor field = nonOptionalFields.get(i);
 				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
 				String implName = Utils.firstToUpper(field.getName()) + "Impl";
-				builder.append("class ").append(implName).append(" implements ").append(ifcName).append(" {");
+				StringBuilder builder = new StringBuilder(header);
+				builder.append("public class ").append(implName).append(" implements ").append(ifcName).append(" {");
 				builder.append("private final Builder ").append(classOrBuilder).append(";");
 				builder.append(methods.constructor(implName, classOrBuilder));
 				builder.append(methods.requiredSetter(classOrBuilder, field, nonOptionalFields));
@@ -27,13 +29,16 @@ public class Implementations extends AbstractStatements {
 				String clearReturnType = Utils.getNextIfc(className, nonOptionalFields, field);
 				builder.append(methods.clear(classOrBuilder, field, clearReturnType));					
 				builder.append("}");
+				
+				classes.add(new ClassContainer(implName, builder.toString()));
 			}
 		}
-		return builder;
+		return classes;
 	}
 
-	public StringBuilder generateOptional() {
-		StringBuilder builder = new StringBuilder("class ");
+	public List<ClassContainer> generateOptional() {
+		StringBuilder builder = new StringBuilder(header);
+		builder.append("public class ");
 		builder.append(optionalImplName);
 		builder.append(" implements ");
 		builder.append(optionalIfcName);
@@ -43,7 +48,9 @@ public class Implementations extends AbstractStatements {
 		builder.append(generateMethods());
 		builder.append(methods.build());
 		builder.append("}");
-		return builder;
+		List<ClassContainer> impls = new ArrayList<>();
+		impls.add(new ClassContainer(optionalImplName, builder.toString()));
+		return impls;
 	}
 
 	public StringBuilder generateOptionalBuilderConstructor(String name) {

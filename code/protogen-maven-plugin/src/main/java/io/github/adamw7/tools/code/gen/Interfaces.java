@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.code.gen;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -7,22 +8,22 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Interfaces extends AbstractStatements {
 
 	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
-		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings);
+			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings, String pkg) {
+		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, pkg);
 	}
 
-	public StringBuilder generateRequired() {
-		StringBuilder interfaces = new StringBuilder();
+	public List<ClassContainer> generateRequired() {
+		List<ClassContainer> ifcs = new ArrayList<>();
 		
 		for (FieldDescriptor requiredField : nonOptionalFields) {
-			interfaces.append(generateInterface(requiredField));
+			ifcs.add(generateInterface(requiredField));
 		}
-		return interfaces;
+		return ifcs;
 	}
 	
-	public StringBuilder generateOptional() {
-		StringBuilder builder = new StringBuilder("interface ");
-		builder.append(optionalIfcName).append(" {");
+	public List<ClassContainer> generateOptional() {
+		StringBuilder builder = new StringBuilder(header);
+		builder.append("public interface ").append(optionalIfcName).append(" {");
 		
 		for (FieldDescriptor optionalField : optionalFields) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
@@ -33,13 +34,16 @@ public class Interfaces extends AbstractStatements {
 		
 		builder.append(className).append(" build();}");
 		
-		return builder;
+		List<ClassContainer> ifcs = new ArrayList<>();
+		ifcs.add(new ClassContainer(optionalIfcName, builder.toString()));
+		return ifcs;
 	}
 	
-	private StringBuilder generateInterface(FieldDescriptor requiredField) {
-		StringBuilder ifc = new StringBuilder();
-		ifc.append("interface ");
-		ifc.append(Utils.to(requiredField, "Ifc"));
+	private ClassContainer generateInterface(FieldDescriptor requiredField) {
+		StringBuilder ifc = new StringBuilder(header);
+		ifc.append("public interface ");
+		String ifcName = Utils.to(requiredField, "Ifc");
+		ifc.append(ifcName);
 		ifc.append(" {");
 		String returnType = Utils.getNextIfc(className, nonOptionalFields, requiredField);
 		ifc.append(methods.declareSetter(requiredField, returnType));
@@ -48,6 +52,6 @@ public class Interfaces extends AbstractStatements {
 		
 		ifc.append("}");
 				
-		return ifc;
+		return new ClassContainer(ifcName, ifc.toString());
 	}
 }

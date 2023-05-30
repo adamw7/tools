@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -16,10 +17,9 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FileDescriptor;
+import com.google.protobuf.GeneratedMessageV3;
 
 import io.github.adamw7.tools.code.format.Formatter;
-
-import com.google.protobuf.GeneratedMessageV3;
 
 public class Code {
 
@@ -53,9 +53,11 @@ public class Code {
 		typeMappings = new TypeMappings(allMessages);
 		for (Class<? extends GeneratedMessageV3> c : allMessages) {
 			try {
-				String code = genBuilder(c);
-				code = new Formatter().format(code);
-				write(code, c.getSimpleName() + "Builder");
+				List<ClassContainer> classes = genBuilder(c);
+				for (ClassContainer container : classes) {					
+					String generatedCode = new Formatter().format(container.code());
+					write(generatedCode, container.name());					
+				}
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
 				log.error(e);
 			}
@@ -70,7 +72,7 @@ public class Code {
 		}
 	}
 
-	private String genBuilder(Class<? extends GeneratedMessageV3> c)
+	private List<ClassContainer> genBuilder(Class<? extends GeneratedMessageV3> c)
 			throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
 		Method getDescriptorMethod = c.getDeclaredMethod("getDescriptor");
 		Object object = getDescriptorMethod.invoke(this);
@@ -92,7 +94,7 @@ public class Code {
 		}
 	}
 
-	private String genBuilder(Descriptor descriptor, Package pkg) {
+	private List<ClassContainer> genBuilder(Descriptor descriptor, Package pkg) {
 		Clazz clazz = new Clazz(descriptor, typeMappings, pkg);
 		return clazz.generate();
 	}

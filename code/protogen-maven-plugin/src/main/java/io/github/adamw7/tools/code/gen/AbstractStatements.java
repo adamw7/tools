@@ -12,16 +12,19 @@ public abstract class AbstractStatements {
 	protected final Methods methods;
 	protected final String optionalIfcName;
 	protected final String optionalImplName;
+	protected final String header;
 	
-	protected AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings) {
+	protected AbstractStatements(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields, 
+			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings, String header) {
 		this.className = className;
 		this.optionalFields = optionalFields;
 		this.nonOptionalFields = union(requiredFields, mapFields, repeatedFields);
 		methods = new Methods(typeMappings, className);
 		this.optionalIfcName = className + "OptionalIfc";
-		this.optionalImplName = className + "OptionalImpl";				
+		this.optionalImplName = className + "OptionalImpl";		
+		this.header = header;
 	}
-	
+
 	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
 		List<FieldDescriptor> all = new ArrayList<>();
 		for (List<FieldDescriptor> fieldsList : fieldsLists) {

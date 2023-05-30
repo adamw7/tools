@@ -9,7 +9,8 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Clazz {
 
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
-	private final String className;
+	private final String inputClassName;
+	private final String builderClassName;
 	private final List<FieldDescriptor> requiredFields;
 	private final String pkg;
 	private final Interfaces interfaces;
@@ -17,7 +18,8 @@ public class Clazz {
 	private final Methods methods;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
-		className = getClassName(descriptor);
+		inputClassName = getClassName(descriptor);
+		builderClassName = inputClassName + "Builder";
 		requiredFields = getRequiredFields(descriptor);
 		List<FieldDescriptor> mapFields = getMapFields(descriptor);
 		List<FieldDescriptor> optionalFields = getOptionalFields(descriptor);
@@ -25,9 +27,9 @@ public class Clazz {
 		
 		this.pkg = pkg.getName();	
 		String header = generatePackage().append(generateImports()).toString();
-		this.interfaces = new Interfaces(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
-		this.implementations = new Implementations(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
-		this.methods = new Methods(typeMappings, className);
+		this.interfaces = new Interfaces(inputClassName, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
+		this.implementations = new Implementations(inputClassName, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
+		this.methods = new Methods(typeMappings, inputClassName);
 	}
 
 	private List<FieldDescriptor> getRepeatedFields(Descriptor descriptor) {
@@ -73,7 +75,7 @@ public class Clazz {
 		classes.addAll(requiredInterfaces);
 		classes.add(optionalImpl);
 		classes.addAll(requiredImpl);
-		classes.add(new ClassContainer(className + "Builder", full.toString()));
+		classes.add(new ClassContainer(builderClassName, full.toString()));
 				
 		return classes;
 	}
@@ -82,16 +84,16 @@ public class Clazz {
 		StringBuilder builder = new StringBuilder();
 		if (requiredFields.isEmpty()) {
 			builder.append(implementations.generateOptionalBuilderField());
-			builder.append(implementations.generateOptionalBuilderConstructor(className + "Builder"));
+			builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));
 			builder.append(implementations.generateMethods());
 			builder.append(methods.build());
 		} else {
 			builder.append(generateFields());
 			FieldDescriptor firstRequiredField = requiredFields.get(0);
-			String builderName = Utils.firstToLower(className) + "Builder";
+			String builderName = Utils.firstToLower(builderClassName);
 			builder.append(methods.has(builderName, firstRequiredField));
 			builder.append(methods.requiredSetter(builderName, firstRequiredField, requiredFields));
-			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(className, requiredFields, firstRequiredField)));			
+			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(inputClassName, requiredFields, firstRequiredField)));			
 		}
 		return builder.toString();
 	}
@@ -102,10 +104,10 @@ public class Clazz {
 
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(className).append(".Builder ");
+		builder.append(inputClassName).append(".Builder ");
 		
-		builder.append(className.toLowerCase()).append("Builder = ");
-		builder.append(className).append(".newBuilder();");
+		builder.append(inputClassName.toLowerCase()).append("Builder = ");
+		builder.append(inputClassName).append(".newBuilder();");
 		return builder;
 	}
 
@@ -114,22 +116,22 @@ public class Clazz {
 	}
 
 	private StringBuilder generateHeader() {
-		StringBuilder builder = new StringBuilder("public class ").append(className).append("Builder implements ");
+		StringBuilder builder = new StringBuilder("public class ").append(builderClassName).append(" implements ");
 		builder.append(firstInterface());
 		builder.append(" {");
 		return builder;
 	}
 
 	private String firstInterface() {
-		return requiredFields.isEmpty() ? className + "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
+		return requiredFields.isEmpty() ? inputClassName + "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {
 		StringBuilder builder = new StringBuilder();
 		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".");
 		builder.append(prefix).append("*;");
-		builder.append(prefix).append(className).append(";");
-		builder.append(prefix).append(className).append(".Builder").append(";");		
+		builder.append(prefix).append(inputClassName).append(";");
+		builder.append(prefix).append(inputClassName).append(".Builder").append(";");		
 		return builder;
 	}
 

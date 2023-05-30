@@ -55,11 +55,11 @@ public class Clazz {
 		StringBuilder pkg = generatePackage();
 		StringBuilder imports = generateImports();
 		List<ClassContainer> requiredInterfaces = interfaces.generateRequired();	
-		List<ClassContainer> optionalInterface = interfaces.generateOptional();
+		ClassContainer optionalInterface = interfaces.generateOptional();
 		List<ClassContainer> requiredImpl = implementations.generateRequired();
 		
 		StringBuilder header = generateHeader();
-		List<ClassContainer> optionalImpl = implementations.generateOptional();	
+		ClassContainer optionalImpl = implementations.generateOptional();	
 		String optionalImplInMainClass = handleMethodsInMainClass();
 				
 		StringBuilder footer = generateFooter();
@@ -69,9 +69,9 @@ public class Clazz {
 		full.append(header).append(optionalImplInMainClass);
 		full.append(footer);
 		
-		classes.addAll(optionalInterface);
+		classes.add(optionalInterface);
 		classes.addAll(requiredInterfaces);
-		classes.addAll(optionalImpl);
+		classes.add(optionalImpl);
 		classes.addAll(requiredImpl);
 		classes.add(new ClassContainer(className + "Builder", full.toString()));
 				

@@ -21,7 +21,7 @@ public class Interfaces extends AbstractStatements {
 		return ifcs;
 	}
 	
-	public List<ClassContainer> generateOptional() {
+	public ClassContainer generateOptional() {
 		StringBuilder builder = new StringBuilder(header);
 		builder.append("public interface ").append(optionalIfcName).append(" {");
 		
@@ -34,9 +34,7 @@ public class Interfaces extends AbstractStatements {
 		
 		builder.append(className).append(" build();}");
 		
-		List<ClassContainer> ifcs = new ArrayList<>();
-		ifcs.add(new ClassContainer(optionalIfcName, builder.toString()));
-		return ifcs;
+		return new ClassContainer(optionalIfcName, builder.toString());
 	}
 	
 	private ClassContainer generateInterface(FieldDescriptor requiredField) {

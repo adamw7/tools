@@ -36,7 +36,7 @@ public class Implementations extends AbstractStatements {
 		return classes;
 	}
 
-	public List<ClassContainer> generateOptional() {
+	public ClassContainer generateOptional() {
 		StringBuilder builder = new StringBuilder(header);
 		builder.append("public class ");
 		builder.append(optionalImplName);
@@ -48,9 +48,7 @@ public class Implementations extends AbstractStatements {
 		builder.append(generateMethods());
 		builder.append(methods.build());
 		builder.append("}");
-		List<ClassContainer> impls = new ArrayList<>();
-		impls.add(new ClassContainer(optionalImplName, builder.toString()));
-		return impls;
+		return new ClassContainer(optionalImplName, builder.toString());
 	}
 
 	public StringBuilder generateOptionalBuilderConstructor(String name) {

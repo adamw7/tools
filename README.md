@@ -4,7 +4,7 @@ Library of tooling for various purposes.
 
 ## Code generation
 
-Poblem:
+Problem:
 
 Generated builder java code for protobuffers detects missing required fields in runtime.
 
@@ -57,7 +57,7 @@ Solution:
 		</executions>
 </plugin>
 ```
-that generetes builders detecting missing required fields compile time (some methods are excluded for simplicity of the example):
+that generates builders detecting missing required fields compile time (some methods are excluded for simplicity of the example):
 ```java
 interface OptionalIfc {
 	OptionalIfc setEmail(String email);
@@ -151,7 +151,7 @@ It contains:
   - the tool also tries to find a better (smaller) answer
   - supports in memory and iterative processing
 - data structures
-  - open addressing hashmap: a simplier alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
+  - open addressing hashmap: a simpler alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
   
 Examples:
 
@@ -180,7 +180,7 @@ public interface IterableDataSource extends AutoCloseable, Closeable {
 	public void reset();
 }
 ```
-If you would need a in memory source you need to implement one more method:
+If you need an in memory source you need to implement one more method:
 ```java
 public interface InMemoryDataSource extends IterableDataSource {
 	public List<String[]> readAll();
@@ -190,7 +190,7 @@ public interface InMemoryDataSource extends IterableDataSource {
 Notes:
 
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
-Iterative (no memory) checks are keeping only one row at the time so they require very tiny heapsize but for the recursive checks need to read the source many times. 
+Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
 # Building
 ```

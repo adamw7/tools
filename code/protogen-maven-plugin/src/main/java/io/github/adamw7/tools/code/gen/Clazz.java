@@ -6,7 +6,7 @@ import java.util.List;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
-public class Clazz {
+public class Clazz implements Generator {
 
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String inputClassName;
@@ -52,25 +52,25 @@ public class Clazz {
 		return descriptor.getName();
 	}
 
+	@Override
 	public List<ClassContainer> generate() {
-		List<ClassContainer> classes = new ArrayList<>();
-		StringBuilder pkg = generatePackage();
-		StringBuilder imports = generateImports();
 		List<ClassContainer> requiredInterfaces = interfaces.generateRequired();	
 		ClassContainer optionalInterface = interfaces.generateOptional();
-		List<ClassContainer> requiredImpl = implementations.generateRequired();
-		
-		StringBuilder header = generateHeader();
-		ClassContainer optionalImpl = implementations.generateOptional();	
-		String optionalImplInMainClass = handleMethodsInMainClass();
-				
-		StringBuilder footer = generateFooter();
+		List<ClassContainer> requiredImpls = implementations.generateRequired();
+		ClassContainer optionalImpl = implementations.generateOptional();
 		
 		StringBuilder full = new StringBuilder();		
-		full.append(pkg).append(imports);
-		full.append(header).append(optionalImplInMainClass);
-		full.append(footer);
+		full.append(generatePackage()).append(generateImports());
+		full.append(generateHeader()).append(handleMethodsInMainClass());
+		full.append(generateFooter());
 		
+		return createClassesList(requiredInterfaces, optionalInterface, requiredImpls, optionalImpl, full);
+	}
+
+	private List<ClassContainer> createClassesList(List<ClassContainer> requiredInterfaces,
+			ClassContainer optionalInterface, List<ClassContainer> requiredImpl, ClassContainer optionalImpl,
+			StringBuilder full) {
+		List<ClassContainer> classes = new ArrayList<>();
 		classes.add(optionalInterface);
 		classes.addAll(requiredInterfaces);
 		classes.add(optionalImpl);

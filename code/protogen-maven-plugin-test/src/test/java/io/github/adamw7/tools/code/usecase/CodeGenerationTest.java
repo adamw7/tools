@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.code;
+package io.github.adamw7.tools.code.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,6 +14,10 @@ import org.junit.jupiter.api.Test;
 
 import com.google.protobuf.ByteString;
 
+import io.github.adamw7.tools.code.DepartmentIfc;
+import io.github.adamw7.tools.code.MappingIfc;
+import io.github.adamw7.tools.code.PersonBuilder;
+import io.github.adamw7.tools.code.PersonOptionalIfc;
 import io.github.adamw7.tools.code.protos.Address;
 import io.github.adamw7.tools.code.protos.City;
 import io.github.adamw7.tools.code.protos.Person;

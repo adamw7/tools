@@ -19,8 +19,6 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.GeneratedMessageV3;
 
-import io.github.adamw7.tools.code.format.Formatter;
-
 public class Code {
 
 	private final static Logger log = LogManager.getLogger(Code.class.getName());
@@ -55,8 +53,7 @@ public class Code {
 			try {
 				List<ClassContainer> classes = genBuilder(c);
 				for (ClassContainer container : classes) {					
-					String generatedCode = new Formatter().format(container.code());
-					write(generatedCode, container.name());					
+					write(container.format());					
 				}
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
 				log.error(e);
@@ -64,9 +61,9 @@ public class Code {
 		}
 	}
 
-	private void write(String code, String className) {
-		try (FileWriter myWriter = new FileWriter(generatedSourcesDir + replace(Clazz.OUTPUT_PKG) + "/" + className + ".java")) {
-			myWriter.write(code);
+	private void write(ClassContainer container) {
+		try (FileWriter myWriter = new FileWriter(generatedSourcesDir + replace(Clazz.OUTPUT_PKG) + "/" + container.name() + ".java")) {
+			myWriter.write(container.code());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

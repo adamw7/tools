@@ -205,4 +205,4 @@ In order to release a new version - 0.X you need to:
 1. Change the version to 0.X in all pom.xml
 2. Commit and push
 3. Check if all builds pass
-4. Release and mark as latest in Github
+4. Release and mark as latest in GitHub

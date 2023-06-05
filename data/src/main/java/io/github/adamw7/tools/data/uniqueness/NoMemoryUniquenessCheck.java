@@ -27,7 +27,7 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 			}
 		}
 		
-		Result result = handleSuccessfullCheck(keyCandidates);
+		Result result = handleSuccessfulCheck(keyCandidates);
 		close(dataSource);
 		return result;
 	}

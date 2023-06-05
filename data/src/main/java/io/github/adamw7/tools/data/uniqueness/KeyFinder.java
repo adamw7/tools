@@ -26,14 +26,14 @@ public class KeyFinder {
 		return false;
 	}
 	
-	protected Key key(String[] row, Integer[] indicies) {
-		List<String> values = new ArrayList<>(indicies.length);
+	protected Key key(String[] row, Integer[] indices) {
+		List<String> values = new ArrayList<>(indices.length);
 
-		for (Integer index : indicies) {
+		for (Integer index : indices) {
 			values.add(row[index]);
 		}
 
-		return new Key(values.toArray(new String[indicies.length]));
+		return new Key(values.toArray(new String[indices.length]));
 	}
 
 }

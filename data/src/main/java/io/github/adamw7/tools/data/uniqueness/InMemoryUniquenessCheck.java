@@ -36,7 +36,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 			}
 		}
 
-		return handleSuccessfullCheck(keyCandidates);
+		return handleSuccessfulCheck(keyCandidates);
 	}
 
 	protected Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates) {

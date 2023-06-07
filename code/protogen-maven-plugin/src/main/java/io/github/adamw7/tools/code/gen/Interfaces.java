@@ -33,7 +33,7 @@ public class Interfaces extends AbstractStatements {
 		
 		builder.append(info.name()).append(" build();}");
 		
-		return new ClassContainer(optionalIfcName, builder.toString());
+		return new ClassContainer(optionalIfcName, builder);
 	}
 	
 	private ClassContainer generateInterface(FieldDescriptor requiredField) {
@@ -49,6 +49,6 @@ public class Interfaces extends AbstractStatements {
 		
 		ifc.append("}");
 				
-		return new ClassContainer(ifcName, ifc.toString());
+		return new ClassContainer(ifcName, ifc);
 	}
 }

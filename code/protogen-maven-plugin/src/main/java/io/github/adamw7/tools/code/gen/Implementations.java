@@ -29,7 +29,7 @@ public class Implementations extends AbstractStatements {
 				builder.append(methods.clear(classOrBuilder, field, clearReturnType));					
 				builder.append("}");
 				
-				classes.add(new ClassContainer(implName, builder.toString()));
+				classes.add(new ClassContainer(implName, builder));
 			}
 		}
 		return classes;
@@ -47,7 +47,7 @@ public class Implementations extends AbstractStatements {
 		builder.append(generateMethods());
 		builder.append(methods.build());
 		builder.append("}");
-		return new ClassContainer(optionalImplName, builder.toString());
+		return new ClassContainer(optionalImplName, builder);
 	}
 
 	public StringBuilder generateOptionalBuilderConstructor(String name) {

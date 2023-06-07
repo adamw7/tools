@@ -50,7 +50,7 @@ public class Clazz implements Generator {
 		classes.addAll(requiredInterfaces);
 		classes.add(optionalImpl);
 		classes.addAll(requiredImpl);
-		classes.add(new ClassContainer(builderClassName, full.toString()));
+		classes.add(new ClassContainer(builderClassName, full));
 				
 		return classes;
 	}

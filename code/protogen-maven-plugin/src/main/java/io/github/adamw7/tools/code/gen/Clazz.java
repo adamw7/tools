@@ -9,7 +9,6 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class Clazz implements Generator {
 
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
-	private final String inputClassName;
 	private final String builderClassName;
 	private final String pkg;
 	private final Interfaces interfaces;
@@ -18,19 +17,14 @@ public class Clazz implements Generator {
 	private final ClassInfo info;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
-		inputClassName = getClassName(descriptor);
-		builderClassName = inputClassName + "Builder";
-
 		this.info = new ClassInfo(descriptor, pkg);
+		builderClassName = info.name() + "Builder";
 		this.pkg = pkg.getName();	
-		String header = generatePackage().append(generateImports()).toString();
+		String header = generatePackage() + generateImports();
+		
 		this.interfaces = new Interfaces(info, typeMappings, header);
 		this.implementations = new Implementations(info, typeMappings, header);
-		this.methods = new Methods(typeMappings, inputClassName);
-	}
-
-	private String getClassName(Descriptor descriptor) {
-		return descriptor.getName();
+		this.methods = new Methods(typeMappings, info.name());
 	}
 
 	@Override
@@ -74,21 +68,21 @@ public class Clazz implements Generator {
 			String builderName = Utils.firstToLower(builderClassName);
 			builder.append(methods.has(builderName, firstRequiredField));
 			builder.append(methods.requiredSetter(builderName, firstRequiredField, info.required()));
-			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(inputClassName, info.required(), firstRequiredField)));			
+			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(info.name(), info.required(), firstRequiredField)));			
 		}
 		return builder.toString();
 	}
 
-	private StringBuilder generatePackage() {
-		return new StringBuilder("package ").append(OUTPUT_PKG).append(";");
+	private String generatePackage() {
+		return "package " + OUTPUT_PKG + ";";
 	}
 
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(inputClassName).append(".Builder ");
+		builder.append(info.name()).append(".Builder ");
 		
-		builder.append(inputClassName.toLowerCase()).append("Builder = ");
-		builder.append(inputClassName).append(".newBuilder();");
+		builder.append(info.name().toLowerCase()).append("Builder = ");
+		builder.append(info.name()).append(".newBuilder();");
 		return builder;
 	}
 
@@ -104,15 +98,15 @@ public class Clazz implements Generator {
 	}
 
 	private String firstInterface() {
-		return info.required().isEmpty() ? inputClassName + "OptionalIfc" : Utils.to(info.required().get(0), "Ifc");
+		return info.required().isEmpty() ? info.name() + "OptionalIfc" : Utils.to(info.required().get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {
 		StringBuilder builder = new StringBuilder();
 		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".");
 		builder.append(prefix).append("*;");
-		builder.append(prefix).append(inputClassName).append(";");
-		builder.append(prefix).append(inputClassName).append(".Builder").append(";");		
+		builder.append(prefix).append(info.name()).append(";");
+		builder.append(prefix).append(info.name()).append(".Builder").append(";");		
 		return builder;
 	}
 

@@ -11,41 +11,22 @@ public class Clazz implements Generator {
 	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String inputClassName;
 	private final String builderClassName;
-	private final List<FieldDescriptor> requiredFields;
 	private final String pkg;
 	private final Interfaces interfaces;
 	private final Implementations implementations;
 	private final Methods methods;
+	private final ClassInfo info;
 	 
 	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
 		inputClassName = getClassName(descriptor);
 		builderClassName = inputClassName + "Builder";
-		requiredFields = getRequiredFields(descriptor);
-		List<FieldDescriptor> mapFields = getMapFields(descriptor);
-		List<FieldDescriptor> optionalFields = getOptionalFields(descriptor);
-		List<FieldDescriptor> repeatedFields = getRepeatedFields(descriptor);
-		
+
+		this.info = new ClassInfo(descriptor, pkg);
 		this.pkg = pkg.getName();	
 		String header = generatePackage().append(generateImports()).toString();
-		this.interfaces = new Interfaces(inputClassName, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
-		this.implementations = new Implementations(inputClassName, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
+		this.interfaces = new Interfaces(info, typeMappings, header);
+		this.implementations = new Implementations(info, typeMappings, header);
 		this.methods = new Methods(typeMappings, inputClassName);
-	}
-
-	private List<FieldDescriptor> getRepeatedFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(f -> f.isRepeated() && !f.isMapField()).toList();
-	}
-
-	private List<FieldDescriptor> getMapFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isMapField).toList();
-	}
-
-	private List<FieldDescriptor> getRequiredFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isRequired).toList();
-	}
-	
-	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
 	}
 
 	private String getClassName(Descriptor descriptor) {
@@ -82,18 +63,18 @@ public class Clazz implements Generator {
 
 	private String handleMethodsInMainClass() {
 		StringBuilder builder = new StringBuilder();
-		if (requiredFields.isEmpty()) {
+		if (info.required().isEmpty()) {
 			builder.append(implementations.generateOptionalBuilderField());
 			builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));
 			builder.append(implementations.generateMethods());
 			builder.append(methods.build());
 		} else {
 			builder.append(generateFields());
-			FieldDescriptor firstRequiredField = requiredFields.get(0);
+			FieldDescriptor firstRequiredField = info.required().get(0);
 			String builderName = Utils.firstToLower(builderClassName);
 			builder.append(methods.has(builderName, firstRequiredField));
-			builder.append(methods.requiredSetter(builderName, firstRequiredField, requiredFields));
-			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(inputClassName, requiredFields, firstRequiredField)));			
+			builder.append(methods.requiredSetter(builderName, firstRequiredField, info.required()));
+			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(inputClassName, info.required(), firstRequiredField)));			
 		}
 		return builder.toString();
 	}
@@ -123,7 +104,7 @@ public class Clazz implements Generator {
 	}
 
 	private String firstInterface() {
-		return requiredFields.isEmpty() ? inputClassName + "OptionalIfc" : Utils.to(requiredFields.get(0), "Ifc");
+		return info.required().isEmpty() ? inputClassName + "OptionalIfc" : Utils.to(info.required().get(0), "Ifc");
 	}
 
 	private StringBuilder generateImports() {

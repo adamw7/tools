@@ -7,15 +7,14 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Interfaces extends AbstractStatements {
 
-	public Interfaces(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings, String pkg) {
-		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, pkg);
+	public Interfaces(ClassInfo info, TypeMappings typeMappings, String header) {
+		super(info, typeMappings, header);
 	}
 
 	public List<ClassContainer> generateRequired() {
 		List<ClassContainer> ifcs = new ArrayList<>();
 		
-		for (FieldDescriptor requiredField : nonOptionalFields) {
+		for (FieldDescriptor requiredField : info.nonOptional()) {
 			ifcs.add(generateInterface(requiredField));
 		}
 		return ifcs;
@@ -25,14 +24,14 @@ public class Interfaces extends AbstractStatements {
 		StringBuilder builder = new StringBuilder(header);
 		builder.append("public interface ").append(optionalIfcName).append(" {");
 		
-		for (FieldDescriptor optionalField : optionalFields) {
+		for (FieldDescriptor optionalField : info.optional()) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
 			builder.append(methods.declareHas(optionalField));	
-			String clearReturnType = Utils.getNextIfc(className, nonOptionalFields, optionalField);
+			String clearReturnType = Utils.getNextIfc(info.name(), info.nonOptional(), optionalField);
 			builder.append(methods.declareClear(optionalField, clearReturnType));
 		}
 		
-		builder.append(className).append(" build();}");
+		builder.append(info.name()).append(" build();}");
 		
 		return new ClassContainer(optionalIfcName, builder.toString());
 	}
@@ -43,7 +42,7 @@ public class Interfaces extends AbstractStatements {
 		String ifcName = Utils.to(requiredField, "Ifc");
 		ifc.append(ifcName);
 		ifc.append(" {");
-		String returnType = Utils.getNextIfc(className, nonOptionalFields, requiredField);
+		String returnType = Utils.getNextIfc(info.name(), info.nonOptional(), requiredField);
 		ifc.append(methods.declareSetter(requiredField, returnType));
 		ifc.append(methods.declareHas(requiredField));
 		ifc.append(methods.declareClear(requiredField, returnType));		

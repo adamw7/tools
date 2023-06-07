@@ -7,26 +7,25 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Implementations extends AbstractStatements {
 
-	public Implementations(String className, List<FieldDescriptor> optionalFields, List<FieldDescriptor> requiredFields,
-			List<FieldDescriptor> mapFields, List<FieldDescriptor> repeatedFields, TypeMappings typeMappings, String header) {
-		super(className, optionalFields, requiredFields, mapFields, repeatedFields, typeMappings, header);
+	public Implementations(ClassInfo info, TypeMappings typeMappings, String header) {
+		super(info, typeMappings, header);
 	}
 
 	public List<ClassContainer> generateRequired() {
 		List<ClassContainer> classes = new ArrayList<>();
-		if (nonOptionalFields.size() > 1) {
-			for (int i = 1; i < nonOptionalFields.size(); ++i) { // skipping first since already handled
-				String classOrBuilder = Utils.firstToLower(className) + "OrBuilder";
-				FieldDescriptor field = nonOptionalFields.get(i);
+		if (info.nonOptional().size() > 1) {
+			for (int i = 1; i < info.nonOptional().size(); ++i) { // skipping first since already handled
+				String classOrBuilder = Utils.firstToLower(info.name()) + "OrBuilder";
+				FieldDescriptor field = info.nonOptional().get(i);
 				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
 				String implName = Utils.firstToUpper(field.getName()) + "Impl";
 				StringBuilder builder = new StringBuilder(header);
 				builder.append("public class ").append(implName).append(" implements ").append(ifcName).append(" {");
 				builder.append("private final Builder ").append(classOrBuilder).append(";");
 				builder.append(methods.constructor(implName, classOrBuilder));
-				builder.append(methods.requiredSetter(classOrBuilder, field, nonOptionalFields));
+				builder.append(methods.requiredSetter(classOrBuilder, field, info.nonOptional()));
 				builder.append(methods.has(classOrBuilder, field));	
-				String clearReturnType = Utils.getNextIfc(className, nonOptionalFields, field);
+				String clearReturnType = Utils.getNextIfc(info.name(), info.nonOptional(), field);
 				builder.append(methods.clear(classOrBuilder, field, clearReturnType));					
 				builder.append("}");
 				
@@ -60,7 +59,7 @@ public class Implementations extends AbstractStatements {
 
 	public StringBuilder generateMethods() {
 		StringBuilder builder = new StringBuilder();
-		for (FieldDescriptor field : optionalFields) {
+		for (FieldDescriptor field : info.optional()) {
 			builder.append(methods.setter(field, optionalIfcName));
 			builder.append(methods.has("builder", field));
 			builder.append(methods.clear("builder", field, optionalIfcName));	

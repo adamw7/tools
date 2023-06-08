@@ -57,7 +57,7 @@ Solution:
 		</executions>
 </plugin>
 ```
-that generates builders detecting missing required fields compile time (some methods are excluded for simplicity of the example):
+that generates builders detecting missing required fields in compile time (some methods are excluded for simplicity of the example):
 ```java
 interface OptionalIfc {
 	OptionalIfc setEmail(String email);

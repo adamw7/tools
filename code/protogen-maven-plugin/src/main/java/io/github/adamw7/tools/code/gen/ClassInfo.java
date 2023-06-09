@@ -15,7 +15,8 @@ public class ClassInfo {
 	private final List<FieldDescriptor> nonOptionalFields;
 	
 	private final Descriptor descriptor;
-	
+	private final Package pkg;
+
 	public ClassInfo(Descriptor descriptor, Package pkg) {
 		mapFields = getMapFields(descriptor);
 		optionalFields = getOptionalFields(descriptor);
@@ -23,6 +24,7 @@ public class ClassInfo {
 		requiredFields = getRequiredFields(descriptor);
 		this.descriptor = descriptor;
 		this.nonOptionalFields = union(required(), map(), repeated());
+		this.pkg = pkg;
 	}
 	
 	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
@@ -71,5 +73,9 @@ public class ClassInfo {
 
 	public List<FieldDescriptor> repeated() {
 		return repeatedFields;
+	}
+	
+	public Package pkg() {
+		return pkg;
 	}
 }

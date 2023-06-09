@@ -3,7 +3,6 @@ package io.github.adamw7.tools.code.gen;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Clazz implements Generator {
@@ -16,10 +15,10 @@ public class Clazz implements Generator {
 	private final Methods methods;
 	private final ClassInfo info;
 	 
-	public Clazz(Descriptor descriptor, TypeMappings typeMappings, Package pkg) {
-		this.info = new ClassInfo(descriptor, pkg);
+	public Clazz(ClassInfo info, TypeMappings typeMappings) {
+		this.info = info;
 		builderClassName = info.name() + "Builder";
-		this.pkg = pkg.getName();	
+		this.pkg = info.pkg().getName();	
 		String header = generatePackage() + generateImports();
 		
 		this.interfaces = new Interfaces(info, typeMappings, header);

@@ -92,7 +92,7 @@ public class Code {
 	}
 
 	private List<ClassContainer> genBuilder(Descriptor descriptor, Package pkg) {
-		Clazz clazz = new Clazz(descriptor, typeMappings, pkg);
+		Clazz clazz = new Clazz(new ClassInfo(descriptor, pkg), typeMappings);
 		return clazz.generate();
 	}
 

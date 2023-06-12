@@ -49,7 +49,7 @@
 						<configuration>
 							<protocVersion>3.11.4</protocVersion>
 							<inputDirectories>
-								<include>../protogen-maven-plugin/src/main/proto</include>
+								<include>../protogen-maven-plugin/src/test/proto</include>
 							</inputDirectories>
 						</configuration>
 					</execution>

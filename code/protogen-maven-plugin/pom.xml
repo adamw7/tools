@@ -33,7 +33,7 @@
 						<configuration>
 							<protocVersion>3.11.4</protocVersion>
 							<inputDirectories>
-								<include>src/main/proto</include>
+								<include>src/test/proto</include>
 							</inputDirectories>
 						</configuration>
 					</execution>

@@ -1,0 +1,27 @@
+syntax = "proto2";
+
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.protos";
+
+service EggDeliveryService {
+	rpc OrderEgg (OrderEggRequest) returns (OrderEggResponse);
+}
+
+message OrderEggRequest {
+	optional string name = 1;
+	optional string description = 2;
+	optional int32 num_eggs = 3;
+	optional bool with_shell = 4;
+	optional Recipient recipient = 5;
+}
+
+message OrderEggResponse {
+	optional int32 minutes_to_egg = 1;
+}
+
+message Recipient {
+	optional string name = 1;
+	optional string address = 2;
+}

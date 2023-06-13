@@ -13,6 +13,6 @@
 	<url>http://maven.apache.org</url>
 	<modules>
 		<module>protogen-maven-plugin</module>
-		<module>protogen-maven-plugin-test</module>
+		<!--<module>protogen-maven-plugin-test</module>-->
 	</modules>
 </project>

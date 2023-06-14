@@ -17,13 +17,11 @@ import io.github.adamw7.tools.code.gen.Code;
 public class CodeMojo extends AbstractMojo {
 	
 	private final static Logger log = LogManager.getLogger(CodeMojo.class.getName());
-	
-	public final static String DEFAULT_PACKAGE = "io.github.adamw7.tools.code.protos";
-	
+		
 	@Parameter(property = "generatedsourcesdir", required = true)
 	protected String generatedSourcesDir;
 	
-	@Parameter(property = "pkg", required = false, defaultValue = DEFAULT_PACKAGE)
+	@Parameter(property = "pkg", required = true)
 	protected String pkg;
 	
 	@Override

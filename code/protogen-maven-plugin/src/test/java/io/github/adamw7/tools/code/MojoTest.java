@@ -24,7 +24,7 @@ public class MojoTest {
 	public void happyPath() {
 		CodeMojo mojo = new CodeMojo();
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
-		mojo.pkg = CodeMojo.DEFAULT_PACKAGE;
+		mojo.pkg = "io.github.adamw7.tools.code.protos";
 		mojo.execute();
 		File dir = new File(GENERATED_SOURCES);
 		assertTrue(new HashSet<>(Arrays.asList(dir.list())).contains("io"));

@@ -8,7 +8,7 @@ public abstract class AbstractStatements {
 	protected final String header;
 	protected final ClassInfo info;
 
-	public AbstractStatements(ClassInfo info, TypeMappings typeMappings, String header) {
+	protected AbstractStatements(ClassInfo info, TypeMappings typeMappings, String header) {
 		this.info = info;
 		methods = new Methods(typeMappings, info.name());
 		this.optionalIfcName = info.name() + "OptionalIfc";

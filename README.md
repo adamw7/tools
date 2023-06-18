@@ -10,7 +10,7 @@ Generated builder java code for protobuffers detects missing required fields in 
 
 Solution:
 
-Move detection to compile time.
+Move detection to compile time (shift-left).
 
 Example of the problem:
 ```proto

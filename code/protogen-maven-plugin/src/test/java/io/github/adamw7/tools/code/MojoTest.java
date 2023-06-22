@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.code;
 
+import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,8 @@ public class MojoTest {
 		CodeMojo mojo = new CodeMojo();
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
 		mojo.pkg = "io.github.adamw7.tools.code.protos";
+		mojo.project = new MavenProject();
+		
 		mojo.execute();
 		File dir = new File(GENERATED_SOURCES);
 		assertTrue(new HashSet<>(Arrays.asList(dir.list())).contains("io"));

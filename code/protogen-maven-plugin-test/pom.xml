@@ -22,22 +22,6 @@
 				<artifactId>maven-plugin-plugin</artifactId>
 			</plugin>
 			<plugin>
-				<groupId>io.github.adamw7</groupId>
-				<artifactId>protogen-maven-plugin</artifactId>
-				<version>${project.version}</version>
-				<configuration>
-					<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
-				</configuration>
-				<executions>
-					<execution>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>code-generator</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>com.github.os72</groupId>
 				<artifactId>protoc-jar-maven-plugin</artifactId>
 				<executions>
@@ -49,8 +33,53 @@
 						<configuration>
 							<protocVersion>3.11.4</protocVersion>
 							<inputDirectories>
-								<include>../protogen-maven-plugin/src/test/proto</include>
+								<include>src/main/proto</include>
 							</inputDirectories>
+							<outputTargets>
+								<outputTarget>
+									<type>java</type>
+									<addSources>main</addSources>
+									<outputDirectory>
+										target/generated-sources/java</outputDirectory>
+								</outputTarget>
+							</outputTargets>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>io.github.adamw7</groupId>
+				<artifactId>protogen-maven-plugin</artifactId>
+				<version>${project.version}</version>
+				<configuration>
+					<generatedSourcesDir>
+						${project.basedir}/target/generated-test-sources/java/</generatedSourcesDir>
+					<pkg>io.github.adamw7.tools.code.test</pkg>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>generate-test-sources</phase>
+						<goals>
+							<goal>code-generator</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>add-test-source</id>
+						<phase>generate-test-sources</phase>
+						<goals>
+							<goal>add-test-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>
+									${project.basedir}/target/generated-test-sources/java/</source>
+							</sources>
 						</configuration>
 					</execution>
 				</executions>

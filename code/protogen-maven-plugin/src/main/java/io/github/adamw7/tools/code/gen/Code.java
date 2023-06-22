@@ -62,7 +62,9 @@ public class Code {
 	}
 
 	private void write(ClassContainer container) {
-		try (FileWriter myWriter = new FileWriter(generatedSourcesDir + replace(Clazz.OUTPUT_PKG) + "/" + container.name() + ".java")) {
+		String fileName = generatedSourcesDir + replace(Clazz.OUTPUT_PKG + File.separator + container.name()) + ".java";
+		try (FileWriter myWriter = new FileWriter(fileName)) {
+			log.info("Writting {}", fileName);
 			myWriter.write(container.code());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

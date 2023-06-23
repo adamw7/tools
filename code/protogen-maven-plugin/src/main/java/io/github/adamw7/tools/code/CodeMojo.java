@@ -43,6 +43,7 @@ public class CodeMojo extends AbstractMojo {
 		new Code(generatedSourcesDir).genBuilders(allMessages);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void extendClassPath() {
 		try {
 			Set<URL> urls = new HashSet<>();
@@ -54,7 +55,7 @@ public class CodeMojo extends AbstractMojo {
 				}
 			}
 
-			ClassLoader contextClassLoader = URLClassLoader.newInstance(urls.toArray(new URL[0]),
+			ClassLoader contextClassLoader = URLClassLoader.newInstance(urls.toArray(new URL[urls.size()]),
 					Thread.currentThread().getContextClassLoader());
 
 			Thread.currentThread().setContextClassLoader(contextClassLoader);

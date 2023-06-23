@@ -29,6 +29,3 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn -B package --file pom.xml
-    - id: get-version
-    - uses: jactions/maven-version@v1
-

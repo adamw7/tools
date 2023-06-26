@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface Generator {
 
-	public List<ClassContainer> generate(); 
+	List<ClassContainer> generate();
 }

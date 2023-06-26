@@ -4,14 +4,14 @@ import java.io.Closeable;
 
 public interface IterableDataSource extends AutoCloseable, Closeable {
 	
-	public String[] getColumnNames();
+	String[] getColumnNames();
 	
-	public void open();
+	void open();
 	
-	public String[] nextRow();
+	String[] nextRow();
 
-	public boolean hasMoreData();
+	boolean hasMoreData();
 	
-	public void reset();
+	void reset();
 	
 }

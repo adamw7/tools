@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface InMemoryDataSource extends IterableDataSource {
 
-	public List<String[]> readAll();
+	List<String[]> readAll();
 }

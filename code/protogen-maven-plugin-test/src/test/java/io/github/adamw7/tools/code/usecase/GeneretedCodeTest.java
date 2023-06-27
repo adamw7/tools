@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.code.ComputerBuilder;
 import io.github.adamw7.tools.code.ComputerOptionalIfc;
+import io.github.adamw7.tools.code.UserBuilder;
 import io.github.adamw7.tools.code.test.Computer;
 
 public class GeneretedCodeTest {
@@ -32,5 +33,10 @@ public class GeneretedCodeTest {
 		assertFalse(computerOptional.hasName());
 				
 		assertEquals("", computerOptional.build().getName());
+	}
+	
+	@Test
+	public void userTest() {
+		assertNotNull(new UserBuilder().setNumber(7).setValue("val").build());
 	}
 }

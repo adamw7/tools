@@ -56,6 +56,7 @@
 						${project.basedir}/target/generated-test-sources/java/</generatedSourcesDir>
 					<pkgs>
 						<param>io.github.adamw7.tools.code.test</param>
+						<param>io.github.adamw7.tools.code.test2</param>
 					</pkgs>
 				</configuration>
 				<executions>

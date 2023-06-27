@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package test2;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test2";
+
+message User {
+  optional string value = 1;
+  required int32 number = 2;
+}

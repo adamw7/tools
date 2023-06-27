@@ -29,8 +29,8 @@ public class CodeMojo extends AbstractMojo {
 	@Parameter(property = "generatedsourcesdir", required = true)
 	protected String generatedSourcesDir;
 
-	@Parameter(property = "pkg", required = true)
-	protected String pkg;
+	@Parameter(property = "pkgs", required = true)
+	protected String[] pkgs;
 
 	@Parameter(defaultValue = "${project}", required = true, readonly = true)
 	protected MavenProject project;
@@ -39,7 +39,7 @@ public class CodeMojo extends AbstractMojo {
 	public void execute() {
 		log.info("Executing {} maven plugin", this);
 		extendClassPath();
-		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder(pkg).execute();
+		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder(pkgs).execute();
 		new Code(generatedSourcesDir).genBuilders(allMessages);
 	}
 

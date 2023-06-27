@@ -25,7 +25,7 @@ public class MojoTest {
 	public void happyPath() {
 		CodeMojo mojo = new CodeMojo();
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
-		mojo.pkg = "io.github.adamw7.tools.code.protos";
+		mojo.pkgs = new String[]{"io.github.adamw7.tools.code.protos"};
 		mojo.project = new MavenProject();
 		
 		mojo.execute();

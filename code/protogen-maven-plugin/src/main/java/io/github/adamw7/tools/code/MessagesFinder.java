@@ -12,9 +12,9 @@ import com.google.protobuf.GeneratedMessageV3;
 public class MessagesFinder {
 	
 	private final static Logger log = LogManager.getLogger(MessagesFinder.class.getName());
-	private final String pkg;
+	private final String[] pkg;
 
-	public MessagesFinder(String pkg) {
+	public MessagesFinder(String... pkg) {
 		this.pkg = pkg;
 	}
 	

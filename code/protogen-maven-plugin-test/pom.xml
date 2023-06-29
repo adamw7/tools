@@ -57,6 +57,7 @@
 					<pkgs>
 						<param>io.github.adamw7.tools.code.test</param>
 						<param>io.github.adamw7.tools.code.test2</param>
+						<param>io.github.adamw7.tools.code.test3</param>
 					</pkgs>
 				</configuration>
 				<executions>

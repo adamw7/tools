@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.code.ComputerBuilder;
 import io.github.adamw7.tools.code.ComputerOptionalIfc;
+import io.github.adamw7.tools.code.OneOptionalFieldOnlyBuilder;
+import io.github.adamw7.tools.code.OneOptionalFieldOnlyOptionalImpl;
 import io.github.adamw7.tools.code.UserBuilder;
 import io.github.adamw7.tools.code.test.Computer;
 
@@ -38,5 +40,11 @@ public class GeneretedCodeTest {
 	@Test
 	public void userTest() {
 		assertNotNull(new UserBuilder().setNumber(7).setValue("val").build());
+	}
+	
+	@Test
+	public void oneOptionalFieldTest() {
+		OneOptionalFieldOnlyBuilder builder = new OneOptionalFieldOnlyBuilder();
+		assertNotNull(builder.setValue("V").build());
 	}
 }

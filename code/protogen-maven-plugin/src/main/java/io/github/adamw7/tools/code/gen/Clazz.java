@@ -58,7 +58,8 @@ public class Clazz implements Generator {
 		StringBuilder builder = new StringBuilder();
 		if (info.required().isEmpty()) {
 			builder.append(implementations.generateOptionalBuilderField());
-			builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));
+			builder.append(implementations.generateOptionalBuilderDefaultConstructor(builderClassName));			
+			builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));			
 			builder.append(implementations.generateMethods());
 			builder.append(methods.build());
 		} else {

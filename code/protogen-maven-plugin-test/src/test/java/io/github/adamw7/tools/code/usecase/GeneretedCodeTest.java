@@ -8,11 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.code.ComputerBuilder;
-import io.github.adamw7.tools.code.ComputerOptionalIfc;
-import io.github.adamw7.tools.code.OneOptionalFieldOnlyBuilder;
-import io.github.adamw7.tools.code.OneOptionalFieldOnlyOptionalImpl;
-import io.github.adamw7.tools.code.UserBuilder;
+import org.output.generated.ComputerBuilder;
+import org.output.generated.ComputerOptionalIfc;
+import org.output.generated.OneOptionalFieldOnlyBuilder;
+import org.output.generated.OneOptionalFieldOnlyOptionalImpl;
+import org.output.generated.UserBuilder;
 import io.github.adamw7.tools.code.test.Computer;
 
 public class GeneretedCodeTest {

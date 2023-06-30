@@ -59,6 +59,9 @@
 						<param>io.github.adamw7.tools.code.test2</param>
 						<param>io.github.adamw7.tools.code.test3</param>
 					</pkgs>
+					<outputpackage>
+						org.output.generated
+					</outputpackage>
 				</configuration>
 				<executions>
 					<execution>

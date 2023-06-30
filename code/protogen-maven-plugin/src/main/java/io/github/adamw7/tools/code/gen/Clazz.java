@@ -7,9 +7,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Clazz implements Generator {
 
-	public static final String OUTPUT_PKG = "io.github.adamw7.tools.code";
 	private final String builderClassName;
-	private final String pkg;
 	private final Interfaces interfaces;
 	private final Implementations implementations;
 	private final Methods methods;
@@ -18,7 +16,6 @@ public class Clazz implements Generator {
 	public Clazz(ClassInfo info, TypeMappings typeMappings) {
 		this.info = info;
 		builderClassName = info.name() + "Builder";
-		this.pkg = info.pkg().getName();	
 		String header = generatePackage() + generateImports();
 		
 		this.interfaces = new Interfaces(info, typeMappings, header);
@@ -74,7 +71,7 @@ public class Clazz implements Generator {
 	}
 
 	private String generatePackage() {
-		return "package " + OUTPUT_PKG + ";";
+		return "package " + info.getOutputPkg() + ";";
 	}
 
 	private StringBuilder generateFields() {
@@ -103,7 +100,7 @@ public class Clazz implements Generator {
 
 	private StringBuilder generateImports() {
 		StringBuilder builder = new StringBuilder();
-		StringBuilder prefix = new StringBuilder("import ").append(pkg).append(".");
+		StringBuilder prefix = new StringBuilder("import ").append(info.getInputPkg()).append(".");
 		builder.append(prefix).append("*;");
 		builder.append(prefix).append(info.name()).append(";");
 		builder.append(prefix).append(info.name()).append(".Builder").append(";");		

@@ -25,10 +25,12 @@ public class Code {
 	
 	private final String generatedSourcesDir;
 	private TypeMappings typeMappings;
+	private final String outputPkg;
 
-	public Code(String generatedSourcesDir) {
+	public Code(String generatedSourcesDir, String outputPkg) {
 		this.generatedSourcesDir = generatedSourcesDir;
-		createPkg(Clazz.OUTPUT_PKG);
+		this.outputPkg = outputPkg;
+		createPkg(outputPkg);
 	}
 
 	private void createPkg(String pkg) {
@@ -62,7 +64,7 @@ public class Code {
 	}
 
 	private void write(ClassContainer container) {
-		String fileName = generatedSourcesDir + replace(Clazz.OUTPUT_PKG + File.separator + container.name()) + ".java";
+		String fileName = generatedSourcesDir + replace(outputPkg + File.separator + container.name()) + ".java";
 		try (FileWriter myWriter = new FileWriter(fileName)) {
 			log.info("Writing {}", fileName);
 			myWriter.write(container.code());
@@ -93,8 +95,8 @@ public class Code {
 		}
 	}
 
-	private List<ClassContainer> genBuilder(Descriptor descriptor, Package pkg) {
-		Clazz clazz = new Clazz(new ClassInfo(descriptor, pkg), typeMappings);
+	private List<ClassContainer> genBuilder(Descriptor descriptor, Package inputPkg) {
+		Clazz clazz = new Clazz(new ClassInfo(descriptor, inputPkg.getName(), outputPkg), typeMappings);
 		return clazz.generate();
 	}
 

@@ -1,15 +1,16 @@
 package io.github.adamw7.tools.code;
 
-import org.apache.maven.project.MavenProject;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.apache.maven.project.MavenProject;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class MojoTest {
 
@@ -26,11 +27,13 @@ public class MojoTest {
 		CodeMojo mojo = new CodeMojo();
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
 		mojo.pkgs = new String[]{"io.github.adamw7.tools.code.protos"};
+		mojo.outputpackage = "com.sth.generated";
 		mojo.project = new MavenProject();
 		
 		mojo.execute();
 		File dir = new File(GENERATED_SOURCES);
-		assertTrue(new HashSet<>(Arrays.asList(dir.list())).contains("io"));
+		Set<String> dirSet = new HashSet<>(Arrays.asList(dir.list()));
+		assertTrue(dirSet.contains("com"));
 	}
 	
 	@AfterEach

@@ -49,7 +49,7 @@ public class Utils {
 	private static String getNext(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {
 		for (int i = 0; i < fields.size(); ++i) {
 			if (fields.get(i).equals(requiredField)) {
-				return i == fields.size() - 1 ? className + "Optional" + suffix : to(fields.get(i + 1), suffix);
+				return className + (i == fields.size() - 1 ? "Optional" + suffix : to(fields.get(i + 1), suffix));
 			}
 		}
 		return className + "Optional" + suffix;

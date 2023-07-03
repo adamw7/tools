@@ -95,7 +95,7 @@ public class Clazz implements Generator {
 	}
 
 	private String firstInterface() {
-		return info.required().isEmpty() ? info.name() + "OptionalIfc" : Utils.to(info.required().get(0), "Ifc");
+		return info.name() + (info.required().isEmpty() ? "OptionalIfc" : Utils.to(info.required().get(0), "Ifc"));
 	}
 
 	private StringBuilder generateImports() {

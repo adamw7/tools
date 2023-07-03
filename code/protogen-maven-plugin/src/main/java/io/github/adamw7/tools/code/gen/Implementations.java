@@ -17,8 +17,8 @@ public class Implementations extends AbstractStatements {
 			for (int i = 1; i < info.nonOptional().size(); ++i) { // skipping first since already handled
 				String classOrBuilder = Utils.firstToLower(info.name()) + "OrBuilder";
 				FieldDescriptor field = info.nonOptional().get(i);
-				String ifcName = Utils.firstToUpper(field.getName()) + "Ifc";
-				String implName = Utils.firstToUpper(field.getName()) + "Impl";
+				String ifcName = info.name() + Utils.firstToUpper(field.getName()) + "Ifc";
+				String implName = info.name() + Utils.firstToUpper(field.getName()) + "Impl";
 				StringBuilder builder = new StringBuilder(header);
 				builder.append("public class ").append(implName).append(" implements ").append(ifcName).append(" {");
 				builder.append("private final Builder ").append(classOrBuilder).append(";");

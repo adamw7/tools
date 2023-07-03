@@ -39,7 +39,7 @@ public class Interfaces extends AbstractStatements {
 	private ClassContainer generateInterface(FieldDescriptor requiredField) {
 		StringBuilder ifc = new StringBuilder(header);
 		ifc.append("public interface ");
-		String ifcName = Utils.to(requiredField, "Ifc");
+		String ifcName = info.name() + Utils.to(requiredField, "Ifc");
 		ifc.append(ifcName);
 		ifc.append(" {");
 		String returnType = Utils.getNextIfc(info.name(), info.nonOptional(), requiredField);

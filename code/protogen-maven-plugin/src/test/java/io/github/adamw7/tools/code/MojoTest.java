@@ -81,7 +81,7 @@ public class MojoTest {
 		})).stream().map(s -> dir + File.separator + s).toList();
 	}
 
-	class JavaSourceFromFile extends SimpleJavaFileObject {
+	static class JavaSourceFromFile extends SimpleJavaFileObject {
 		final String file;
 
 		JavaSourceFromFile(String file) {
@@ -104,7 +104,7 @@ public class MojoTest {
 
 		JavaFileObject file = new JavaSourceFromFile(fileName);
 
-		Iterable<? extends JavaFileObject> compilationUnits = Arrays.asList(file);
+		Iterable<? extends JavaFileObject> compilationUnits = List.of(file);
 		CompilationTask task = compiler.getTask(null, null, diagnostics, null, null, compilationUnits);
 
 		boolean success = task.call();

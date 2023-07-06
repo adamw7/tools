@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -72,13 +69,13 @@ public class MojoTest {
 
 	private List<String> getAllOptionalIfcs(String dir) {
 		File dirFile = new File(dir);
-		return Arrays.asList(dirFile.list(new FilenameFilter() {
+		return Arrays.stream(Objects.requireNonNull(dirFile.list(new FilenameFilter() {
 
 			@Override
 			public boolean accept(File dir, String name) {
 				return name.contains("OptionalIfc.java");
 			}
-		})).stream().map(s -> dir + File.separator + s).toList();
+		}))).map(s -> dir + File.separator + s).toList();
 	}
 
 	static class JavaSourceFromFile extends SimpleJavaFileObject {
@@ -100,7 +97,7 @@ public class MojoTest {
 	}
 
 	private void compileFile(String fileName) {
-		DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+		DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
 
 		JavaFileObject file = new JavaSourceFromFile(fileName);
 

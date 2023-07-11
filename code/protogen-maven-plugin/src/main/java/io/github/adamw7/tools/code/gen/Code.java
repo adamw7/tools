@@ -67,7 +67,7 @@ public class Code {
 		String fileName = generatedSourcesDir + replace(outputPkg + File.separator + container.name()) + ".java";
 		try (FileWriter myWriter = new FileWriter(fileName)) {
 			log.info("Writing {}", fileName);
-			myWriter.write(container.code());
+			myWriter.write(container.codeAsString());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

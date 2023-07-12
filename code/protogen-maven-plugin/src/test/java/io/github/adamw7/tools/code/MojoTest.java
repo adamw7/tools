@@ -8,7 +8,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -16,6 +20,8 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
 import org.apache.logging.log4j.LogManager;
@@ -98,11 +104,10 @@ public class MojoTest {
 
 	private void compileFile(String fileName) {
 		DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-
 		JavaFileObject file = new JavaSourceFromFile(fileName);
 
 		Iterable<? extends JavaFileObject> compilationUnits = List.of(file);
-		CompilationTask task = compiler.getTask(null, null, diagnostics, null, null, compilationUnits);
+		CompilationTask task = compiler.getTask(null, createFileManager(), diagnostics, null, null, compilationUnits);
 
 		boolean success = task.call();
 		if (!success) {
@@ -111,6 +116,16 @@ public class MojoTest {
 			log.info("Compiled {}", file);
 		}
 		assertTrue(success);
+	}
+
+	private StandardJavaFileManager createFileManager() {
+		StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+		try {
+			fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(new File(TARGET + "/test-classes/")));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		return fileManager;
 	}
 
 	private void logCompilerError(DiagnosticCollector<JavaFileObject> diagnostics) {

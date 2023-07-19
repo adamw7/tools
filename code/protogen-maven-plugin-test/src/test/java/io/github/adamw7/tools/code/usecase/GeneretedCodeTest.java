@@ -7,13 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
-
 import org.output.generated.ComputerBuilder;
 import org.output.generated.ComputerOptionalIfc;
+import org.output.generated.GroupBuilder;
+import org.output.generated.GroupingBuilder;
 import org.output.generated.OneOptionalFieldOnlyBuilder;
-import org.output.generated.OneOptionalFieldOnlyOptionalImpl;
 import org.output.generated.UserBuilder;
+
 import io.github.adamw7.tools.code.test.Computer;
+import io.github.adamw7.tools.code.test.Grouping;
 
 public class GeneretedCodeTest {
 
@@ -47,4 +49,13 @@ public class GeneretedCodeTest {
 		OneOptionalFieldOnlyBuilder builder = new OneOptionalFieldOnlyBuilder();
 		assertNotNull(builder.setValue("V").build());
 	}
+	
+	@Test
+	public void groups() {
+		GroupingBuilder builder = new GroupingBuilder();
+		Grouping grouping = builder.setGroup(new GroupBuilder().setActive(true).build()).build();
+		assertNotNull(grouping);
+		assertTrue(grouping.getGroup().getActive());
+	}
+	
 }

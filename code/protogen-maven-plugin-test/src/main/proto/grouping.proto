@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+message Grouping {
+	optional string name = 1;
+	optional group Group = 2 {
+		optional bool active = 1;
+	}
+}

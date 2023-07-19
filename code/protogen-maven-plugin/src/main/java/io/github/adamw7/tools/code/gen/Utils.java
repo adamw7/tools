@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.code.gen;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -64,6 +65,16 @@ public class Utils {
 		}
 		String suffix = suffixBuilder.toString();
 		return suffix.substring(0, suffix.length() - 1);
+	}
+
+	public static String getClassName(String fullName) {
+		String[] tokens = fullName.split(Pattern.quote("."));
+		for (int i = 0; i < tokens.length; ++i) {
+			if (tokens[i].length() > 0 && Character.isUpperCase(tokens[i].charAt(0))) {
+				 return String.join(".", Arrays.copyOfRange(tokens, i, tokens.length));
+			}
+		}
+		return "";
 	}
 
 }

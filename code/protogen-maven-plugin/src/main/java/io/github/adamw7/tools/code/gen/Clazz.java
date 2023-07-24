@@ -51,23 +51,36 @@ public class Clazz implements Generator {
 		return classes;
 	}
 
-	private String handleMethodsInMainClass() {
-		StringBuilder builder = new StringBuilder();
-		if (info.required().isEmpty()) {
-			builder.append(implementations.generateOptionalBuilderField());
-			builder.append(implementations.generateOptionalBuilderDefaultConstructor(builderClassName));			
-			builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));			
-			builder.append(implementations.generateMethods());
-			builder.append(methods.build());
-		} else {
-			builder.append(generateFields());
-			FieldDescriptor firstRequiredField = info.required().get(0);
-			String builderName = Utils.firstToLower(builderClassName);
-			builder.append(methods.has(builderName, firstRequiredField));
-			builder.append(methods.requiredSetter(builderName, firstRequiredField, info.required()));
-			builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(info.name(), info.required(), firstRequiredField)));			
-		}
-		return builder.toString();
+	private CharSequence handleMethodsInMainClass() {
+	    if (info.required().isEmpty()) {
+	        return handleOptionalMethods();
+	    } else {
+	        return handleRequiredMethods();
+	    }
+	}
+
+	private CharSequence handleOptionalMethods() {
+	    StringBuilder builder = new StringBuilder();
+	    builder.append(implementations.generateOptionalBuilderField());
+	    builder.append(implementations.generateOptionalBuilderDefaultConstructor(builderClassName));
+	    builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));
+	    builder.append(implementations.generateMethods());
+	    builder.append(methods.build());
+	    return builder;
+	}
+
+	private CharSequence handleRequiredMethods() {
+	    StringBuilder builder = new StringBuilder();
+	    builder.append(generateFields());
+
+	    FieldDescriptor firstRequiredField = info.required().get(0);
+	    String builderName = Utils.firstToLower(builderClassName);
+
+	    builder.append(methods.has(builderName, firstRequiredField));
+	    builder.append(methods.requiredSetter(builderName, firstRequiredField, info.required()));
+	    builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(info.name(), info.required(), firstRequiredField)));
+
+	    return builder;
 	}
 
 	private String generatePackage() {

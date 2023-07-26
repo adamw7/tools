@@ -34,4 +34,9 @@ message Person {
   repeated int32 ids = 20 [packed=true];
   repeated CLASSIFICATION classifications = 21 [packed=true];
   repeated Person friends = 22 [packed=false];
+  
+  optional group Group = 23 {
+    map<string, int32> mapping = 1;
+    optional int64 number = 2;
+  }
 }

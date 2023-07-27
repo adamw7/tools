@@ -89,4 +89,10 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);
+	
+	@Override
+	public Result exec() {
+		dataSource.open();
+		return exec(dataSource.getColumnNames());
+	}
 }

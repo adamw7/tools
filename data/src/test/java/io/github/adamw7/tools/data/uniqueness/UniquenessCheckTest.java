@@ -102,7 +102,7 @@ public class UniquenessCheckTest extends DBTest {
 	void negativeEmptyInputArray(Class<AbstractUniqueness> uniquenessClass, IterableDataSource source)
 			throws Exception {
 		AbstractUniqueness uniqueness = initUniquenessCheck(uniquenessClass, source);
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, uniqueness::exec, "Expected exec method to throw, but it didn't");
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.exec(new String[] {}), "Expected exec method to throw, but it didn't");
 
 		assertEquals("Wrong input: []", thrown.getMessage());
 	}
@@ -143,4 +143,14 @@ public class UniquenessCheckTest extends DBTest {
 
 		assertEquals("Expected InMemoryDataSource and got: IterableSQLDataSource", thrown.getMessage());
 	}
+	
+	@Test
+	public void happyPathAllColumns() {
+		AbstractUniqueness uniqueness = new InMemoryUniquenessCheck();
+		uniqueness.setDataSource(Utils.createInMemorySQLDataSource(connection, "SELECT * FROM PEOPLE"));
+
+		Result result = uniqueness.exec();
+		assertTrue(result.isUnique());
+	}
+
 }

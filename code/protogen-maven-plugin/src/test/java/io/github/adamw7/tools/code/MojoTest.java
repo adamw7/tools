@@ -121,7 +121,7 @@ public class MojoTest {
 	private StandardJavaFileManager createFileManager() {
 		StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
 		try {
-			fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(new File(TARGET + "/test-classes/")));
+			fileManager.setLocation(StandardLocation.CLASS_OUTPUT, List.of(new File(TARGET + "/test-classes/")));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

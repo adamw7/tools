@@ -151,6 +151,16 @@ public class UniquenessCheckTest extends DBTest {
 
 		Result result = uniqueness.exec();
 		assertTrue(result.isUnique());
+		assertEquals(3, result.getBetterOptions().size());
+		Result id = new Result(true, new String[] { "ID" });
+		Result name = new Result(true, new String[] { "NAME" });
+		
+		Set<Result> betterOptions = new HashSet<>();
+		betterOptions.add(id);
+		betterOptions.add(name);
+
+		assertTrue(result.getBetterOptions().contains(new Result(true, new String[] {"ID", "NAME"}, null, betterOptions)));
+		
 	}
 
 }

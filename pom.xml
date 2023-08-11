@@ -27,6 +27,7 @@
 	</scm>
 	<modules>
 		<module>data</module>
+		<module>data-test</module>
 		<module>code</module>
 	</modules>
 	<dependencyManagement>

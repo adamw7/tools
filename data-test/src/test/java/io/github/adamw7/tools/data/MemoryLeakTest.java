@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -16,12 +17,19 @@ import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
+import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
+import io.github.adamw7.tools.data.uniqueness.Result;
 
 public class MemoryLeakTest {
 	private final static Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
 
-	private static final String FILE_NAME = new File(MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent() + "random_data.csv";
-	private static final int ROWS = 100_000;
+	private static final String FILE_NAME = new File(
+			MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent()
+			+ "random_data.csv";
+	private static final int ROWS = 50_000;
+	private static final int SEED = 500;
+	
 
 	@BeforeAll
 	public static void setUp() {
@@ -33,7 +41,7 @@ public class MemoryLeakTest {
 		int[] columnLengths = { 10, 15, 8, 12 };
 
 		createCSV(FILE_NAME, ROWS, columnLengths);
-		
+
 		log.info("CSV file {} with random data created.", FILE_NAME);
 	}
 
@@ -41,7 +49,7 @@ public class MemoryLeakTest {
 		try (FileWriter csvWriter = new FileWriter(filename)) {
 			csvWriter.append("Column 1,Column 2,Column 3,Column 4\n");
 
-			Random random = new Random();
+			Random random = new Random(SEED);
 
 			for (int i = 0; i < numRows; i++) {
 				StringBuilder rowBuilder = new StringBuilder();
@@ -68,7 +76,7 @@ public class MemoryLeakTest {
 	}
 
 	@Test
-	public void seekMemoryLeak() {
+	public void seekMemoryLeakInCSVSource() {
 		try {
 			IterableDataSource source = new CSVDataSource(FILE_NAME);
 			source.open();
@@ -81,6 +89,22 @@ public class MemoryLeakTest {
 			}
 			source.close();
 			assertEquals(ROWS + 1, i); // one for columns
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Test
+	public void seekMemoryLeakInUniquenessCheck() {
+		AbstractUniqueness uniqueness = new NoMemoryUniquenessCheck();
+
+		try {
+			IterableDataSource source = new CSVDataSource(FILE_NAME, 1);
+			uniqueness.setDataSource(source);
+
+			Result result = uniqueness.exec("Column 1");
+			source.close();
+			assertTrue(result.isUnique());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

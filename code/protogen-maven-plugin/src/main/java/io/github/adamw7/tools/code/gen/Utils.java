@@ -70,7 +70,7 @@ public class Utils {
 	public static String getClassName(String fullName) {
 		String[] tokens = fullName.split(Pattern.quote("."));
 		for (int i = 0; i < tokens.length; ++i) {
-			if (tokens[i].length() > 0 && Character.isUpperCase(tokens[i].charAt(0))) {
+			if (!tokens[i].isEmpty() && Character.isUpperCase(tokens[i].charAt(0))) {
 				 return String.join(".", Arrays.copyOfRange(tokens, i, tokens.length));
 			}
 		}

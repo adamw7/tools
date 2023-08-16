@@ -75,13 +75,7 @@ public class MojoTest {
 
 	private List<String> getAllOptionalIfcs(String dir) {
 		File dirFile = new File(dir);
-		return Arrays.stream(Objects.requireNonNull(dirFile.list(new FilenameFilter() {
-
-			@Override
-			public boolean accept(File dir, String name) {
-				return name.contains("OptionalIfc.java");
-			}
-		}))).map(s -> dir + File.separator + s).toList();
+		return Arrays.stream(Objects.requireNonNull(dirFile.list((inputDir, name) -> name.contains("OptionalIfc.java")))).map(s -> dir + File.separator + s).toList();
 	}
 
 	static class JavaSourceFromFile extends SimpleJavaFileObject {

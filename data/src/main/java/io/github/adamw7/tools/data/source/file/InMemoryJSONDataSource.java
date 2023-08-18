@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -32,8 +33,8 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
                 jsonContent.append(line);
             }
             parseJSON(jsonContent.toString());
-        } catch (IOException | JSONException e) {
-            throw new RuntimeException("Error opening or parsing JSON file: " + e.getMessage());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -46,8 +47,8 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
     private void extractFieldNames(JSONArray jsonArray) throws JSONException {
         for (int i = 0; i < jsonArray.length(); i++) {
             Object value = jsonArray.get(i);
-            if (value instanceof JSONObject) {
-                extractFieldNames((JSONObject) value);
+            if (value instanceof JSONObject jsonObjectValue) {
+                extractFieldNames(jsonObjectValue);
             }
         }
     }
@@ -56,8 +57,8 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
         for (String key : jsonObject.keySet()) {
             Object value = jsonObject.get(key);
             fieldsMap.put(key, String.valueOf(value));
-            if (value instanceof JSONObject) {
-                extractFieldNames((JSONObject) value);
+            if (value instanceof JSONObject jsonObjectValue) {
+                extractFieldNames(jsonObjectValue);
             }
         }
     }
@@ -65,10 +66,10 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
     private void flattenJSON(JSONArray jsonArray) throws JSONException {
         for (int i = 0; i < jsonArray.length(); i++) {
             Object value = jsonArray.get(i);
-            if (value instanceof JSONArray) {
-                flattenJSON((JSONArray) value);
-            } else if (value instanceof JSONObject) {
-                flattenJSON((JSONObject) value);
+            if (value instanceof JSONArray jsonArrayValue) {
+                flattenJSON(jsonArrayValue);
+            } else if (value instanceof JSONObject jsonObjectValue) {
+                flattenJSON(jsonObjectValue);
             }
         }
     }
@@ -97,9 +98,7 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
 
     @Override
     public String[] nextRow() {
-        if (!opened) {
-            throw new IllegalStateException("DataSource is not open");
-        }
+        checkIfOpen();
         if (mapIterator.hasNext()) {
         	String key = mapIterator.next();
         	String value = fieldsMap.get(key);
@@ -110,17 +109,19 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
 
     @Override
     public boolean hasMoreData() {
-        if (!opened) {
-            throw new IllegalStateException("DataSource is not open");
-        }
+        checkIfOpen();
         return mapIterator.hasNext();
     }
 
-    @Override
-    public void reset() {
-        if (!opened) {
+	private void checkIfOpen() {
+		if (!opened) {
             throw new IllegalStateException("DataSource is not open");
         }
+	}
+
+    @Override
+    public void reset() {
+        checkIfOpen();
         mapIterator = fieldsMap.keySet().iterator();
     }
 

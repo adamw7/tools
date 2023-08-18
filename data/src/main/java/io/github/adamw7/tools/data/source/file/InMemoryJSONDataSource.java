@@ -18,7 +18,7 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataSource, AutoCloseable, Closeable {
-    private BufferedReader reader;
+    private final BufferedReader reader;
     private final Map<String, String> fieldsMap = new HashMap<>();
     private boolean opened = false;
     private Iterator<String> mapIterator;
@@ -133,7 +133,7 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
     }
 
     public Iterator<String[]> iterator() {
-        return new Iterator<String[]>() {
+        return new Iterator<>() {
             @Override
             public boolean hasNext() {
                 return hasMoreData();

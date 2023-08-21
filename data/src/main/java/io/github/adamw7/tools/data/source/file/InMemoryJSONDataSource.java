@@ -77,10 +77,10 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
     private void flattenJSON(JSONObject jsonObject) throws JSONException {
         for (String key : jsonObject.keySet()) {
             Object value = jsonObject.get(key);
-            if (value instanceof JSONArray) {
-                flattenJSON((JSONArray) value);
-            } else if (value instanceof JSONObject) {
-                flattenJSON((JSONObject) value);
+            if (value instanceof JSONArray jsonArrayValue) {
+                flattenJSON(jsonArrayValue);
+            } else if (value instanceof JSONObject jsonObjectValue) {
+                flattenJSON(jsonObjectValue);
             } else {
                 fieldsMap.put(key, String.valueOf(value));
             }

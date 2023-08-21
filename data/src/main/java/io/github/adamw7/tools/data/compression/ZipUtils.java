@@ -28,15 +28,20 @@ public class ZipUtils {
 	}
 
 	private static boolean isZipped(String fileName) {
-		try (RandomAccessFile raf = new RandomAccessFile(fileName, "r")) {
-			byte first = raf.readByte();
-			byte second = raf.readByte();
+		if (fileName != null) {
+			try (RandomAccessFile raf = new RandomAccessFile(fileName, "r")) {
+				byte first = raf.readByte();
+				byte second = raf.readByte();
 
-			return ((first == (byte) (GZIPInputStream.GZIP_MAGIC))
-					&& (second == (byte) (GZIPInputStream.GZIP_MAGIC >> 8)));
-		} catch (IOException e) {
-			log.error("Error checking if " + fileName + " is zipped", e);
+				return ((first == (byte) (GZIPInputStream.GZIP_MAGIC))
+						&& (second == (byte) (GZIPInputStream.GZIP_MAGIC >> 8)));
+			} catch (IOException e) {
+				log.error("Error checking if " + fileName + " is zipped", e);
+				return false;
+			}			
+		} else {
 			return false;
 		}
+	
 	}
 }

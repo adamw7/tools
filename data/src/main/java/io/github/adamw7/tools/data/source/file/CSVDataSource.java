@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.source.file;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -14,40 +15,60 @@ import io.github.adamw7.tools.data.compression.ZipUtils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSource implements IterableDataSource {
-	
+
+	private static final String REGEX_SUFFIX = "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
+
 	private final static Logger log = LogManager.getLogger(CSVDataSource.class.getName());
-	
+
 	public final static String DEFAULT_DELIMITER = ",";
-	
+
 	protected final String delimiter;
 	protected final String regex;
 	protected final int columnsRow;
 	protected String[] columns;
 	protected Scanner scanner;
-	protected final String fileName; 
+	protected String fileName;
 	protected int currentRow = 0;
 	protected boolean hasMoreData = true;
-	
+	private InputStream inputStream;
+
+	public CSVDataSource(InputStream inputStream) throws FileNotFoundException {
+		this(inputStream, DEFAULT_DELIMITER, -1);
+	}
+
 	public CSVDataSource(String fileName) throws FileNotFoundException {
 		this(fileName, DEFAULT_DELIMITER, -1);
 	}
-	
+
 	public CSVDataSource(String fileName, int columnsRow) throws FileNotFoundException {
 		this(fileName, DEFAULT_DELIMITER, columnsRow);
 	}
 	
-	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
-		scanner = createScanner(fileName);
+	public CSVDataSource(InputStream inoutStream, String delimiter, int columnsRow) throws FileNotFoundException {
+		this.inputStream = inoutStream;
+		scanner = createScanner(inputStream);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
+		regex = delimiter + REGEX_SUFFIX;
+	}
+
+	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
+		this.inputStream = new FileInputStream(fileName);
 		this.fileName = fileName;
-		regex = delimiter + "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
+		scanner = createScanner(inputStream);
+		this.delimiter = delimiter;
+		this.columnsRow = columnsRow;
+		regex = delimiter + REGEX_SUFFIX;
+	}
+
+	private Scanner createScanner(InputStream inputStream) {
+		return new Scanner(ZipUtils.unzipIfNeeded(inputStream, fileName), StandardCharsets.UTF_8);
 	}
 
 	private Scanner createScanner(String fileName) throws FileNotFoundException {
-		return new Scanner(ZipUtils.unzipIfNeeded(new FileInputStream(fileName), fileName), StandardCharsets.UTF_8);
+		return createScanner(new FileInputStream(fileName));
 	}
-	
+
 	@Override
 	public String[] getColumnNames() {
 		return columns;
@@ -57,7 +78,7 @@ public class CSVDataSource implements IterableDataSource {
 	public void close() {
 		scanner.close();
 	}
-	
+
 	@Override
 	public void open() {
 		log.info("Opening: {}", fileName);
@@ -84,14 +105,13 @@ public class CSVDataSource implements IterableDataSource {
 	public String[] nextRow() {
 		if (scanner.hasNextLine()) {
 			String line = scanner.nextLine();
-			currentRow++;			
+			currentRow++;
 			if (line.trim().startsWith("#")) {
 				return null;
 			} else {
-				return line.split(regex);				
+				return line.split(regex);
 			}
-		}
-		else {
+		} else {
 			hasMoreData = false;
 			return null;
 		}
@@ -106,7 +126,7 @@ public class CSVDataSource implements IterableDataSource {
 	public void reset() {
 		close();
 		try {
-			scanner = createScanner(fileName);
+			scanner = createScanner();
 		} catch (FileNotFoundException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -114,8 +134,18 @@ public class CSVDataSource implements IterableDataSource {
 		hasMoreData = true;
 		open();
 	}
-	
-	public String getFileName () {
+
+	private Scanner createScanner() throws FileNotFoundException {
+		if (fileName != null) {
+			return createScanner(fileName);
+		} else if (inputStream != null) {
+			return createScanner(inputStream);
+		} else {
+			throw new IllegalStateException("Both input stream and file are nulls");
+		}
+	}
+
+	public String getFileName() {
 		return Paths.get(fileName).getFileName().toString();
 	}
 }

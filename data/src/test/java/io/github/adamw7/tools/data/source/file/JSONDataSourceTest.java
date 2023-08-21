@@ -29,8 +29,8 @@ public class JSONDataSourceTest {
     @Test
     public void testGetColumnNames() {
         String[] columnNames = dataSource.getColumnNames();
-        assertEquals(5, columnNames.length);
-        assertArrayEquals(new String[]{"address", "city", "name", "state", "age"}, columnNames);
+        assertEquals(10, columnNames.length);
+        assertArrayEquals(new String[]{"cars", "fruits", "year", "city", "name", "model", "state", "people", "age", "manufacturer"}, columnNames);
     }
 
     @Test
@@ -44,7 +44,7 @@ public class JSONDataSourceTest {
             assertNotNull(row[0]);
             assertNotNull(row[1]);
         }
-        assertEquals(5, rowCount);
+        assertEquals(10, rowCount);
     }
 }
 

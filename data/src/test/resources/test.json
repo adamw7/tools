@@ -1,18 +1,37 @@
-[
-    {
-        "name": "Alice",
-        "age": 30,
-        "address": {
-            "city": "New York",
-            "state": "NY"
+{
+    "people": [
+        {
+            "name": "Alice",
+            "age": 30,
+            "address": {
+                "city": "New York",
+                "state": "NY"
+            }
+        },
+        {
+            "name": "Bob",
+            "age": 25,
+            "address": {
+                "city": "Los Angeles",
+                "state": "CA"
+            }
         }
-    },
-    {
-        "name": "Bob",
-        "age": 25,
-        "address": {
-            "city": "Los Angeles",
-            "state": "CA"
+    ],
+    "cars": [
+        {
+            "manufacturer": "Toyota",
+            "model": "Camry",
+            "year": 2020
+        },
+        {
+            "manufacturer": "Honda",
+            "model": "Civic",
+            "year": 2022
         }
-    }
-]
+    ],
+    "fruits": [
+        "apple",
+        "banana",
+        "orange"
+    ]
+}

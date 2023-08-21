@@ -39,18 +39,9 @@ public class InMemoryJSONDataSource implements InMemoryDataSource, IterableDataS
     }
 
     private void parseJSON(String jsonString) throws JSONException {
-        JSONArray jsonArray = new JSONArray(jsonString);
+    	JSONObject jsonArray = new JSONObject(jsonString);
         extractFieldNames(jsonArray);
         flattenJSON(jsonArray);
-    }
-
-    private void extractFieldNames(JSONArray jsonArray) throws JSONException {
-        for (int i = 0; i < jsonArray.length(); i++) {
-            Object value = jsonArray.get(i);
-            if (value instanceof JSONObject jsonObjectValue) {
-                extractFieldNames(jsonObjectValue);
-            }
-        }
     }
 
     private void extractFieldNames(JSONObject jsonObject) throws JSONException {

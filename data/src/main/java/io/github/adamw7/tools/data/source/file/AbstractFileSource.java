@@ -36,6 +36,10 @@ public abstract class AbstractFileSource implements AutoCloseable, Closeable, It
 		}
 	}
 
+	public AbstractFileSource(InputStream inputStream) {
+		this.inputStream = inputStream;
+	}
+
 	protected Scanner createScanner() throws FileNotFoundException {
 		if (fileName != null) {
 			return createScanner(fileName);

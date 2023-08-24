@@ -5,12 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Paths;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSource extends AbstractFileSource {
 
@@ -39,9 +36,9 @@ public class CSVDataSource extends AbstractFileSource {
 		this(fileName, DEFAULT_DELIMITER, columnsRow);
 	}
 	
-	public CSVDataSource(InputStream inoutStream, String delimiter, int columnsRow) throws FileNotFoundException {
-		super(null);
-		this.inputStream = inoutStream;
+	public CSVDataSource(InputStream inputStream, String delimiter, int columnsRow) throws FileNotFoundException {
+		super(inputStream);
+		this.inputStream = inputStream;
 		scanner = createScanner(inputStream);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;

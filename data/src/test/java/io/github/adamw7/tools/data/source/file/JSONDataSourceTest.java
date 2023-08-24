@@ -17,7 +17,7 @@ public class JSONDataSourceTest {
 
     @BeforeEach
     public void setUp() {
-        dataSource = new InMemoryJSONDataSource(Utils.getFileName("test.json"));
+        dataSource = new InMemoryJSONDataSource(Utils.getFileName("test.json.gz"));
         dataSource.open();
     }
 

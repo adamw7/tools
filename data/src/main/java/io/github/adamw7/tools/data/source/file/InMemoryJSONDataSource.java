@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,8 +18,17 @@ public class InMemoryJSONDataSource extends AbstractFileSource implements InMemo
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;
 
+	public InMemoryJSONDataSource(InputStream inputStream) {
+		super(inputStream);
+		parse();
+	}
+	
 	public InMemoryJSONDataSource(String filePath) {
 		super(filePath);
+		parse();
+	}
+
+	private void parse() {
 		StringBuilder jsonContent = new StringBuilder();
 		while (scanner.hasNextLine()) {
 			jsonContent.append(scanner.nextLine());

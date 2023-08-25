@@ -3,6 +3,10 @@ package io.github.adamw7.tools.data.source.file;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -132,4 +136,23 @@ public class CSVDataSourceTest {
 		assertEquals(70, data.size());
 	}
 
+	@Test
+	public void stream() {
+		try (InputStream stream = new FileInputStream(Utils.getFileName("addresses.csv"))) {
+			IterableDataSource dataSource = new CSVDataSource(stream);
+			dataSource.open();
+			int i = 0;
+			while (dataSource.hasMoreData()) {
+				String[] row = dataSource.nextRow();
+				if (row != null) {
+					i++;	
+				}
+			}
+			assertEquals(4, i);
+			dataSource.close();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		
+	}
 }

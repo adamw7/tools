@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -129,14 +128,6 @@ public class InMemoryJSONDataSource extends AbstractFileSource implements InMemo
 
 	@Override
 	public List<String[]> readAll() {
-		open();
-		List<String[]> data = new ArrayList<>();
-		while (hasMoreData()) {
-			String[] row = nextRow();
-			if (row != null) {
-				data.add(row);
-			}
-		}
-		return data;
+		return super.readAll();
 	}
 }

@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 import io.github.adamw7.tools.data.compression.ZipUtils;
@@ -27,7 +29,7 @@ public abstract class AbstractFileSource implements AutoCloseable, Closeable, It
 		}
 	}
 	
-	public AbstractFileSource(String fileName) {
+	protected AbstractFileSource(String fileName) {
 		this.fileName = fileName;
 		try {
 			scanner = createScanner();
@@ -36,7 +38,7 @@ public abstract class AbstractFileSource implements AutoCloseable, Closeable, It
 		}
 	}
 
-	public AbstractFileSource(InputStream inputStream) {
+	protected AbstractFileSource(InputStream inputStream) {
 		this.inputStream = inputStream;
 	}
 
@@ -66,5 +68,17 @@ public abstract class AbstractFileSource implements AutoCloseable, Closeable, It
 	
 	public String getFileName() {
 		return Paths.get(fileName).getFileName().toString();
+	}
+	
+	protected List<String[]> readAll() {
+		open();
+		List<String[]> data = new ArrayList<>();
+		while (hasMoreData()) {
+			String[] row = nextRow();
+			if (row != null) {
+				data.add(row);	
+			}
+		}
+		return data;
 	}
 }

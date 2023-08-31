@@ -63,6 +63,10 @@ public class UtilsTest {
 		String fullName6 = "SingleToken";
 		String className6 = Utils.getClassName(fullName6);
 		assertEquals("SingleToken", className6);
+		
+		String fullName7 = "";
+		String className7 = Utils.getClassName(fullName7);
+		assertEquals("", className7);
 	}
 
 	@Test

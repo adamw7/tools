@@ -25,11 +25,15 @@ public class MemoryLeakTest {
 	private final static Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
 
 	private static final String FILE_NAME = new File(
-			MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent()
+			getSourceLocation()).getParent()
 			+ "random_data.csv";
+	
 	private static final int ROWS = 50_000;
 	private static final int SEED = 500;
 	
+	private static String getSourceLocation() {
+		return MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+	}
 
 	@BeforeAll
 	public static void setUp() {

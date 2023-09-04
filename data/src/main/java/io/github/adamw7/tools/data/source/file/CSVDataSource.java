@@ -24,7 +24,7 @@ public class CSVDataSource extends AbstractFileSource {
 	protected int currentRow = 0;
 	protected boolean hasMoreData = true;
 
-	public CSVDataSource(InputStream inputStream) throws FileNotFoundException {
+	public CSVDataSource(InputStream inputStream) {
 		this(inputStream, DEFAULT_DELIMITER, -1);
 	}
 
@@ -36,7 +36,7 @@ public class CSVDataSource extends AbstractFileSource {
 		this(fileName, DEFAULT_DELIMITER, columnsRow);
 	}
 	
-	public CSVDataSource(InputStream inputStream, String delimiter, int columnsRow) throws FileNotFoundException {
+	public CSVDataSource(InputStream inputStream, String delimiter, int columnsRow) {
 		super(inputStream);
 		this.inputStream = inputStream;
 		scanner = createScanner(inputStream);

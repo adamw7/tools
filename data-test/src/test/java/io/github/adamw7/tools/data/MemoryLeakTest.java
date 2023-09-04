@@ -25,7 +25,7 @@ public class MemoryLeakTest {
 	private final static Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
 
 	private static final String FILE_NAME = new File(
-			getSourceLocation()).getParent()
+			getSourceLocation()).getParent() + File.separator
 			+ "random_data.csv";
 	
 	private static final int ROWS = 50_000;

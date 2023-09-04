@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>tools</artifactId>
-	<version>0.6</version>
+	<version>0.7</version>
 	<packaging>pom</packaging>
 	<name>Tools root pom</name>
 	<url>http://maven.apache.org</url>

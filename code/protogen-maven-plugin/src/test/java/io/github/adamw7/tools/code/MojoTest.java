@@ -59,7 +59,7 @@ public class MojoTest {
 		Set<String> dirSet = new HashSet<>(Arrays.asList(dir.list()));
 		assertTrue(dirSet.contains("com"));
 
-		compileSources(GENERATED_SOURCES + File.separator + mojo.outputpackage.replace(".", "/"));
+		compileSources(GENERATED_SOURCES + File.separator + mojo.outputpackage.replace(".", File.separator));
 	}
 
 	private void compileSources(String dir) {

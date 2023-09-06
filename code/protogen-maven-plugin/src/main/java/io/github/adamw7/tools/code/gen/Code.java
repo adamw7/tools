@@ -34,7 +34,7 @@ public class Code {
 	}
 
 	private void createPkg(String pkg) {
-		String directory = generatedSourcesDir + "/" + pkg;
+		String directory = generatedSourcesDir + File.separator + pkg;
 		File dir = new File(directory);
 		dir.delete();
 		try {

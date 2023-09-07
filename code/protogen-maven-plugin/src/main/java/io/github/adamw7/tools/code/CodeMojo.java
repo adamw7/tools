@@ -63,7 +63,7 @@ public class CodeMojo extends AbstractMojo {
 
 			Thread.currentThread().setContextClassLoader(contextClassLoader);
 		} catch (DependencyResolutionRequiredException | MalformedURLException e) {
-			throw new RuntimeException(e);
+			throw new MojoException(e);
 		} 
 	}
 

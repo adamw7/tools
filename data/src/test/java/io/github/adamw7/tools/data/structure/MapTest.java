@@ -265,4 +265,17 @@ public class MapTest {
 
 		assertEquals("Wrong size: -10",thrown.getMessage());
 	}
+	
+	@Test
+	public void nullKey() {
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new OpenAddressingMap<>(2).put(null, null), "Expected put method to throw, but it didn't");
+
+		assertEquals("Key is null",thrown.getMessage());
+	}
+	
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void empty(Map<Integer, String> map) {
+		assertTrue(map.isEmpty());
+	}
 }

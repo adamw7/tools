@@ -31,7 +31,10 @@ public class IterableSQLDataSource implements IterableDataSource {
 	public void close() {
 		if (resultSet != null) {
 			try {
-				resultSet.close();
+				if (!resultSet.isClosed()) {
+					resultSet.getStatement().close();
+					resultSet.close();					
+				}
 			} catch (SQLException e) {
 				throw new UncheckedIOException(new IOException(e));
 			}

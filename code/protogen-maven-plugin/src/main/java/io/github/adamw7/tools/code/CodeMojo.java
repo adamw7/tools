@@ -21,7 +21,7 @@ import com.google.protobuf.GeneratedMessageV3;
 
 import io.github.adamw7.tools.code.gen.Code;
 
-@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
+@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = false)
 public class CodeMojo extends AbstractMojo {
 
 	private final static Logger log = LogManager.getLogger(CodeMojo.class.getName());

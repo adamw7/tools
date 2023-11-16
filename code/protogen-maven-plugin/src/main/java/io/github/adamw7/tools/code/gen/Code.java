@@ -35,14 +35,17 @@ public class Code {
 
 	private void createPkg(String pkg) {
 		String directory = generatedSourcesDir + File.separator + pkg;
-		File dir = new File(directory);
-		dir.delete();
+
 		try {
+			Path dir = Paths.get(directory);
+			if (dir.toFile().exists()) {
+				Files.delete(dir);				
+			}
 			Files.createDirectories(replace(directory));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		log.info("{} created", dir);
+		log.info("{} created", directory);
 	}
 
 	private Path replace(String pkg) {

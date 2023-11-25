@@ -29,6 +29,7 @@
 		<module>data</module>
 		<module>data-test</module>
 		<module>code</module>
+		<module>assembly</module>
 	</modules>
 	<dependencyManagement>
 		<dependencies>

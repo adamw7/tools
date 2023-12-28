@@ -55,15 +55,30 @@ public class ClassInfo {
 	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
 		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
 	}
+	
+	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {
+		List<FieldDescriptor> allComplexFields =  descriptor.getFields().stream().filter(f -> isComplexType(f)).toList();
+		List<FieldDescriptor> pureComplexFields = new ArrayList<>();
+		for (FieldDescriptor field : allComplexFields ) {
+			if (!isGroup(field) && !(field.isMapField()) && !(field.isRepeated())) {
+				pureComplexFields.add(field);
+			}
+		}
+		return pureComplexFields;
+	}
 
-	private List<FieldDescriptor> getGroupFields(Descriptor descriptor) {
+	private static List<FieldDescriptor> getGroupFields(Descriptor descriptor) {
 		List<FieldDescriptor> groups = new ArrayList<>();
 		for (Descriptors.FieldDescriptor fieldDescriptor : descriptor.getFields()) {
-			if (fieldDescriptor.getType().equals(Descriptors.FieldDescriptor.Type.GROUP)) {
+			if (isGroup(fieldDescriptor)) {
 				groups.add(fieldDescriptor);
 			}
 		}
 		return groups;
+	}
+
+	private static boolean isGroup(Descriptors.FieldDescriptor fieldDescriptor) {
+		return fieldDescriptor.getType().equals(Descriptors.FieldDescriptor.Type.GROUP);
 	}
 
 	public String name() {
@@ -109,5 +124,32 @@ public class ClassInfo {
 	public String fullName() {
 		return Utils.getClassName(descriptor.getFullName());
 	}
+	
+	public List<FieldDescriptor> getPureComplexFields() {
+		return getPureComplexFields(descriptor);
+	}
 
+	private static boolean isComplexType(Descriptors.FieldDescriptor fieldDescriptor) {
+        switch (fieldDescriptor.getType()) {
+            case INT32:
+            case INT64:
+            case UINT32:
+            case UINT64:
+            case SINT32:
+            case SINT64:
+            case FIXED32:
+            case FIXED64:
+            case SFIXED32:
+            case SFIXED64:
+            case BOOL:
+            case FLOAT:
+            case DOUBLE:
+            case STRING:
+            case BYTES:
+            case ENUM:
+                return false; 
+            default:
+                return true; 
+        }
+    }
 }

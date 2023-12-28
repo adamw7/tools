@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package tutorial;
+
+import "sample.proto";
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.protos";
+
+message Foo {
+    message Bar {
+        required string name = 1;
+        required string value = 2;
+    }
+
+    message Baz {
+        required Bar a = 1;
+    }
+}

@@ -121,6 +121,10 @@ public class Clazz implements Generator {
 			String fieldName = Utils.toUpperCamelCase(field.getName());
 			builder.append(prefix).append(info.name()).append(".").append(fieldName).append(";");
 		}
+		for (FieldDescriptor field : info.getPureComplexFields()) {
+			String type = Utils.getClassName(field.toProto().getTypeName());
+			builder.append(prefix).append(type).append(";");
+		}
 		return builder;
 	}
 

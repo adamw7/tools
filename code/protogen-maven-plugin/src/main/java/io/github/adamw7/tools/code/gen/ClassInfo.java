@@ -57,14 +57,18 @@ public class ClassInfo {
 	}
 	
 	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {
-		List<FieldDescriptor> allComplexFields =  descriptor.getFields().stream().filter(f -> isComplexType(f)).toList();
+		List<FieldDescriptor> allComplexFields =  descriptor.getFields().stream().filter(ClassInfo::isComplexType).toList();
 		List<FieldDescriptor> pureComplexFields = new ArrayList<>();
 		for (FieldDescriptor field : allComplexFields ) {
-			if (!isGroup(field) && !(field.isMapField()) && !(field.isRepeated())) {
+			if (isPure(field)) {
 				pureComplexFields.add(field);
 			}
 		}
 		return pureComplexFields;
+	}
+
+	private static boolean isPure(FieldDescriptor field) {
+		return !isGroup(field) && !field.isMapField() && !field.isRepeated();
 	}
 
 	private static List<FieldDescriptor> getGroupFields(Descriptor descriptor) {
@@ -130,26 +134,10 @@ public class ClassInfo {
 	}
 
 	private static boolean isComplexType(Descriptors.FieldDescriptor fieldDescriptor) {
-        switch (fieldDescriptor.getType()) {
-            case INT32:
-            case INT64:
-            case UINT32:
-            case UINT64:
-            case SINT32:
-            case SINT64:
-            case FIXED32:
-            case FIXED64:
-            case SFIXED32:
-            case SFIXED64:
-            case BOOL:
-            case FLOAT:
-            case DOUBLE:
-            case STRING:
-            case BYTES:
-            case ENUM:
-                return false; 
-            default:
-                return true; 
-        }
+        return switch (fieldDescriptor.getType()) {
+            case INT32, INT64, UINT32, UINT64, SINT32, SINT64, FIXED32, FIXED64, SFIXED32, SFIXED64, BOOL, FLOAT, DOUBLE, STRING, BYTES, ENUM ->
+                    false;
+            default -> true;
+        };
     }
 }

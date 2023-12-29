@@ -5,11 +5,11 @@
 	<parent>
 		<groupId>io.github.adamw7</groupId>
 		<artifactId>tools</artifactId>
-		<version>0.9</version>
+		<version>0.9.1</version>
 	</parent>
 	<artifactId>tools.assembly</artifactId>
 	<packaging>jar</packaging>
-	<name>Assembly</name>
+	<name>assembly</name>
 	<url>http://maven.apache.org</url>
 	<build>
 		<plugins>

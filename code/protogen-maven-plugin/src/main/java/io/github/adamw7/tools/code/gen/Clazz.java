@@ -73,7 +73,7 @@ public class Clazz implements Generator {
 	    StringBuilder builder = new StringBuilder();
 	    builder.append(generateFields());
 
-	    FieldDescriptor firstRequiredField = info.required().get(0);
+	    FieldDescriptor firstRequiredField = info.required().getFirst();
 	    String builderName = Utils.firstToLower(builderClassName);
 
 	    builder.append(methods.has(builderName, firstRequiredField));
@@ -108,7 +108,7 @@ public class Clazz implements Generator {
 	}
 
 	private String firstInterface() {
-		return info.name() + (info.required().isEmpty() ? "OptionalIfc" : Utils.to(info.required().get(0), "Ifc"));
+		return info.name() + (info.required().isEmpty() ? "OptionalIfc" : Utils.to(info.required().getFirst(), "Ifc"));
 	}
 
 	private StringBuilder generateImports() {

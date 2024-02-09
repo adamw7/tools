@@ -34,7 +34,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 			log.info("Loaded {} rows into memory", allData::size);
 			return allData;
 		} catch (SQLException e) {
-			log.warn(e);
+			log.error(e);
 			throw new UncheckedIOException(new IOException(e));
 		}
 

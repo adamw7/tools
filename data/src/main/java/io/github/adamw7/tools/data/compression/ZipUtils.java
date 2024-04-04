@@ -36,7 +36,7 @@ public class ZipUtils {
 				return ((first == (byte) (GZIPInputStream.GZIP_MAGIC))
 						&& (second == (byte) (GZIPInputStream.GZIP_MAGIC >> 8)));
 			} catch (IOException e) {
-				log.error("Error checking if " + fileName + " is zipped", e);
+                log.error("Error checking if {} is zipped", fileName, e);
 				return false;
 			}			
 		} else {

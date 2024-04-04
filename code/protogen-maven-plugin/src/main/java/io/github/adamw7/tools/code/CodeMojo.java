@@ -58,7 +58,7 @@ public class CodeMojo extends AbstractMojo {
 				}
 			}
 
-			ClassLoader contextClassLoader = URLClassLoader.newInstance(urls.toArray(new URL[urls.size()]),
+			ClassLoader contextClassLoader = URLClassLoader.newInstance(urls.toArray(new URL[]{}),
 					Thread.currentThread().getContextClassLoader());
 
 			Thread.currentThread().setContextClassLoader(contextClassLoader);

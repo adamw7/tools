@@ -33,16 +33,14 @@ public class NetworkSwitchTest {
         int responseCode = connection.getResponseCode();
         
         if (responseCode == HttpURLConnection.HTTP_OK) {
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String inputLine;
-            StringBuilder content = new StringBuilder();
-            
-            while ((inputLine = in.readLine()) != null) {
-                content.append(inputLine);
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                in.readLine();
+                in.close();
             }
-            
-            in.close();
-            connection.disconnect();
+            finally {
+                connection.disconnect();
+            }
         }
 	}
 }

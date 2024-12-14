@@ -6,7 +6,12 @@ import java.net.Socket;
 import java.net.SocketImpl;
 import java.net.SocketImplFactory;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class NetworkSwitch {
+	
+	private final static Logger log = LogManager.getLogger(NetworkSwitch.class.getName());
 
 	private NetworkSwitch() {}
 	
@@ -20,7 +25,9 @@ public class NetworkSwitch {
 	public static void off() {
 		try {
 			Socket.setSocketImplFactory(new BlockExternalSocketFactory());
+			log.info("Network is off now");
 		} catch (IOException e) {
+			log.error(e);
 			throw new UncheckedIOException("Failed to set custom socket factory", e);
 		}
 	}

@@ -4,11 +4,12 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>tools</artifactId>
-	<version>0.9.3</version>
+	<version>${revision}</version>
 	<packaging>pom</packaging>
 	<name>Tools root pom</name>
 	<url>http://maven.apache.org</url>
 	<properties>
+		<revision>0.9.3</revision>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

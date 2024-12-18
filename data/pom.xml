@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>io.github.adamw7</groupId>
 		<artifactId>tools</artifactId>
-		<version>0.9.3</version>
+		<version>${revision}</version>
 	</parent>
 	<artifactId>tools.data</artifactId>
 	<packaging>jar</packaging>

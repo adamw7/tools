@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -21,6 +22,13 @@ public class NetworkSwitchTest {
 
 		assertEquals("java.lang.UnsupportedOperationException: The network if off",
 				thrown.getMessage());
+	}
+	
+	@Test
+	public void testMultipleOff() {
+		NetworkSwitch.off();
+		assertFalse(NetworkSwitch.off());
+		assertFalse(NetworkSwitch.off());
 	}
 
 	private void connectToInternet() throws Exception {

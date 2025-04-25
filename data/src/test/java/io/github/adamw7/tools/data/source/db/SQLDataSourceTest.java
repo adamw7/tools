@@ -73,7 +73,7 @@ public class SQLDataSourceTest extends DBTest {
 	public void wrongQuery(IterableSQLDataSource source) {
 		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, source::open, "Expected open method to throw, but it didn't");
 
-		assertEquals("java.io.IOException: java.sql.SQLSyntaxErrorException: Table/View 'NON_EXISTING_TABLE' does not exist.",
+		assertEquals("java.io.IOException: java.sql.SQLSyntaxErrorException: 42X05 : [0] NON_EXISTING_TABLE",
 				thrown.getMessage());
 	}
 }

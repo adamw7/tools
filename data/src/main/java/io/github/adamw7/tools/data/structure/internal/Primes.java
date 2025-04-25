@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data.structure;
+package io.github.adamw7.tools.data.structure.internal;
 
 public class Primes {
 

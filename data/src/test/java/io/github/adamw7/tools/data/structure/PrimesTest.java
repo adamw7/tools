@@ -2,6 +2,8 @@ package io.github.adamw7.tools.data.structure;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.adamw7.tools.data.structure.internal.Primes;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PrimesTest {

@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.adamw7.tools.data.structure.internal.Primes;
+import io.github.adamw7.tools.data.structure.internal.Wrapper;
+
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	private static final double MULTIPLIER = 1.2;

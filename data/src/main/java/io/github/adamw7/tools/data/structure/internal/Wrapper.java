@@ -1,13 +1,13 @@
-package io.github.adamw7.tools.data.structure;
+package io.github.adamw7.tools.data.structure.internal;
 
 import java.util.Map.Entry;
 
 public class Wrapper<K, V> implements Entry<K, V>{
 
 
-	final K key;
-	V value;
-	boolean removed = false;
+	public final K key;
+	public V value;
+	public boolean removed = false;
 	
 	public Wrapper(K key, V value) {
 		this.key = key;

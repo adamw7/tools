@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.network;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -9,13 +9,13 @@ import java.net.SocketImplFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class NetworkSwitch {
+public class Switch {
 	
-	private final static Logger log = LogManager.getLogger(NetworkSwitch.class.getName());
+	private final static Logger log = LogManager.getLogger(Switch.class.getName());
 
 	private static volatile boolean isOff = false;
 	
-	private NetworkSwitch() {}
+	private Switch() {}
 	
 	private static class BlockExternalSocketFactory implements SocketImplFactory {
 		@Override

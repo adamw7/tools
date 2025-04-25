@@ -9,4 +9,5 @@ module datamodule {
 	exports io.github.adamw7.tools.data.source.interfaces;
 	exports io.github.adamw7.tools.data.structure;
 	exports io.github.adamw7.tools.data.uniqueness;
+	exports io.github.adamw7.tools.data.network;
 }

@@ -1,7 +1,7 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.network;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.BufferedReader;
@@ -12,11 +12,11 @@ import java.net.URL;
 
 import org.junit.jupiter.api.Test;
 
-public class NetworkSwitchTest {
+public class SwitchTest {
 
 	@Test
 	public void happyPath() {
-		NetworkSwitch.off();
+		Switch.off();
 		
 		RuntimeException thrown = assertThrows(RuntimeException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
 
@@ -26,9 +26,9 @@ public class NetworkSwitchTest {
 	
 	@Test
 	public void testMultipleOff() {
-		NetworkSwitch.off();
-		assertFalse(NetworkSwitch.off());
-		assertFalse(NetworkSwitch.off());
+		Switch.off();
+		assertFalse(Switch.off());
+		assertFalse(Switch.off());
 	}
 
 	private void connectToInternet() throws Exception {

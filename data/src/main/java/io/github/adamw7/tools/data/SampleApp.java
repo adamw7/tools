@@ -21,10 +21,10 @@ public class SampleApp {
 		checkArgs(args);
 		String fileName = args[0];
 		String columnName = args[1];
-		executeUniquenessSearch(fileName, columnName);
+		executeUniquenessCheck(fileName, columnName);
 	}
 
-	private static void executeUniquenessSearch(String fileName, String columnName) {
+	private static void executeUniquenessCheck(String fileName, String columnName) {
 		try {
 			InMemoryDataSource source = new InMemoryCSVDataSource(fileName, 1);
 			AbstractUniqueness check = new InMemoryUniquenessCheck();

@@ -22,6 +22,11 @@
 					<descriptors>
 						<descriptor>src/assembly/bin.xml</descriptor>
 					</descriptors>
+					<archive>
+            		<manifest>
+             			<mainClass>io.github.adamw7.tools.data.SampleApp</mainClass>
+            		</manifest>
+          			</archive>
 				</configuration>
 				<executions>
 					<execution>

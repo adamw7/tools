@@ -24,6 +24,6 @@ jobs:
       - name: Build with Maven
         run: mvn -B package --file pom.xml
 
-      - name: Build Docker image from assembly/target
+      - name: Build Docker image from assembly
         run: docker build -t tools:latest .
-        working-directory: ./assembly/target
+        working-directory: ./assembly/

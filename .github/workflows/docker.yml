@@ -26,4 +26,4 @@ jobs:
 
       - name: Build Docker image from assembly/target
         run: docker build -t tools:latest .
-        working-directory: assembly/target
+        working-directory: ./assembly/target

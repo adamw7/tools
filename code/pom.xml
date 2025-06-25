@@ -14,5 +14,6 @@
 	<modules>
 		<module>protogen-maven-plugin</module>
 		<module>protogen-maven-plugin-test</module>
+		<module>protogen-mcp</module>
 	</modules>
 </project>

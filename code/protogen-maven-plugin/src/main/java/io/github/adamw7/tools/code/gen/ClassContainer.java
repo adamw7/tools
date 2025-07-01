@@ -8,7 +8,7 @@ public record ClassContainer(String name, CharSequence code) {
 		return new ClassContainer(name, new Formatter().format(codeAsString()));
 	}
 
-	public String codeAsString() {
+	String codeAsString() {
 		return code.toString();
 	}
 }

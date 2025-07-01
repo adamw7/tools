@@ -38,21 +38,25 @@ public class ProtoTool implements Function<Map<String, Object>, CallToolResult> 
 
 	@Override
 	public CallToolResult apply(Map<String, Object> arguments) {
-		ClassContainer container;
+		String generatedCode = generateCode(arguments);
+
+		return new CallToolResult(
+                List.of(new TextContent(generatedCode)),
+                false
+            );
+	}
+
+	private String generateCode(Map<String, Object> arguments) {
 		String generatedCode = null;
 		try {
-			container = new Code(null, null).genBuilder(getClass(arguments)).getFirst();
+			ClassContainer container = new Code(null, null).genBuilder(getClass(arguments)).getFirst();
 			if (container != null) {
 				generatedCode = container.codeAsString();
 			}
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
 			generatedCode = e.getMessage();
 		}
-
-		return new CallToolResult(
-                List.of(new TextContent(generatedCode)),
-                false
-            );
+		return generatedCode;
 	}
 
 	private Class<? extends GeneratedMessageV3> getClass(Map<String, Object> arguments) {

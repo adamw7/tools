@@ -26,8 +26,12 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 						            "type": "int",
 						            "description": "number of the columns row"
 						        },
+						        "columns_name": {
+						            "type": "string",
+						            "description": "name of the column to check"
+						        }
 						    },
-						    "required": ["data", ""columns_row""]
+						    "required": ["file", ""columns_row""]
 						}
 						""");
 	}

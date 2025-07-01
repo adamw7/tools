@@ -76,7 +76,7 @@ public class Code {
 		}
 	}
 
-	private List<ClassContainer> genBuilder(Class<? extends GeneratedMessageV3> c)
+	public List<ClassContainer> genBuilder(Class<? extends GeneratedMessageV3> c)
 			throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
 		Method getDescriptorMethod = c.getDeclaredMethod("getDescriptor");
 		Object object = getDescriptorMethod.invoke(this);

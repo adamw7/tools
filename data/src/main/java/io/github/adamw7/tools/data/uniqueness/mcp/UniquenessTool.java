@@ -10,31 +10,30 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 public class UniquenessTool implements Function<Map<String, Object>, CallToolResult> {
 
-	private final Tool toolDefinition;
+	private final Tool toolDefinition = new Tool("uniqueness_check",
+            "Check if a given set of columns in unique in a given data set", """
+                    {
+                        "type": "object",
+                        "properties": {
+                            "file": {
+                                "type": "string",
+                                "description": "filename"
+                            },
+                              "columns_row": {
+                                "type": "int",
+                                "description": "number of the columns row"
+                            },
+                            "columns_name": {
+                                "type": "string",
+                                "description": "name of the column to check"
+                            }
+                        },
+                        "required": ["file", "columns_row", "columns_name"]
+                    }
+                    """);
 
 	public UniquenessTool() {
-		this.toolDefinition = new Tool("uniqueness_check",
-				"Check if a given set of columns in unique in a given data set", """
-						{
-						    "type": "object",
-						    "properties": {
-						        "file": {
-						            "type": "string",
-						            "description": "filename"
-						        },
-						  		"columns_row": {
-						            "type": "int",
-						            "description": "number of the columns row"
-						        },
-						        "columns_name": {
-						            "type": "string",
-						            "description": "name of the column to check"
-						        }
-						    },
-						    "required": ["file", ""columns_row""]
-						}
-						""");
-	}
+    }
 
 	public Tool getToolDefinition() {
 		return toolDefinition;

@@ -1,14 +1,26 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
+import java.io.FileNotFoundException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
+import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
+import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
+import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
+import io.github.adamw7.tools.data.uniqueness.Result;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 public class UniquenessTool implements Function<Map<String, Object>, CallToolResult> {
+	
+	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
 	private final Tool toolDefinition = new Tool("uniqueness_check",
             "Check if a given set of columns in unique in a given data set", """
@@ -47,7 +59,30 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 	}
 
 	private String runUniqueness(Map<String, Object> arguments) {
-		return null;
+		String fileName = String.valueOf(arguments.get("file"));
+		String columnName = String.valueOf(arguments.get("columns_name"));
+		int columnsRow = Integer.parseInt(String.valueOf(arguments.get("columns_row")));
+		try {
+			InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow);
+			AbstractUniqueness check = new InMemoryUniquenessCheck();
+			
+			source.readAll();
+			
+			check.setDataSource(source);
+			Result result = check.exec(columnName);
+			print(result, columnName);		
+			return result.toString();
+		} catch (FileNotFoundException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+	
+	private static void print(Result result, String column) {
+		if (result.isUnique()) {
+			log.info(column + " is unique");	
+		} else {
+			log.info(column + " is NOT unique");	
+		}
 	}
 
 }

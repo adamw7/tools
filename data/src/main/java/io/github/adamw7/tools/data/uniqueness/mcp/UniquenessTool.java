@@ -71,7 +71,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 			check.setDataSource(source);
 			Result result = check.exec(columnName);
 			print(result, columnName);		
-			return result.toString();
+			return String.valueOf(result.isUnique());
 		} catch (FileNotFoundException e) {
 			throw new UncheckedIOException(e);
 		}

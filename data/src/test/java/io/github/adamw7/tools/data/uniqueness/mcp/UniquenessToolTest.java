@@ -1,14 +1,18 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.Utils;
+import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-
-import static org.junit.jupiter.api.Assertions.*;
+import io.modelcontextprotocol.spec.McpSchema.Content;
 
 public class UniquenessToolTest {
 
@@ -22,5 +26,9 @@ public class UniquenessToolTest {
 		input.put("columns_name", "year1");
 		CallToolResult result = tool.apply(input);
         assertFalse(result.isError());
+        Content content = result.content().getFirst();
+        assertTrue(content instanceof McpSchema.TextContent);
+        McpSchema.TextContent textContent = (McpSchema.TextContent) content;
+        assertTrue("false".equals(textContent.text()));
 	}
 }

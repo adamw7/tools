@@ -27,6 +27,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 	}
 
 	private Result findUnique(Integer[] indices, String... keyCandidates) {
+		dataSource.reset();
 		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
 		close(dataSource);
 		KeyFinder finder = new KeyFinder(indices);

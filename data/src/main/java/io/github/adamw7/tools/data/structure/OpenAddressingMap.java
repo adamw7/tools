@@ -187,7 +187,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		Set<Entry<K, V>> entrySet = HashSet.newHashSet(size);
+		Set<Entry<K, V>> entrySet = new HashSet<>(size);
 		for (int i = 0; i < array.length; ++i) {
 			Wrapper<K, V> wrapper = array[i];
 			if (valid(wrapper)) {

@@ -26,7 +26,7 @@ public class UniquenessToolTest {
 		input.put("columns_name", "year1");
 		CallToolResult result = tool.apply(input);
         assertFalse(result.isError());
-        Content content = result.content().getFirst();
+        Content content = result.content().get(0);
         assertTrue(content instanceof McpSchema.TextContent);
         McpSchema.TextContent textContent = (McpSchema.TextContent) content;
         assertTrue("false".equals(textContent.text()));

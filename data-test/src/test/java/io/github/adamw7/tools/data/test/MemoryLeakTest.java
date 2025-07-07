@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.data;
+package io.github.adamw7.tools.data.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

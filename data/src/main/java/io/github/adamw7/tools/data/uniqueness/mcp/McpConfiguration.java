@@ -4,13 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 
+@Configuration
 public class McpConfiguration {
 
 	private final static Logger log = LogManager.getLogger(McpConfiguration.class.getName());
@@ -41,6 +43,7 @@ public class McpConfiguration {
 //        return transport.getRouterFunction();
 //    }
 
+	@Bean(destroyMethod = "close")
 	public McpSyncServer mcpSyncServer(McpServerTransportProvider transport) {
 		log.info("Initializing McpSyncServer with transport: {}", transport);
 

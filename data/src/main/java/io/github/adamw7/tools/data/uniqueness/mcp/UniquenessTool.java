@@ -8,6 +8,7 @@ import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
@@ -18,6 +19,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
+@Component
 public class UniquenessTool implements Function<Map<String, Object>, CallToolResult> {
 	
 	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());

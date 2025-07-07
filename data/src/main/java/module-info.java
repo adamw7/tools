@@ -6,6 +6,7 @@ module datamodule {
 	requires io.modelcontextprotocol.sdk.mcp;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
+	requires spring.boot;
 	
 	exports io.github.adamw7.tools.data.compression;
 	exports io.github.adamw7.tools.data.source.db;

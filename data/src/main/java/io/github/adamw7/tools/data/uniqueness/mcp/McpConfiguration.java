@@ -1,7 +1,5 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
-import java.util.List;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,16 +48,12 @@ public class McpConfiguration {
 				McpSchema.ServerCapabilities.builder().tools(true).resources(false, false).prompts(false).build())
 				.build();
 
-		var tool = new UniquenessTool().getToolDefinition();
+		UniquenessTool uniquenessTool = new UniquenessTool();
+		var toolDefinition = uniquenessTool.getToolDefinition();
 
 		McpServerFeatures.SyncToolSpecification syncToolSpecification = new McpServerFeatures.SyncToolSpecification(
-				tool, (mcpSyncServerExchange, stringObjectMap) -> {
-					return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent("""
-							{
-							    "location": "Paris",
-							    "forecast": "Nice and sunny weather, with clear blue sky, and temperature of 17°C."
-							}
-							""")), false);
+				toolDefinition, (mcpSyncServerExchange, stringObjectMap) -> {
+					return uniquenessTool.apply(stringObjectMap);
 				});
 
 		syncServer.addTool(syncToolSpecification);

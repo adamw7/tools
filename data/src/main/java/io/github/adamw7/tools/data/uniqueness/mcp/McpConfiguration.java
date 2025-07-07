@@ -52,9 +52,7 @@ public class McpConfiguration {
 		var toolDefinition = uniquenessTool.getToolDefinition();
 
 		McpServerFeatures.SyncToolSpecification syncToolSpecification = new McpServerFeatures.SyncToolSpecification(
-				toolDefinition, (mcpSyncServerExchange, stringObjectMap) -> {
-					return uniquenessTool.apply(stringObjectMap);
-				});
+				toolDefinition, (mcpSyncServerExchange, stringObjectMap) -> uniquenessTool.apply(stringObjectMap));
 
 		syncServer.addTool(syncToolSpecification);
 		return syncServer;

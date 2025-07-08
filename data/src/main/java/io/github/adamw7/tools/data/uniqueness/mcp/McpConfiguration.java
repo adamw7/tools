@@ -26,7 +26,7 @@ public class McpConfiguration {
 	}
 
     @Bean
-    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stdio")
+    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stdio", matchIfMissing = true)
     public StdioServerTransportProvider stdioServerTransport() {
         log.info("Creating StdioServerTransport");
         return new StdioServerTransportProvider();

@@ -1,4 +1,4 @@
-module datamodule {
+open module datamodule {
 	requires org.apache.logging.log4j;
 	requires org.json;
 	requires java.sql;

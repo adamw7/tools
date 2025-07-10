@@ -55,6 +55,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 
 	@Override
 	public CallToolResult apply(Map<String, Object> arguments) {
+		log.info("Calling MCP unquieness tool for {}", arguments);
 		String result = runUniqueness(arguments);
 
 		return new CallToolResult(List.of(new TextContent(result)), false);

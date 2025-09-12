@@ -24,8 +24,8 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 	
 	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
-	private final Tool toolDefinition = new Tool("uniqueness_check",
-            "Check if a given set of columns in unique in a given data set", """
+    private final Tool toolDefinition = Tool.builder().name("uniqueness_check").description(
+            "Check if a given set of columns in unique in a given data set").inputSchema("""
                     {
                         "type": "object",
                         "properties": {
@@ -43,8 +43,8 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
                             }
                         },
                         "required": ["file", "columns_row", "columns_name"]
-                    }
-                    """);
+                    }).in
+                    """).build();
 
 	public UniquenessTool() {
     }

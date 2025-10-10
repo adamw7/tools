@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -14,6 +16,8 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
+
+import java.util.function.BiFunction;
 
 @Configuration
 public class McpConfiguration {
@@ -41,12 +45,16 @@ public class McpConfiguration {
 				.build();
 
 		UniquenessTool uniquenessTool = new UniquenessTool();
-		var toolDefinition = uniquenessTool.getToolDefinition();
 
-		McpServerFeatures.SyncToolSpecification syncToolSpecification = new McpServerFeatures.SyncToolSpecification(
-				toolDefinition, (mcpSyncServerExchange, stringObjectMap) -> uniquenessTool.apply(stringObjectMap));
+        SyncToolSpecification.Builder tool = SyncToolSpecification.builder().tool(uniquenessTool.getToolDefinition());
+        tool.callHandler(new BiFunction<McpSyncServerExchange, McpSchema.CallToolRequest, McpSchema.CallToolResult>() {
+            @Override
+            public McpSchema.CallToolResult apply(McpSyncServerExchange mcpSyncServerExchange, McpSchema.CallToolRequest callToolRequest) {
+                return uniquenessTool.apply(callToolRequest.arguments());
+            }
+        });
+        syncServer.addTool(tool.build());
 
-		syncServer.addTool(syncToolSpecification);
 		return syncServer;
 	}
 }

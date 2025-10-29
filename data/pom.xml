@@ -21,7 +21,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <skip>false</skip>
+                    <mainClass>io.github.adamw7.tools.data.uniqueness.mcp.Main</mainClass>
+                    <executable>true</executable>
+                    <layout>JAR</layout>
                 </configuration>
             </plugin>
 		</plugins>

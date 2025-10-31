@@ -7,9 +7,9 @@ import java.nio.file.Path;
 
 public class ClassContainer {
 	
-	Path originalPath;
-	String className; 
-	String originalCode;
+	private final Path originalPath;
+	private final String className; 
+	private final String originalCode;
 
 	public ClassContainer(Path path, String className) {
 		this.originalPath = path;

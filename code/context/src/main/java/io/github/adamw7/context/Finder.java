@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Finder {
+public class Finder implements Context {
 	private static final Logger log = LogManager.getLogger(Finder.class.getName());
 	private final Set<ClassContainer> allContainers;
 
@@ -16,6 +16,7 @@ public class Finder {
 		this.allContainers = allContainers;
 	}
 
+	@Override
 	public Set<ClassContainer> find(ClassContainer root, int depth) {
 		Set<ClassContainer> classes = findAllUsedClasses(root, depth);
 		for (int i = depth - 1; i > 0; i--) {

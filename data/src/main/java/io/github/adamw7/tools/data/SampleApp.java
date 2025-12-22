@@ -40,9 +40,9 @@ public class SampleApp {
 
 	private static void print(Result result, String column) {
 		if (result.isUnique()) {
-			log.info(column + " is unique");	
+            log.info("{} is unique", column);
 		} else {
-			log.info(column + " is NOT unique");	
+            log.info("{} is NOT unique", column);
 		}
 	}
 

@@ -10,7 +10,7 @@
 	<artifactId>tools.data-test</artifactId>
 	<packaging>jar</packaging>
 	<name>Test for data</name>
-	<url>http://maven.apache.org</url>
+	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>
 			<plugin>

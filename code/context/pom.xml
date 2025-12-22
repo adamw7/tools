@@ -10,7 +10,7 @@
 	<artifactId>tools.code.context</artifactId>
 	<packaging>jar</packaging>
 	<name>Context engineering</name>
-	<url>http://maven.apache.org</url>
+	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>
 			<plugin>

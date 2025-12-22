@@ -10,7 +10,7 @@
 	<artifactId>tools.assembly</artifactId>
 	<packaging>jar</packaging>
 	<name>assembly</name>
-	<url>http://maven.apache.org</url>
+	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>
 			<plugin>

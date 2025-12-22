@@ -32,7 +32,7 @@ public class SwitchTest {
 	}
 
 	private void connectToInternet() throws Exception {
-		URL url = new URI("http://www.google.com").toURL();
+		URL url = new URI("https://www.google.com").toURL();
         
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         

@@ -192,7 +192,7 @@ public class MapTest {
 		assertEquals(1, map.size());
 		String removed = map.remove(keyToRemove);
 		assertEquals(0, map.size());
-		assertEquals(removed, valueToRemove);
+		assertEquals(valueToRemove, removed);
 		putData(map, size);
 	}
 	

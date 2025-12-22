@@ -140,6 +140,20 @@ public class ExampleTest {
 ```
 Since in proto3 there is no concept of required fields - this solution supports only proto2. 
 
+## Context engineering
+
+For gen ai agents that work with Java code the context usually starts with one class but may get wider and be extended to the classes used by it etc so on.
+In order to build this tree there is a very simple and fast regex based interface:
+
+```java
+public interface Context {
+    Set<ClassContainer> find(ClassContainer root, int depth);
+}
+```
+where ClassContiner contains the path of the class and its sources.
+The depth param tells the finder how deep we want to go in the tree of usages of the class.
+Of course when the depth is growing the tree grows very fast.
+
 ## Data
 It contains:
 - data sources

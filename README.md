@@ -160,12 +160,16 @@ It contains:
   - support relational data loading
   - in memory and iterative loading
   - CSV, GZip, JDBC support
-- uniqueness checks tool 
+- uniqueness checks tool
   - for a given set of data and subset of columns you can ask if these columns are unique (can be used as a key)
   - the tool also tries to find a better (smaller) answer
   - supports in memory and iterative processing
 - data structures
   - open addressing hashmap: a simpler alternative to HashMap based only on one array and double hashing, it implements java.util.Map<K, V>
+- MCP server
+  - Model Context Protocol server exposing uniqueness checking as a tool for AI assistants
+  - Compatible with Claude Desktop, Cline, and other MCP clients
+  - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for configuration and usage
   
 Examples:
 

@@ -116,8 +116,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void resize() {
-		size = newSize();
-		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size);
+		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(newSize());
 		newMap.putAll(this);
 		clear();
 		putAll(newMap);
@@ -129,8 +128,8 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		for (int i = 0; i < array.length; ++i) {
 			int hash = hash(key, i);
 			Wrapper<K, V> wrapper = array[hash];
-			
-			if (wrapper.key.equals(key)) {
+
+			if (wrapper != null && wrapper.key.equals(key)) {
 				wrapper.removed = true;
 				size--;
 				return wrapper.value;

@@ -41,7 +41,7 @@ public class TOONDataSourceTest {
 					assertNotNull(row[1]);
 				}
 			}
-			assertTrue(rowCount > 0);
+			assertEquals(27, rowCount);
 		}
 	}
 

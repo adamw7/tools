@@ -34,6 +34,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 
 	public InMemoryTOONDataSource(InputStream inputStream) {
 		super(inputStream);
+		scanner = createScanner(inputStream);
 		parse();
 	}
 

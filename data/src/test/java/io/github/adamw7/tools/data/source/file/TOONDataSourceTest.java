@@ -23,7 +23,7 @@ public class TOONDataSourceTest {
 			source.open();
 			String[] columnNames = source.getColumnNames();
 			assertNotNull(columnNames);
-			assertTrue(columnNames.length > 0);
+			assertEquals(27, columnNames.length);
 		}
 	}
 

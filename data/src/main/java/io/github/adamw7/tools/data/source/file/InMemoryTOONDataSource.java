@@ -70,17 +70,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 				String fields = arrayMatcher.group(4); // may be null
 				String inlineValues = arrayMatcher.group(5);
 
-				if (fields != null && !fields.isEmpty()) {
-					// Tabular format
-					i = parseTabularArray(lines, i, key, count, fields, inlineValues);
-				} else if (!inlineValues.isEmpty()) {
-					// Inline primitive array
-					parseInlineArray(key, inlineValues);
-					i++;
-				} else {
-					// Array of arrays or objects on subsequent lines
-					i = parseNestedArray(lines, i, key, count);
-				}
+				i = parse(lines, i, key, count, fields, inlineValues);
 				continue;
 			}
 
@@ -104,6 +94,18 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		}
 	}
 
+	private int parse(List<String> lines, int i, String key, int count, String fields, String inlineValues) {
+		if (fields != null && !fields.isEmpty()) {
+			i = parseTabularArray(lines, i, key, count, fields, inlineValues);
+		} else if (!inlineValues.isEmpty()) {
+			parseInlineArray(key, inlineValues);
+			i++;
+		} else {
+			i = parseNestedArray(lines, i, key, count);
+		}
+		return i;
+	}
+
 	private int parseTabularArray(List<String> lines, int startIndex, String arrayKey, int count, String fieldsStr, String inlineValues) {
 		String[] fields = fieldsStr.split(",");
 		fieldsMap.put(arrayKey, String.valueOf(count));
@@ -113,14 +115,15 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		}
 
 		int rowIndex = 0;
-		int i = startIndex + 1;
 
-		// Check if there are inline values on the header line
 		if (inlineValues != null && !inlineValues.trim().isEmpty()) {
 			parseTabularRow(arrayKey, fields, inlineValues.trim(), rowIndex++);
 		}
 
-		// Parse subsequent rows
+		return parseRows(lines, arrayKey, count, startIndex + 1, rowIndex, fields);
+	}
+
+	private int parseRows(List<String> lines, String arrayKey, int count, int i, int rowIndex, String[] fields) {
 		while (i < lines.size() && rowIndex < count) {
 			String line = lines.get(i);
 			String trimmed = line.trim();
@@ -138,7 +141,6 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			parseTabularRow(arrayKey, fields, trimmed, rowIndex++);
 			i++;
 		}
-
 		return i;
 	}
 
@@ -230,24 +232,29 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 				break;
 			}
 
-			Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
-			if (kvMatcher.matches()) {
-				String key = kvMatcher.group(1);
-				String value = kvMatcher.group(2);
-				String fullKey = parentKey + "." + key;
-
-				if (value.isEmpty()) {
-					// Further nesting
-					i = parseNestedObject(lines, i, fullKey);
-				} else {
-					fieldsMap.put(fullKey, unquote(value));
-					i++;
-				}
-			} else {
-				i++;
-			}
+			i = storeKV(lines, parentKey, trimmed, i);
 		}
 
+		return i;
+	}
+
+	private int storeKV(List<String> lines, String parentKey, String trimmed, int i) {
+		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
+		if (kvMatcher.matches()) {
+			String key = kvMatcher.group(1);
+			String value = kvMatcher.group(2);
+			String fullKey = parentKey + "." + key;
+
+			if (value.isEmpty()) {
+				// Further nesting
+				i = parseNestedObject(lines, i, fullKey);
+			} else {
+				fieldsMap.put(fullKey, unquote(value));
+				i++;
+			}
+		} else {
+			i++;
+		}
 		return i;
 	}
 
@@ -284,7 +291,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			}
 		}
 
-		if (current.length() > 0) {
+		if (!current.isEmpty()) {
 			values.add(current.toString());
 		}
 

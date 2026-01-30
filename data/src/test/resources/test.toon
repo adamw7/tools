@@ -1,0 +1,9 @@
+people[2]{name,age,city,state}:
+  Alice,30,New York,NY
+  Bob,25,Los Angeles,CA
+
+cars[2]{manufacturer,model,year}:
+  Toyota,Camry,2020
+  Honda,Civic,2022
+
+fruits[3]: apple,banana,orange

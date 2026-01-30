@@ -202,8 +202,6 @@ public class TOONDataSourceTest {
 				assertNotNull(row);
 				count++;
 			}
-			// test.toon contains: people[2] with 4 fields (8 entries + 4 headers + count),
-			// cars[2] with 3 fields (6 entries + 3 headers + count), fruits[3] (3 entries + count)
 			assertEquals(27, count);
 		}
 	}

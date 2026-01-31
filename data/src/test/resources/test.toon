@@ -7,3 +7,37 @@ cars[2]{manufacturer,model,year}:
   Honda,Civic,2022
 
 fruits[3]: apple,banana,orange
+
+appName: MyTestApp
+version: 1.2.3
+isEnabled: true
+isDisabled: false
+maxRetries: 5
+pi: 3.14159
+
+database:
+  host: localhost
+  port: 5432
+  credentials:
+    username: admin
+    password: secret123
+
+greeting: "Hello, World!"
+pathWithSpaces: "C:\\Program Files\\App"
+multilineHint: "Line1\nLine2\nLine3"
+tabSeparated: "col1\tcol2\tcol3"
+quotedValue: "She said \"Hello\" to me"
+
+priorities[3]:
+  - high
+  - medium
+  - low
+
+products[2]{sku,name,price,description}:
+  SKU001,"Widget Pro",29.99,"A great widget, really!"
+  SKU002,"Gadget Plus",49.99,"The best gadget ever"
+
+metrics[3]{name,value,unit}:
+  temperature,72.5,fahrenheit
+  humidity,45,percent
+  pressure,1013.25,hPa

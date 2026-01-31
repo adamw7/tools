@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,9 +28,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;
 
-	// Pattern for array header: key[N] or key[N]{fields}
 	private static final Pattern ARRAY_HEADER_PATTERN = Pattern.compile("^(\\w+)\\[(\\d+)\\](\\{([^}]+)\\})?:\\s*(.*)$");
-	// Pattern for key-value pair
 	private static final Pattern KEY_VALUE_PATTERN = Pattern.compile("^(\\w+(?:\\.\\w+)*):\\s*(.*)$");
 
 	public InMemoryTOONDataSource(InputStream inputStream) {
@@ -54,56 +53,73 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	private void parseTOON(List<String> lines) {
 		int i = 0;
 		while (i < lines.size()) {
-			String line = lines.get(i);
-			String trimmed = line.trim();
-
-			if (trimmed.isEmpty()) {
-				i++;
-				continue;
-			}
-
-			// Check for array header
-			Matcher arrayMatcher = ARRAY_HEADER_PATTERN.matcher(trimmed);
-			if (arrayMatcher.matches()) {
-				String key = arrayMatcher.group(1);
-				int count = Integer.parseInt(arrayMatcher.group(2));
-				String fields = arrayMatcher.group(4); // may be null
-				String inlineValues = arrayMatcher.group(5);
-
-				i = parse(lines, i, key, count, fields, inlineValues);
-				continue;
-			}
-
-			// Check for key-value pair
-			Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
-			if (kvMatcher.matches()) {
-				String key = kvMatcher.group(1);
-				String value = kvMatcher.group(2);
-
-				if (value.isEmpty()) {
-					// Nested object starts on next line
-					i = parseNestedObject(lines, i, key);
-				} else {
-					fieldsMap.put(key, unquote(value));
-					i++;
-				}
-				continue;
-			}
-
-			i++;
+			i = processLine(lines, i);
 		}
 	}
 
-	private int parse(List<String> lines, int i, String key, int count, String fields, String inlineValues) {
-		if (fields != null && !fields.isEmpty()) {
-			i = parseTabularArray(lines, i, key, count, fields, inlineValues);
-		} else if (!inlineValues.isEmpty()) {
-			parseInlineArray(key, inlineValues);
-			i++;
-		} else {
-			i = parseNestedArray(lines, i, key, count);
+	private int processLine(List<String> lines, int index) {
+		String line = lines.get(index);
+		String trimmed = line.trim();
+
+		if (trimmed.isEmpty()) {
+			return index + 1;
 		}
-		return i;
+
+		Optional<Integer> arrayResult = tryParseArrayHeader(lines, index, trimmed);
+		if (arrayResult.isPresent()) {
+			return arrayResult.get();
+		}
+
+		Optional<Integer> kvResult = tryParseKeyValue(lines, index, trimmed);
+		if (kvResult.isPresent()) {
+			return kvResult.get();
+		}
+
+		return index + 1;
+	}
+
+	private Optional<Integer> tryParseArrayHeader(List<String> lines, int index, String trimmed) {
+		Matcher arrayMatcher = ARRAY_HEADER_PATTERN.matcher(trimmed);
+		if (!arrayMatcher.matches()) {
+			return Optional.empty();
+		}
+
+		String key = arrayMatcher.group(1);
+		int count = Integer.parseInt(arrayMatcher.group(2));
+		String fields = arrayMatcher.group(4);
+		String inlineValues = arrayMatcher.group(5);
+
+		return Optional.of(parseArray(lines, index, key, count, fields, inlineValues));
+	}
+
+	private Optional<Integer> tryParseKeyValue(List<String> lines, int index, String trimmed) {
+		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
+		if (!kvMatcher.matches()) {
+			return Optional.empty();
+		}
+
+		String key = kvMatcher.group(1);
+		String value = kvMatcher.group(2);
+
+		if (value.isEmpty()) {
+			return Optional.of(parseNestedObject(lines, index, key));
+		}
+
+		fieldsMap.put(key, unquote(value));
+		return Optional.of(index + 1);
+	}
+
+	private int parseArray(List<String> lines, int index, String key, int count, String fields, String inlineValues) {
+		if (fields != null && !fields.isEmpty()) {
+			return parseTabularArray(lines, index, key, count, fields, inlineValues);
+		}
+
+		if (!inlineValues.isEmpty()) {
+			parseInlineArray(key, inlineValues);
+			return index + 1;
+		}
+
+		return parseNestedArray(lines, index, key, count);
 	}
 
 	private int parseTabularArray(List<String> lines, int startIndex, String arrayKey, int count, String fieldsStr, String inlineValues) {
@@ -115,38 +131,48 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		}
 
 		int rowIndex = 0;
-
 		if (inlineValues != null && !inlineValues.trim().isEmpty()) {
 			parseTabularRow(arrayKey, fields, inlineValues.trim(), rowIndex++);
 		}
 
-		return parseRows(lines, arrayKey, count, startIndex + 1, rowIndex, fields);
+		return parseTabularRows(lines, startIndex + 1, arrayKey, count, rowIndex, fields);
 	}
 
-	private int parseRows(List<String> lines, String arrayKey, int count, int i, int rowIndex, String[] fields) {
-		while (i < lines.size() && rowIndex < count) {
-			String line = lines.get(i);
-			String trimmed = line.trim();
+	private int parseTabularRows(List<String> lines, int startIndex, String arrayKey, int count, int initialRowIndex, String[] fields) {
+		int i = startIndex;
+		int rowIndex = initialRowIndex;
 
-			if (trimmed.isEmpty()) {
-				i++;
-				continue;
+		while (i < lines.size() && rowIndex < count && !isNewSection(lines, i)) {
+			String trimmed = lines.get(i).trim();
+			if (!trimmed.isEmpty()) {
+				parseTabularRow(arrayKey, fields, trimmed, rowIndex++);
 			}
-
-			// Check if we've hit a new key-value or array header (not indented row)
-			if (getIndentation(line) == 0 && (KEY_VALUE_PATTERN.matcher(trimmed).matches() || ARRAY_HEADER_PATTERN.matcher(trimmed).matches())) {
-				break;
-			}
-
-			parseTabularRow(arrayKey, fields, trimmed, rowIndex++);
 			i++;
 		}
+
 		return i;
+	}
+
+	private boolean isNewSection(List<String> lines, int index) {
+		String line = lines.get(index);
+		String trimmed = line.trim();
+
+		if (trimmed.isEmpty()) {
+			return false;
+		}
+
+		boolean isTopLevel = getIndentation(line) == 0;
+		boolean isKeyValue = KEY_VALUE_PATTERN.matcher(trimmed).matches();
+		boolean isArrayHeader = ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
+
+		return isTopLevel && (isKeyValue || isArrayHeader);
 	}
 
 	private void parseTabularRow(String arrayKey, String[] fields, String rowData, int rowIndex) {
 		String[] values = splitRow(rowData);
-		for (int j = 0; j < Math.min(fields.length, values.length); j++) {
+		int limit = Math.min(fields.length, values.length);
+
+		for (int j = 0; j < limit; j++) {
 			String key = arrayKey + "[" + rowIndex + "]." + fields[j].trim();
 			fieldsMap.put(key, unquote(values[j].trim()));
 		}
@@ -155,6 +181,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	private void parseInlineArray(String key, String values) {
 		String[] items = splitRow(values);
 		fieldsMap.put(key, String.valueOf(items.length));
+
 		for (int j = 0; j < items.length; j++) {
 			fieldsMap.put(key + "[" + j + "]", unquote(items[j].trim()));
 		}
@@ -163,43 +190,19 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	private int parseNestedArray(List<String> lines, int startIndex, String arrayKey, int count) {
 		int i = startIndex + 1;
 		int itemIndex = 0;
-		int baseIndent = -1;
+		int baseIndent = findBaseIndent(lines, i);
 
 		while (i < lines.size() && itemIndex < count) {
 			String line = lines.get(i);
 			String trimmed = line.trim();
 
-			if (trimmed.isEmpty()) {
-				i++;
-				continue;
+			if (shouldExitNestedContext(trimmed, getIndentation(line), baseIndent)) {
+				fieldsMap.put(arrayKey, String.valueOf(count));
+				return i;
 			}
 
-			int indent = getIndentation(line);
-			if (baseIndent == -1) {
-				baseIndent = indent;
-			}
-
-			// Check if we've gone back to a lower indentation level
-			if (indent < baseIndent && !trimmed.isEmpty()) {
-				break;
-			}
-
-			// Handle list item marker
-			if (trimmed.startsWith("-")) {
-				String content = trimmed.substring(1).trim();
-
-				// Check if it's a nested array
-				Matcher arrayMatcher = ARRAY_HEADER_PATTERN.matcher(content);
-				if (arrayMatcher.matches()) {
-					i++;
-					continue;
-				}
-
-				// Simple value
-				if (!content.isEmpty()) {
-					fieldsMap.put(arrayKey + "[" + itemIndex + "]", unquote(content));
-				}
-				itemIndex++;
+			if (!trimmed.isEmpty() && trimmed.startsWith("-")) {
+				itemIndex = processListItem(arrayKey, trimmed, itemIndex);
 			}
 
 			i++;
@@ -209,67 +212,102 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		return i;
 	}
 
+	private int findBaseIndent(List<String> lines, int startIndex) {
+		for (int i = startIndex; i < lines.size(); i++) {
+			String line = lines.get(i);
+			if (!line.trim().isEmpty()) {
+				return getIndentation(line);
+			}
+		}
+		return 0;
+	}
+
+	private boolean shouldExitNestedContext(String trimmed, int currentIndent, int baseIndent) {
+		return !trimmed.isEmpty() && baseIndent > 0 && currentIndent < baseIndent;
+	}
+
+	private int processListItem(String arrayKey, String trimmed, int itemIndex) {
+		String content = trimmed.substring(1).trim();
+
+		if (isArrayHeader(content)) {
+			return itemIndex;
+		}
+
+		if (!content.isEmpty()) {
+			fieldsMap.put(arrayKey + "[" + itemIndex + "]", unquote(content));
+		}
+
+		return itemIndex + 1;
+	}
+
+	private boolean isArrayHeader(String content) {
+		return ARRAY_HEADER_PATTERN.matcher(content).matches();
+	}
+
 	private int parseNestedObject(List<String> lines, int startIndex, String parentKey) {
 		int i = startIndex + 1;
-		int baseIndent = -1;
+		int baseIndent = findBaseIndent(lines, i);
 
 		while (i < lines.size()) {
 			String line = lines.get(i);
 			String trimmed = line.trim();
+			int currentIndent = getIndentation(line);
 
-			if (trimmed.isEmpty()) {
+			if (shouldExitNestedObject(trimmed, currentIndent, baseIndent)) {
+				return i;
+			}
+
+			if (!trimmed.isEmpty()) {
+				i = parseNestedKeyValue(lines, i, parentKey, trimmed);
+			} else {
 				i++;
-				continue;
 			}
-
-			int indent = getIndentation(line);
-			if (baseIndent == -1) {
-				baseIndent = indent;
-			}
-
-			// Check if we've gone back to a lower indentation level
-			if (indent < baseIndent) {
-				break;
-			}
-
-			i = storeKV(lines, parentKey, trimmed, i);
 		}
 
 		return i;
 	}
 
-	private int storeKV(List<String> lines, String parentKey, String trimmed, int i) {
-		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
-		if (kvMatcher.matches()) {
-			String key = kvMatcher.group(1);
-			String value = kvMatcher.group(2);
-			String fullKey = parentKey + "." + key;
+	private boolean shouldExitNestedObject(String trimmed, int currentIndent, int baseIndent) {
+		return !trimmed.isEmpty() && baseIndent > 0 && currentIndent < baseIndent;
+	}
 
-			if (value.isEmpty()) {
-				// Further nesting
-				i = parseNestedObject(lines, i, fullKey);
-			} else {
-				fieldsMap.put(fullKey, unquote(value));
-				i++;
-			}
-		} else {
-			i++;
+	private int parseNestedKeyValue(List<String> lines, int index, String parentKey, String trimmed) {
+		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
+
+		if (!kvMatcher.matches()) {
+			return index + 1;
 		}
-		return i;
+
+		String key = kvMatcher.group(1);
+		String value = kvMatcher.group(2);
+		String fullKey = parentKey + "." + key;
+
+		if (value.isEmpty()) {
+			return parseNestedObject(lines, index, fullKey);
+		}
+
+		fieldsMap.put(fullKey, unquote(value));
+		return index + 1;
 	}
 
 	private int getIndentation(String line) {
 		int count = 0;
-		for (char c : line.toCharArray()) {
-			if (c == ' ') {
-				count++;
-			} else if (c == '\t') {
-				count += 2; // Treat tab as 2 spaces
-			} else {
-				break;
-			}
+		int i = 0;
+
+		while (i < line.length() && isWhitespace(line.charAt(i))) {
+			count += getWhitespaceValue(line.charAt(i));
+			i++;
 		}
+
 		return count;
+	}
+
+	private boolean isWhitespace(char c) {
+		return c == ' ' || c == '\t';
+	}
+
+	private int getWhitespaceValue(char c) {
+		return c == '\t' ? 2 : 1;
 	}
 
 	private String[] splitRow(String row) {
@@ -279,8 +317,9 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 
 		for (int i = 0; i < row.length(); i++) {
 			char c = row.charAt(i);
+			boolean isUnescapedQuote = c == '"' && (i == 0 || row.charAt(i - 1) != '\\');
 
-			if (c == '"' && (i == 0 || row.charAt(i - 1) != '\\')) {
+			if (isUnescapedQuote) {
 				inQuotes = !inQuotes;
 				current.append(c);
 			} else if (c == ',' && !inQuotes) {
@@ -304,17 +343,25 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		}
 
 		String trimmed = value.trim();
-		if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length() >= 2) {
-			String unquoted = trimmed.substring(1, trimmed.length() - 1);
-			// Handle escape sequences
-			return unquoted
-					.replace("\\\"", "\"")
-					.replace("\\\\", "\\")
-					.replace("\\n", "\n")
-					.replace("\\r", "\r")
-					.replace("\\t", "\t");
+		if (!isQuotedString(trimmed)) {
+			return trimmed;
 		}
-		return trimmed;
+
+		String unquoted = trimmed.substring(1, trimmed.length() - 1);
+		return processEscapeSequences(unquoted);
+	}
+
+	private boolean isQuotedString(String value) {
+		return value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2;
+	}
+
+	private String processEscapeSequences(String value) {
+		return value
+				.replace("\\\"", "\"")
+				.replace("\\\\", "\\")
+				.replace("\\n", "\n")
+				.replace("\\r", "\r")
+				.replace("\\t", "\t");
 	}
 
 	@Override

@@ -23,7 +23,7 @@ public class TOONDataSourceTest {
 			source.open();
 			String[] columnNames = source.getColumnNames();
 			assertNotNull(columnNames);
-			assertTrue(columnNames.length > 27, "Expected more than 27 columns after extending test data");
+			assertEquals(70, columnNames.length);
 		}
 	}
 
@@ -41,7 +41,7 @@ public class TOONDataSourceTest {
 					assertNotNull(row[1]);
 				}
 			}
-			assertTrue(rowCount > 27, "Expected more than 27 rows after extending test data");
+			assertEquals(70, rowCount);
 		}
 	}
 
@@ -202,7 +202,7 @@ public class TOONDataSourceTest {
 				assertNotNull(row);
 				count++;
 			}
-			assertTrue(count > 0);
+			assertEquals(70, count);
 		}
 	}
 

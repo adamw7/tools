@@ -96,6 +96,15 @@ public class MapTest {
 
 	@ParameterizedTest
 	@MethodSource("allImplementations")
+	public void removeNonExistentKey(Map<Integer, String> map) {
+		map.put(1, "A");
+		assertNull(map.remove(999));
+		assertEquals(1, map.size());
+		assertEquals("A", map.get(1));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
 	public void containsKey(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");

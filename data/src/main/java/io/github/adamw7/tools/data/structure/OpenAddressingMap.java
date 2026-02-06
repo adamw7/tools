@@ -130,7 +130,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			int hash = hash(key, i);
 			Wrapper<K, V> wrapper = array[hash];
 			
-			if (wrapper.key.equals(key)) {
+			if (valid(wrapper) && wrapper.key.equals(key)) {
 				wrapper.removed = true;
 				size--;
 				return wrapper.value;

@@ -16,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import com.google.protobuf.DescriptorProtos.Edition;
 import com.google.protobuf.GeneratedMessageV3;
 
 public class Code {
@@ -92,9 +92,9 @@ public class Code {
 	}
 
 	private void checkSyntax(Descriptor descriptor) {
-		FileDescriptor.Syntax syntax = descriptor.getFile().getSyntax();
-		if (!syntax.equals(FileDescriptor.Syntax.PROTO2)) {
-			throw new IllegalStateException("Only proto2 syntax supported. The input contains: " + syntax);
+		Edition edition = descriptor.getFile().getEdition();
+		if (!edition.equals(Edition.EDITION_PROTO2)) {
+			throw new IllegalStateException("Only proto2 syntax supported. The input contains: " + edition);
 		}
 	}
 

@@ -4,6 +4,7 @@ open module datamodule {
 	requires java.sql;
 	requires com.fasterxml.jackson.databind;
 	requires io.modelcontextprotocol.sdk.mcp;
+	requires io.modelcontextprotocol.sdk.mcp.json;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
 	requires spring.boot;

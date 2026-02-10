@@ -1,31 +1,36 @@
 package io.github.adamw7.tools.data.network;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.Socket;
-import java.net.SocketImpl;
-import java.net.SocketImplFactory;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Switch {
-	
+
 	private final static Logger log = LogManager.getLogger(Switch.class.getName());
 
 	private static volatile boolean isOff = false;
-	
+
 	private Switch() {}
-	
-	private static class BlockExternalSocketFactory implements SocketImplFactory {
+
+	private static class BlockingProxySelector extends ProxySelector {
 		@Override
-		public SocketImpl createSocketImpl() {
-			throw new UnsupportedOperationException("The network if off");
+		public List<Proxy> select(URI uri) {
+			throw new UnsupportedOperationException("The network is off");
+		}
+
+		@Override
+		public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {
+			// no-op
 		}
 	}
 
 	/**
-	 * 
+	 *
 	 * @return true if this execution has turned off the network
 	 */
 	public static synchronized boolean off() {
@@ -33,14 +38,9 @@ public class Switch {
 			log.warn("Network is already off. Nothing changed");
 			return false;
 		}
-		try {
-			Socket.setSocketImplFactory(new BlockExternalSocketFactory());
-			isOff = true;
-			log.info("Network is off now");
-			return true;
-		} catch (IOException e) {
-			log.error(e);
-			throw new UncheckedIOException("Failed to set custom socket factory", e);
-		}
+		ProxySelector.setDefault(new BlockingProxySelector());
+		isOff = true;
+		log.info("Network is off now");
+		return true;
 	}
 }

@@ -18,10 +18,9 @@ public class SwitchTest {
 	public void happyPath() {
 		Switch.off();
 		
-		RuntimeException thrown = assertThrows(RuntimeException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
+		UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
 
-		assertEquals("java.lang.UnsupportedOperationException: The network if off",
-				thrown.getMessage());
+		assertEquals("The network is off", thrown.getMessage());
 	}
 	
 	@Test

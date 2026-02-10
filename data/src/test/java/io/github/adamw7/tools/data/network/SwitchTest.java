@@ -20,8 +20,7 @@ public class SwitchTest {
 		
 		RuntimeException thrown = assertThrows(RuntimeException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
 
-		assertEquals("java.lang.UnsupportedOperationException: The network if off",
-				thrown.getMessage());
+		assertEquals("java.lang.UnsupportedOperationException: The network is off", thrown.getMessage());
 	}
 	
 	@Test

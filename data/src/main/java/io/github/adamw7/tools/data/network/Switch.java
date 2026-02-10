@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.network;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;

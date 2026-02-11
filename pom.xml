@@ -21,6 +21,7 @@
 		<maven.compiler.target>25</maven.compiler.target>
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<protobuf.version>4.33.4</protobuf.version>
 	</properties>
 	<licenses>
 		<license>
@@ -109,7 +110,7 @@
 			<dependency>
 				<groupId>com.google.protobuf</groupId>
 				<artifactId>protobuf-java</artifactId>
-				<version>4.33.4</version>
+				<version>${protobuf.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.reflections</groupId>
@@ -147,6 +148,13 @@
 		</dependencies>
 	</dependencyManagement>
 	<build>
+		<extensions>
+			<extension>
+				<groupId>kr.motd.maven</groupId>
+				<artifactId>os-maven-plugin</artifactId>
+				<version>1.7.1</version>
+			</extension>
+		</extensions>
 		<pluginManagement>
 			<plugins>
 				<plugin>
@@ -160,9 +168,12 @@
 					<version>3.15.2</version>
 				</plugin>
 				<plugin>
-					<groupId>com.github.os72</groupId>
-					<artifactId>protoc-jar-maven-plugin</artifactId>
-					<version>3.11.4</version>
+					<groupId>org.xolstice.protobuf</groupId>
+					<artifactId>protobuf-maven-plugin</artifactId>
+					<version>0.6.1</version>
+					<configuration>
+						<protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>

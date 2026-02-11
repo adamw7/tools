@@ -22,27 +22,17 @@
 				<artifactId>maven-plugin-plugin</artifactId>
 			</plugin>
 			<plugin>
-				<groupId>com.github.os72</groupId>
-				<artifactId>protoc-jar-maven-plugin</artifactId>
+				<groupId>org.xolstice.protobuf</groupId>
+				<artifactId>protobuf-maven-plugin</artifactId>
 				<executions>
 					<execution>
 						<phase>generate-sources</phase>
 						<goals>
-							<goal>run</goal>
+							<goal>compile</goal>
 						</goals>
 						<configuration>
-							<protocVersion>3.11.4</protocVersion>
-							<inputDirectories>
-								<include>src/main/proto</include>
-							</inputDirectories>
-							<outputTargets>
-								<outputTarget>
-									<type>java</type>
-									<addSources>main</addSources>
-									<outputDirectory>
-										target/generated-sources/java</outputDirectory>
-								</outputTarget>
-							</outputTargets>
+							<protoSourceRoot>src/main/proto</protoSourceRoot>
+							<outputDirectory>target/generated-sources/java</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>

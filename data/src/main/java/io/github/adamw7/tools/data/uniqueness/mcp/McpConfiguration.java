@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 
@@ -32,7 +33,7 @@ public class McpConfiguration {
     @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stdio", matchIfMissing = true)
     public StdioServerTransportProvider stdioServerTransport() {
         log.info("Creating StdioServerTransport");
-        return new StdioServerTransportProvider();
+        return new StdioServerTransportProvider(McpJsonMapper.getDefault());
     }
 
 	@Bean(destroyMethod = "close")

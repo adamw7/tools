@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.source.db;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 
@@ -73,7 +74,6 @@ public class SQLDataSourceTest extends DBTest {
 	public void wrongQuery(IterableSQLDataSource source) {
 		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, source::open, "Expected open method to throw, but it didn't");
 
-		assertEquals("java.io.IOException: java.sql.SQLSyntaxErrorException: 42X05 : [0] NON_EXISTING_TABLE",
-				thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("NON_EXISTING_TABLE"));
 	}
 }

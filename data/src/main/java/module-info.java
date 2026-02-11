@@ -3,11 +3,10 @@ open module datamodule {
 	requires org.json;
 	requires java.sql;
 	requires com.fasterxml.jackson.databind;
-	requires io.modelcontextprotocol.sdk.mcp;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
 	requires spring.boot;
-	
+
 	exports io.github.adamw7.tools.data.compression;
 	exports io.github.adamw7.tools.data.source.db;
 	exports io.github.adamw7.tools.data.source.file;

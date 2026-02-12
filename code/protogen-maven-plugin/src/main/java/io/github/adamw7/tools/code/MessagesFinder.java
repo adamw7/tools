@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.GeneratedMessage;
 
 public class MessagesFinder {
 	
@@ -18,11 +18,11 @@ public class MessagesFinder {
 		this.pkg = pkg;
 	}
 	
-	public Set<Class<? extends GeneratedMessageV3>> execute() {
+	public Set<Class<? extends GeneratedMessage>> execute() {
 		Reflections reflections = new Reflections(new ConfigurationBuilder().forPackages(pkg));
-		Set<Class<? extends GeneratedMessageV3>> classes = reflections.getSubTypesOf(GeneratedMessageV3.class);
+		Set<Class<? extends GeneratedMessage>> classes = reflections.getSubTypesOf(GeneratedMessage.class);
 		log.info("Found these proto classes:");
-		for (Class<? extends GeneratedMessageV3> cl : classes) {
+		for (Class<? extends GeneratedMessage> cl : classes) {
 			log.info(cl);
 		}
 		return classes;

@@ -8,7 +8,7 @@ import java.util.Set;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.GeneratedMessage;
 
 public class TypeMappings {
 
@@ -44,7 +44,7 @@ public class TypeMappings {
 		}
 	}
 
-	public TypeMappings(Set<Class<? extends GeneratedMessageV3>> allMessages) {
+	public TypeMappings(Set<Class<? extends GeneratedMessage>> allMessages) {
 		putJavaTypes();		
 		putPrimitiveTypes();
 		putCustomTypes(allMessages);		
@@ -60,8 +60,8 @@ public class TypeMappings {
 		primitiveToObjectMap.put(name(short.class), name(Short.class));		
 	}
 
-	private void putCustomTypes(Set<Class<? extends GeneratedMessageV3>> allMessages) {
-		for (Class<? extends GeneratedMessageV3> clazz : allMessages) {
+	private void putCustomTypes(Set<Class<? extends GeneratedMessage>> allMessages) {
+		for (Class<? extends GeneratedMessage> clazz : allMessages) {
 			mappings.put(clazz.getSimpleName(), clazz.getSimpleName());
 		}
 	}

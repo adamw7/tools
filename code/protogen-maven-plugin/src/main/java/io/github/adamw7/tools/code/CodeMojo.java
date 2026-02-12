@@ -17,7 +17,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.GeneratedMessage;
 
 import io.github.adamw7.tools.code.gen.Code;
 
@@ -42,7 +42,7 @@ public class CodeMojo extends AbstractMojo {
 	public void execute() {
 		log.info("Executing {} maven plugin", this);
 		extendClassPath();
-		Set<Class<? extends GeneratedMessageV3>> allMessages = new MessagesFinder(pkgs).execute();
+		Set<Class<? extends GeneratedMessage>> allMessages = new MessagesFinder(pkgs).execute();
 		new Code(generatedSourcesDir, outputpackage).genBuilders(allMessages);
 	}
 

@@ -17,7 +17,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.GeneratedMessage;
 
 public class Code {
 
@@ -52,9 +52,9 @@ public class Code {
 		return Paths.get(pkg.replaceAll("\\.", "/"));
 	}
 
-	public void genBuilders(Set<Class<? extends GeneratedMessageV3>> allMessages) {
+	public void genBuilders(Set<Class<? extends GeneratedMessage>> allMessages) {
 		typeMappings = new TypeMappings(allMessages);
-		for (Class<? extends GeneratedMessageV3> c : allMessages) {
+		for (Class<? extends GeneratedMessage> c : allMessages) {
 			try {
 				List<ClassContainer> classes = genBuilder(c);
 				for (ClassContainer container : classes) {					
@@ -76,7 +76,7 @@ public class Code {
 		}
 	}
 
-	private List<ClassContainer> genBuilder(Class<? extends GeneratedMessageV3> c)
+	private List<ClassContainer> genBuilder(Class<? extends GeneratedMessage> c)
 			throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
 		Method getDescriptorMethod = c.getDeclaredMethod("getDescriptor");
 		Object object = getDescriptorMethod.invoke(this);

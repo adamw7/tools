@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 
-import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
@@ -14,7 +14,7 @@ public class McpConfigurationTest {
     public void happyPath() {
         McpConfiguration config = new McpConfiguration();
         assertFalse(config.objectMapper() == null);
-        McpSyncServer server = config.mcpSyncServer(new StdioServerTransportProvider(McpJsonMapper.getDefault()));
+        McpSyncServer server = config.mcpSyncServer(new StdioServerTransportProvider(McpJsonDefaults.getMapper()));
         assertFalse(server.getServerCapabilities().tools() == null);
         server.close();
     }

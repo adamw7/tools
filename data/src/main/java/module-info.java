@@ -3,6 +3,7 @@ open module datamodule {
 	requires org.json;
 	requires java.sql;
 	requires com.fasterxml.jackson.databind;
+	requires com.fasterxml.jackson.dataformat.yaml;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
 	requires spring.boot;

@@ -45,7 +45,7 @@ public class YAMLDataSourceTest {
 				assertNotNull(row[0]);
 				assertNotNull(row[1]);
 			}
-			assertTrue(rowCount > 0);
+			assertEquals(17, rowCount);
 		}
 	}
 
@@ -79,7 +79,7 @@ public class YAMLDataSourceTest {
 			 InMemoryYAMLDataSource source = new InMemoryYAMLDataSource(is)) {
 			source.open();
 			String[] columnNames = source.getColumnNames();
-			assertTrue(columnNames.length > 0);
+			assertEquals(17, columnNames.length);
 		}
 	}
 

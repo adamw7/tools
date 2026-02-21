@@ -51,7 +51,6 @@ public class YAMLDataSourceTest {
 	@Test
 	public void testSpecificValues() throws IOException {
 		InMemoryYAMLDataSource source = new InMemoryYAMLDataSource(Utils.getFileName("test.yaml"));
-		source.open();
 		List<String[]> data = source.readAll();
 		var map = new java.util.HashMap<String, String>();
 		for (String[] row : data) {

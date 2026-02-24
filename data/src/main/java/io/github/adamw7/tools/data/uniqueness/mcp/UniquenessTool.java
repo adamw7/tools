@@ -50,7 +50,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 		log.info("Calling MCP unquieness tool for {}", arguments);
 		String result = runUniqueness(arguments);
 
-		return new CallToolResult(List.of(new TextContent(result)), false);
+		return CallToolResult.builder().content(List.of(new TextContent(result))).isError(false).build();
 	}
 
 	private String runUniqueness(Map<String, Object> arguments) {

@@ -30,7 +30,7 @@ public abstract class AbstractFileSource implements AutoCloseable, Closeable, It
 	}
 	
 	protected AbstractFileSource(String fileName) {
-		this.fileName = fileName;
+		this.fileName = PathValidator.validate(fileName);
 		try {
 			scanner = createScanner();
 		} catch (FileNotFoundException e) {

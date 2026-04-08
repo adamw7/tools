@@ -3,9 +3,9 @@ package io.github.adamw7.tools.data.source.db;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,11 +22,16 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 	public InMemorySQLDataSource(Connection connection, String query) {
 		super(connection, query);
 	}
+
+	public InMemorySQLDataSource(Connection connection, String query, Object... params) {
+		super(connection, query, params);
+	}
 	
 	@Override
 	public List<String[]> readAll() {
-		try (Statement statement = connection.createStatement()) {
-			ResultSet resultSet = statement.executeQuery(query);
+		try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+			bindParameters(preparedStatement, params);
+			ResultSet resultSet = preparedStatement.executeQuery();
 			List<String[]> allData = new ArrayList<>();
 			while (resultSet.next()) {
 				allData.add(getNextFrom(resultSet));

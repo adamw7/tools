@@ -3,10 +3,10 @@ package io.github.adamw7.tools.data.source.db;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,10 +21,16 @@ public class IterableSQLDataSource implements IterableDataSource {
 	protected boolean hasMoreData = true;
 	protected final String query;
 	protected final Connection connection;
+	protected final Object[] params;
 
 	public IterableSQLDataSource(Connection connection, String query) {
+		this(connection, query, new Object[0]);
+	}
+
+	public IterableSQLDataSource(Connection connection, String query, Object... params) {
 		this.connection = connection;
 		this.query = query;
+		this.params = params;
 	}
 
 	@Override
@@ -53,9 +59,10 @@ public class IterableSQLDataSource implements IterableDataSource {
 	@Override
 	public void open() {
 		try {
-			Statement statement = connection.createStatement();
-			log.info("Executing query: {}", query);
-			resultSet = statement.executeQuery(query);
+			PreparedStatement preparedStatement = connection.prepareStatement(query);
+			bindParameters(preparedStatement, params);
+			log.debug("Executing query: {}", query);
+			resultSet = preparedStatement.executeQuery();
 		} catch (SQLException e) {
 			throw new UncheckedIOException(new IOException(e));
 		}
@@ -103,6 +110,12 @@ public class IterableSQLDataSource implements IterableDataSource {
 			columns[i] = meta.getColumnName(i + 1);
 		}
 		return columns;
+	}
+
+	protected static void bindParameters(PreparedStatement ps, Object[] params) throws SQLException {
+		for (int i = 0; i < params.length; i++) {
+			ps.setObject(i + 1, params[i]);
+		}
 	}
 
 }

@@ -1,11 +1,12 @@
 package io.github.adamw7.tools.code.gen;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,7 +69,7 @@ public class Code {
 
 	private void write(ClassContainer container) {
 		String fileName = generatedSourcesDir + replace(outputPkg + File.separator + container.name()) + ".java";
-		try (FileWriter myWriter = new FileWriter(fileName)) {
+		try (Writer myWriter = Files.newBufferedWriter(Paths.get(fileName), StandardCharsets.UTF_8)) {
 			log.info("Writing {}", fileName);
 			myWriter.write(container.codeAsString());
 		} catch (IOException e) {

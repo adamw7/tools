@@ -4,6 +4,15 @@ import java.util.Arrays;
 
 public record Key(String[] values) {
 
+	public Key {
+		values = values == null ? new String[0] : values.clone();
+	}
+
+	@Override
+	public String[] values() {
+		return values.clone();
+	}
+
 	@Override
 	public String toString() {
 		return Arrays.toString(values);
@@ -11,23 +20,17 @@ public record Key(String[] values) {
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + Arrays.hashCode(values);
-		return result;
+		return Arrays.hashCode(values);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (!(obj instanceof Key other)) {
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Key other = (Key) obj;
+		}
 		return Arrays.equals(values, other.values);
 	}
-	
-	
 }

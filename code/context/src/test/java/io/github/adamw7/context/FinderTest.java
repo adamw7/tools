@@ -29,7 +29,7 @@ public class FinderTest {
 	private static ClassContainer createContainer(String location) {
 		File file = new File(location);
 		Path path = Path.of(file.getAbsolutePath());
-		return new ClassContainer(path, path.getFileName().toString());
+		return ClassContainer.load(path, path.getFileName().toString());
 	}
 
 	@Test

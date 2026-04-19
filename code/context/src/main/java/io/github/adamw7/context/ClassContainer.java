@@ -6,34 +6,28 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class ClassContainer {
-	
-	private final Path originalPath;
-	private final String className; 
+
+	private final String className;
 	private final String originalCode;
 
-	public ClassContainer(Path path, String className) {
-		this.originalPath = path;
+	public ClassContainer(String className, String originalCode) {
 		this.className = className;
-		originalCode = readCode();
+		this.originalCode = originalCode;
 	}
-	
 
-	private String readCode() {
-        try {
-            return Files.readString(originalPath);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
+	public static ClassContainer load(Path path, String className) {
+		try {
+			return new ClassContainer(className, Files.readString(path));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
 
 	public String originalCode() {
 		return originalCode;
 	}
 
-
 	public String className() {
 		return className;
 	}
-
 }

@@ -100,8 +100,8 @@ public class CSVDataSource extends AbstractFileSource {
 
 	@Override
 	public void reset() {
+		closeScanner();
 		try {
-			close();
 			scanner = createScanner();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -109,6 +109,12 @@ public class CSVDataSource extends AbstractFileSource {
 		columns = null;
 		hasMoreData = true;
 		open();
+	}
+
+	private void closeScanner() {
+		if (scanner != null) {
+			scanner.close();
+		}
 	}
 	
 	@Override

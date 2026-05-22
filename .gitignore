@@ -9,6 +9,7 @@ buildNumber.properties
 .mvn/
 
 data/logs
+data/derby.log
 code/logs
 
 .project

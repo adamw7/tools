@@ -12,12 +12,13 @@ public class Clazz implements Generator {
 	private final Implementations implementations;
 	private final Methods methods;
 	private final ClassInfo info;
-	 
+	private final String header;
+
 	public Clazz(ClassInfo info, TypeMappings typeMappings) {
 		this.info = info;
 		builderClassName = info.name() + "Builder";
-		String header = generatePackage() + generateImports();
-		
+		this.header = generatePackage() + generateImports();
+
 		this.interfaces = new Interfaces(info, typeMappings, header);
 		this.implementations = new Implementations(info, typeMappings, header);
 		this.methods = new Methods(typeMappings, info.name());
@@ -25,16 +26,15 @@ public class Clazz implements Generator {
 
 	@Override
 	public List<ClassContainer> generate() {
-		List<ClassContainer> requiredInterfaces = interfaces.generateRequired();	
+		List<ClassContainer> requiredInterfaces = interfaces.generateRequired();
 		ClassContainer optionalInterface = interfaces.generateOptional();
 		List<ClassContainer> requiredImpls = implementations.generateRequired();
 		ClassContainer optionalImpl = implementations.generateOptional();
-		
-		StringBuilder full = new StringBuilder();		
-		full.append(generatePackage()).append(generateImports());
+
+		StringBuilder full = new StringBuilder(header);
 		full.append(generateHeader()).append(handleMethodsInMainClass());
 		full.append(generateFooter());
-		
+
 		return createClassesList(requiredInterfaces, optionalInterface, requiredImpls, optionalImpl, full);
 	}
 

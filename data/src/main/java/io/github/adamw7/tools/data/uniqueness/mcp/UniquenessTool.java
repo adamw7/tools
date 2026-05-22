@@ -31,7 +31,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
                         "object",
                         Map.of(
                             "file", Map.of("type", "string", "description", "filename"),
-                            "columns_row", Map.of("type", "int", "description", "number of the columns row"),
+                            "columns_row", Map.of("type", "integer", "description", "number of the columns row"),
                             "columns_name", Map.of("type", "string", "description", "name of the column to check")
                         ),
                         List.of("file", "columns_row", "columns_name"),

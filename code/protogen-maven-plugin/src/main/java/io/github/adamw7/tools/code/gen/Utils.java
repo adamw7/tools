@@ -2,12 +2,13 @@ package io.github.adamw7.tools.code.gen;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Utils {
-	
+
 	private Utils() {}
 
 	public static String to(FieldDescriptor fieldDescriptor, String suffix) {
@@ -15,7 +16,7 @@ public class Utils {
 	}
 
 	public static String firstToLower(String string) {
-		return (String.valueOf(string.charAt(0)).toLowerCase() + string.substring(1));
+		return (String.valueOf(string.charAt(0)).toLowerCase(Locale.ROOT) + string.substring(1));
 	}
 
 	public static String firstToUpper(String string) {
@@ -23,7 +24,7 @@ public class Utils {
 	}
 
 	private static String firstUpper(String string) {
-		return String.valueOf(string.charAt(0)).toUpperCase();
+		return String.valueOf(string.charAt(0)).toUpperCase(Locale.ROOT);
 	}
 
 	public static String toUpperCamelCase(String s) {
@@ -36,7 +37,7 @@ public class Utils {
 	}
 
 	static String toProperCase(String s) {
-		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
+		return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1).toLowerCase(Locale.ROOT);
 	}
 	
 	public static String getNextIfc(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {

@@ -76,4 +76,27 @@ public class SQLDataSourceTest extends DBTest {
 
 		assertTrue(thrown.getMessage().contains("NON_EXISTING_TABLE"));
 	}
+
+	static Stream<Arguments> parameterizedSources() {
+		String query = "SELECT * FROM PEOPLE WHERE ID = ?";
+		IterableSQLDataSource iterableSource = new IterableSQLDataSource(connection, query, "1");
+		InMemorySQLDataSource inMemorySource = new InMemorySQLDataSource(connection, query, "1");
+		return Stream.of(of(Utils.named(iterableSource)), of(Utils.named(inMemorySource)));
+	}
+
+	@ParameterizedTest
+	@MethodSource("parameterizedSources")
+	public void happyPathWithParams(IterableSQLDataSource source) {
+		source.open();
+
+		assertEquals("ID", source.getColumnNames()[0]);
+		assertEquals("NAME", source.getColumnNames()[1]);
+		assertEquals("SURNAME", source.getColumnNames()[2]);
+
+		String[] row = source.nextRow();
+		assertEquals("1", row[0]);
+		assertEquals("Adam", row[1]);
+		assertEquals("W", row[2]);
+		Utils.close(source);
+	}
 }

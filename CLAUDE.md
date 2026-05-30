@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+See [AGENTS.md](AGENTS.md) for the full agent guide (module layout, build/test
+commands, environment, and release process). The essentials are repeated below.
+
 ## Project
 
 Java project built with Maven 3.9.X. Run `mvn install` from the root to build.

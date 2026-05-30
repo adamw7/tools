@@ -19,4 +19,10 @@ public class McpConfigurationTest {
         assertFalse(server.getServerCapabilities().tools() == null);
         server.close();
     }
+
+    @Test
+    public void stdioTransportIsNotNull() {
+        McpConfiguration config = new McpConfiguration();
+        assertFalse(config.stdioServerTransport() == null);
+    }
 }

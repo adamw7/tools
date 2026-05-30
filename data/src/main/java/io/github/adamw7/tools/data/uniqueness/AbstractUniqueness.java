@@ -6,10 +6,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public abstract class AbstractUniqueness implements Uniqueness {
-	
+
+	private static final Logger log = LogManager.getLogger(AbstractUniqueness.class);
+
 	protected IterableDataSource dataSource;
 
 	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
@@ -85,7 +90,9 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	protected void close(IterableDataSource dataSource) {
 		try {
 			dataSource.close();
-		} catch (Exception ignored) {}
+		} catch (Exception e) {
+			log.warn("Failed to close data source: {}", dataSource, e);
+		}
 	}
 	
 	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);

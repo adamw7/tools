@@ -44,17 +44,22 @@ Solution:
 <plugin>
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
+	<version>1.5.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
+		<pkgs>
+			<param>io.github.adamw7.tools.code.protos</param>
+		</pkgs>
+		<outputpackage>io.github.adamw7.tools.code.builders</outputpackage>
 	</configuration>
-		<executions>
-			<execution>
-				<phase>generate-sources</phase>
-				<goals>
-					<goal>code-generator</goal>
-				<goals>
-			</execution>
-		</executions>
+	<executions>
+		<execution>
+			<phase>generate-sources</phase>
+			<goals>
+				<goal>code-generator</goal>
+			</goals>
+		</execution>
+	</executions>
 </plugin>
 ```
 that generates builders detecting missing required fields in compile time (some methods are excluded for simplicity of the example):
@@ -177,7 +182,7 @@ in memory check:
 ```java
 		AbstractUniqueness check = new InMemoryUniquenessCheck();
 		check.setDataSource(new InMemorySQLDataSource(connection, query));
-		Result result = check.exec("COLUM1", "COLUMN2", "COLUMN3");
+		Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
 		log.info(result.isUnique());
 		Set<Result> betterOptions = result.getBetterOptions();
 		for (Result betterOption : betterOptions) {

@@ -8,12 +8,13 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/
 
-data/logs
+logs/
 data/derby.log
-code/logs
 
 .project
 .classpath
 .settings
 
 .idea/
+
+.claude/settings.local.json

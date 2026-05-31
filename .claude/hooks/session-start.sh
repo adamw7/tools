@@ -5,19 +5,17 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
-# Install Java 21 if not already present
-if ! find /usr/lib/jvm -maxdepth 1 -name "java-21-openjdk*" -type d | grep -q .; then
-  apt-get update -q
-  apt-get install -y -q openjdk-21-jdk
+# Install JDK 25 if not already present
+JDK_25_HOME="/opt/eclipse-adoptium/jdk-25"
+if [ ! -d "${JDK_25_HOME}" ]; then
+  bash "${CLAUDE_PROJECT_DIR}/scripts/linux/install-jdk-25.sh" "${JDK_25_HOME}"
 fi
 
-JAVA_HOME_21=$(find /usr/lib/jvm -maxdepth 1 -name "java-21-openjdk*" -type d | head -1)
+echo "export JAVA_HOME=${JDK_25_HOME}" >> "$CLAUDE_ENV_FILE"
+echo "export PATH=${JDK_25_HOME}/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
 
-echo "export JAVA_HOME=${JAVA_HOME_21}" >> "$CLAUDE_ENV_FILE"
-echo "export PATH=${JAVA_HOME_21}/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
-
-export JAVA_HOME="${JAVA_HOME_21}"
-export PATH="${JAVA_HOME_21}/bin:$PATH"
+export JAVA_HOME="${JDK_25_HOME}"
+export PATH="${JDK_25_HOME}/bin:$PATH"
 
 # Pre-download all Maven dependencies to local repo for faster builds
 cd "${CLAUDE_PROJECT_DIR}"

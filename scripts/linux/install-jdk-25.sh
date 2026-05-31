@@ -6,8 +6,7 @@
 set -euo pipefail
 
 INSTALL_DIR="${1:-/opt/eclipse-adoptium/jdk-25}"
-JDK_VERSION=25
-ADOPTIUM_API="https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/ga/linux/x64/jdk/hotspot/normal/eclipse"
+GITHUB_RELEASES="https://github.com/adoptium/temurin25-binaries/releases"
 TEMP_DIR="/tmp/jdk25-install"
 ARCHIVE_PATH="${TEMP_DIR}/jdk-25-linux-x64.tar.gz"
 
@@ -16,25 +15,47 @@ success() { echo "[+] $1"; }
 failure() { echo "[-] $1" >&2; }
 
 test_jdk_already_installed() {
-    if ! command -v java &>/dev/null; then
+    local java_exe="${INSTALL_DIR}/bin/java"
+    if [ ! -x "$java_exe" ]; then
         return 1
     fi
-    if java -version 2>&1 | grep -q '"25'; then
-        success "JDK 25 is already installed: $(java -version 2>&1 | head -1)"
+    if "$java_exe" -version 2>&1 | grep -q '"25'; then
+        success "JDK 25 is already installed at: ${INSTALL_DIR}"
         return 0
     fi
     return 1
 }
 
-download_from_adoptium() {
-    step "Resolving download URL from Adoptium API..."
-    local resolved_url
-    resolved_url=$(curl -Ls -o /dev/null -w '%{url_effective}' "$ADOPTIUM_API")
-    echo "    URL: $resolved_url"
+resolve_download_url() {
+    step "Resolving latest JDK 25 release from GitHub..."
+    local latest_tag
+    latest_tag=$(curl -sI --max-time 10 "${GITHUB_RELEASES}/latest" \
+        | grep -i "^location:" | grep -o 'jdk-[^[:space:]]*' | head -1)
+
+    if [ -z "$latest_tag" ]; then
+        failure "Could not resolve latest release tag from GitHub"
+        exit 1
+    fi
+
+    local version_clean="${latest_tag#jdk-}"
+    local version_safe="${version_clean//+/_}"
+    local version_encoded="${version_clean//+/%2B}"
+    local filename="OpenJDK25U-jdk_x64_linux_hotspot_${version_safe}.tar.gz"
+
+    echo "    Tag: ${latest_tag}"
+    echo "    File: ${filename}"
+    echo "${GITHUB_RELEASES}/download/jdk-${version_encoded}/${filename}"
+}
+
+download_jdk() {
+    local download_url
+    download_url=$(resolve_download_url)
+    local url
+    url=$(echo "$download_url" | tail -1)
 
     step "Downloading JDK 25 archive..."
     mkdir -p "$TEMP_DIR"
-    curl -L --progress-bar -o "$ARCHIVE_PATH" "$resolved_url"
+    curl -L --progress-bar -o "$ARCHIVE_PATH" "$url"
 
     local size_mb
     size_mb=$(du -m "$ARCHIVE_PATH" | cut -f1)
@@ -52,7 +73,7 @@ set_java_home() {
     step "Setting JAVA_HOME and updating PATH..."
     local profile_script="/etc/profile.d/jdk25.sh"
 
-    sudo tee "$profile_script" > /dev/null <<EOF
+    tee "$profile_script" > /dev/null <<EOF
 export JAVA_HOME="${INSTALL_DIR}"
 export PATH="\${JAVA_HOME}/bin:\${PATH}"
 EOF
@@ -100,7 +121,7 @@ cleanup_on_failure() {
 
 trap 'cleanup_on_failure "unexpected error"' ERR
 
-download_from_adoptium
+download_jdk
 install_jdk
 set_java_home
 test_installation

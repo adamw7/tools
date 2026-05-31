@@ -12,6 +12,7 @@
 	<name>Tooling for code</name>
 	<url>https://maven.apache.org</url>
 	<modules>
+		<module>shell-check-rule</module>
 		<module>protogen-maven-plugin</module>
 		<module>protogen-maven-plugin-test</module>
 		<module>context</module>

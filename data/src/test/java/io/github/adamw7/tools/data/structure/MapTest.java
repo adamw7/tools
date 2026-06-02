@@ -71,6 +71,19 @@ public class MapTest {
 
 	@ParameterizedTest
 	@MethodSource("allImplementations")
+	public void putNewKeyReturnsNull(Map<Integer, String> map) {
+		assertNull(map.put(1, "A"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void putExistingKeyReturnsPreviousValue(Map<Integer, String> map) {
+		map.put(1, "A");
+		assertEquals("A", map.put(1, "B"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
 	public void values(Map<Integer, String> map) {
 		int size = 50;
 		for (int i = 0; i < size; ++i) {

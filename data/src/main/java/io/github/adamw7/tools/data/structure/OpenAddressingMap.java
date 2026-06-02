@@ -99,10 +99,11 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			if (wrapper == null) {
 				array[hash] = new Wrapper<>(key, value);
 				size++;
-				return value;
+				return null;
 			} else if (wrapper.key.equals(key)) {
-				array[hash] = new Wrapper<>(key, value); // overwrite
-				return value;
+				V previous = wrapper.value;
+				array[hash] = new Wrapper<>(key, value);
+				return previous;
 			} // removed are skipped
 		}
 		resize();

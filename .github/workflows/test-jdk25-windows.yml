@@ -1,0 +1,34 @@
+name: Test JDK 25 Windows Installer
+
+on:
+  push:
+    paths:
+      - 'scripts/windows/install-jdk-25.ps1'
+      - '.github/workflows/test-jdk25-windows.yml'
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test-windows-install:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run JDK 25 installer
+        shell: pwsh
+        run: .\scripts\windows\install-jdk-25.ps1
+
+      - name: Verify JDK 25 installation
+        shell: pwsh
+        run: |
+          $javaHome = [Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
+          Write-Host "JAVA_HOME = $javaHome"
+          $javaExe = Join-Path $javaHome "bin\java.exe"
+          $version = & $javaExe -version 2>&1
+          Write-Host $version
+          if (-not ($version | Select-String '"25')) {
+            Write-Error "Expected JDK 25 but got: $version"
+            exit 1
+          }

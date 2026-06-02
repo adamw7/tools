@@ -1,9 +1,8 @@
 name: MCP Integration Tests
 
 on:
-  push:
-  pull_request:
-    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * *'
 
 jobs:
   integration-tests:

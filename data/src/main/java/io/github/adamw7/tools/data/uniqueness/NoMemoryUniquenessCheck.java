@@ -23,10 +23,11 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 			if (finder.found(row)) {
+				close(dataSource);
 				return new Result(false, keyCandidates, row);
 			}
 		}
-		
+
 		Result result = handleSuccessfulCheck(keyCandidates);
 		close(dataSource);
 		return result;

@@ -137,6 +137,64 @@ public class UniquenessCheckTest extends DBTest {
 	}
 
 	@Test
+	public void notUniquePathClosesDataSource() throws Exception {
+		ClosingSpyDataSource source = new ClosingSpyDataSource(
+				Utils.createDataSource(Utils.getHouseholdFile(), COLUMNS_ROW));
+		NoMemoryUniquenessCheck uniqueness = new NoMemoryUniquenessCheck();
+		uniqueness.setDataSource(source);
+
+		Result result = uniqueness.exec(NOT_UNIQUE_COLUMNS);
+
+		assertFalse(result.isUnique());
+		assertTrue(source.isClosed(), "Data source must be closed when a duplicate is found");
+	}
+
+	private static final class ClosingSpyDataSource implements IterableDataSource {
+
+		private final IterableDataSource delegate;
+		private boolean closed = false;
+
+		ClosingSpyDataSource(IterableDataSource delegate) {
+			this.delegate = delegate;
+		}
+
+		boolean isClosed() {
+			return closed;
+		}
+
+		@Override
+		public void close() throws java.io.IOException {
+			closed = true;
+			delegate.close();
+		}
+
+		@Override
+		public String[] getColumnNames() {
+			return delegate.getColumnNames();
+		}
+
+		@Override
+		public void open() {
+			delegate.open();
+		}
+
+		@Override
+		public String[] nextRow() {
+			return delegate.nextRow();
+		}
+
+		@Override
+		public boolean hasMoreData() {
+			return delegate.hasMoreData();
+		}
+
+		@Override
+		public void reset() {
+			delegate.reset();
+		}
+	}
+
+	@Test
 	public void negativeInMemorySourceVsNoMemoryCheck() {
 		AbstractUniqueness uniqueness = new InMemoryUniquenessCheck();
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> uniqueness.setDataSource(new IterableSQLDataSource(connection, query)), "Expected setDataSource method to throw, but it didn't");

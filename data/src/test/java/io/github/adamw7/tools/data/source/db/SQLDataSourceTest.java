@@ -60,12 +60,19 @@ public class SQLDataSourceTest extends DBTest {
 	public void happyPathMultiTable(IterableSQLDataSource source) {
 		source.open();
 
-		assertEquals("ID", source.getColumnNames()[0]);
-		assertEquals("VALUE", source.getColumnNames()[1]);
+		String[] columnNames = source.getColumnNames();
+		assertEquals("ID", columnNames[0]);
+		assertEquals("VALUE", columnNames[1]);
+		assertEquals("ID", columnNames[2]);
+		assertEquals("NAME", columnNames[3]);
+		assertEquals("SURNAME", columnNames[4]);
 
 		String[] row = source.nextRow();
 		assertEquals("1", row[0]);
 		assertEquals("1000", row[1]);
+		assertEquals("1", row[2]);
+		assertEquals("Adam", row[3]);
+		assertEquals("W", row[4]);
 		Utils.close(source);
 	}
 

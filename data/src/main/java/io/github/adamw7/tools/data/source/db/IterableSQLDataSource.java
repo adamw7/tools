@@ -88,10 +88,10 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
-		String[] columns = getColumnsFrom(resultSet);
-		String[] row = new String[columns.length];
-		for (int i = 0; i < columns.length; ++i) {
-			row[i] = resultSet.getString(columns[i]);
+		int columnCount = resultSet.getMetaData().getColumnCount();
+		String[] row = new String[columnCount];
+		for (int i = 0; i < columnCount; ++i) {
+			row[i] = resultSet.getString(i + 1);
 		}
 		return row;
 	}

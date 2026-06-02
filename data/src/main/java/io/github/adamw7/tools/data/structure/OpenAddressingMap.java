@@ -83,7 +83,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private int h2(int hashCode) {
-		return hashCode % array.length;
+		return 1 + (Math.abs(hashCode) % (array.length - 1));
 	}
 
 	private int h1(int hashCode) {

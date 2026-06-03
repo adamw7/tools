@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,17 +36,33 @@ public class Code {
 
 	private void createPkg(String pkg) {
 		String directory = generatedSourcesDir + File.separator + pkg;
+		Path dir = replace(directory);
 
 		try {
-			Path dir = Paths.get(directory);
-			if (dir.toFile().exists()) {
-				Files.delete(dir);				
-			}
-			Files.createDirectories(replace(directory));
+			deleteRecursively(dir);
+			Files.createDirectories(dir);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
 		log.info("{} created", directory);
+	}
+
+	private void deleteRecursively(Path path) throws IOException {
+		if (Files.notExists(path)) {
+			return;
+		}
+		if (Files.isDirectory(path)) {
+			deleteChildren(path);
+		}
+		Files.delete(path);
+	}
+
+	private void deleteChildren(Path directory) throws IOException {
+		try (DirectoryStream<Path> children = Files.newDirectoryStream(directory)) {
+			for (Path child : children) {
+				deleteRecursively(child);
+			}
+		}
 	}
 
 	private Path replace(String pkg) {

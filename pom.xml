@@ -284,6 +284,19 @@
 						<configuration>
 							<rules>
 								<banDuplicatePomDependencyVersions />
+								<requireMavenVersion>
+									<version>[3.9,4.0)</version>
+								</requireMavenVersion>
+								<requireJavaVersion>
+									<version>25</version>
+								</requireJavaVersion>
+								<requireReleaseDeps>
+									<onlyWhenRelease>true</onlyWhenRelease>
+								</requireReleaseDeps>
+								<reactorModuleConvergence />
+								<requirePluginVersions>
+									<banSnapshots>false</banSnapshots>
+								</requirePluginVersions>
 							</rules>
 						</configuration>
 					</execution>

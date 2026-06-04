@@ -28,11 +28,9 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	}
 	
 	protected String[] toLower(String[] items) {
-		String[] arrayToLower = new String[items.length];
-		for (int i = 0; i < items.length; ++i) {
-			arrayToLower[i] = items[i] == null ? null : items[i].toLowerCase();
-		}
-		return arrayToLower;
+		return Arrays.stream(items)
+				.map(item -> item == null ? null : item.toLowerCase())
+				.toArray(String[]::new);
 	}
 
 	protected Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
@@ -68,10 +66,8 @@ public abstract class AbstractUniqueness implements Uniqueness {
 	private void handleDuplicates(String[] keyCandidates) {
 		Set<String> set = new HashSet<>();
 		for (String candidate : keyCandidates) {
-			if (set.contains(candidate)) {
+			if (!set.add(candidate)) {
 				throw new IllegalArgumentException("Duplicate in input: " + candidate);
-			} else {
-				set.add(candidate);
 			}
 		}
 	}

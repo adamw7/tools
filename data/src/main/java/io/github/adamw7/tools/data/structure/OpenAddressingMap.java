@@ -1,11 +1,11 @@
 package io.github.adamw7.tools.data.structure;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.github.adamw7.tools.data.structure.internal.Primes;
 import io.github.adamw7.tools.data.structure.internal.Wrapper;
@@ -160,43 +160,25 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<K> keySet() {
-		Set<K> keys = new HashSet<>();
-		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = array[i];
-			if (valid(wrapper)) {
-				keys.add(wrapper.key);
-			}
-		}
-		return keys;
+		return validWrappers().map(wrapper -> wrapper.key).collect(Collectors.toSet());
 	}
 
 	@Override
 	public Collection<V> values() {
-		List<V> values = new ArrayList<>();
-		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = array[i];
-			if (valid(wrapper)) {
-				values.add(wrapper.value);
-			}
-		}
-		return values;
-	}
-
-	private boolean valid(Wrapper<K, V> wrapper) {
-		return wrapper != null && !wrapper.removed;
+		return validWrappers().map(wrapper -> wrapper.value).collect(Collectors.toList());
 	}
 
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		Set<Entry<K, V>> entrySet = new HashSet<>(size);
-		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = array[i];
-			if (valid(wrapper)) {
-				entrySet.add(wrapper);
-			}
-		}
-		
-		return entrySet;
+		return validWrappers().<Entry<K, V>>map(wrapper -> wrapper).collect(Collectors.toSet());
+	}
+
+	private Stream<Wrapper<K, V>> validWrappers() {
+		return Arrays.stream(array).filter(this::valid);
+	}
+
+	private boolean valid(Wrapper<K, V> wrapper) {
+		return wrapper != null && !wrapper.removed;
 	}
 
 }

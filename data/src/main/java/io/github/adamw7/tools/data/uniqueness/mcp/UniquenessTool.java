@@ -73,11 +73,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 	}
 	
 	private static void print(Result result, String column) {
-		if (result.isUnique()) {
-            log.info("{} is unique", column);
-		} else {
-            log.info("{} is NOT unique", column);
-		}
+		log.info("{} is {}", column, result.isUnique() ? "unique" : "NOT unique");
 	}
 
 }

@@ -115,12 +115,7 @@ public class TypeMappings {
 	}
 
 	private String wrapIfNeeded(String type) {
-		String value = primitiveToObjectMap.get(type);
-		if (value == null) {
-			return type;
-		} else {
-			return value;
-		}
+		return primitiveToObjectMap.getOrDefault(type, type);
 	}
 
 	private String handleEnum(FieldDescriptor field) {

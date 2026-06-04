@@ -238,9 +238,34 @@
 					<artifactId>maven-enforcer-plugin</artifactId>
 					<version>3.6.3</version>
 				</plugin>
+				<plugin>
+					<groupId>dev.dimlight</groupId>
+					<artifactId>shellcheck-maven-plugin</artifactId>
+					<version>0.5.1</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
+			<plugin>
+				<groupId>dev.dimlight</groupId>
+				<artifactId>shellcheck-maven-plugin</artifactId>
+				<inherited>false</inherited>
+				<executions>
+					<execution>
+						<id>shellcheck</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<sourceDirs>
+								<sourceDir>
+									<directory>${project.basedir}/scripts</directory>
+								</sourceDir>
+							</sourceDirs>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>

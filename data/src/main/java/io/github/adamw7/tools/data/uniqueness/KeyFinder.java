@@ -1,8 +1,7 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class KeyFinder {
@@ -15,25 +14,15 @@ public class KeyFinder {
 	}
 
 	public boolean found(String[] row) {
-		if (row != null) {
-			Key key = key(row, indices);
-			if (set.contains(key)) {
-				return true;
-			} else {
-				set.add(key);
-			}
+		if (row == null) {
+			return false;
 		}
-		return false;
+		return !set.add(key(row, indices));
 	}
-	
+
 	protected Key key(String[] row, Integer[] indices) {
-		List<String> values = new ArrayList<>(indices.length);
-
-		for (Integer index : indices) {
-			values.add(row[index]);
-		}
-
-		return new Key(values.toArray(new String[indices.length]));
+		String[] values = Arrays.stream(indices).map(index -> row[index]).toArray(String[]::new);
+		return new Key(values);
 	}
 
 }

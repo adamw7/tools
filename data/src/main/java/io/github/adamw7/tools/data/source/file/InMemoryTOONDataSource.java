@@ -65,13 +65,9 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			return index + 1;
 		}
 
-		Optional<Integer> arrayResult = tryParseArrayHeader(lines, index, trimmed);
-		if (arrayResult.isPresent()) {
-			return arrayResult.get();
-		}
-
-		Optional<Integer> kvResult = tryParseKeyValue(lines, index, trimmed);
-        return kvResult.orElseGet(() -> index + 1);
+		return tryParseArrayHeader(lines, index, trimmed)
+				.or(() -> tryParseKeyValue(lines, index, trimmed))
+				.orElseGet(() -> index + 1);
     }
 
 	private Optional<Integer> tryParseArrayHeader(List<String> lines, int index, String trimmed) {

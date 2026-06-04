@@ -249,6 +249,7 @@
 			<plugin>
 				<groupId>dev.dimlight</groupId>
 				<artifactId>shellcheck-maven-plugin</artifactId>
+				<inherited>false</inherited>
 				<executions>
 					<execution>
 						<id>shellcheck</id>
@@ -256,9 +257,11 @@
 							<goal>check</goal>
 						</goals>
 						<configuration>
-							<sourceLocations>
-								<sourceLocation>${project.basedir}/scripts</sourceLocation>
-							</sourceLocations>
+							<sourceDirs>
+								<sourceDir>
+									<directory>${project.basedir}/scripts</directory>
+								</sourceDir>
+							</sourceDirs>
 						</configuration>
 					</execution>
 				</executions>

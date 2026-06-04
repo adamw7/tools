@@ -8,7 +8,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Random;
-import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,9 +16,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
-import io.github.adamw7.tools.data.source.file.InMemoryJSONDataSource;
-import io.github.adamw7.tools.data.source.file.InMemoryTOONDataSource;
-import io.github.adamw7.tools.data.source.file.InMemoryYAMLDataSource;
+import io.github.adamw7.tools.data.source.file.StreamingJSONDataSource;
+import io.github.adamw7.tools.data.source.file.StreamingTOONDataSource;
+import io.github.adamw7.tools.data.source.file.StreamingYAMLDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
@@ -41,13 +40,12 @@ public class MemoryLeakTest {
 	private static final int VALUE_LENGTH = 12;
 
 	/**
-	 * In-memory sources (JSON, YAML, TOON) load the whole document into a map, so they
-	 * cannot stream like the CSV source. To seek a leak under the tight surefire heap
-	 * (-Xmx16m) we instead build a moderate document and reload + iterate + close it many
-	 * times: any state retained across rounds accumulates and runs the heap out of memory.
+	 * The streaming JSON, YAML and TOON sources emit one row at a time without holding the
+	 * document in memory. To prove that, each generated document has far more fields than
+	 * could be buffered under the tight surefire heap (-Xmx16m): a non-streaming reader
+	 * would run out of memory, while a single streaming pass stays flat.
 	 */
-	private static final int IN_MEMORY_FIELDS = 5_000;
-	private static final int IN_MEMORY_ROUNDS = 50;
+	private static final int STREAM_FIELDS = 100_000;
 
 	private static String getSourceLocation() {
 		return MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -65,13 +63,13 @@ public class MemoryLeakTest {
 		createCSV(FILE_NAME, ROWS, columnLengths);
 		log.info("CSV file {} with random data created.", FILE_NAME);
 
-		createJSON(JSON_FILE_NAME, IN_MEMORY_FIELDS);
+		createJSON(JSON_FILE_NAME, STREAM_FIELDS);
 		log.info("JSON file {} with random data created.", JSON_FILE_NAME);
 
-		createKeyValueFile(YAML_FILE_NAME, IN_MEMORY_FIELDS);
+		createKeyValueFile(YAML_FILE_NAME, STREAM_FIELDS);
 		log.info("YAML file {} with random data created.", YAML_FILE_NAME);
 
-		createKeyValueFile(TOON_FILE_NAME, IN_MEMORY_FIELDS);
+		createKeyValueFile(TOON_FILE_NAME, STREAM_FIELDS);
 		log.info("TOON file {} with random data created.", TOON_FILE_NAME);
 	}
 
@@ -161,29 +159,23 @@ public class MemoryLeakTest {
 
 	@Test
 	public void seekMemoryLeakInJSONSource() {
-		seekMemoryLeakInInMemorySource(() -> new InMemoryJSONDataSource(JSON_FILE_NAME));
+		seekMemoryLeakInStreamingSource(new StreamingJSONDataSource(JSON_FILE_NAME));
 	}
 
 	@Test
 	public void seekMemoryLeakInYAMLSource() {
-		seekMemoryLeakInInMemorySource(() -> new InMemoryYAMLDataSource(YAML_FILE_NAME));
+		seekMemoryLeakInStreamingSource(new StreamingYAMLDataSource(YAML_FILE_NAME));
 	}
 
 	@Test
 	public void seekMemoryLeakInTOONSource() {
-		seekMemoryLeakInInMemorySource(() -> new InMemoryTOONDataSource(TOON_FILE_NAME));
+		seekMemoryLeakInStreamingSource(new StreamingTOONDataSource(TOON_FILE_NAME));
 	}
 
-	private void seekMemoryLeakInInMemorySource(Supplier<IterableDataSource> sourceFactory) {
-		for (int round = 0; round < IN_MEMORY_ROUNDS; round++) {
-			iterateAndClose(sourceFactory.get());
-		}
-	}
-
-	private void iterateAndClose(IterableDataSource source) {
+	private void seekMemoryLeakInStreamingSource(IterableDataSource source) {
 		try {
 			source.open();
-			assertEquals(IN_MEMORY_FIELDS, countRows(source));
+			assertEquals(STREAM_FIELDS, countRows(source));
 		} finally {
 			close(source);
 		}

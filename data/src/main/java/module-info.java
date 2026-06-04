@@ -2,8 +2,10 @@ open module datamodule {
 	requires org.apache.logging.log4j;
 	requires org.json;
 	requires java.sql;
+	requires com.fasterxml.jackson.core;
 	requires com.fasterxml.jackson.databind;
 	requires com.fasterxml.jackson.dataformat.yaml;
+	requires org.yaml.snakeyaml;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
 	requires spring.boot;

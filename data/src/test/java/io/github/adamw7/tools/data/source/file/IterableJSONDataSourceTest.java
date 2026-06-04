@@ -14,11 +14,11 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class StreamingJSONDataSourceTest {
+public class IterableJSONDataSourceTest {
 
 	@Test
 	public void flattensNestedValues() throws IOException {
-		Map<String, String> data = collect(new StreamingJSONDataSource(Utils.getFileName("test.json")));
+		Map<String, String> data = collect(new IterableJSONDataSource(Utils.getFileName("test.json")));
 		assertEquals(17, data.size());
 		assertEquals("Alice", data.get("people[0].name"));
 		assertEquals("30", data.get("people[0].age"));
@@ -36,7 +36,7 @@ public class StreamingJSONDataSourceTest {
 
 	@Test
 	public void readsGzippedFile() throws IOException {
-		Map<String, String> data = collect(new StreamingJSONDataSource(Utils.getFileName("test.json.gz")));
+		Map<String, String> data = collect(new IterableJSONDataSource(Utils.getFileName("test.json.gz")));
 		assertEquals(17, data.size());
 		assertEquals("Alice", data.get("people[0].name"));
 	}
@@ -44,15 +44,15 @@ public class StreamingJSONDataSourceTest {
 	@Test
 	public void readsFromInputStream() throws IOException {
 		try (InputStream is = getClass().getClassLoader().getResourceAsStream("test.json");
-				StreamingJSONDataSource source = new StreamingJSONDataSource(is)) {
+				IterableJSONDataSource source = new IterableJSONDataSource(is)) {
 			source.open();
 			assertEquals(17, drain(source));
 		}
 	}
 
 	@Test
-	public void resetRestartsTheStream() throws IOException {
-		try (StreamingJSONDataSource source = new StreamingJSONDataSource(Utils.getFileName("test.json"))) {
+	public void resetRestartsTheIteration() throws IOException {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
 			source.open();
 			int first = drain(source);
 			source.reset();
@@ -62,8 +62,8 @@ public class StreamingJSONDataSourceTest {
 	}
 
 	@Test
-	public void columnNamesAreUnknownWhileStreaming() throws IOException {
-		try (StreamingJSONDataSource source = new StreamingJSONDataSource(Utils.getFileName("test.json"))) {
+	public void columnNamesAreUnknownWhileIterating() throws IOException {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
 			source.open();
 			assertNull(source.getColumnNames());
 		}
@@ -71,7 +71,7 @@ public class StreamingJSONDataSourceTest {
 
 	@Test
 	public void openTwiceThrows() throws IOException {
-		try (StreamingJSONDataSource source = new StreamingJSONDataSource(Utils.getFileName("test.json"))) {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
 			source.open();
 			assertThrows(IllegalStateException.class, source::open);
 		}
@@ -79,7 +79,7 @@ public class StreamingJSONDataSourceTest {
 
 	@Test
 	public void nextRowBeforeOpenThrows() throws IOException {
-		try (StreamingJSONDataSource source = new StreamingJSONDataSource(Utils.getFileName("test.json"))) {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
 			assertThrows(IllegalStateException.class, source::nextRow);
 		}
 	}

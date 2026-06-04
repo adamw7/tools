@@ -16,9 +16,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
-import io.github.adamw7.tools.data.source.file.StreamingJSONDataSource;
-import io.github.adamw7.tools.data.source.file.StreamingTOONDataSource;
-import io.github.adamw7.tools.data.source.file.StreamingYAMLDataSource;
+import io.github.adamw7.tools.data.source.file.IterableJSONDataSource;
+import io.github.adamw7.tools.data.source.file.IterableTOONDataSource;
+import io.github.adamw7.tools.data.source.file.IterableYAMLDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
@@ -40,12 +40,12 @@ public class MemoryLeakTest {
 	private static final int VALUE_LENGTH = 12;
 
 	/**
-	 * The streaming JSON, YAML and TOON sources emit one row at a time without holding the
+	 * The iterable JSON, YAML and TOON sources emit one row at a time without holding the
 	 * document in memory. To prove that, each generated document has far more fields than
-	 * could be buffered under the tight surefire heap (-Xmx16m): a non-streaming reader
-	 * would run out of memory, while a single streaming pass stays flat.
+	 * could be buffered under the tight surefire heap (-Xmx16m): a non-iterable reader
+	 * would run out of memory, while a single pass stays flat.
 	 */
-	private static final int STREAM_FIELDS = 100_000;
+	private static final int ITERABLE_FIELDS = 100_000;
 
 	private static String getSourceLocation() {
 		return MemoryLeakTest.class.getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -63,13 +63,13 @@ public class MemoryLeakTest {
 		createCSV(FILE_NAME, ROWS, columnLengths);
 		log.info("CSV file {} with random data created.", FILE_NAME);
 
-		createJSON(JSON_FILE_NAME, STREAM_FIELDS);
+		createJSON(JSON_FILE_NAME, ITERABLE_FIELDS);
 		log.info("JSON file {} with random data created.", JSON_FILE_NAME);
 
-		createKeyValueFile(YAML_FILE_NAME, STREAM_FIELDS);
+		createKeyValueFile(YAML_FILE_NAME, ITERABLE_FIELDS);
 		log.info("YAML file {} with random data created.", YAML_FILE_NAME);
 
-		createKeyValueFile(TOON_FILE_NAME, STREAM_FIELDS);
+		createKeyValueFile(TOON_FILE_NAME, ITERABLE_FIELDS);
 		log.info("TOON file {} with random data created.", TOON_FILE_NAME);
 	}
 
@@ -159,23 +159,23 @@ public class MemoryLeakTest {
 
 	@Test
 	public void seekMemoryLeakInJSONSource() {
-		seekMemoryLeakInStreamingSource(new StreamingJSONDataSource(JSON_FILE_NAME));
+		seekMemoryLeakInIterableSource(new IterableJSONDataSource(JSON_FILE_NAME));
 	}
 
 	@Test
 	public void seekMemoryLeakInYAMLSource() {
-		seekMemoryLeakInStreamingSource(new StreamingYAMLDataSource(YAML_FILE_NAME));
+		seekMemoryLeakInIterableSource(new IterableYAMLDataSource(YAML_FILE_NAME));
 	}
 
 	@Test
 	public void seekMemoryLeakInTOONSource() {
-		seekMemoryLeakInStreamingSource(new StreamingTOONDataSource(TOON_FILE_NAME));
+		seekMemoryLeakInIterableSource(new IterableTOONDataSource(TOON_FILE_NAME));
 	}
 
-	private void seekMemoryLeakInStreamingSource(IterableDataSource source) {
+	private void seekMemoryLeakInIterableSource(IterableDataSource source) {
 		try {
 			source.open();
-			assertEquals(STREAM_FIELDS, countRows(source));
+			assertEquals(ITERABLE_FIELDS, countRows(source));
 		} finally {
 			close(source);
 		}

@@ -19,16 +19,16 @@ import com.fasterxml.jackson.core.JsonToken;
  * being descended is retained, so memory use is proportional to nesting depth rather than
  * document size.</p>
  */
-public abstract class AbstractStreamingJacksonDataSource extends AbstractStreamingFileSource {
+public abstract class AbstractIterableJacksonDataSource extends AbstractIterableFileSource {
 
 	private final Deque<Frame> frames = new ArrayDeque<>();
 	private JsonParser parser;
 
-	protected AbstractStreamingJacksonDataSource(String fileName) {
+	protected AbstractIterableJacksonDataSource(String fileName) {
 		super(fileName);
 	}
 
-	protected AbstractStreamingJacksonDataSource(InputStream inputStream) {
+	protected AbstractIterableJacksonDataSource(InputStream inputStream) {
 		super(inputStream);
 	}
 

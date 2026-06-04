@@ -10,12 +10,12 @@ import java.util.Deque;
 import java.util.regex.Matcher;
 
 /**
- * Streaming counterpart of {@link InMemoryTOONDataSource}. Reads TOON one line at a time and
+ * Iterable counterpart of {@link InMemoryTOONDataSource}. Reads TOON one line at a time and
  * emits flattened {@code {key, value}} rows, keeping only a stack of the enclosing objects
  * and the array block currently being read, so memory use is bounded by nesting depth and
  * the widest single line rather than by document size.
  */
-public class StreamingTOONDataSource extends AbstractStreamingFileSource {
+public class IterableTOONDataSource extends AbstractIterableFileSource {
 
 	private final Deque<String[]> pending = new ArrayDeque<>();
 	private final Deque<ObjectFrame> objectStack = new ArrayDeque<>();
@@ -23,11 +23,11 @@ public class StreamingTOONDataSource extends AbstractStreamingFileSource {
 	private Block block;
 	private boolean exhausted;
 
-	public StreamingTOONDataSource(String fileName) {
+	public IterableTOONDataSource(String fileName) {
 		super(fileName);
 	}
 
-	public StreamingTOONDataSource(InputStream inputStream) {
+	public IterableTOONDataSource(InputStream inputStream) {
 		super(inputStream);
 	}
 

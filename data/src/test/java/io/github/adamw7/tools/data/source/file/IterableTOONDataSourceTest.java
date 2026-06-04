@@ -15,19 +15,19 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class StreamingTOONDataSourceTest {
+public class IterableTOONDataSourceTest {
 
 	@Test
 	public void streamsSameRowsAsInMemorySource() throws IOException {
 		Map<String, String> inMemory = collect(new InMemoryTOONDataSource(Utils.getFileName("test.toon")));
-		Map<String, String> streamed = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
-		assertEquals(inMemory, streamed);
-		assertEquals(70, streamed.size());
+		Map<String, String> iterated = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
+		assertEquals(inMemory, iterated);
+		assertEquals(70, iterated.size());
 	}
 
 	@Test
 	public void readsSimpleKeyValuePairs() throws IOException {
-		Map<String, String> data = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
+		Map<String, String> data = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
 		assertEquals("MyTestApp", data.get("appName"));
 		assertEquals("1.2.3", data.get("version"));
 		assertEquals("true", data.get("isEnabled"));
@@ -38,7 +38,7 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void readsNestedObjects() throws IOException {
-		Map<String, String> data = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
+		Map<String, String> data = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
 		assertEquals("localhost", data.get("database.host"));
 		assertEquals("5432", data.get("database.port"));
 		assertEquals("admin", data.get("database.credentials.username"));
@@ -47,7 +47,7 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void readsTabularArray() throws IOException {
-		Map<String, String> data = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
+		Map<String, String> data = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
 		assertEquals("Alice", data.get("people[0].name"));
 		assertEquals("30", data.get("people[0].age"));
 		assertEquals("New York", data.get("people[0].city"));
@@ -58,7 +58,7 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void readsNestedArray() throws IOException {
-		Map<String, String> data = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
+		Map<String, String> data = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
 		assertEquals("3", data.get("priorities"));
 		assertEquals("high", data.get("priorities[0]"));
 		assertEquals("medium", data.get("priorities[1]"));
@@ -76,7 +76,7 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void unescapesQuotedValues() throws IOException {
-		Map<String, String> data = collect(new StreamingTOONDataSource(Utils.getFileName("test.toon")));
+		Map<String, String> data = collect(new IterableTOONDataSource(Utils.getFileName("test.toon")));
 		assertEquals("Hello, World!", data.get("greeting"));
 		assertEquals("C:\\Program Files\\App", data.get("pathWithSpaces"));
 		assertEquals("Line1\nLine2\nLine3", data.get("multilineHint"));
@@ -85,8 +85,8 @@ public class StreamingTOONDataSourceTest {
 	}
 
 	@Test
-	public void resetRestartsTheStream() throws IOException {
-		try (StreamingTOONDataSource source = new StreamingTOONDataSource(Utils.getFileName("test.toon"))) {
+	public void resetRestartsTheIteration() throws IOException {
+		try (IterableTOONDataSource source = new IterableTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 			int first = drain(source);
 			source.reset();
@@ -96,8 +96,8 @@ public class StreamingTOONDataSourceTest {
 	}
 
 	@Test
-	public void columnNamesAreUnknownWhileStreaming() throws IOException {
-		try (StreamingTOONDataSource source = new StreamingTOONDataSource(Utils.getFileName("test.toon"))) {
+	public void columnNamesAreUnknownWhileIterating() throws IOException {
+		try (IterableTOONDataSource source = new IterableTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 			assertNull(source.getColumnNames());
 		}
@@ -105,7 +105,7 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void openTwiceThrows() throws IOException {
-		try (StreamingTOONDataSource source = new StreamingTOONDataSource(Utils.getFileName("test.toon"))) {
+		try (IterableTOONDataSource source = new IterableTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 			assertThrows(IllegalStateException.class, source::open);
 		}
@@ -113,13 +113,13 @@ public class StreamingTOONDataSourceTest {
 
 	@Test
 	public void nextRowBeforeOpenThrows() throws IOException {
-		try (StreamingTOONDataSource source = new StreamingTOONDataSource(Utils.getFileName("test.toon"))) {
+		try (IterableTOONDataSource source = new IterableTOONDataSource(Utils.getFileName("test.toon"))) {
 			assertThrows(IllegalStateException.class, source::nextRow);
 		}
 	}
 
-	private StreamingTOONDataSource fromString(String toon) {
-		return new StreamingTOONDataSource(new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)));
+	private IterableTOONDataSource fromString(String toon) {
+		return new IterableTOONDataSource(new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)));
 	}
 
 	private int drain(IterableDataSource source) {

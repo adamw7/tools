@@ -16,19 +16,19 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
  * {@link #nextRow()} stay accurate while only the current row (plus any per-format parser
  * state) is held in memory.
  */
-public abstract class AbstractStreamingFileSource implements AutoCloseable, Closeable, IterableDataSource {
+public abstract class AbstractIterableFileSource implements AutoCloseable, Closeable, IterableDataSource {
 
 	protected final String fileName;
 	private final InputStream providedStream;
 	protected boolean opened = false;
 	private String[] lookahead;
 
-	protected AbstractStreamingFileSource(String fileName) {
+	protected AbstractIterableFileSource(String fileName) {
 		this.fileName = PathValidator.validate(fileName);
 		this.providedStream = null;
 	}
 
-	protected AbstractStreamingFileSource(InputStream inputStream) {
+	protected AbstractIterableFileSource(InputStream inputStream) {
 		this.fileName = null;
 		this.providedStream = inputStream;
 	}
@@ -75,7 +75,7 @@ public abstract class AbstractStreamingFileSource implements AutoCloseable, Clos
 	}
 
 	/**
-	 * Streaming sources do not know the full set of columns up front, so this returns
+	 * Iterable sources do not know the full set of columns up front, so this returns
 	 * {@code null}.
 	 */
 	@Override

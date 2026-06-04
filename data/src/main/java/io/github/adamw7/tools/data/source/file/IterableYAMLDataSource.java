@@ -8,19 +8,19 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.yaml.snakeyaml.LoaderOptions;
 
 /**
- * Streaming counterpart of {@link InMemoryYAMLDataSource}. Pulls YAML events one at a time
+ * Iterable counterpart of {@link InMemoryYAMLDataSource}. Pulls YAML events one at a time
  * and emits flattened {@code {key, value}} rows without composing the whole document tree.
  *
  * <p>SnakeYAML's default 3&nbsp;MB code-point limit is lifted so genuinely large documents
- * can be streamed; memory stays bounded by nesting depth, not document size.</p>
+ * can be iterated; memory stays bounded by nesting depth, not document size.</p>
  */
-public class StreamingYAMLDataSource extends AbstractStreamingJacksonDataSource {
+public class IterableYAMLDataSource extends AbstractIterableJacksonDataSource {
 
-	public StreamingYAMLDataSource(String fileName) {
+	public IterableYAMLDataSource(String fileName) {
 		super(fileName);
 	}
 
-	public StreamingYAMLDataSource(InputStream inputStream) {
+	public IterableYAMLDataSource(InputStream inputStream) {
 		super(inputStream);
 	}
 

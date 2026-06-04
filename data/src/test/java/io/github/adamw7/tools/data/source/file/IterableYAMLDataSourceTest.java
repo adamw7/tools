@@ -14,18 +14,18 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class StreamingYAMLDataSourceTest {
+public class IterableYAMLDataSourceTest {
 
 	@Test
 	public void streamsSameRowsAsInMemorySource() throws IOException {
 		Map<String, String> inMemory = collect(new InMemoryYAMLDataSource(Utils.getFileName("test.yaml")));
-		Map<String, String> streamed = collect(new StreamingYAMLDataSource(Utils.getFileName("test.yaml")));
-		assertEquals(inMemory, streamed);
+		Map<String, String> iterated = collect(new IterableYAMLDataSource(Utils.getFileName("test.yaml")));
+		assertEquals(inMemory, iterated);
 	}
 
 	@Test
 	public void flattensNestedValues() throws IOException {
-		Map<String, String> data = collect(new StreamingYAMLDataSource(Utils.getFileName("test.yaml")));
+		Map<String, String> data = collect(new IterableYAMLDataSource(Utils.getFileName("test.yaml")));
 		assertEquals(17, data.size());
 		assertEquals("Alice", data.get("people[0].name"));
 		assertEquals("30", data.get("people[0].age"));
@@ -41,15 +41,15 @@ public class StreamingYAMLDataSourceTest {
 	@Test
 	public void readsFromInputStream() throws IOException {
 		try (InputStream is = getClass().getClassLoader().getResourceAsStream("test.yaml");
-				StreamingYAMLDataSource source = new StreamingYAMLDataSource(is)) {
+				IterableYAMLDataSource source = new IterableYAMLDataSource(is)) {
 			source.open();
 			assertEquals(17, drain(source));
 		}
 	}
 
 	@Test
-	public void resetRestartsTheStream() throws IOException {
-		try (StreamingYAMLDataSource source = new StreamingYAMLDataSource(Utils.getFileName("test.yaml"))) {
+	public void resetRestartsTheIteration() throws IOException {
+		try (IterableYAMLDataSource source = new IterableYAMLDataSource(Utils.getFileName("test.yaml"))) {
 			source.open();
 			int first = drain(source);
 			source.reset();
@@ -59,8 +59,8 @@ public class StreamingYAMLDataSourceTest {
 	}
 
 	@Test
-	public void columnNamesAreUnknownWhileStreaming() throws IOException {
-		try (StreamingYAMLDataSource source = new StreamingYAMLDataSource(Utils.getFileName("test.yaml"))) {
+	public void columnNamesAreUnknownWhileIterating() throws IOException {
+		try (IterableYAMLDataSource source = new IterableYAMLDataSource(Utils.getFileName("test.yaml"))) {
 			source.open();
 			assertNull(source.getColumnNames());
 		}
@@ -68,7 +68,7 @@ public class StreamingYAMLDataSourceTest {
 
 	@Test
 	public void openTwiceThrows() throws IOException {
-		try (StreamingYAMLDataSource source = new StreamingYAMLDataSource(Utils.getFileName("test.yaml"))) {
+		try (IterableYAMLDataSource source = new IterableYAMLDataSource(Utils.getFileName("test.yaml"))) {
 			source.open();
 			assertThrows(IllegalStateException.class, source::open);
 		}
@@ -76,7 +76,7 @@ public class StreamingYAMLDataSourceTest {
 
 	@Test
 	public void hasMoreDataBeforeOpenThrows() throws IOException {
-		try (StreamingYAMLDataSource source = new StreamingYAMLDataSource(Utils.getFileName("test.yaml"))) {
+		try (IterableYAMLDataSource source = new IterableYAMLDataSource(Utils.getFileName("test.yaml"))) {
 			assertThrows(IllegalStateException.class, source::hasMoreData);
 		}
 	}

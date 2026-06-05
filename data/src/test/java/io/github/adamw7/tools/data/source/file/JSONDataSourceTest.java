@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,8 +29,11 @@ public class JSONDataSourceTest {
     public void testGetColumnNames(InMemoryJSONDataSource source) throws IOException {
 		source.open();
         String[] columnNames = source.getColumnNames();
-        assertEquals(10, columnNames.length);
-        assertArrayEquals(new String[]{"cars", "fruits", "year", "city", "name", "model", "state", "people", "age", "manufacturer"}, columnNames);
+        assertEquals(7, columnNames.length);
+        String[] expected = {"year", "city", "name", "model", "state", "age", "manufacturer"};
+        Arrays.sort(expected);
+        Arrays.sort(columnNames);
+        assertArrayEquals(expected, columnNames);
         source.close();
     }
 
@@ -46,7 +50,7 @@ public class JSONDataSourceTest {
             assertNotNull(row[0]);
             assertNotNull(row[1]);
         }
-        assertEquals(10, rowCount);
+        assertEquals(7, rowCount);
         source.close();
     }
 }

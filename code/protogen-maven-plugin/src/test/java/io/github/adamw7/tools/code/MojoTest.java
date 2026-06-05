@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -134,9 +135,22 @@ public class MojoTest {
 	}
 
 	@AfterEach
-	public void cleanUp() {
-		File dir = new File(GENERATED_SOURCES);
-		dir.delete();
+	public void cleanUp() throws IOException {
+		deleteRecursively(Path.of(GENERATED_SOURCES));
+	}
+
+	private void deleteRecursively(Path path) throws IOException {
+		if (Files.notExists(path)) {
+			return;
+		}
+		if (Files.isDirectory(path)) {
+			try (var children = Files.newDirectoryStream(path)) {
+				for (Path child : children) {
+					deleteRecursively(child);
+				}
+			}
+		}
+		Files.delete(path);
 	}
 
 }

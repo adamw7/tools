@@ -36,19 +36,8 @@ public class InMemoryJSONDataSource extends AbstractFileSource implements InMemo
 	}
 
 	private void parseJSON(String jsonString) throws JSONException {
-		JSONObject jsonArray = new JSONObject(jsonString);
-		extractFieldNames(jsonArray);
-		flattenJSON(jsonArray);
-	}
-
-	private void extractFieldNames(JSONObject jsonObject) throws JSONException {
-		for (String key : jsonObject.keySet()) {
-			Object value = jsonObject.get(key);
-			fieldsMap.put(key, String.valueOf(value));
-			if (value instanceof JSONObject jsonObjectValue) {
-				extractFieldNames(jsonObjectValue);
-			}
-		}
+		JSONObject jsonObject = new JSONObject(jsonString);
+		flattenJSON(jsonObject);
 	}
 
 	private void flattenJSON(JSONArray jsonArray) throws JSONException {

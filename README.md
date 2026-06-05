@@ -145,6 +145,39 @@ public class ExampleTest {
 ```
 Since in proto3 there is no concept of required fields - this solution supports only proto2. 
 
+## gRPC example
+
+An end-to-end gRPC example combining standard protobuf/gRPC code generation with the compile-time-safe builder generation from this project.
+
+Given [`greeter.proto`](grpc-example/src/main/proto/greeter.proto):
+```proto
+syntax = "proto2";
+
+message HelloRequest {
+  required string name = 1;
+  optional string title = 2;
+}
+
+message HelloReply {
+  required string message = 1;
+}
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+}
+```
+
+Two generators run during the build:
+1. **`protobuf-maven-plugin`** compiles the proto definitions into protobuf message classes and gRPC service stubs (`GreeterGrpc`).
+2. **`protogen-maven-plugin`** (this repo) generates compile-time-safe builders (`HelloRequestBuilder`, `HelloReplyBuilder`) that refuse to call `build()` until every `required` field is set.
+
+The service implementation uses the generated builder:
+```java
+HelloReply reply = new HelloReplyBuilder().setMessage(greetingFor(request)).build();
+```
+
+See the [grpc-example module](grpc-example/README.md) for full details and how to run the example.
+
 ## Context engineering
 
 For gen ai agents that work with Java code the context usually starts with one class but may get wider and be extended to the classes used by it etc so on.

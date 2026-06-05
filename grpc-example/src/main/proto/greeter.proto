@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package greeter;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.grpc.proto";
+
+// proto2 request with a required and an optional field, so the protogen-maven-plugin
+// can generate a builder that enforces the required field at compile time.
+message HelloRequest {
+  required string name = 1;
+  optional string title = 2;
+}
+
+message HelloReply {
+  required string message = 1;
+}
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+}

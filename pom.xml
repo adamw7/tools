@@ -22,6 +22,7 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<protobuf.version>4.33.4</protobuf.version>
+		<grpc.version>1.70.0</grpc.version>
 		<argLine/>
 	</properties>
 	<licenses>
@@ -39,6 +40,7 @@
 	<modules>
 		<module>data</module>
 		<module>code</module>
+		<module>grpc-example</module>
 		<module>assembly</module>
 	</modules>
 	<dependencyManagement>
@@ -117,6 +119,34 @@
 				<groupId>org.reflections</groupId>
 				<artifactId>reflections</artifactId>
 				<version>0.10.2</version>
+			</dependency>
+			<dependency>
+				<groupId>io.grpc</groupId>
+				<artifactId>grpc-protobuf</artifactId>
+				<version>${grpc.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.grpc</groupId>
+				<artifactId>grpc-stub</artifactId>
+				<version>${grpc.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.grpc</groupId>
+				<artifactId>grpc-netty-shaded</artifactId>
+				<version>${grpc.version}</version>
+				<scope>runtime</scope>
+			</dependency>
+			<dependency>
+				<groupId>io.grpc</groupId>
+				<artifactId>grpc-inprocess</artifactId>
+				<version>${grpc.version}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>javax.annotation</groupId>
+				<artifactId>javax.annotation-api</artifactId>
+				<version>1.3.2</version>
+				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.eclipse.jdt</groupId>

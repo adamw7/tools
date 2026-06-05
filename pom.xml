@@ -22,7 +22,10 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<protobuf.version>4.33.4</protobuf.version>
-		<argLine/>
+		<!-- Suppress the JDK 24+ (JEP 498) "terminally deprecated sun.misc.Unsafe"
+		     warning emitted by com.google.protobuf.UnsafeUtil when forked test
+		     JVMs exercise protobuf generated messages. -->
+		<argLine>--sun-misc-unsafe-memory-access=allow</argLine>
 	</properties>
 	<licenses>
 		<license>

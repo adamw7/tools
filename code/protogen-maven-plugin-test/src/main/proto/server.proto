@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises the staged builder with more than two required fields of mixed
+// scalar types followed by an optional field.
+message Server {
+  required string host = 1;
+  required int32 port = 2;
+  required bool secure = 3;
+  optional string description = 4;
+}

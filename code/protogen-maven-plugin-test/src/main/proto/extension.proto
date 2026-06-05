@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises a message that declares extension ranges. Such a message is
+// generated as a subclass of the abstract GeneratedMessage.ExtendableMessage,
+// which the builder generator must handle without choking on that abstract
+// base type.
+message Account {
+  required string owner = 1;
+  optional string label = 2;
+  extensions 100 to 200;
+}
+
+extend Account {
+  optional int32 priority = 100;
+  optional string note = 101;
+}

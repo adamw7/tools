@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.output.generated.AccountBuilder;
+import org.output.generated.AccountOptionalIfc;
 import org.output.generated.CarBuilder;
 import org.output.generated.ComputerBuilder;
 import org.output.generated.ComputerOptionalIfc;
@@ -20,8 +22,10 @@ import org.output.generated.WheelBuilder;
 
 import com.google.protobuf.ByteString;
 
+import io.github.adamw7.tools.code.test.Account;
 import io.github.adamw7.tools.code.test.Car;
 import io.github.adamw7.tools.code.test.Computer;
+import io.github.adamw7.tools.code.test.Extension;
 import io.github.adamw7.tools.code.test.Grouping;
 import io.github.adamw7.tools.code.test.Measurement;
 import io.github.adamw7.tools.code.test.Server;
@@ -112,6 +116,27 @@ public class GeneretedCodeTest {
 		assertEquals(99L, measurement.getBig());
 		assertEquals(-3, measurement.getDelta());
 		assertEquals(Measurement.Unit.METRIC, measurement.getUnit());
+	}
+
+	@Test
+	public void extendableMessageBuilds() {
+		AccountBuilder builder = new AccountBuilder();
+		AccountOptionalIfc optional = builder.setOwner("alice");
+		assertNotNull(optional);
+		Account account = optional.setLabel("primary").build();
+		assertNotNull(account);
+		assertEquals("alice", account.getOwner());
+		assertEquals("primary", account.getLabel());
+		assertTrue(builder.hasOwner());
+	}
+
+	@Test
+	public void extensionsRemainSettableOnBuiltMessage() {
+		Account account = new AccountBuilder().setOwner("bob").build();
+		Account extended = account.toBuilder().setExtension(Extension.priority, 7)
+				.setExtension(Extension.note, "vip").build();
+		assertEquals(7, extended.getExtension(Extension.priority));
+		assertEquals("vip", extended.getExtension(Extension.note));
 	}
 
 	@Test

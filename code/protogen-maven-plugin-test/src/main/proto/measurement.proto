@@ -1,0 +1,26 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises the optional-only builder path across the full range of scalar
+// type mappings together with a nested enum field.
+message Measurement {
+  optional int64 count = 1;
+  optional double ratio = 2;
+  optional float weight = 3;
+  optional bool enabled = 4;
+  optional bytes payload = 5;
+  optional uint32 small = 6;
+  optional uint64 big = 7;
+  optional sint32 delta = 8;
+
+  enum Unit {
+    METRIC = 0;
+    IMPERIAL = 1;
+  }
+
+  optional Unit unit = 9;
+}

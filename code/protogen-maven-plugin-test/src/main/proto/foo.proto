@@ -1,0 +1,20 @@
+syntax = "proto2";
+
+package foo;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.foo";
+
+import "google/protobuf/descriptor.proto";
+
+// Declares custom options by extending the well-known descriptor option
+// messages. A custom option is just an extension field on these option
+// messages, so exercising them proves the builder generator copes with
+// messages and fields that carry such options.
+extend google.protobuf.MessageOptions {
+  optional string my_option = 50001;
+}
+
+extend google.protobuf.FieldOptions {
+  optional string my_field_option = 50002;
+}

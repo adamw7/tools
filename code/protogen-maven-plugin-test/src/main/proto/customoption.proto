@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+import "foo.proto";
+
+// Exercises a message that carries a custom (extension-based) option as well
+// as a field-level custom option. Options are descriptor metadata rather than
+// fields, so the generated staged builder must build the message normally and
+// leave the options intact on the produced type.
+message MyMessage {
+  option (foo.my_option) = "Hello world!";
+
+  required int32 id = 1;
+  optional string name = 2 [(foo.my_field_option) = "field option value"];
+}

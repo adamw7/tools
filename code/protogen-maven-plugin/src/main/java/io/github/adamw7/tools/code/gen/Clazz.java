@@ -90,8 +90,8 @@ public class Clazz implements Generator {
 	private StringBuilder generateFields() {
 		StringBuilder builder = new StringBuilder("private final ");
 		builder.append(info.name()).append(".Builder ");
-		
-		builder.append(info.name().toLowerCase()).append("Builder = ");
+
+		builder.append(Utils.firstToLower(builderClassName)).append(" = ");
 		builder.append(info.name()).append(".newBuilder();");
 		return builder;
 	}

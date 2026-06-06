@@ -15,6 +15,7 @@ public class Switch {
 	private final static Logger log = LogManager.getLogger(Switch.class.getName());
 
 	private static volatile boolean isOff = false;
+	private static ProxySelector originalSelector;
 
 	private Switch() {}
 
@@ -39,9 +40,26 @@ public class Switch {
 			log.warn("Network is already off. Nothing changed");
 			return false;
 		}
+		originalSelector = ProxySelector.getDefault();
 		ProxySelector.setDefault(new BlockingProxySelector());
 		isOff = true;
 		log.info("Network is off now");
+		return true;
+	}
+
+	/**
+	 *
+	 * @return true if this execution has turned on the network
+	 */
+	public static synchronized boolean on() {
+		if (!isOff) {
+			log.warn("Network is already on. Nothing changed");
+			return false;
+		}
+		ProxySelector.setDefault(originalSelector);
+		originalSelector = null;
+		isOff = false;
+		log.info("Network is on now");
 		return true;
 	}
 }

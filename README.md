@@ -244,8 +244,12 @@ public interface IterableDataSource extends AutoCloseable, Closeable {
 	public boolean hasMoreData();
 	
 	public void reset();
+
+	// default method, loads up to batchSize rows in one operation
+	public List<String[]> nextRows(int batchSize);
 }
 ```
+`nextRows(int batchSize)` lets callers decide how much data is pulled from the source at once instead of reading row by row. It is a default method built on `hasMoreData()`/`nextRow()`, so every source gets it for free; an empty list signals the source is exhausted. The SQL source additionally applies `batchSize` as the JDBC fetch size so the rows are fetched in a single round-trip.
 If you need an in memory source you need to implement one more method:
 ```java
 public interface InMemoryDataSource extends IterableDataSource {

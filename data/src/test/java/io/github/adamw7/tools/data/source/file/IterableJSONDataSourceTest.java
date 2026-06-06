@@ -3,10 +3,12 @@ package io.github.adamw7.tools.data.source.file;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -74,6 +76,30 @@ public class IterableJSONDataSourceTest {
 		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
 			source.open();
 			assertThrows(IllegalStateException.class, source::open);
+		}
+	}
+
+	@Test
+	public void nextRowsLoadsRequestedBatchThenDrainsRemainder() throws IOException {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
+			source.open();
+
+			List<String[]> firstBatch = source.nextRows(5);
+			assertEquals(5, firstBatch.size());
+
+			List<String[]> rest = source.nextRows(100);
+			assertEquals(12, rest.size());
+
+			assertTrue(source.nextRows(10).isEmpty());
+		}
+	}
+
+	@Test
+	public void nextRowsRejectsNonPositiveBatchSize() throws IOException {
+		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
+			source.open();
+			assertThrows(IllegalArgumentException.class, () -> source.nextRows(0));
+			assertThrows(IllegalArgumentException.class, () -> source.nextRows(-1));
 		}
 	}
 

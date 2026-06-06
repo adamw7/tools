@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -74,6 +75,23 @@ public class IterableSQLDataSource implements IterableDataSource {
 	@Override
 	public boolean hasMoreData() {
 		return hasMoreData;
+	}
+
+	@Override
+	public List<String[]> nextRows(int batchSize) {
+		applyFetchSize(batchSize);
+		return IterableDataSource.super.nextRows(batchSize);
+	}
+
+	private void applyFetchSize(int batchSize) {
+		if (batchSize <= 0) {
+			return;
+		}
+		try {
+			resultSet.setFetchSize(batchSize);
+		} catch (SQLException e) {
+			throw new UncheckedIOException(new IOException(e));
+		}
 	}
 
 	@Override

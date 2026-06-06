@@ -89,7 +89,7 @@ public class MojoTest {
 		@Override
 		public CharSequence getCharContent(boolean ignoreEncodingErrors) {
 			try {
-				return new String(Files.readAllBytes(Paths.get(file)));
+				return Files.readString(Paths.get(file));
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}

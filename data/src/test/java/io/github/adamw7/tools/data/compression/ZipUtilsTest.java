@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ public class ZipUtilsTest {
 			assertEquals(GZIPInputStream.class, inputStream.getClass());
 			GZIPInputStream gzipInputStream = (GZIPInputStream) inputStream;
 			byte[] bytes = gzipInputStream.readAllBytes();
-			String content = new String(bytes);
+			String content = new String(bytes, StandardCharsets.UTF_8);
 			String expectedContent = "SIC Code,Description";
 			assertEquals(expectedContent, content.substring(0, expectedContent.length()));
 		} catch (IOException e) {

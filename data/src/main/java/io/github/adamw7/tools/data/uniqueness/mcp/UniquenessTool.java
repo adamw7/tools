@@ -15,7 +15,6 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
-import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
@@ -27,15 +26,14 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 
     private final Tool toolDefinition = Tool.builder().name("uniqueness_check").description(
             "Check if a given set of columns in unique in a given data set").inputSchema(
-                    new McpSchema.JsonSchema(
-                        "object",
-                        Map.of(
+                    Map.of(
+                        "type", "object",
+                        "properties", Map.of(
                             "file", Map.of("type", "string", "description", "filename"),
                             "columns_row", Map.of("type", "integer", "description", "number of the columns row"),
                             "columns_name", Map.of("type", "string", "description", "name of the column to check")
                         ),
-                        List.of("file", "columns_row", "columns_name"),
-                        null, null, null
+                        "required", List.of("file", "columns_row", "columns_name")
                     )).build();
 
 	public UniquenessTool() {

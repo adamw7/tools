@@ -32,8 +32,7 @@ public class ClassInfo {
 		this.outputPkg = outputPkg;
 	}
 
-	@SuppressWarnings("unchecked")
-	protected List<FieldDescriptor> union(List<FieldDescriptor>... fieldsLists) {
+	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
 		List<FieldDescriptor> all = new ArrayList<>();
 		for (List<FieldDescriptor> fieldsList : fieldsLists) {
 			all.addAll(fieldsList);
@@ -54,7 +53,7 @@ public class ClassInfo {
 	}
 
 	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(f -> !f.isRequired() && !f.isRepeated()).toList();
+		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
 	}
 	
 	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {

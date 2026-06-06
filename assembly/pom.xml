@@ -8,7 +8,7 @@
 		<version>${revision}</version>
 	</parent>
 	<artifactId>tools.assembly</artifactId>
-	<packaging>pom</packaging>
+	<packaging>jar</packaging>
 	<name>assembly</name>
 	<url>https://maven.apache.org</url>
 	<build>

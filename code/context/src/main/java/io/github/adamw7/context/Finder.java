@@ -50,11 +50,9 @@ public class Finder implements Context {
 	}
 
 	private ClassContainer findContainer(String className) {
-		for (ClassContainer container : allContainers) {
-			if (container.className().equals(className + ".java")) {
-				return container;
-			}
-		}
-		return null;
+		return allContainers.stream()
+				.filter(container -> container.className().equals(className + ".java"))
+				.findAny()
+				.orElse(null);
 	}
 }

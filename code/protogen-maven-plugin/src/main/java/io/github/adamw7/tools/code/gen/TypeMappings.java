@@ -67,37 +67,28 @@ public class TypeMappings {
 	}
 
 	public String get(FieldDescriptor field) {
-		String key = field.getType().getJavaType().name();
-		
-		if (field.isRepeated() && !field.isMapField()) {
-			return handleRepeated(field);
-		} else if (key.equals(ENUM)) {
-			return handleEnum(field);
-		} else if (key.equals(MESSAGE) && field.isMapField()) {
+		if (field.isMapField()) {
 			return handleMap(field);
-		} else if (key.equals(MESSAGE)) { 
+		} else if (field.isRepeated()) {
+			return name(List.class) + "<" + wrapIfNeeded(scalarType(field)) + ">";
+		} else {
+			return scalarType(field);
+		}
+	}
+
+	private String scalarType(FieldDescriptor field) {
+		String key = field.getType().getJavaType().name();
+		if (key.equals(ENUM)) {
+			return handleEnum(field);
+		} else if (key.equals(MESSAGE)) {
 			return handleMessage(field);
 		} else {
 			String type = mappings.get(key);
 			if (type == null) {
 				throw new IllegalArgumentException("Could not find type mapping for key: " + key);
-			} else {
-				return type;
 			}
-		}		
-	}
-
-	private String handleRepeated(FieldDescriptor field) {
-		String innerType = field.getType().getJavaType().name();
-		if (innerType.equals(ENUM)) {
-			innerType = handleEnum(field);
-		} else if (innerType.equals(MESSAGE)) { 
-			innerType = handleMessage(field);
-		} else {
-			innerType = wrapIfNeeded(mappings.get(innerType));			
+			return type;
 		}
-
-		return name(List.class) + "<" + innerType + ">";
 	}
 
 	private String handleMessage(FieldDescriptor field) {
@@ -115,12 +106,7 @@ public class TypeMappings {
 	}
 
 	private String wrapIfNeeded(String type) {
-		String value = primitiveToObjectMap.get(type);
-		if (value == null) {
-			return type;
-		} else {
-			return value;
-		}
+		return primitiveToObjectMap.getOrDefault(type, type);
 	}
 
 	private String handleEnum(FieldDescriptor field) {

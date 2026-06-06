@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +20,8 @@ import org.apache.logging.log4j.Logger;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.GeneratedMessage;
+
+import io.github.adamw7.tools.code.MojoException;
 
 public class Code {
 
@@ -36,7 +39,7 @@ public class Code {
 
 	private void createPkg(String pkg) {
 		String directory = generatedSourcesDir + File.separator + pkg;
-		Path dir = replace(directory);
+		Path dir = pkgToPath(directory);
 
 		try {
 			deleteRecursively(dir);
@@ -65,7 +68,7 @@ public class Code {
 		}
 	}
 
-	private Path replace(String pkg) {
+	private Path pkgToPath(String pkg) {
 		return Paths.get(pkg.replaceAll("\\.", "/"));
 	}
 
@@ -74,18 +77,18 @@ public class Code {
 		for (Class<? extends GeneratedMessage> c : allMessages) {
 			try {
 				List<ClassContainer> classes = genBuilder(c);
-				for (ClassContainer container : classes) {					
-					write(container.format());					
+				for (ClassContainer container : classes) {
+					write(container.format());
 				}
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-				log.error(e);
+				throw new MojoException(e);
 			}
 		}
 	}
 
 	private void write(ClassContainer container) {
-		String fileName = generatedSourcesDir + replace(outputPkg + File.separator + container.name()) + ".java";
-		try (FileWriter myWriter = new FileWriter(fileName)) {
+		String fileName = generatedSourcesDir + pkgToPath(outputPkg + File.separator + container.name()) + ".java";
+		try (FileWriter myWriter = new FileWriter(fileName, StandardCharsets.UTF_8)) {
 			log.info("Writing {}", fileName);
 			myWriter.write(container.codeAsString());
 		} catch (IOException e) {
@@ -96,7 +99,7 @@ public class Code {
 	private List<ClassContainer> genBuilder(Class<? extends GeneratedMessage> c)
 			throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
 		Method getDescriptorMethod = c.getDeclaredMethod("getDescriptor");
-		Object object = getDescriptorMethod.invoke(this);
+		Object object = getDescriptorMethod.invoke(null);
 		if (object == null) {
 			throw new IllegalStateException("getDescriptor method return null");
 		}

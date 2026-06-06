@@ -27,7 +27,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<argLine>--add-reads datamodule=ALL-UNNAMED</argLine>
+					<argLine>@{argLine} --add-reads datamodule=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
 	        <plugin>
@@ -70,7 +70,7 @@
 			<dependency>
 				<groupId>io.modelcontextprotocol.sdk</groupId>
 				<artifactId>mcp-bom</artifactId>
-				<version>2.0.0-M3</version>
+				<version>2.0.0-RC1</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>

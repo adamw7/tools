@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.source.file;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,9 +46,6 @@ public class CSVDataSource extends AbstractFileSource {
 
 	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
 		super(fileName);
-		this.inputStream = new FileInputStream(fileName);
-		this.fileName = fileName;
-		scanner = createScanner(inputStream);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
 		regex = delimiter + REGEX_SUFFIX;

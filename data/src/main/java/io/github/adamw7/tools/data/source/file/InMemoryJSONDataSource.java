@@ -19,6 +19,7 @@ public class InMemoryJSONDataSource extends AbstractFileSource implements InMemo
 
 	public InMemoryJSONDataSource(InputStream inputStream) {
 		super(inputStream);
+		scanner = createScanner(inputStream);
 		parse();
 	}
 	

@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
@@ -27,9 +26,6 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;
-
-	private static final Pattern ARRAY_HEADER_PATTERN = Pattern.compile("^(\\w+)\\[(\\d+)\\](\\{([^}]+)\\})?:\\s*(.*)$");
-	private static final Pattern KEY_VALUE_PATTERN = Pattern.compile("^(\\w+(?:\\.\\w+)*):\\s*(.*)$");
 
 	public InMemoryTOONDataSource(InputStream inputStream) {
 		super(inputStream);
@@ -65,17 +61,13 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			return index + 1;
 		}
 
-		Optional<Integer> arrayResult = tryParseArrayHeader(lines, index, trimmed);
-		if (arrayResult.isPresent()) {
-			return arrayResult.get();
-		}
-
-		Optional<Integer> kvResult = tryParseKeyValue(lines, index, trimmed);
-        return kvResult.orElseGet(() -> index + 1);
+		return tryParseArrayHeader(lines, index, trimmed)
+				.or(() -> tryParseKeyValue(lines, index, trimmed))
+				.orElseGet(() -> index + 1);
     }
 
 	private Optional<Integer> tryParseArrayHeader(List<String> lines, int index, String trimmed) {
-		Matcher arrayMatcher = ARRAY_HEADER_PATTERN.matcher(trimmed);
+		Matcher arrayMatcher = ToonSyntax.ARRAY_HEADER_PATTERN.matcher(trimmed);
 		if (!arrayMatcher.matches()) {
 			return Optional.empty();
 		}
@@ -89,7 +81,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	}
 
 	private Optional<Integer> tryParseKeyValue(List<String> lines, int index, String trimmed) {
-		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
+		Matcher kvMatcher = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed);
 		if (!kvMatcher.matches()) {
 			return Optional.empty();
 		}
@@ -101,7 +93,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			return Optional.of(parseNestedObject(lines, index, key));
 		}
 
-		fieldsMap.put(key, unquote(value));
+		fieldsMap.put(key, ToonSyntax.unquote(value));
 		return Optional.of(index + 1);
 	}
 
@@ -157,29 +149,29 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			return false;
 		}
 
-		boolean isTopLevel = getIndentation(line) == 0;
-		boolean isKeyValue = KEY_VALUE_PATTERN.matcher(trimmed).matches();
-		boolean isArrayHeader = ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
+		boolean isTopLevel = ToonSyntax.indentationOf(line) == 0;
+		boolean isKeyValue = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed).matches();
+		boolean isArrayHeader = ToonSyntax.ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
 
 		return isTopLevel && (isKeyValue || isArrayHeader);
 	}
 
 	private void parseTabularRow(String arrayKey, String[] fields, String rowData, int rowIndex) {
-		String[] values = splitRow(rowData);
+		String[] values = ToonSyntax.splitRow(rowData);
 		int limit = Math.min(fields.length, values.length);
 
 		for (int j = 0; j < limit; j++) {
 			String key = arrayKey + "[" + rowIndex + "]." + fields[j].trim();
-			fieldsMap.put(key, unquote(values[j].trim()));
+			fieldsMap.put(key, ToonSyntax.unquote(values[j].trim()));
 		}
 	}
 
 	private void parseInlineArray(String key, String values) {
-		String[] items = splitRow(values);
+		String[] items = ToonSyntax.splitRow(values);
 		fieldsMap.put(key, String.valueOf(items.length));
 
 		for (int j = 0; j < items.length; j++) {
-			fieldsMap.put(key + "[" + j + "]", unquote(items[j].trim()));
+			fieldsMap.put(key + "[" + j + "]", ToonSyntax.unquote(items[j].trim()));
 		}
 	}
 
@@ -192,7 +184,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			String line = lines.get(i);
 			String trimmed = line.trim();
 
-			if (shouldExitNestedContext(trimmed, getIndentation(line), baseIndent)) {
+			if (shouldExitNestedContext(trimmed, ToonSyntax.indentationOf(line), baseIndent)) {
 				fieldsMap.put(arrayKey, String.valueOf(count));
 				return i;
 			}
@@ -212,7 +204,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		for (int i = startIndex; i < lines.size(); i++) {
 			String line = lines.get(i);
 			if (!line.trim().isEmpty()) {
-				return getIndentation(line);
+				return ToonSyntax.indentationOf(line);
 			}
 		}
 		return 0;
@@ -230,14 +222,14 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		}
 
 		if (!content.isEmpty()) {
-			fieldsMap.put(arrayKey + "[" + itemIndex + "]", unquote(content));
+			fieldsMap.put(arrayKey + "[" + itemIndex + "]", ToonSyntax.unquote(content));
 		}
 
 		return itemIndex + 1;
 	}
 
 	private boolean isArrayHeader(String content) {
-		return ARRAY_HEADER_PATTERN.matcher(content).matches();
+		return ToonSyntax.ARRAY_HEADER_PATTERN.matcher(content).matches();
 	}
 
 	private int parseNestedObject(List<String> lines, int startIndex, String parentKey) {
@@ -247,7 +239,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 		while (i < lines.size()) {
 			String line = lines.get(i);
 			String trimmed = line.trim();
-			int currentIndent = getIndentation(line);
+			int currentIndent = ToonSyntax.indentationOf(line);
 
 			if (shouldExitNestedObject(trimmed, currentIndent, baseIndent)) {
 				return i;
@@ -268,7 +260,7 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 	}
 
 	private int parseNestedKeyValue(List<String> lines, int index, String parentKey, String trimmed) {
-		Matcher kvMatcher = KEY_VALUE_PATTERN.matcher(trimmed);
+		Matcher kvMatcher = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed);
 
 		if (!kvMatcher.matches()) {
 			return index + 1;
@@ -282,82 +274,8 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 			return parseNestedObject(lines, index, fullKey);
 		}
 
-		fieldsMap.put(fullKey, unquote(value));
+		fieldsMap.put(fullKey, ToonSyntax.unquote(value));
 		return index + 1;
-	}
-
-	private int getIndentation(String line) {
-		int count = 0;
-		int i = 0;
-
-		while (i < line.length() && isWhitespace(line.charAt(i))) {
-			count += getWhitespaceValue(line.charAt(i));
-			i++;
-		}
-
-		return count;
-	}
-
-	private boolean isWhitespace(char c) {
-		return c == ' ' || c == '\t';
-	}
-
-	private int getWhitespaceValue(char c) {
-		return c == '\t' ? 2 : 1;
-	}
-
-	private String[] splitRow(String row) {
-		List<String> values = new ArrayList<>();
-		StringBuilder current = new StringBuilder();
-		boolean inQuotes = false;
-
-		for (int i = 0; i < row.length(); i++) {
-			char c = row.charAt(i);
-			boolean isUnescapedQuote = c == '"' && (i == 0 || row.charAt(i - 1) != '\\');
-
-			if (isUnescapedQuote) {
-				inQuotes = !inQuotes;
-				current.append(c);
-			} else if (c == ',' && !inQuotes) {
-				values.add(current.toString());
-				current = new StringBuilder();
-			} else {
-				current.append(c);
-			}
-		}
-
-		if (!current.isEmpty()) {
-			values.add(current.toString());
-		}
-
-		return values.toArray(new String[0]);
-	}
-
-	private String unquote(String value) {
-		if (value == null || value.isEmpty()) {
-			return value;
-		}
-
-		String trimmed = value.trim();
-		if (!isQuotedString(trimmed)) {
-			return trimmed;
-		}
-
-		String unquoted = trimmed.substring(1, trimmed.length() - 1);
-		return processEscapeSequences(unquoted);
-	}
-
-	private boolean isQuotedString(String value) {
-		return value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2;
-	}
-
-	private String processEscapeSequences(String value) {
-		return value
-				.replace("\\\"", "\"")
-				.replace("\\\\", "\\")
-				.replace("\\n", "\n")
-				.replace("\\r", "\r")
-				.replace("\\t", "\t");
 	}
 
 	@Override

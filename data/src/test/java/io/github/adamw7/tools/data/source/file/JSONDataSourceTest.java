@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,5 +52,21 @@ public class JSONDataSourceTest {
         assertEquals(10, rowCount);
         source.close();
     }
+
+	@Test
+	public void readsFromInputStream() throws IOException {
+		try (InputStream stream = new FileInputStream(Utils.getFileName("test.json"))) {
+			InMemoryJSONDataSource source = new InMemoryJSONDataSource(stream);
+			source.open();
+			assertEquals(10, source.getColumnNames().length);
+			int rowCount = 0;
+			while (source.hasMoreData()) {
+				assertNotNull(source.nextRow());
+				rowCount++;
+			}
+			assertEquals(10, rowCount);
+			source.close();
+		}
+	}
 }
 

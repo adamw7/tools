@@ -40,7 +40,7 @@ public class Result {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Arrays.hashCode(columns);
+		result = prime * result + columnsHashCode();
 		result = prime * result + Arrays.hashCode(row);
 		result = prime * result + Objects.hash(betterOptions, unique);
 		return result;
@@ -55,8 +55,23 @@ public class Result {
 		if (getClass() != obj.getClass())
 			return false;
 		Result other = (Result) obj;
-		return Objects.equals(betterOptions, other.betterOptions) && Arrays.equals(columns, other.columns)
+		return Objects.equals(betterOptions, other.betterOptions) && sameColumns(other.columns)
 				&& Arrays.equals(row, other.row) && unique == other.unique;
+	}
+
+	private int columnsHashCode() {
+		return columns == null ? 0 : asSet(columns).hashCode();
+	}
+
+	private boolean sameColumns(String[] otherColumns) {
+		if (columns == null || otherColumns == null) {
+			return columns == otherColumns;
+		}
+		return asSet(columns).equals(asSet(otherColumns));
+	}
+
+	private static Set<String> asSet(String[] values) {
+		return new HashSet<>(Arrays.asList(values));
 	}
 	
 	@Override

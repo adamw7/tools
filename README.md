@@ -145,6 +145,41 @@ public class ExampleTest {
 ```
 Since in proto3 there is no concept of required fields - this solution supports only proto2. 
 
+## gRPC example
+
+An end-to-end gRPC example combining standard protobuf/gRPC code generation with the compile-time-safe builder generation from this project.
+
+Given [`greeter.proto`](grpc-example/src/main/proto/greeter.proto):
+```proto
+syntax = "proto2";
+
+message HelloRequest {
+  required string name = 1;
+  optional string title = 2;
+}
+
+message HelloReply {
+  required string message = 1;
+}
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+}
+```
+
+Two generators run during the build:
+1. **`protobuf-maven-plugin`** compiles the proto definitions into protobuf message classes and gRPC service stubs (`GreeterGrpc`).
+2. **`protogen-maven-plugin`** (this repo) generates compile-time-safe builders (`HelloRequestBuilder`, `HelloReplyBuilder`) that refuse to call `build()` until every `required` field is set.
+
+The service implementation uses the generated builder:
+```java
+HelloReply reply = new HelloReplyBuilder().setMessage(greetingFor(request)).build();
+```
+
+> **Note:** All example code (`GreeterServiceImpl`, `GreeterServer`, `GreeterClient`) lives under `src/test/java` because the protogen-generated builders are written to `target/generated-test-sources`. Run the example with `mvn -pl grpc-example -am test`.
+
+See the [grpc-example module](grpc-example/README.md) for full details and how to run the example.
+
 ## Context engineering
 
 For gen ai agents that work with Java code the context usually starts with one class but may get wider and be extended to the classes used by it etc so on.
@@ -164,7 +199,12 @@ It contains:
 - data sources
   - support relational data loading
   - in memory and iterative loading
-  - CSV, GZip, JDBC support
+  - CSV, JDBC support
+  - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`)
+  - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; no document-size limit
+  - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects
+  - All file-based sources accept either a file path or an `InputStream`
+  - GZIP decompression — any file-based source transparently decompresses `.gz` files; no extra configuration needed
 - uniqueness checks tool
   - for a given set of data and subset of columns you can ask if these columns are unique (can be used as a key)
   - the tool also tries to find a better (smaller) answer
@@ -174,7 +214,10 @@ It contains:
 - MCP server
   - Model Context Protocol server exposing uniqueness checking as a tool for AI assistants
   - Compatible with Claude Desktop, Cline, and other MCP clients
-  - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for configuration and usage
+  - Transport: stdio over JSON-RPC (Spring Boot, no HTTP server started)
+  - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
+  - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`
+  - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for client configuration (Claude Desktop, Cline) and usage examples
   
 Examples:
 

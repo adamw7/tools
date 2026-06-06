@@ -85,7 +85,7 @@ remove_temp_files() {
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 echo -e "\nJDK 25 Installer for Linux"
-echo "==========================\n"
+printf "==========================\n\n"
 
 if test_jdk_already_installed; then
     echo -e "\nJDK 25 is already present. Nothing to do."

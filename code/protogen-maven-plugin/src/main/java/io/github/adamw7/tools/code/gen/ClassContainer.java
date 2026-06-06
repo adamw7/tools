@@ -5,9 +5,12 @@ import io.github.adamw7.tools.code.format.UnusedImportsRemover;
 
 public record ClassContainer(String name, CharSequence code) {
 
+	private static final UnusedImportsRemover IMPORTS_REMOVER = new UnusedImportsRemover();
+	private static final Formatter FORMATTER = new Formatter();
+
 	public ClassContainer format() {
-		String withoutUnusedImports = new UnusedImportsRemover().removeUnused(codeAsString());
-		return new ClassContainer(name, new Formatter().format(withoutUnusedImports));
+		String withoutUnusedImports = IMPORTS_REMOVER.removeUnused(codeAsString());
+		return new ClassContainer(name, FORMATTER.format(withoutUnusedImports));
 	}
 
 	String codeAsString() {

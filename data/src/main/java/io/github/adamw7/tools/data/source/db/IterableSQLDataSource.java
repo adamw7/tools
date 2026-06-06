@@ -84,7 +84,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	}
 
 	private void applyFetchSize(int batchSize) {
-		if (batchSize <= 0) {
+		if (batchSize <= 0 || resultSet == null) {
 			return;
 		}
 		try {

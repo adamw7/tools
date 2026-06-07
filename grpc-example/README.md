@@ -4,12 +4,24 @@ An end-to-end gRPC example that reuses this project's proto-to-Java code
 generation. Two generators run from [`greeter.proto`](src/main/proto/greeter.proto):
 
 1. **`protobuf-maven-plugin`** (ascopes) compiles the proto2 definitions into
-   the protobuf message classes (`HelloRequest`, `HelloReply`) and, via the
-   `protoc-gen-grpc-java` plugin, the gRPC service stub (`GreeterGrpc`).
+   the protobuf message classes (`Address`, `Person`, `HelloRequest`,
+   `HelloReply`) and, via the `protoc-gen-grpc-java` plugin, the gRPC service
+   stub (`GreeterGrpc`).
 2. **`protogen-maven-plugin`** (this repo) scans the generated message package
-   and emits compile-time-safe builders (`HelloRequestBuilder`,
-   `HelloReplyBuilder`) that refuse to `build()` until every `required` field is
-   set — shifting the missing-field check from runtime to compile time.
+   and emits compile-time-safe builders (`AddressBuilder`, `PersonBuilder`,
+   `HelloRequestBuilder`, `HelloReplyBuilder`) that refuse to `build()` until
+   every `required` field is set — shifting the missing-field check from runtime
+   to compile time.
+
+The messages are composed: a `HelloRequest` points to a `Person`, which in turn
+points to an `Address`. The generated builders compose the same way, so a
+request is assembled bottom-up through a three-level chain:
+
+```java
+Address address = new AddressBuilder().setCity("London").setCountry("UK").build();
+Person person = new PersonBuilder().setName("Smith").setTitle("Dr.").setAddress(address).build();
+HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
+```
 
 The builders are generated into `target/generated-test-sources` (the protogen
 plugin reads the already-compiled message classes off the classpath), so the

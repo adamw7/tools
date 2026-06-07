@@ -11,9 +11,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class InMemoryJSONDataSource extends AbstractFileSource implements InMemoryDataSource, IterableDataSource {
+public class InMemoryJSONDataSource extends AbstractFileSource implements InMemoryDataSource {
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;
 

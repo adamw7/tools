@@ -83,8 +83,8 @@ public class Utils {
 		return new IterableSQLDataSource(connection, query);				
 	}
 	
-	public static IterableSQLDataSource createInMemorySQLDataSource(Connection connection, String query) {
-		return new InMemorySQLDataSource(connection, query);				
+	public static InMemorySQLDataSource createInMemorySQLDataSource(Connection connection, String query) {
+		return new InMemorySQLDataSource(connection, query);
 	}
 
 	public static void close(Closeable source) {

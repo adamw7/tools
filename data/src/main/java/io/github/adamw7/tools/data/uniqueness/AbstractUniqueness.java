@@ -11,11 +11,16 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public abstract class AbstractUniqueness implements Uniqueness {
+public abstract class AbstractUniqueness<T extends IterableDataSource> implements Uniqueness<T> {
 
 	private static final Logger log = LogManager.getLogger(AbstractUniqueness.class);
 
-	protected IterableDataSource dataSource;
+	protected T dataSource;
+
+	@Override
+	public void setDataSource(T source) {
+		this.dataSource = source;
+	}
 
 	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
 		Set<String> all = new HashSet<>(Arrays.asList(toLower(allColumns)));

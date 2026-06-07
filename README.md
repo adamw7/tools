@@ -194,6 +194,28 @@ where ClassContiner contains the path of the class and its sources.
 The depth param tells the finder how deep we want to go in the tree of usages of the class.
 Of course when the depth is growing the tree grows very fast.
 
+To go from a single class to a whole project, `ProjectTreeBuilder` walks a Java
+project directory and produces a tree of its folders, files and dependencies:
+
+```java
+ProjectTreeNode root = new ProjectTreeBuilder(/* depth */ 1).build(Path.of("my-project"));
+System.out.println(new ProjectTreePrinter().print(root));
+```
+
+Every folder becomes a directory node, every file becomes a file node, and each
+`.java` file lists the project classes it depends on (resolved with the same
+regex-based `Context`). `ProjectTreePrinter` renders the tree as indented text,
+for example:
+
+```
+[dir] pkg
+  [file] A.java
+  [file] B.java
+    -> A.java
+```
+
+ready to be handed to a gen-AI agent as context.
+
 ## Data
 It contains:
 - data sources

@@ -1,4 +1,9 @@
-package io.github.adamw7.context;
+package io.github.adamw7.context.tree;
+
+import io.github.adamw7.context.ClassContainer;
+import io.github.adamw7.context.Context;
+import io.github.adamw7.context.ContextFactory;
+import io.github.adamw7.context.Finder;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

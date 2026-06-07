@@ -4,7 +4,7 @@ import java.util.Set;
 
 /**
  * Creates a {@link Context} over a set of containers. Decoupling the
- * {@link ProjectTreeBuilder} from a concrete {@link Context} keeps the builder
+ * {@link io.github.adamw7.context.tree.ProjectTreeBuilder} from a concrete {@link Context} keeps the builder
  * open for extension (e.g. a different dependency finder) without modification.
  */
 @FunctionalInterface

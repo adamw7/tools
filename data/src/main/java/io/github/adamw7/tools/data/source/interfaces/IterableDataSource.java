@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface IterableDataSource extends AutoCloseable, Closeable {
+public interface IterableDataSource extends Closeable {
 
 	String[] getColumnNames();
 

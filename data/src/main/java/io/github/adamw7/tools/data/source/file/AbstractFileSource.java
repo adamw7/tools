@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.source.file;
 
-import java.io.Closeable;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -15,7 +14,7 @@ import java.util.Scanner;
 import io.github.adamw7.tools.data.compression.ZipUtils;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public abstract class AbstractFileSource implements AutoCloseable, Closeable, IterableDataSource {
+public abstract class AbstractFileSource implements IterableDataSource {
 	protected Scanner scanner;
 	protected String fileName;
 	protected InputStream inputStream;

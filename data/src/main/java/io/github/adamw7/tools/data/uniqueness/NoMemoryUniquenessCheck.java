@@ -5,10 +5,10 @@ import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class NoMemoryUniquenessCheck extends AbstractUniqueness {
+public class NoMemoryUniquenessCheck extends AbstractUniqueness<IterableDataSource> {
 
 	public NoMemoryUniquenessCheck() { }
-	
+
 	public NoMemoryUniquenessCheck(IterableDataSource dataSource) {
 		this.dataSource = dataSource;
 	}
@@ -47,11 +47,4 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness {
 		}
 		return uniqueCandidates;
 	}
-
-	@Override
-	public <T extends IterableDataSource> void setDataSource(T source) {
-		this.dataSource = source;
-	}
-
-
 }

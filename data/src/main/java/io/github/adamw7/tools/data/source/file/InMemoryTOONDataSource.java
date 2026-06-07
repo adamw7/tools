@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 /**
  * Data source for TOON (Token-Oriented Object Notation) format files.
@@ -22,7 +21,7 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
  * - Tabular arrays (key[N]{field1,field2}: row1,row2...)
  * - Nested objects via indentation
  */
-public class InMemoryTOONDataSource extends AbstractFileSource implements InMemoryDataSource, IterableDataSource {
+public class InMemoryTOONDataSource extends AbstractFileSource implements InMemoryDataSource {
 
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;

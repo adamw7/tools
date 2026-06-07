@@ -5,9 +5,8 @@ import java.util.List;
 import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class InMemoryUniquenessCheck extends AbstractUniqueness {
+public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSource> {
 
 	public InMemoryUniquenessCheck() {
 	}
@@ -28,7 +27,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 
 	private Result findUnique(Integer[] indices, String... keyCandidates) {
 		dataSource.reset();
-		List<String[]> data = ((InMemoryDataSource) dataSource).readAll();
+		List<String[]> data = dataSource.readAll();
 		close(dataSource);
 		KeyFinder finder = new KeyFinder(indices);
 		for (String[] row : data) {
@@ -56,15 +55,5 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness {
 		}
 
 		return uniqueCandidates;
-	}
-
-	@Override
-	public <T extends IterableDataSource> void setDataSource(T source) {
-		if (source instanceof InMemoryDataSource) {
-			this.dataSource = source;
-		} else {
-			String message = source == null ? null : source.getClass().getSimpleName();
-			throw new IllegalArgumentException("Expected InMemoryDataSource and got: " + message);
-		}
 	}
 }

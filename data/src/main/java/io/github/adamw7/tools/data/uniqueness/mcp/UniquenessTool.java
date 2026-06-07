@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -57,7 +56,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 		int columnsRow = Integer.parseInt(String.valueOf(arguments.get("columns_row")));
 		try {
 			InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow);
-			AbstractUniqueness check = new InMemoryUniquenessCheck();
+			InMemoryUniquenessCheck check = new InMemoryUniquenessCheck();
 			
 			source.readAll();
 			

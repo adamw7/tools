@@ -9,10 +9,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.github.adamw7.tools.grpc.builders.AddressBuilder;
 import io.github.adamw7.tools.grpc.builders.HelloRequestBuilder;
+import io.github.adamw7.tools.grpc.builders.PersonBuilder;
+import io.github.adamw7.tools.grpc.proto.Address;
 import io.github.adamw7.tools.grpc.proto.GreeterGrpc;
 import io.github.adamw7.tools.grpc.proto.HelloReply;
 import io.github.adamw7.tools.grpc.proto.HelloRequest;
+import io.github.adamw7.tools.grpc.proto.Person;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
@@ -46,7 +50,8 @@ public class GreeterExampleTest {
 
 	@Test
 	public void greetsUsingGeneratedRequestBuilder() {
-		HelloRequest request = new HelloRequestBuilder().setName("World").build();
+		Person person = new PersonBuilder().setName("World").build();
+		HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
 		HelloReply reply = stub.sayHello(request);
 		assertNotNull(reply);
 		assertEquals("Hello, World!", reply.getMessage());
@@ -54,8 +59,18 @@ public class GreeterExampleTest {
 
 	@Test
 	public void greetsWithOptionalTitle() {
-		HelloRequest request = new HelloRequestBuilder().setName("Smith").setTitle("Dr.").build();
+		Person person = new PersonBuilder().setName("Smith").setTitle("Dr.").build();
+		HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
 		HelloReply reply = stub.sayHello(request);
 		assertEquals("Hello, Dr. Smith!", reply.getMessage());
+	}
+
+	@Test
+	public void greetsWithNestedAddress() {
+		Address address = new AddressBuilder().setCity("London").setCountry("UK").build();
+		Person person = new PersonBuilder().setName("Smith").setTitle("Dr.").setAddress(address).build();
+		HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
+		HelloReply reply = stub.sayHello(request);
+		assertEquals("Hello, Dr. Smith from London!", reply.getMessage());
 	}
 }

@@ -7,8 +7,10 @@ import static org.junit.jupiter.params.provider.Arguments.of;
 
 
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -73,6 +75,21 @@ public class SQLDataSourceTest extends DBTest {
 		assertEquals("1", row[2]);
 		assertEquals("Adam", row[3]);
 		assertEquals("W", row[4]);
+		Utils.close(source);
+	}
+
+	@Test
+	public void nextRowsLoadsRequestedBatch() {
+		IterableSQLDataSource source = new IterableSQLDataSource(connection, query);
+		source.open();
+
+		List<String[]> firstBatch = source.nextRows(10);
+		assertEquals(10, firstBatch.size());
+
+		List<String[]> rest = source.nextRows(1000);
+		assertEquals(60, rest.size());
+
+		assertTrue(source.nextRows(10).isEmpty());
 		Utils.close(source);
 	}
 

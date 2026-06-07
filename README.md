@@ -194,6 +194,46 @@ where ClassContiner contains the path of the class and its sources.
 The depth param tells the finder how deep we want to go in the tree of usages of the class.
 Of course when the depth is growing the tree grows very fast.
 
+### Project tree
+
+A single class is rarely enough context — an agent usually needs to see how a
+whole project is laid out and how its files relate. `ProjectTreeBuilder` walks a
+Java project directory and produces a tree of its **folders, files and
+dependencies** in one structure:
+
+```java
+ProjectTreeNode root = new ProjectTreeBuilder(/* depth */ 1).build(Path.of("my-project"));
+System.out.println(new ProjectTreePrinter().print(root));
+```
+
+The building blocks are:
+
+- **`ProjectTreeNode`** — a node in the tree. Each node is either a *directory*
+  (mirroring a project folder and holding child nodes) or a *file*. File nodes
+  additionally carry the set of project classes they depend on, so folders,
+  files and dependencies are all described by the same tree.
+- **`ProjectTreeBuilder`** — scans the project directory recursively. Every
+  folder becomes a directory node and every file a file node (directories are
+  listed before files, then alphabetically). For each `.java` file it resolves
+  the project classes it uses with the same regex-based `Context`, skipping the
+  file's own class. `depth` controls how deep the usage search goes, exactly as
+  in the `Context` interface above.
+- **`ContextFactory`** — decouples the builder from the concrete dependency
+  finder (defaulting to `Finder`), so a different resolution strategy can be
+  plugged in without changing the builder.
+- **`ProjectTreePrinter`** — renders the tree as indented text, with each file's
+  dependencies listed beneath it:
+
+```
+[dir] pkg
+  [file] A.java
+  [file] B.java
+    -> A.java
+```
+
+The result is a compact, human- and LLM-readable view of the project, ready to
+be handed to a gen-AI agent as context.
+
 ## Data
 It contains:
 - data sources

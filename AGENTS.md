@@ -15,8 +15,9 @@ Maven project. The notable capabilities are:
   **compile time** instead of runtime (shift-left). Supports proto2 only,
   because proto3 has no concept of required fields.
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
-  builds the tree of classes used by a given class, to assemble context for
-  gen-AI agents working with Java code.
+  builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
+  that scans a whole Java project into a tree of folders, files and
+  dependencies, to assemble context for gen-AI agents working with Java code.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC; in-memory and iterative
   loading), a uniqueness-checking tool (finds whether a subset of columns can
   serve as a key, and searches for a smaller key), data structures (an

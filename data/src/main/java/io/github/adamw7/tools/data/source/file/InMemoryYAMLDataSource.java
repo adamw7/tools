@@ -10,9 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class InMemoryYAMLDataSource extends AbstractFileSource implements InMemoryDataSource, IterableDataSource {
+public class InMemoryYAMLDataSource extends AbstractFileSource implements InMemoryDataSource {
 	private final Map<String, String> fieldsMap = new HashMap<>();
 	private Iterator<String> mapIterator;
 

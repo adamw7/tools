@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.source.file;
 
-import java.io.Closeable;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -16,7 +15,7 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
  * {@link #nextRow()} stay accurate while only the current row (plus any per-format parser
  * state) is held in memory.
  */
-public abstract class AbstractIterableFileSource implements AutoCloseable, Closeable, IterableDataSource {
+public abstract class AbstractIterableFileSource implements IterableDataSource {
 
 	protected final String fileName;
 	private final InputStream providedStream;

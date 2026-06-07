@@ -34,6 +34,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
 │   └── context                     # regex-based class-usage context finder
+├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # builds an executable jar-with-dependencies
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)
 └── data-test                   # standalone test module for the data module

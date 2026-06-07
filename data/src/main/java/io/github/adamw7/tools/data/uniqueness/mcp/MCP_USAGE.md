@@ -15,8 +15,8 @@ The implementation consists of three main components:
 3. **UniquenessTool.java** - Implements the uniqueness checking tool
 
 The server uses:
-- **Transport**: stdio (standard input/output)
-- **MCP SDK**: io.modelcontextprotocol.sdk v0.12.1
+- **Transport**: stdio (default) or streamable-http (`--transport.mode=streamable-http`)
+- **MCP SDK**: io.modelcontextprotocol.sdk v2.0.0-RC1
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
 
@@ -70,7 +70,7 @@ Add the following to your Claude Desktop configuration file:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/data/target/tools.data-1.4.0-SNAPSHOT.jar"
+        "/absolute/path/to/tools/data/target/tools.data-2.0.0-SNAPSHOT.jar"
       ]
     }
   }
@@ -90,7 +90,7 @@ In VS Code settings (settings.json):
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/data/target/tools.data-1.4.0-SNAPSHOT.jar"
+        "/absolute/path/to/tools/data/target/tools.data-2.0.0-SNAPSHOT.jar"
       ]
     }
   }
@@ -104,7 +104,7 @@ For any MCP client that supports stdio transport:
 ```json
 {
   "command": "java",
-  "args": ["-jar", "/path/to/tools.data-1.4.0-SNAPSHOT.jar"],
+  "args": ["-jar", "/path/to/tools.data-2.0.0-SNAPSHOT.jar"],
   "transport": "stdio"
 }
 ```
@@ -234,7 +234,7 @@ mvn test
 To enable debug logging, modify the Log4j2 configuration or set system properties:
 
 ```bash
-java -Dlog4j.configurationFile=log4j2-debug.xml -jar tools.data-1.4.0-SNAPSHOT.jar
+java -Dlog4j.configurationFile=log4j2-debug.xml -jar tools.data-2.0.0-SNAPSHOT.jar
 ```
 
 ## Extending the Server

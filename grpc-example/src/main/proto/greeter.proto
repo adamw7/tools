@@ -5,11 +5,26 @@ package greeter;
 option java_multiple_files = true;
 option java_package = "io.github.adamw7.tools.grpc.proto";
 
-// proto2 request with a required and an optional field, so the protogen-maven-plugin
-// can generate a builder that enforces the required field at compile time.
-message HelloRequest {
+// Lowest object in the chain. Referenced by Person below, so the generated
+// PersonBuilder takes an Address that was itself built by AddressBuilder.
+message Address {
+  required string city = 1;
+  optional string country = 2;
+}
+
+// Points to an Address. The generated builders compose: build an Address
+// first, then hand it to the PersonBuilder.
+message Person {
   required string name = 1;
   optional string title = 2;
+  optional Address address = 3;
+}
+
+// The request points to a Person, so HelloRequestBuilder accepts a Person
+// built by PersonBuilder -- a three-level chain of generated builders
+// (HelloRequest -> Person -> Address).
+message HelloRequest {
+  required Person person = 1;
 }
 
 message HelloReply {

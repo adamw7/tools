@@ -6,9 +6,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.grpc.builders.HelloRequestBuilder;
+import io.github.adamw7.tools.grpc.builders.PersonBuilder;
 import io.github.adamw7.tools.grpc.proto.GreeterGrpc;
 import io.github.adamw7.tools.grpc.proto.HelloReply;
 import io.github.adamw7.tools.grpc.proto.HelloRequest;
+import io.github.adamw7.tools.grpc.proto.Person;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -28,7 +30,8 @@ public class GreeterClient {
 		ManagedChannel channel = Grpc.newChannelBuilder(DEFAULT_TARGET, InsecureChannelCredentials.create()).build();
 		try {
 			GreeterGrpc.GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
-			HelloRequest request = new HelloRequestBuilder().setName(name).build();
+			Person person = new PersonBuilder().setName(name).build();
+			HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
 			HelloReply reply = stub.sayHello(request);
 			log.info("Greeting: {}", reply.getMessage());
 		} finally {

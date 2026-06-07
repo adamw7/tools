@@ -4,6 +4,7 @@ import io.github.adamw7.tools.grpc.builders.HelloReplyBuilder;
 import io.github.adamw7.tools.grpc.proto.GreeterGrpc;
 import io.github.adamw7.tools.grpc.proto.HelloReply;
 import io.github.adamw7.tools.grpc.proto.HelloRequest;
+import io.github.adamw7.tools.grpc.proto.Person;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -21,10 +22,15 @@ public class GreeterServiceImpl extends GreeterGrpc.GreeterImplBase {
 	}
 
 	private String greetingFor(HelloRequest request) {
-		return "Hello, " + titlePrefix(request) + request.getName() + "!";
+		Person person = request.getPerson();
+		return "Hello, " + titlePrefix(person) + person.getName() + locationSuffix(person) + "!";
 	}
 
-	private String titlePrefix(HelloRequest request) {
-		return request.hasTitle() ? request.getTitle() + " " : "";
+	private String titlePrefix(Person person) {
+		return person.hasTitle() ? person.getTitle() + " " : "";
+	}
+
+	private String locationSuffix(Person person) {
+		return person.hasAddress() ? " from " + person.getAddress().getCity() : "";
 	}
 }

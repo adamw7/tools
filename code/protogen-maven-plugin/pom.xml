@@ -10,6 +10,7 @@
 	<artifactId>protogen-maven-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
 	<name>protogen-maven-plugin</name>
+	<description>Maven plugin that generates fluent, type-safe builders for protobuf-generated message classes during the generate-sources phase.</description>
 	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>

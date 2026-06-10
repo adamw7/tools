@@ -26,7 +26,6 @@ import javax.tools.ToolProvider;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -52,7 +51,7 @@ public class MojoTest {
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
 		mojo.pkgs = new String[] { "io.github.adamw7.tools.code.protos" };
 		mojo.outputpackage = "com.sth.generated";
-		mojo.project = new MavenProject();
+		mojo.runtimeClasspathElements = List.of();
 
 		mojo.execute();
 		File dir = new File(GENERATED_SOURCES);

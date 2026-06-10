@@ -24,8 +24,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 	
 	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
-    private final Tool toolDefinition = Tool.builder().name("uniqueness_check").description(
-            "Check if a given set of columns in unique in a given data set").inputSchema(
+    private final Tool toolDefinition = Tool.builder("uniqueness_check",
                     Map.of(
                         "type", "object",
                         "properties", Map.of(
@@ -34,7 +33,8 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
                             "columns_name", Map.of("type", "string", "description", "name of the column to check")
                         ),
                         "required", List.of("file", "columns_row", "columns_name")
-                    )).build();
+                    )).description(
+            "Check if a given set of columns in unique in a given data set").build();
 
 	public UniquenessTool() {
     }
@@ -48,7 +48,7 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 		log.info("Calling MCP unquieness tool for {}", arguments);
 		String result = runUniqueness(arguments);
 
-		return CallToolResult.builder().content(List.of(new TextContent(result))).isError(false).build();
+		return CallToolResult.builder().content(List.of(TextContent.builder(result).build())).isError(false).build();
 	}
 
 	private String runUniqueness(Map<String, Object> arguments) {

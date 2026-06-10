@@ -103,10 +103,6 @@
 			<artifactId>grpc-netty-shaded</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>javax.annotation</groupId>
-			<artifactId>javax.annotation-api</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>io.grpc</groupId>
 			<artifactId>grpc-inprocess</artifactId>
 		</dependency>

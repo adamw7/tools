@@ -3,6 +3,7 @@ package io.github.adamw7.tools.code.gen;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -53,7 +54,11 @@ public class ClassInfo {
 	}
 
 	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isOptional).toList();
+		return descriptor.getFields().stream().filter(ClassInfo::hasOptionalLabel).toList();
+	}
+
+	private static boolean hasOptionalLabel(FieldDescriptor field) {
+		return field.toProto().getLabel() == FieldDescriptorProto.Label.LABEL_OPTIONAL;
 	}
 	
 	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {

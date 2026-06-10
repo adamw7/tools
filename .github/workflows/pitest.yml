@@ -1,0 +1,29 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    # Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  pitest:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up JDK 25
+      uses: actions/setup-java@v5
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Run PIT mutation testing
+      run: mvn -B test -Ppitest --file pom.xml
+    - name: Upload mutation testing reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: pitest-reports
+        path: '**/target/pit-reports/'
+        retention-days: 30

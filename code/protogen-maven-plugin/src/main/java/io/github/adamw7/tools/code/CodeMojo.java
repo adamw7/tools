@@ -10,18 +10,17 @@ import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 
 import com.google.protobuf.GeneratedMessage;
 
 import io.github.adamw7.tools.code.gen.Code;
 
-@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = false)
+@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = false, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class CodeMojo extends AbstractMojo {
 
 	private final static Logger log = LogManager.getLogger(CodeMojo.class.getName());
@@ -35,8 +34,8 @@ public class CodeMojo extends AbstractMojo {
 	@Parameter(property = "outputpackage", required = true)
 	protected String outputpackage;
 
-	@Parameter(defaultValue = "${project}", required = true, readonly = true)
-	protected MavenProject project;
+	@Parameter(defaultValue = "${project.runtimeClasspathElements}", required = true, readonly = true)
+	protected List<String> runtimeClasspathElements;
 
 	@Override
 	public void execute() {
@@ -46,15 +45,13 @@ public class CodeMojo extends AbstractMojo {
 		new Code(generatedSourcesDir, outputpackage).genBuilders(allMessages);
 	}
 
-	@SuppressWarnings("unchecked")
 	private void extendClassPath() {
 		try {
 			Set<URL> urls = new HashSet<>();
-			List<String> elements = project.getRuntimeClasspathElements();
 
-			for (String element : elements) {
+			for (String element : runtimeClasspathElements) {
 				if (element != null) {
-					urls.add(new File(element).toURI().toURL());					
+					urls.add(new File(element).toURI().toURL());
 				}
 			}
 
@@ -62,9 +59,9 @@ public class CodeMojo extends AbstractMojo {
 					Thread.currentThread().getContextClassLoader());
 
 			Thread.currentThread().setContextClassLoader(contextClassLoader);
-		} catch (DependencyResolutionRequiredException | MalformedURLException e) {
+		} catch (MalformedURLException e) {
 			throw new MojoException(e);
-		} 
+		}
 	}
 
 }

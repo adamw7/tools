@@ -7,6 +7,7 @@ import java.util.Set;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.GeneratedMessage;
 
@@ -110,6 +111,13 @@ public class TypeMappings {
 	}
 
 	private String handleEnum(FieldDescriptor field) {
-		return Utils.getSuffixOf(field.getEnumType().getFullName(), 2, ".");
+		EnumDescriptor enumType = field.getEnumType();
+		StringBuilder name = new StringBuilder(enumType.getName());
+		Descriptor containingType = enumType.getContainingType();
+		while (containingType != null) {
+			name.insert(0, containingType.getName() + ".");
+			containingType = containingType.getContainingType();
+		}
+		return name.toString();
 	}
 }

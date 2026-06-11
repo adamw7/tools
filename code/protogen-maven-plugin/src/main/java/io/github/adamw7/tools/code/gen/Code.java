@@ -30,14 +30,15 @@ public class Code {
 	private final String generatedSourcesDir;
 	private TypeMappings typeMappings;
 	private final String outputPkg;
+	private final Path outputDir;
 
 	public Code(String generatedSourcesDir, String outputPkg) {
 		this.generatedSourcesDir = generatedSourcesDir;
 		this.outputPkg = outputPkg;
-		createPkg(outputPkg);
+		this.outputDir = createPkg(outputPkg);
 	}
 
-	private void createPkg(String pkg) {
+	private Path createPkg(String pkg) {
 		String directory = generatedSourcesDir + File.separator + pkg;
 		Path dir = pkgToPath(directory);
 
@@ -48,6 +49,7 @@ public class Code {
 			throw new UncheckedIOException(e);
 		}
 		log.info("{} created", directory);
+		return dir;
 	}
 
 	private void deleteRecursively(Path path) throws IOException {
@@ -87,9 +89,9 @@ public class Code {
 	}
 
 	private void write(ClassContainer container) {
-		String fileName = generatedSourcesDir + pkgToPath(outputPkg + File.separator + container.name()) + ".java";
-		try (FileWriter myWriter = new FileWriter(fileName, StandardCharsets.UTF_8)) {
-			log.info("Writing {}", fileName);
+		Path file = outputDir.resolve(container.name() + ".java");
+		try (FileWriter myWriter = new FileWriter(file.toFile(), StandardCharsets.UTF_8)) {
+			log.info("Writing {}", file);
 			myWriter.write(container.codeAsString());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

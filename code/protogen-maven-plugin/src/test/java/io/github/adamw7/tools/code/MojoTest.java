@@ -42,7 +42,7 @@ public class MojoTest {
 	@BeforeAll
 	public static void setupPath() {
 		TARGET = new File(MojoTest.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
-		GENERATED_SOURCES = TARGET + "/generated-sources/";
+		GENERATED_SOURCES = TARGET + "/generated-sources";
 	}
 
 	@Test
@@ -62,19 +62,13 @@ public class MojoTest {
 	}
 
 	private void compileSources(String dir) {
-		List<String> optionalIfcs = getAllOptionalIfcs(dir);		
-		compileFiles(optionalIfcs);		
+		List<String> generatedSources = getAllGeneratedSources(dir);
+		compileFiles(generatedSources);
 	}
 
-	private void compileFiles(List<String> generatedSourceFiles) {
-		for (String generatedSourceFile : generatedSourceFiles) {
-			compileFile(generatedSourceFile);
-		}
-	}
-
-	private List<String> getAllOptionalIfcs(String dir) {
+	private List<String> getAllGeneratedSources(String dir) {
 		File dirFile = new File(dir);
-		return Arrays.stream(Objects.requireNonNull(dirFile.list((inputDir, name) -> name.contains("OptionalIfc.java")))).map(s -> dir + File.separator + s).toList();
+		return Arrays.stream(Objects.requireNonNull(dirFile.list((inputDir, name) -> name.endsWith(".java")))).map(s -> dir + File.separator + s).toList();
 	}
 
 	static class JavaSourceFromFile extends SimpleJavaFileObject {
@@ -95,18 +89,17 @@ public class MojoTest {
 		}
 	}
 
-	private void compileFile(String fileName) {
+	private void compileFiles(List<String> generatedSourceFiles) {
 		DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-		JavaFileObject file = new JavaSourceFromFile(fileName);
-
-		Iterable<? extends JavaFileObject> compilationUnits = List.of(file);
+		List<JavaFileObject> compilationUnits = generatedSourceFiles.stream()
+				.<JavaFileObject>map(JavaSourceFromFile::new).toList();
 		CompilationTask task = compiler.getTask(null, createFileManager(), diagnostics, null, null, compilationUnits);
 
 		boolean success = task.call();
 		if (!success) {
-			logCompilerError(diagnostics);			
+			logCompilerError(diagnostics);
 		} else {
-			log.info("Compiled {}", file);
+			log.info("Compiled {} generated sources", compilationUnits.size());
 		}
 		assertTrue(success);
 	}

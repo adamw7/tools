@@ -302,6 +302,14 @@ Notes:
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
+# Quality
+
+The project maintains a high standard of software quality through multiple complementary testing strategies:
+
+- **Unit tests** — comprehensive coverage of individual components, focusing on behaviour, edge cases, and error paths.
+- **Integration tests** — end-to-end scenarios verify that modules work correctly together (e.g. data sources with uniqueness checks, gRPC client/server, MCP server).
+- **Mutation testing** — [PIT](https://pitest.org/) is used to validate the effectiveness of the test suite. Mutations are introduced into the bytecode and the tests must kill them, ensuring the tests actually catch defects rather than merely executing code.
+
 # Building
 ```
 mvn clean install

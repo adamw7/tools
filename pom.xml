@@ -22,7 +22,7 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<protobuf.version>4.33.4</protobuf.version>
-		<grpc.version>1.75.0</grpc.version>
+		<grpc.version>1.82.0</grpc.version>
 		<argLine/>
 	</properties>
 	<licenses>

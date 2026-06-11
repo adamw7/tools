@@ -85,4 +85,9 @@ public class TypeMappingsTest {
 	public void mapsEnumToNestedEnumName() {
 		assertEquals("Person.CLASSIFICATION", mapFor(Person.getDescriptor(), "classification"));
 	}
+
+	@Test
+	public void mapsTopLevelEnumToSimpleName() {
+		assertEquals("Size", mapFor(City.getDescriptor(), "size"));
+	}
 }

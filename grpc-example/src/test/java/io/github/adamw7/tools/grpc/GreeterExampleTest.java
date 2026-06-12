@@ -71,6 +71,15 @@ public class GreeterExampleTest {
 		Person person = new PersonBuilder().setName("Smith").setTitle("Dr.").setAddress(address).build();
 		HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
 		HelloReply reply = stub.sayHello(request);
-		assertEquals("Hello, Dr. Smith from London!", reply.getMessage());
+		assertEquals("Hello, Dr. Smith from London, UK!", reply.getMessage());
+	}
+
+	@Test
+	public void greetsWithCityOnlyAddress() {
+		Address address = new AddressBuilder().setCity("London").build();
+		Person person = new PersonBuilder().setName("Smith").setAddress(address).build();
+		HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
+		HelloReply reply = stub.sayHello(request);
+		assertEquals("Hello, Smith from London!", reply.getMessage());
 	}
 }

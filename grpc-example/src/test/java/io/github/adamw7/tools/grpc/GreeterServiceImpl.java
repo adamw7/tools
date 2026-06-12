@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.grpc;
 
 import io.github.adamw7.tools.grpc.builders.HelloReplyBuilder;
+import io.github.adamw7.tools.grpc.proto.Address;
 import io.github.adamw7.tools.grpc.proto.GreeterGrpc;
 import io.github.adamw7.tools.grpc.proto.HelloReply;
 import io.github.adamw7.tools.grpc.proto.HelloRequest;
@@ -31,6 +32,10 @@ public class GreeterServiceImpl extends GreeterGrpc.GreeterImplBase {
 	}
 
 	private String locationSuffix(Person person) {
-		return person.hasAddress() ? " from " + person.getAddress().getCity() : "";
+		return person.hasAddress() ? " from " + place(person.getAddress()) : "";
+	}
+
+	private String place(Address address) {
+		return address.hasCountry() ? address.getCity() + ", " + address.getCountry() : address.getCity();
 	}
 }

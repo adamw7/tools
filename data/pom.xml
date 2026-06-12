@@ -37,6 +37,7 @@
                     <mainClass>io.github.adamw7.tools.data.uniqueness.mcp.Main</mainClass>
                     <executable>true</executable>
                     <layout>JAR</layout>
+                    <jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
                 </configuration>
             </plugin>
 		</plugins>

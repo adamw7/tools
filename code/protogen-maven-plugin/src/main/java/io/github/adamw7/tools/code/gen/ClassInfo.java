@@ -114,10 +114,6 @@ public class ClassInfo {
 		return repeatedFields;
 	}
 
-	public List<FieldDescriptor> getOptionalFields() {
-		return optionalFields;
-	}
-
 	public List<FieldDescriptor> getGroupFields() {
 		return groupFields;
 	}

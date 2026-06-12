@@ -20,7 +20,6 @@ public class CSVDataSource extends AbstractFileSource {
 	protected final String regex;
 	protected final int columnsRow;
 	protected String[] columns;
-	protected int currentRow = 0;
 	protected boolean hasMoreData = true;
 
 	public CSVDataSource(InputStream inputStream) {
@@ -82,7 +81,6 @@ public class CSVDataSource extends AbstractFileSource {
 	public String[] nextRow() {
 		if (scanner.hasNextLine()) {
 			String line = scanner.nextLine();
-			currentRow++;
 			if (line.trim().startsWith("#")) {
 				return null;
 			} else {

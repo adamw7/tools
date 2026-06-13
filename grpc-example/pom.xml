@@ -11,6 +11,11 @@
 	<packaging>jar</packaging>
 	<name>grpc-example</name>
 	<url>https://maven.apache.org</url>
+	<properties>
+		<!-- This module only exercises generated protobuf/gRPC classes, so the
+		     instruction-coverage gate is not meaningful here. -->
+		<jacoco.skip>true</jacoco.skip>
+	</properties>
 	<build>
 		<plugins>
 			<plugin>

@@ -66,9 +66,9 @@ for client configuration (Claude Desktop, Cline, etc.).
 ## Build, test, and run
 
 ```bash
-# One-time bootstrap (see "CLAUDE.md enforcement" below): install the custom
-# enforcer rule into the local repo before any build that consumes it.
-mvn -pl claude-md-enforcer -am -DbootstrapClaudeMdRule install
+# Install the custom enforcer rule into the local repo. Only needed if you want
+# to run the CLAUDE.md check locally (see "CLAUDE.md enforcement" below).
+mvn -pl claude-md-enforcer -am install
 
 # Full clean build + install to local repo (use clean — see note below)
 mvn clean install
@@ -91,10 +91,11 @@ generates protobuf builders into `target/`; stale generated output from a
 previous build can otherwise linger and mask the change. If you have not
 removed anything, plain `mvn install` is fine and faster.
 
-CI (`.github/workflows/maven.yml`) runs the bootstrap step
-(`mvn -B -pl claude-md-enforcer -am -DbootstrapClaudeMdRule install`) and then
-`mvn -B package` on JDK 25 (Temurin) for every push and for pull requests
-targeting `main`.
+CI (`.github/workflows/maven.yml`) installs the enforcer rule
+(`mvn -B -pl claude-md-enforcer -am install`) and then runs
+`mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
+pull requests targeting `main`. It is the only workflow that runs the CLAUDE.md
+check; the other workflows build normally and are unaffected.
 
 ## CLAUDE.md enforcement
 
@@ -107,25 +108,25 @@ heading (`## Project`, `## Java version`, `## Maven`,
 `## Principles for Java Development`, `## Testing`, `## Dependencies`). The rule
 runs at the **root** only, in the `claude-md-enforce` profile.
 
-Because a maven-enforcer rule must be a JAR resolvable from a repository before
-the build runs, and Maven resolves plugin dependencies from repositories (not
-the reactor), the rule cannot be produced and consumed in the same build. Hence
-the **two-phase build**:
+The check is **opt-in**: the `claude-md-enforce` profile activates only when the
+`enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other
+Maven build — the other CI workflows and ordinary local builds — unaffected and
+free of any bootstrap requirement. Only `.github/workflows/maven.yml` opts in.
 
-1. **Bootstrap** — install the rule (and the root pom it inherits) into the
-   local repo: `mvn -pl claude-md-enforcer -am -DbootstrapClaudeMdRule install`.
-   The `-DbootstrapClaudeMdRule` property disables the `claude-md-enforce`
-   profile so the module is not asked to depend on itself while building. The
-   module's pom is flattened (flatten-maven-plugin) so the installed pom has no
-   unresolved `${revision}` and is resolvable as a plugin dependency.
-2. **Build** — any normal build (`mvn install`, `mvn -B package`, …) then runs
-   the `claude-md-enforce` profile, which is active by default (property
-   activation, so it stays on under `-P coverage`/`-P pitest`).
+A maven-enforcer rule must be a JAR resolvable from a repository before the
+build runs, and Maven resolves plugin dependencies from repositories (not the
+reactor), so the rule cannot be produced and consumed in the same build. To run
+the check (in CI or locally) use a **two-phase build**:
 
-After the rule is installed once, day-to-day builds just work (a full
-`mvn install` reinstalls it as part of the reactor). Re-run the bootstrap only
-on a fresh checkout with an empty local repo, or after the local-repo artifact
-is removed or its version changes.
+1. **Install the rule** into the local repo:
+   `mvn -pl claude-md-enforcer -am install`. The module's pom is flattened
+   (flatten-maven-plugin) so the installed pom has no unresolved `${revision}`
+   and is resolvable as a plugin dependency.
+2. **Build with the check on**: `mvn package -DenforceClaudeMd` (or
+   `mvn -N validate -DenforceClaudeMd` for a quick check of CLAUDE.md alone).
+
+Without `-DenforceClaudeMd`, the rule is neither resolved nor run, so no
+bootstrap is needed for normal builds.
 
 ## Code style & conventions
 

@@ -374,14 +374,15 @@
 		<profile>
 			<!-- Validates that the repository CLAUDE.md exists and is well formed,
 			     using the custom rule from the tools.claude-md-enforcer module.
-			     That module must be installed first (see AGENTS.md "CLAUDE.md
-			     enforcement"); this profile is therefore disabled during that
-			     bootstrap build by setting -DbootstrapClaudeMdRule. Property-based
-			     activation keeps it on even when -P coverage/pitest is used. -->
+			     Opt-in via -DenforceClaudeMd so that only the dedicated CI build
+			     (.github/workflows/maven.yml) runs it; every other Maven build
+			     (other workflows, local) is unaffected and needs no bootstrap.
+			     The rule must be installed into the local repo first (see
+			     AGENTS.md "CLAUDE.md enforcement"). -->
 			<id>claude-md-enforce</id>
 			<activation>
 				<property>
-					<name>!bootstrapClaudeMdRule</name>
+					<name>enforceClaudeMd</name>
 				</property>
 			</activation>
 			<build>

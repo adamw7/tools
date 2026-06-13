@@ -39,3 +39,20 @@ example server, client, and test live under `src/test/java`.
 ```bash
 mvn -pl grpc-example -am test
 ```
+
+## Run
+
+The server and client live under `src/test/java`, so `exec:java` is configured
+with `classpathScope=test`. Build the module first so the generated builders are
+on the classpath, then start the server (the default `mainClass`):
+
+```bash
+mvn -pl grpc-example -am test-compile
+mvn -pl grpc-example exec:java
+```
+
+In another terminal, drive it with the client, overriding the main class:
+
+```bash
+mvn -pl grpc-example exec:java -Dexec.mainClass=io.github.adamw7.tools.grpc.GreeterClient -Dexec.args=Smith
+```

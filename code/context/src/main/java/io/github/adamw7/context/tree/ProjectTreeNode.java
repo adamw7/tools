@@ -19,23 +19,21 @@ public class ProjectTreeNode {
 	}
 
 	private final String name;
-	private final Path path;
 	private final Type type;
 	private final List<ProjectTreeNode> children = new ArrayList<>();
 	private final Set<String> dependencies = new LinkedHashSet<>();
 
-	public ProjectTreeNode(String name, Path path, Type type) {
+	public ProjectTreeNode(String name, Type type) {
 		this.name = name;
-		this.path = path;
 		this.type = type;
 	}
 
 	public static ProjectTreeNode directory(Path path) {
-		return new ProjectTreeNode(nameOf(path), path, Type.DIRECTORY);
+		return new ProjectTreeNode(nameOf(path), Type.DIRECTORY);
 	}
 
 	public static ProjectTreeNode file(Path path) {
-		return new ProjectTreeNode(nameOf(path), path, Type.FILE);
+		return new ProjectTreeNode(nameOf(path), Type.FILE);
 	}
 
 	private static String nameOf(Path path) {
@@ -57,14 +55,6 @@ public class ProjectTreeNode {
 
 	public String name() {
 		return name;
-	}
-
-	public Path path() {
-		return path;
-	}
-
-	public Type type() {
-		return type;
 	}
 
 	public List<ProjectTreeNode> children() {

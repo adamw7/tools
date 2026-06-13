@@ -1,1 +1,3 @@
 io.github.adamw7.tools.enforcer.ClaudeMdFormatRule
+io.github.adamw7.tools.enforcer.AgentsMdFormatRule
+io.github.adamw7.tools.enforcer.SkillFilesExistRule

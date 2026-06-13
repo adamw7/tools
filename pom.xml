@@ -411,6 +411,12 @@
 										<claudeMdFormat>
 											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
 										</claudeMdFormat>
+										<agentsMdFormat>
+											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
+										</agentsMdFormat>
+										<skillFilesExist>
+											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
+										</skillFilesExist>
 									</rules>
 								</configuration>
 							</execution>

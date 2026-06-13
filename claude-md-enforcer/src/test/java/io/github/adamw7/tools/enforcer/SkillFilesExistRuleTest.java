@@ -42,11 +42,8 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenNoSkillDirectoriesExist() {
-		SkillFilesExistRule rule = ruleFor(tempDir);
-
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("No skill directories"), exception.getMessage());
+	void passesWhenNoSkillDirectoriesExist() {
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
 	}
 
 	@Test
@@ -59,9 +56,61 @@ class SkillFilesExistRuleTest {
 		assertTrue(exception.getMessage().contains("broken-skill"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenSkillFileIsEmpty() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("empty-skill"));
+		Files.writeString(skillDir.resolve("SKILL.md"), "   \n  ");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("is empty"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("empty-skill"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenSkillFileHasNoFrontMatter() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("untitled-skill"));
+		Files.writeString(skillDir.resolve("SKILL.md"), "# Just a heading, no front matter.");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("untitled-skill"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenFrontMatterIsMissingARequiredKey() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("nameless-skill"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				description: Does a thing.
+				---
+				# Body
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("name:"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("nameless-skill"), exception.getMessage());
+	}
+
+	@Test
+	void reportsEverySkillProblemTogether() throws IOException {
+		Files.createDirectory(tempDir.resolve("no-file"));
+		Path empty = Files.createDirectory(tempDir.resolve("empty-skill"));
+		Files.writeString(empty.resolve("SKILL.md"), "");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("no-file"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("empty-skill"), exception.getMessage());
+	}
+
 	private void createSkill(String name) throws IOException {
 		Path skillDir = Files.createDirectory(tempDir.resolve(name));
-		Files.writeString(skillDir.resolve("SKILL.md"), "# " + name);
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: %s
+				description: A skill named %s.
+				---
+				# %s
+				""".formatted(name, name, name));
 	}
 
 	private SkillFilesExistRule ruleFor(Path skillsDir) {

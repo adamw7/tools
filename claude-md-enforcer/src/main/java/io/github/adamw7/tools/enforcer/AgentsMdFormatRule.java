@@ -40,12 +40,12 @@ public class AgentsMdFormatRule extends MarkdownFormatRule {
 	}
 
 	@Override
-	protected String titleHeading() {
+	protected String defaultTitleHeading() {
 		return TITLE_HEADING;
 	}
 
 	@Override
-	protected List<String> requiredSections() {
+	protected List<String> defaultRequiredSections() {
 		return REQUIRED_SECTIONS;
 	}
 

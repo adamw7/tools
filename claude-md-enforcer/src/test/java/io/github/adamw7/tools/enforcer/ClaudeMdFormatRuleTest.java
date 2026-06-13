@@ -105,6 +105,40 @@ class ClaudeMdFormatRuleTest {
 		assertTrue(exception.getMessage().contains("## Testing"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "```\n## Testing\n```"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
+				exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTitleIsOnlyAPartialMatch() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# CLAUDE.md-extended"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenARequiredSectionIsEmpty() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("Ask before adding a new one.", ""));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("empty section: ## Dependencies"), exception.getMessage());
+	}
+
+	@Test
+	void reportsEveryProblemTogether() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong").replace("## Maven", "## Build"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("## Maven"), exception.getMessage());
+	}
+
 	private ClaudeMdFormatRule ruleFor(String content) throws IOException {
 		Path file = tempDir.resolve("CLAUDE.md");
 		Files.writeString(file, content);

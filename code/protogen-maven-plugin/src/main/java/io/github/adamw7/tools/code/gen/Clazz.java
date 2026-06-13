@@ -52,7 +52,7 @@ public class Clazz implements Generator {
 	}
 
 	private CharSequence handleMethodsInMainClass() {
-	    if (info.required().isEmpty()) {
+	    if (info.nonOptional().isEmpty()) {
 	        return handleOptionalMethods();
 	    } else {
 	        return handleRequiredMethods();
@@ -73,12 +73,12 @@ public class Clazz implements Generator {
 	    StringBuilder builder = new StringBuilder();
 	    builder.append(generateFields());
 
-	    FieldDescriptor firstRequiredField = info.required().getFirst();
+	    FieldDescriptor firstNonOptionalField = info.nonOptional().getFirst();
 	    String builderName = Utils.firstToLower(builderClassName);
 
-	    builder.append(methods.has(builderName, firstRequiredField));
-	    builder.append(methods.requiredSetter(builderName, firstRequiredField, info.required()));
-	    builder.append(methods.clear(builderName, firstRequiredField, Utils.getNextIfc(info.name(), info.required(), firstRequiredField)));
+	    builder.append(methods.has(builderName, firstNonOptionalField));
+	    builder.append(methods.requiredSetter(builderName, firstNonOptionalField, info.nonOptional()));
+	    builder.append(methods.clear(builderName, firstNonOptionalField, Utils.getNextIfc(info.name(), info.nonOptional(), firstNonOptionalField)));
 
 	    return builder;
 	}
@@ -108,7 +108,7 @@ public class Clazz implements Generator {
 	}
 
 	private String firstInterface() {
-		return info.name() + (info.required().isEmpty() ? "OptionalIfc" : Utils.to(info.required().getFirst(), "Ifc"));
+		return info.name() + (info.nonOptional().isEmpty() ? "OptionalIfc" : Utils.to(info.nonOptional().getFirst(), "Ifc"));
 	}
 
 	private StringBuilder generateImports() {

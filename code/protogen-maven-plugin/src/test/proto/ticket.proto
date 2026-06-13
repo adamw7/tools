@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.protos";
+
+// Regression fixture: a message with exactly one required field followed by a
+// repeated field. The builder entry point is computed from nonOptional() (which
+// includes repeated/map fields), so setId must chain to the repeated field's
+// interface rather than collapsing straight to OptionalIfc.
+message Ticket {
+  required int32 id = 1;
+  repeated string tags = 2;
+  optional string note = 3;
+}

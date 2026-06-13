@@ -30,6 +30,7 @@ See [README.md](README.md) for worked code examples of each capability.
 
 ```
 tools (root pom, packaging=pom)
+├── claude-md-enforcer          # custom maven-enforcer rule validating CLAUDE.md
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
@@ -41,8 +42,9 @@ tools (root pom, packaging=pom)
 └── data-test                   # standalone test module for the data module
 ```
 
-Root reactor modules are `data`, `code`, and `assembly`. The `data-test` module
-is built separately (it is not in the root `<modules>` list).
+Root reactor modules are `claude-md-enforcer`, `data`, `code`, and `assembly`.
+The `data-test` module is built separately (it is not in the root `<modules>`
+list).
 
 Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the
 context module, `io.github.adamw7.tools.*` elsewhere).
@@ -64,6 +66,10 @@ for client configuration (Claude Desktop, Cline, etc.).
 ## Build, test, and run
 
 ```bash
+# Install the custom enforcer rule into the local repo. Only needed if you want
+# to run the CLAUDE.md check locally (see "CLAUDE.md enforcement" below).
+mvn -pl claude-md-enforcer -am install
+
 # Full clean build + install to local repo (use clean — see note below)
 mvn clean install
 
@@ -85,8 +91,42 @@ generates protobuf builders into `target/`; stale generated output from a
 previous build can otherwise linger and mask the change. If you have not
 removed anything, plain `mvn install` is fine and faster.
 
-CI (`.github/workflows/maven.yml`) runs `mvn -B package` on JDK 25 (Temurin)
-for every push and for pull requests targeting `main`.
+CI (`.github/workflows/maven.yml`) installs the enforcer rule
+(`mvn -B -pl claude-md-enforcer -am install`) and then runs
+`mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
+pull requests targeting `main`. It is the only workflow that runs the CLAUDE.md
+check; the other workflows build normally and are unaffected.
+
+## CLAUDE.md enforcement
+
+The `claude-md-enforcer` module is a custom `maven-enforcer-plugin` rule
+(`io.github.adamw7.tools.enforcer.ClaudeMdFormatRule`) that **fails the build**
+when the repository `CLAUDE.md` is missing or malformed. It checks that the file
+exists and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8
+BOM is tolerated), references `AGENTS.md`, and contains every required section
+heading (`## Project`, `## Java version`, `## Maven`,
+`## Principles for Java Development`, `## Testing`, `## Dependencies`). The rule
+runs at the **root** only, in the `claude-md-enforce` profile.
+
+The check is **opt-in**: the `claude-md-enforce` profile activates only when the
+`enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other
+Maven build — the other CI workflows and ordinary local builds — unaffected and
+free of any bootstrap requirement. Only `.github/workflows/maven.yml` opts in.
+
+A maven-enforcer rule must be a JAR resolvable from a repository before the
+build runs, and Maven resolves plugin dependencies from repositories (not the
+reactor), so the rule cannot be produced and consumed in the same build. To run
+the check (in CI or locally) use a **two-phase build**:
+
+1. **Install the rule** into the local repo:
+   `mvn -pl claude-md-enforcer -am install`. The module's pom is flattened
+   (flatten-maven-plugin) so the installed pom has no unresolved `${revision}`
+   and is resolvable as a plugin dependency.
+2. **Build with the check on**: `mvn package -DenforceClaudeMd` (or
+   `mvn -N validate -DenforceClaudeMd` for a quick check of CLAUDE.md alone).
+
+Without `-DenforceClaudeMd`, the rule is neither resolved nor run, so no
+bootstrap is needed for normal builds.
 
 ## Code style & conventions
 

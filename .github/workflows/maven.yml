@@ -26,10 +26,20 @@ jobs:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
+    - name: Bootstrap CLAUDE.md enforcer rule
+      # The custom enforcer rule (tools.claude-md-enforcer) is consumed as a
+      # maven-enforcer-plugin dependency by the root build, so it must be
+      # installed to the local repo first. The claude-md-enforce profile is
+      # off here (no -DenforceClaudeMd), so the module is not asked to depend
+      # on itself while it is being built.
+      run: mvn -B -pl claude-md-enforcer -am install
     - name: Build with Maven
+      # -DenforceClaudeMd activates the claude-md-enforce profile so the root
+      # build fails when CLAUDE.md is missing or malformed. This is the only
+      # workflow that runs the check.
       run: |
         start=$(date +%s)
-        mvn -B package --file pom.xml
+        mvn -B package -DenforceClaudeMd --file pom.xml
         end=$(date +%s)
         duration=$((end - start))
         echo "Build took ${duration} seconds."

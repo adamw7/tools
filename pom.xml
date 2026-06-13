@@ -38,6 +38,7 @@
 		<tag>HEAD</tag>
 	</scm>
 	<modules>
+		<module>claude-md-enforcer</module>
 		<module>data</module>
 		<module>code</module>
 		<module>grpc-example</module>
@@ -46,6 +47,18 @@
 	<dependencyManagement>
 		<dependencies>
 
+			<dependency>
+				<groupId>org.apache.maven.enforcer</groupId>
+				<artifactId>enforcer-api</artifactId>
+				<version>3.6.3</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>javax.inject</groupId>
+				<artifactId>javax.inject</artifactId>
+				<version>1</version>
+				<scope>provided</scope>
+			</dependency>
 			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>
@@ -275,6 +288,11 @@
 					<version>3.6.3</version>
 				</plugin>
 				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>flatten-maven-plugin</artifactId>
+					<version>1.6.0</version>
+				</plugin>
+				<plugin>
 					<groupId>dev.dimlight</groupId>
 					<artifactId>shellcheck-maven-plugin</artifactId>
 					<version>0.5.1</version>
@@ -353,6 +371,54 @@
 	</build>
 
 	<profiles>
+		<profile>
+			<!-- Validates that the repository CLAUDE.md exists and is well formed,
+			     using the custom rule from the tools.claude-md-enforcer module.
+			     Opt-in via -DenforceClaudeMd so that only the dedicated CI build
+			     (.github/workflows/maven.yml) runs it; every other Maven build
+			     (other workflows, local) is unaffected and needs no bootstrap.
+			     The rule must be installed into the local repo first (see
+			     AGENTS.md "CLAUDE.md enforcement"). -->
+			<id>claude-md-enforce</id>
+			<activation>
+				<property>
+					<name>enforceClaudeMd</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-enforcer-plugin</artifactId>
+						<dependencies>
+							<dependency>
+								<groupId>io.github.adamw7</groupId>
+								<artifactId>tools.claude-md-enforcer</artifactId>
+								<version>${revision}</version>
+							</dependency>
+						</dependencies>
+						<executions>
+							<execution>
+								<id>enforce-claude-md</id>
+								<!-- CLAUDE.md lives only at the repository root, so run
+								     this at the root reactor module only. -->
+								<inherited>false</inherited>
+								<goals>
+									<goal>enforce</goal>
+								</goals>
+								<configuration>
+									<rules>
+										<claudeMdFormat>
+											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
+										</claudeMdFormat>
+									</rules>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>coverage</id>
 			<build>

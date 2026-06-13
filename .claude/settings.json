@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(unzip -p *)",
+      "Bash(unzip -l *)",
+      "Bash(mvn dependency:tree *)",
+      "Bash(mvn dependency:analyze *)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

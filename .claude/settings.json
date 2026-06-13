@@ -4,7 +4,10 @@
       "Bash(unzip -p *)",
       "Bash(unzip -l *)",
       "Bash(mvn dependency:tree *)",
-      "Bash(mvn dependency:analyze *)"
+      "Bash(mvn dependency:analyze *)",
+      "Bash(mvn *)",
+      "PowerShell(mvn *)",
+      "Edit"
     ]
   },
   "hooks": {

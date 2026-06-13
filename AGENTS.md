@@ -99,14 +99,26 @@ check; the other workflows build normally and are unaffected.
 
 ## CLAUDE.md enforcement
 
-The `claude-md-enforcer` module is a custom `maven-enforcer-plugin` rule
-(`io.github.adamw7.tools.enforcer.ClaudeMdFormatRule`) that **fails the build**
-when the repository `CLAUDE.md` is missing or malformed. It checks that the file
-exists and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8
-BOM is tolerated), references `AGENTS.md`, and contains every required section
-heading (`## Project`, `## Java version`, `## Maven`,
-`## Principles for Java Development`, `## Testing`, `## Dependencies`). The rule
-runs at the **root** only, in the `claude-md-enforce` profile.
+The `claude-md-enforcer` module is a set of custom `maven-enforcer-plugin` rules
+that **fail the build** when the repository's agent files are missing or
+malformed. The rules run at the **root** only, in the `claude-md-enforce`
+profile:
+
+- `ClaudeMdFormatRule` (`claudeMdFormat`) checks that `CLAUDE.md` exists and is
+  non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
+  tolerated), references `AGENTS.md`, and contains every required section
+  heading (`## Project`, `## Java version`, `## Maven`,
+  `## Principles for Java Development`, `## Testing`, `## Dependencies`).
+- `AgentsMdFormatRule` (`agentsMdFormat`) applies the same structural checks to
+  `AGENTS.md`: it must start with the `# AGENTS.md` title and contain every
+  required section heading (`## Project overview`, `## Module layout`,
+  `## Environment & toolchain`, `## Build, test, and run`,
+  `## Code style & conventions`, `## Releasing`, `## Pull requests & commits`).
+- `SkillFilesExistRule` (`skillFilesExist`) checks that every skill directory
+  under `.claude/skills` contains a `SKILL.md` file.
+
+The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
+base class that performs the file-existence, BOM, title, and section checks.
 
 The check is **opt-in**: the `claude-md-enforce` profile activates only when the
 `enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other

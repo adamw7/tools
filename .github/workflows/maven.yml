@@ -26,6 +26,13 @@ jobs:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
+    - name: Bootstrap CLAUDE.md enforcer rule
+      # The custom enforcer rule (tools.claude-md-enforcer) is consumed as a
+      # maven-enforcer-plugin dependency by the root build, so it must be
+      # installed to the local repo first. -DbootstrapClaudeMdRule disables the
+      # claude-md-enforce profile for this step so the module is not asked to
+      # depend on itself while it is being built.
+      run: mvn -B -pl claude-md-enforcer -am -DbootstrapClaudeMdRule install
     - name: Build with Maven
       run: |
         start=$(date +%s)

@@ -100,6 +100,30 @@ class AgentsMdFormatRuleTest {
 		assertTrue(exception.getMessage().contains("## Releasing"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() throws IOException {
+		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Releasing", "```\n## Releasing\n```"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Releasing"),
+				exception.getMessage());
+	}
+
+	@Test
+	void honoursConfiguredTitleAndSections() throws IOException {
+		String content = """
+				# Custom Guide
+
+				## Only Section
+				Some content.
+				""";
+		AgentsMdFormatRule rule = ruleFor(content);
+		rule.setTitleHeading("# Custom Guide");
+		rule.setRequiredSections(java.util.List.of("## Only Section"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	private AgentsMdFormatRule ruleFor(String content) throws IOException {
 		Path file = tempDir.resolve("AGENTS.md");
 		Files.writeString(file, content);

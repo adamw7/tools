@@ -5,8 +5,6 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
 /**
  * Enforcer rule that fails the build when {@code CLAUDE.md} is missing or does
  * not follow the expected structure: it must start with the {@code # CLAUDE.md}
@@ -41,19 +39,19 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 	}
 
 	@Override
-	protected String titleHeading() {
+	protected String defaultTitleHeading() {
 		return TITLE_HEADING;
 	}
 
 	@Override
-	protected List<String> requiredSections() {
+	protected List<String> defaultRequiredSections() {
 		return REQUIRED_SECTIONS;
 	}
 
 	@Override
-	protected void verifyAdditional(String content) throws EnforcerRuleException {
-		if (!content.contains(AGENTS_REFERENCE)) {
-			throw new EnforcerRuleException("CLAUDE.md must reference " + AGENTS_REFERENCE + " as the source of truth");
+	protected void collectAdditionalViolations(String content, List<String> violations) {
+		if (!containsOutsideCodeFences(content, AGENTS_REFERENCE)) {
+			violations.add("CLAUDE.md must reference " + AGENTS_REFERENCE + " as the source of truth");
 		}
 	}
 

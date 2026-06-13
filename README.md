@@ -302,6 +302,35 @@ Notes:
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
+## Agent file enforcement
+
+The `claude-md-enforcer` module is a set of custom
+[`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)
+rules that **fail the build** when the repository's agent files are missing or
+malformed, keeping `CLAUDE.md`, `AGENTS.md`, and the skills under
+`.claude/skills` consistent and in their expected shape:
+
+- **`claudeMdFormat`** (`ClaudeMdFormatRule`) — checks that `CLAUDE.md` exists
+  and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
+  tolerated), references `AGENTS.md`, and contains every required section
+  heading.
+- **`agentsMdFormat`** (`AgentsMdFormatRule`) — applies the same structural
+  checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
+  every required section heading.
+- **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
+  directory under `.claude/skills` contains a `SKILL.md` file.
+
+The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
+base class that performs the file-existence, BOM, title, and section checks.
+
+The rules are wired into the root `pom.xml` and run at the repository root only.
+The check is **opt-in** via the `enforceClaudeMd` property, so ordinary builds
+are unaffected:
+```
+mvn -pl claude-md-enforcer -am install   # install the rule jar once
+mvn package -DenforceClaudeMd            # build with the checks enabled
+```
+
 # Building
 ```
 mvn clean install

@@ -115,10 +115,31 @@ profile:
   `## Environment & toolchain`, `## Build, test, and run`,
   `## Code style & conventions`, `## Releasing`, `## Pull requests & commits`).
 - `SkillFilesExistRule` (`skillFilesExist`) checks that every skill directory
-  under `.claude/skills` contains a `SKILL.md` file.
+  under `.claude/skills` contains a non-empty `SKILL.md` whose YAML front matter
+  declares every required key (`name`, `description` by default, overridable via
+  `requiredKeys`). The `name` must be lower-case kebab-case, at most 64
+  characters, and match the skill's directory name; the `description` must be
+  non-empty and within `maxDescriptionLength`. Setting `allowedFrontMatterKeys`
+  also reports unknown keys, catching typos such as `descripton`.
+- `SubAgentFormatRule` (`subAgentFormat`) applies the same front-matter checks to
+  every `*.md` sub-agent definition under a configured `agentsDir`; the `name`
+  must match the file name, and an optional `allowedModels` list rejects an
+  unknown `model`.
+- `SettingsJsonValidRule` (`settingsJsonValid`) checks that `.claude/settings.json`
+  exists and is valid JSON, and can assert `requiredPermissions` and
+  `forbiddenPermissions` against the `permissions.allow` list.
+- `CrossDocConsistencyRule` (`crossDocConsistency`) keeps `CLAUDE.md` and
+  `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
+  regex (one capturing group) must capture the same value in both files, e.g.
+  `Java (\d+)` pins the Java version.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
-base class that performs the file-existence, BOM, title, and section checks.
+base class that performs the file-existence, BOM, title, and section checks, and
+offer optional checks switched on from configuration: `forbiddenTokens`,
+`enforceSectionOrder`, `maxLineLength`, and `validateFileReferences` (Markdown
+links to local files must resolve on disk). Every rule supports a `severity` of
+`error` (default, fails the build) or `warn` (logs the same violations), so a new
+rule can be adopted gradually.
 
 The check is **opt-in**: the `claude-md-enforce` profile activates only when the
 `enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other

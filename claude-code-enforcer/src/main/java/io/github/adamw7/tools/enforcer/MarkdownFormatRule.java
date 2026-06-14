@@ -8,8 +8,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 /**
@@ -24,16 +25,26 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * not satisfy {@code # CLAUDE.md}. All structural problems are collected and
  * reported together rather than one per build.
  * <p>
+ * Beyond the mandatory structure, several optional checks can be switched on
+ * from the rule configuration: a list of {@code forbiddenTokens} that must not
+ * appear outside code fences, {@code enforceSectionOrder} to require the
+ * sections in the configured order, a {@code maxLineLength} cap, and
+ * {@code validateFileReferences} to confirm that Markdown links to local files
+ * resolve to something on disk. Each is disabled by default, so existing
+ * configurations are unaffected.
+ * <p>
  * The title and required sections default to the subclass-provided values but
  * can be overridden from the rule configuration, so the rule is reusable across
  * projects without a recompile. Subclasses contribute the file, its name, the
  * defaults, and any document-specific checks.
  */
-abstract class MarkdownFormatRule extends AbstractEnforcerRule {
+abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String CODE_FENCE = "```";
 	private static final String HEADING_PREFIX = "#";
 	private static final char HEADING_CHAR = '#';
+	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)]+)\\)");
+	private static final Pattern EXTERNAL_REFERENCE = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
 
 	/** Optional override for the title heading. Falls back to the subclass default. */
 	private String titleHeading;
@@ -41,14 +52,33 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 	/** Optional override for the required sections. Falls back to the subclass default. */
 	private List<String> requiredSections;
 
+	/** Optional tokens that must not appear outside fenced code blocks. */
+	private List<String> forbiddenTokens;
+
+	/** When true, the required sections must appear in the configured order. */
+	private boolean enforceSectionOrder;
+
+	/** Maximum allowed line length outside code fences. Zero (default) disables the check. */
+	private int maxLineLength;
+
+	/** When true, Markdown links to local files must resolve to an existing file. */
+	private boolean validateFileReferences;
+
+	/** Base directory for resolving relative file references. Defaults to the document's directory. */
+	private File referenceBaseDir;
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		String content = readContent();
 		List<String> violations = new ArrayList<>();
 		collectTitleViolation(content, violations);
 		collectSectionViolations(content, violations);
+		collectOrderViolations(content, violations);
+		collectForbiddenTokenViolations(content, violations);
+		collectLineLengthViolations(content, violations);
+		collectFileReferenceViolations(content, violations);
 		collectAdditionalViolations(content, violations);
-		failIfAny(violations);
+		report(documentName() + " is not well formed:", violations);
 	}
 
 	/** The file to validate. Injected from the rule configuration. */
@@ -96,6 +126,26 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 		this.requiredSections = requiredSections;
 	}
 
+	void setForbiddenTokens(List<String> forbiddenTokens) {
+		this.forbiddenTokens = forbiddenTokens;
+	}
+
+	void setEnforceSectionOrder(boolean enforceSectionOrder) {
+		this.enforceSectionOrder = enforceSectionOrder;
+	}
+
+	void setMaxLineLength(int maxLineLength) {
+		this.maxLineLength = maxLineLength;
+	}
+
+	void setValidateFileReferences(boolean validateFileReferences) {
+		this.validateFileReferences = validateFileReferences;
+	}
+
+	void setReferenceBaseDir(File referenceBaseDir) {
+		this.referenceBaseDir = referenceBaseDir;
+	}
+
 	private String readContent() throws EnforcerRuleException {
 		File file = documentFile();
 		if (file == null) {
@@ -141,6 +191,124 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 		} else if (!hasBody(lines, insideFence, headingIndex(lines, insideFence, section))) {
 			violations.add(documentName() + " has an empty section: " + section);
 		}
+	}
+
+	/**
+	 * When ordering is enforced, the required sections that are present must appear
+	 * in the same relative order as configured. Absent sections are already
+	 * reported by the section check, so only the present ones are compared here.
+	 */
+	private void collectOrderViolations(String content, List<String> violations) {
+		if (!enforceSectionOrder) {
+			return;
+		}
+		List<String> lines = lines(content);
+		boolean[] insideFence = fenceMask(lines);
+		Set<String> headings = headings(lines, insideFence);
+		List<String> expected = presentRequiredSections(headings);
+		List<String> actual = requiredHeadingsInOrder(lines, insideFence);
+		if (!actual.equals(expected)) {
+			violations.add(documentName() + " sections are out of order; expected " + expected + " but found " + actual);
+		}
+	}
+
+	private List<String> presentRequiredSections(Set<String> headings) {
+		return requiredSections().stream().filter(headings::contains).toList();
+	}
+
+	private List<String> requiredHeadingsInOrder(List<String> lines, boolean[] insideFence) {
+		Set<String> required = new LinkedHashSet<>(requiredSections());
+		List<String> ordered = new ArrayList<>();
+		for (int i = 0; i < lines.size(); i++) {
+			addIfRequiredHeading(lines.get(i).strip(), insideFence[i], required, ordered);
+		}
+		return ordered;
+	}
+
+	private void addIfRequiredHeading(String line, boolean insideFence, Set<String> required, List<String> ordered) {
+		if (!insideFence && required.contains(line)) {
+			ordered.add(line);
+		}
+	}
+
+	private void collectForbiddenTokenViolations(String content, List<String> violations) {
+		if (forbiddenTokens == null) {
+			return;
+		}
+		for (String token : forbiddenTokens) {
+			if (containsOutsideCodeFences(content, token)) {
+				violations.add(documentName() + " must not contain forbidden token: " + token);
+			}
+		}
+	}
+
+	private void collectLineLengthViolations(String content, List<String> violations) {
+		if (maxLineLength <= 0) {
+			return;
+		}
+		List<String> lines = lines(content);
+		boolean[] insideFence = fenceMask(lines);
+		for (int i = 0; i < lines.size(); i++) {
+			addLineLengthViolation(lines.get(i), insideFence[i], i, violations);
+		}
+	}
+
+	private void addLineLengthViolation(String line, boolean insideFence, int index, List<String> violations) {
+		if (!insideFence && line.length() > maxLineLength) {
+			violations.add(documentName() + " line " + (index + 1) + " exceeds " + maxLineLength
+					+ " characters (" + line.length() + ")");
+		}
+	}
+
+	private void collectFileReferenceViolations(String content, List<String> violations) {
+		if (!validateFileReferences) {
+			return;
+		}
+		File baseDir = referenceBaseDir();
+		List<String> lines = lines(content);
+		boolean[] insideFence = fenceMask(lines);
+		for (int i = 0; i < lines.size(); i++) {
+			collectLineReferences(lines.get(i), insideFence[i], baseDir, violations);
+		}
+	}
+
+	private void collectLineReferences(String line, boolean insideFence, File baseDir, List<String> violations) {
+		if (insideFence) {
+			return;
+		}
+		Matcher matcher = MARKDOWN_LINK.matcher(line);
+		while (matcher.find()) {
+			addReferenceViolation(matcher.group(1).strip(), baseDir, violations);
+		}
+	}
+
+	private void addReferenceViolation(String target, File baseDir, List<String> violations) {
+		String localPath = localReferencePath(target);
+		if (localPath != null && !new File(baseDir, localPath).exists()) {
+			violations.add(documentName() + " references a missing file: " + localPath);
+		}
+	}
+
+	/** The on-disk path a link points to, or null when the link is external or an anchor. */
+	private String localReferencePath(String target) {
+		if (target.isEmpty() || target.startsWith("#") || EXTERNAL_REFERENCE.matcher(target).matches()) {
+			return null;
+		}
+		String withoutAnchor = stripAfter(stripAfter(target, '#'), '?');
+		return withoutAnchor.isEmpty() ? null : withoutAnchor;
+	}
+
+	private String stripAfter(String value, char delimiter) {
+		int index = value.indexOf(delimiter);
+		return index < 0 ? value : value.substring(0, index);
+	}
+
+	private File referenceBaseDir() {
+		if (referenceBaseDir != null) {
+			return referenceBaseDir;
+		}
+		File parent = documentFile().getAbsoluteFile().getParentFile();
+		return parent != null ? parent : new File(".");
 	}
 
 	/**
@@ -216,13 +384,5 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 
 	private List<String> lines(String content) {
 		return content.lines().toList();
-	}
-
-	private void failIfAny(List<String> violations) throws EnforcerRuleException {
-		if (!violations.isEmpty()) {
-			String separator = System.lineSeparator() + "  - ";
-			throw new EnforcerRuleException(
-					documentName() + " is not well formed:" + separator + String.join(separator, violations));
-		}
 	}
 }

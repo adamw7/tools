@@ -1,3 +1,6 @@
 io.github.adamw7.tools.enforcer.ClaudeMdFormatRule
 io.github.adamw7.tools.enforcer.AgentsMdFormatRule
 io.github.adamw7.tools.enforcer.SkillFilesExistRule
+io.github.adamw7.tools.enforcer.SubAgentFormatRule
+io.github.adamw7.tools.enforcer.SettingsJsonValidRule
+io.github.adamw7.tools.enforcer.CrossDocConsistencyRule

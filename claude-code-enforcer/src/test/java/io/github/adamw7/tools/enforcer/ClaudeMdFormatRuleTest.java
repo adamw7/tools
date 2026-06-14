@@ -183,6 +183,110 @@ class ClaudeMdFormatRuleTest {
 		assertTrue(exception.getMessage().contains("## Maven"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenAForbiddenTokenAppears() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nTODO: finish this.\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
+	}
+
+	@Test
+	void ignoresAForbiddenTokenInsideACodeFence() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\nTODO inside code\n```\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void passesWhenSectionsAreInConfiguredOrder() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setEnforceSectionOrder(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenRequiredSectionsAppearInTheWrongOrder() throws IOException {
+		String reordered = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+				## Project
+				Java project built with Maven.
+
+				## Java version
+				Java 25.
+
+				## Maven
+				Versions live in the root pom.
+
+				## Principles for Java Development
+				Use SOLID Principles.
+
+				## Dependencies
+				Ask before adding a new one.
+
+				## Testing
+				Write unit tests for all new logic.
+				""";
+		ClaudeMdFormatRule rule = ruleFor(reordered);
+		rule.setEnforceSectionOrder(true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("out of order"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenALineExceedsTheMaximumLength() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n" + "x".repeat(200) + "\n");
+		rule.setMaxLineLength(120);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("exceeds 120 characters"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAFileReferenceIsMissing() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setValidateFileReferences(true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing file: AGENTS.md"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenReferencedFilesExist() throws IOException {
+		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setValidateFileReferences(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void ignoresExternalLinksWhenValidatingReferences() throws IOException {
+		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [site](https://example.com) and [top](#project).\n");
+		rule.setValidateFileReferences(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void warnSeverityLogsInsteadOfFailing() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong"));
+		rule.setSeverity("WARN");
+		CapturingLogger logger = new CapturingLogger();
+		rule.setLog(logger);
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("title heading")), logger.warnings().toString());
+	}
+
 	private ClaudeMdFormatRule ruleFor(String content) throws IOException {
 		Path file = tempDir.resolve("CLAUDE.md");
 		Files.writeString(file, content);

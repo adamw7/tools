@@ -30,7 +30,7 @@ See [README.md](README.md) for worked code examples of each capability.
 
 ```
 tools (root pom, packaging=pom)
-├── claude-md-enforcer          # custom maven-enforcer rule validating CLAUDE.md
+├── claude-code-enforcer        # custom maven-enforcer rule validating CLAUDE.md
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
@@ -42,7 +42,7 @@ tools (root pom, packaging=pom)
 └── data-test                   # standalone test module for the data module
 ```
 
-Root reactor modules are `claude-md-enforcer`, `data`, `code`, and `assembly`.
+Root reactor modules are `claude-code-enforcer`, `data`, `code`, and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 
@@ -68,7 +68,7 @@ for client configuration (Claude Desktop, Cline, etc.).
 ```bash
 # Install the custom enforcer rule into the local repo. Only needed if you want
 # to run the CLAUDE.md check locally (see "CLAUDE.md enforcement" below).
-mvn -pl claude-md-enforcer -am install
+mvn -pl claude-code-enforcer -am install
 
 # Full clean build + install to local repo (use clean — see note below)
 mvn clean install
@@ -92,14 +92,14 @@ previous build can otherwise linger and mask the change. If you have not
 removed anything, plain `mvn install` is fine and faster.
 
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
-(`mvn -B -pl claude-md-enforcer -am install`) and then runs
+(`mvn -B -pl claude-code-enforcer -am install`) and then runs
 `mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
 pull requests targeting `main`. It is the only workflow that runs the CLAUDE.md
 check; the other workflows build normally and are unaffected.
 
 ## CLAUDE.md enforcement
 
-The `claude-md-enforcer` module is a set of custom `maven-enforcer-plugin` rules
+The `claude-code-enforcer` module is a set of custom `maven-enforcer-plugin` rules
 that **fail the build** when the repository's agent files are missing or
 malformed. The rules run at the **root** only, in the `claude-md-enforce`
 profile:
@@ -131,7 +131,7 @@ reactor), so the rule cannot be produced and consumed in the same build. To run
 the check (in CI or locally) use a **two-phase build**:
 
 1. **Install the rule** into the local repo:
-   `mvn -pl claude-md-enforcer -am install`. The module's pom is flattened
+   `mvn -pl claude-code-enforcer -am install`. The module's pom is flattened
    (flatten-maven-plugin) so the installed pom has no unresolved `${revision}`
    and is resolvable as a plugin dependency.
 2. **Build with the check on**: `mvn package -DenforceClaudeMd` (or

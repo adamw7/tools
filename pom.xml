@@ -38,7 +38,7 @@
 		<tag>HEAD</tag>
 	</scm>
 	<modules>
-		<module>claude-md-enforcer</module>
+		<module>claude-code-enforcer</module>
 		<module>data</module>
 		<module>code</module>
 		<module>grpc-example</module>
@@ -373,7 +373,7 @@
 	<profiles>
 		<profile>
 			<!-- Validates that the repository CLAUDE.md exists and is well formed,
-			     using the custom rule from the tools.claude-md-enforcer module.
+			     using the custom rule from the tools.claude-code-enforcer module.
 			     Opt-in via -DenforceClaudeMd so that only the dedicated CI build
 			     (.github/workflows/maven.yml) runs it; every other Maven build
 			     (other workflows, local) is unaffected and needs no bootstrap.
@@ -393,7 +393,7 @@
 						<dependencies>
 							<dependency>
 								<groupId>io.github.adamw7</groupId>
-								<artifactId>tools.claude-md-enforcer</artifactId>
+								<artifactId>tools.claude-code-enforcer</artifactId>
 								<version>${revision}</version>
 							</dependency>
 						</dependencies>

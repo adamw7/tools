@@ -278,8 +278,21 @@ abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		Matcher matcher = MARKDOWN_LINK.matcher(line);
 		while (matcher.find()) {
-			addReferenceViolation(matcher.group(1).strip(), baseDir, violations);
+			addReferenceViolation(linkDestination(matcher.group(1)), baseDir, violations);
 		}
+	}
+
+	/**
+	 * The destination part of a Markdown link target, dropping the optional title
+	 * and any {@code <...>} wrapping, so {@code [t](file.md "Title")} resolves to
+	 * {@code file.md} rather than the whole {@code file.md "Title"} string.
+	 */
+	private String linkDestination(String rawTarget) {
+		String target = rawTarget.strip();
+		if (target.startsWith("<") && target.contains(">")) {
+			return target.substring(1, target.indexOf('>')).strip();
+		}
+		return target.split("\\s", 2)[0].strip();
 	}
 
 	private void addReferenceViolation(String target, File baseDir, List<String> violations) {

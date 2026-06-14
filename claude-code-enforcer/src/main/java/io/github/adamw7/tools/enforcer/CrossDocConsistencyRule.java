@@ -43,6 +43,7 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
+		verifyPatterns();
 		String first = readContent(claudeMdFile);
 		String second = readContent(agentsMdFile);
 		List<String> violations = new ArrayList<>();
@@ -63,6 +64,21 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 		}
 		if (!file.isFile()) {
 			throw new EnforcerRuleException(parameter + " does not exist at " + file);
+		}
+	}
+
+	/**
+	 * Each configured pattern must declare a capturing group, since the rule
+	 * compares {@code group(1)} from each document. A pattern without one is a
+	 * build-setup mistake, so it fails with a clear message instead of letting an
+	 * opaque {@link IndexOutOfBoundsException} escape at match time.
+	 */
+	private void verifyPatterns() throws EnforcerRuleException {
+		for (String pattern : patterns()) {
+			if (Pattern.compile(pattern).matcher("").groupCount() < 1) {
+				throw new EnforcerRuleException(
+						"consistentPattern '" + pattern + "' must declare a capturing group");
+			}
 		}
 	}
 

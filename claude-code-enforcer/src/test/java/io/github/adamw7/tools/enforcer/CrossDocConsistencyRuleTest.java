@@ -59,6 +59,15 @@ class CrossDocConsistencyRuleTest {
 	}
 
 	@Test
+	void failsWithAClearMessageWhenAPatternHasNoCapturingGroup() throws IOException {
+		CrossDocConsistencyRule rule = ruleFor("Java 25.", "Java 25.");
+		rule.setConsistentPatterns(List.of("Java \\d+"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("must declare a capturing group"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenAFileIsMissing() {
 		CrossDocConsistencyRule rule = new CrossDocConsistencyRule();
 		rule.setClaudeMdFile(tempDir.resolve("absent-claude.md").toFile());

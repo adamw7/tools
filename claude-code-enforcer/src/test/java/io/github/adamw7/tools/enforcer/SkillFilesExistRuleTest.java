@@ -102,6 +102,103 @@ class SkillFilesExistRuleTest {
 		assertTrue(exception.getMessage().contains("empty-skill"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenNameDoesNotMatchDirectory() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: commit
+				description: Mismatched name.
+				---
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("must match 'git-commit'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenNameIsNotKebabCase() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("Git_Commit"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: Git_Commit
+				description: Bad casing.
+				---
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("kebab-case"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenDescriptionIsEmpty() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description:
+				---
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenDescriptionExceedsConfiguredMaximum() throws IOException {
+		createSkill("git-commit");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setMaxDescriptionLength(5);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("description exceeds 5"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAnUnknownFrontMatterKeyIsPresent() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: git-commit
+				descripton: Typo in the key.
+				description: Real description.
+				---
+				""");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setAllowedFrontMatterKeys(java.util.List.of("name", "description"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("unknown key 'descripton:'"), exception.getMessage());
+	}
+
+	@Test
+	void honoursConfiguredRequiredKeys() throws IOException {
+		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
+		Files.writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description: A skill.
+				---
+				""");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setRequiredKeys(java.util.List.of("name", "description", "model"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing 'model:'"), exception.getMessage());
+	}
+
+	@Test
+	void warnSeverityLogsInsteadOfFailing() throws IOException {
+		Files.createDirectory(tempDir.resolve("broken-skill"));
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setSeverity("warn");
+		CapturingLogger logger = new CapturingLogger();
+		rule.setLog(logger);
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("broken-skill")), logger.warnings().toString());
+	}
+
 	private void createSkill(String name) throws IOException {
 		Path skillDir = Files.createDirectory(tempDir.resolve(name));
 		Files.writeString(skillDir.resolve("SKILL.md"), """

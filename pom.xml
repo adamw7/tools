@@ -417,6 +417,16 @@
 										<skillFilesExist>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</skillFilesExist>
+										<settingsJsonValid>
+											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
+										</settingsJsonValid>
+										<crossDocConsistency>
+											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
+											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
+											<consistentPatterns>
+												<consistentPattern>Java (\d+)</consistentPattern>
+											</consistentPatterns>
+										</crossDocConsistency>
 									</rules>
 								</configuration>
 							</execution>

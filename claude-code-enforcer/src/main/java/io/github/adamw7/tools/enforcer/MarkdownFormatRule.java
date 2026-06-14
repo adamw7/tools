@@ -32,6 +32,7 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 
 	private static final String CODE_FENCE = "```";
 	private static final String HEADING_PREFIX = "#";
+	private static final char HEADING_CHAR = '#';
 
 	/** Optional override for the title heading. Falls back to the subclass default. */
 	private String titleHeading;
@@ -124,59 +125,74 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 	}
 
 	private void collectSectionViolations(String content, List<String> violations) {
-		Set<String> headings = headings(content);
 		List<String> lines = lines(content);
+		boolean[] insideFence = fenceMask(lines);
+		Set<String> headings = headings(lines, insideFence);
 		for (String section : requiredSections()) {
-			addSectionViolation(lines, headings, section, violations);
+			addSectionViolation(lines, insideFence, headings, section, violations);
 		}
 	}
 
-	private void addSectionViolation(List<String> lines, Set<String> headings, String section,
-			List<String> violations) {
+	private void addSectionViolation(List<String> lines, boolean[] insideFence, Set<String> headings,
+			String section, List<String> violations) {
 		if (!headings.contains(section)) {
 			violations.add(documentName() + " is missing required section heading: " + section);
-		} else if (!hasBody(lines, headingIndex(lines, section))) {
+		} else if (!hasBody(lines, insideFence, headingIndex(lines, insideFence, section))) {
 			violations.add(documentName() + " has an empty section: " + section);
 		}
 	}
 
-	private Set<String> headings(String content) {
-		Set<String> headings = new LinkedHashSet<>();
+	/**
+	 * Marks every line that belongs to a fenced code block, including the opening
+	 * and closing {@code ```} delimiters, so heading detection and body detection
+	 * agree on what is code and what is document structure.
+	 */
+	private boolean[] fenceMask(List<String> lines) {
+		boolean[] mask = new boolean[lines.size()];
 		boolean insideCodeFence = false;
-		for (String line : lines(content)) {
-			insideCodeFence = collectHeading(line, insideCodeFence, headings);
+		for (int i = 0; i < lines.size(); i++) {
+			boolean isFenceDelimiter = lines.get(i).strip().startsWith(CODE_FENCE);
+			mask[i] = insideCodeFence || isFenceDelimiter;
+			insideCodeFence = isFenceDelimiter != insideCodeFence;
+		}
+		return mask;
+	}
+
+	private Set<String> headings(List<String> lines, boolean[] insideFence) {
+		Set<String> headings = new LinkedHashSet<>();
+		for (int i = 0; i < lines.size(); i++) {
+			String trimmed = lines.get(i).strip();
+			if (!insideFence[i] && isHeading(trimmed)) {
+				headings.add(trimmed);
+			}
 		}
 		return headings;
 	}
 
-	private boolean collectHeading(String line, boolean insideCodeFence, Set<String> headings) {
-		String trimmed = line.strip();
-		if (trimmed.startsWith(CODE_FENCE)) {
-			return !insideCodeFence;
-		}
-		if (!insideCodeFence && isHeading(trimmed)) {
-			headings.add(trimmed);
-		}
-		return insideCodeFence;
-	}
-
-	private int headingIndex(List<String> lines, String section) {
+	private int headingIndex(List<String> lines, boolean[] insideFence, String section) {
 		for (int i = 0; i < lines.size(); i++) {
-			if (lines.get(i).strip().equals(section)) {
+			if (!insideFence[i] && lines.get(i).strip().equals(section)) {
 				return i;
 			}
 		}
 		return -1;
 	}
 
-	private boolean hasBody(List<String> lines, int headingIndex) {
+	/**
+	 * A section has a body when it is followed, before the next heading at its own
+	 * level or shallower, by any prose, a code block, or a deeper sub-heading. A
+	 * deeper heading is content that belongs to the section; a sibling or parent
+	 * heading ends it.
+	 */
+	private boolean hasBody(List<String> lines, boolean[] insideFence, int headingIndex) {
+		int sectionLevel = headingLevel(lines.get(headingIndex).strip());
 		for (int i = headingIndex + 1; i < lines.size(); i++) {
 			String line = lines.get(i).strip();
-			if (line.startsWith(CODE_FENCE)) {
+			if (insideFence[i]) {
 				return true;
 			}
 			if (isHeading(line)) {
-				return false;
+				return headingLevel(line) > sectionLevel;
 			}
 			if (!line.isEmpty()) {
 				return true;
@@ -187,6 +203,14 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 
 	private boolean isHeading(String line) {
 		return line.startsWith(HEADING_PREFIX);
+	}
+
+	private int headingLevel(String heading) {
+		int level = 0;
+		while (level < heading.length() && heading.charAt(level) == HEADING_CHAR) {
+			level++;
+		}
+		return level;
 	}
 
 	private List<String> lines(String content) {

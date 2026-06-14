@@ -131,6 +131,50 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void passesWhenASectionContainsOnlySubsections() throws IOException {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace(
+				"## Maven\nVersions live in the root pom.",
+				"## Maven\n### Versions\nVersions live in the root pom."));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenRealSectionIsEmptyDespiteFencedDuplicate() throws IOException {
+		String content = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+				```
+				## Dependencies
+				Ask before adding a new one.
+				```
+
+				## Project
+				Java project built with Maven.
+
+				## Java version
+				Java 25.
+
+				## Maven
+				Versions live in the root pom.
+
+				## Principles for Java Development
+				Use SOLID Principles.
+
+				## Testing
+				Write unit tests for all new logic.
+
+				## Dependencies
+				""";
+		ClaudeMdFormatRule rule = ruleFor(content);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("empty section: ## Dependencies"), exception.getMessage());
+	}
+
+	@Test
 	void reportsEveryProblemTogether() throws IOException {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong").replace("## Maven", "## Build"));
 

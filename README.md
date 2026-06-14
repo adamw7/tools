@@ -302,7 +302,7 @@ Notes:
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
-## Agent file enforcement
+## Claude Code files Maven enforcer
 
 The `claude-code-enforcer` module is a set of custom
 [`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)

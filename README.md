@@ -306,9 +306,10 @@ Iterative (no memory) checks are keeping only one row at the time so they requir
 
 The `claude-code-enforcer` module is a set of custom
 [`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)
-rules that **fail the build** when the repository's agent files are missing or
-malformed, keeping `CLAUDE.md`, `AGENTS.md`, and the skills under
-`.claude/skills` consistent and in their expected shape:
+rules that **fail the build** when the repository's Claude Code files are
+missing or malformed, keeping `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`,
+the sub-agents under `.claude/agents`, and the skills under `.claude/skills`
+consistent and in their expected shape:
 
 - **`claudeMdFormat`** (`ClaudeMdFormatRule`) — checks that `CLAUDE.md` exists
   and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
@@ -318,10 +319,42 @@ malformed, keeping `CLAUDE.md`, `AGENTS.md`, and the skills under
   checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
   every required section heading.
 - **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
-  directory under `.claude/skills` contains a `SKILL.md` file.
+  directory under `.claude/skills` contains a non-empty `SKILL.md` that opens
+  with a YAML front matter block declaring every required key (`name`,
+  `description` by default). The `name` must follow the Claude Code naming
+  convention (lower-case kebab-case, bounded length) and match the skill's
+  directory name; the `description` must be non-empty and within
+  `maxDescriptionLength`. An optional `allowedFrontMatterKeys` whitelist catches
+  typos such as `descripton`.
+- **`subAgentFormat`** (`SubAgentFormatRule`) — treats every `*.md` file in the
+  configured agents directory as a sub-agent: it must be non-empty, open with a
+  YAML front matter block declaring every required key, and carry a `name` that
+  follows the naming convention and matches its file name. An optional
+  `allowedModels` whitelist rejects a mistyped `model` such as `claud-opus`.
+- **`settingsJsonValid`** (`SettingsJsonValidRule`) — checks that
+  `.claude/settings.json` exists, is non-empty, and parses as JSON. It can also
+  assert policy on `permissions.allow`: `requiredPermissions` must all be
+  present and `forbiddenPermissions` must all be absent, so a project can mandate
+  a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
+- **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
+  `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
+  is a regular expression with one capturing group; the captured value must
+  agree between the two files (or be absent from both). For example
+  `Java (\d+)` fails the build if one file says `Java 25` and the other `Java
+  24`.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
-base class that performs the file-existence, BOM, title, and section checks.
+base class that performs the file-existence, BOM, title, and section checks. It
+also exposes optional checks, each disabled by default: `forbiddenTokens` that
+must not appear outside code fences, `enforceSectionOrder` to require the
+sections in the configured order, a `maxLineLength` cap, and
+`validateFileReferences` to confirm that Markdown links to local files resolve
+to something on disk.
+
+Every rule extends a common `ClaudeCodeEnforcerRule` base that reports all
+violations together and honours a `severity` option: the default `error` fails
+the build, while `<severity>warn</severity>` downgrades the same violations to a
+logged warning so a team can adopt a rule gradually.
 
 The rules are wired into the root `pom.xml` and run at the repository root only.
 The check is **opt-in** via the `enforceClaudeMd` property, so ordinary builds

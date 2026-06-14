@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -110,11 +111,11 @@ abstract class MarkdownFormatRule extends AbstractEnforcerRule {
 		return content;
 	}
 
-	private String readAll(File file) throws EnforcerRuleException {
+	private String readAll(File file) {
 		try {
 			return Files.readString(file.toPath());
 		} catch (IOException e) {
-			throw new EnforcerRuleException("Could not read " + documentName() + " at " + file, e);
+			throw new UncheckedIOException("Could not read " + documentName() + " at " + file, e);
 		}
 	}
 

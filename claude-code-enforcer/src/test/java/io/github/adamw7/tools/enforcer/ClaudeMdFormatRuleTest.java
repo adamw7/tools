@@ -268,6 +268,15 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void ignoresLinkTitlesWhenValidatingReferences() throws IOException {
+		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [guide](AGENTS.md \"The agent guide\").\n");
+		rule.setValidateFileReferences(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void ignoresExternalLinksWhenValidatingReferences() throws IOException {
 		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [site](https://example.com) and [top](#project).\n");

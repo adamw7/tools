@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,10 +68,7 @@ public class SkillFilesExistRule extends AbstractEnforcerRule {
 	}
 
 	private void collectContentViolations(File skillFile, List<String> violations) {
-		String content = readContent(skillFile, violations);
-		if (content == null) {
-			return;
-		}
+		String content = readContent(skillFile);
 		if (content.isBlank()) {
 			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
 		} else {
@@ -78,12 +76,11 @@ public class SkillFilesExistRule extends AbstractEnforcerRule {
 		}
 	}
 
-	private String readContent(File skillFile, List<String> violations) {
+	private String readContent(File skillFile) {
 		try {
 			return MarkdownText.stripByteOrderMark(Files.readString(skillFile.toPath()));
 		} catch (IOException e) {
-			violations.add("Could not read " + SKILL_FILE_NAME + " at " + skillFile + ": " + e.getMessage());
-			return null;
+			throw new UncheckedIOException("Could not read " + SKILL_FILE_NAME + " at " + skillFile, e);
 		}
 	}
 

@@ -7,7 +7,7 @@
 		<artifactId>tools</artifactId>
 		<version>${revision}</version>
 	</parent>
-	<artifactId>tools.claude-md-enforcer</artifactId>
+	<artifactId>tools.claude-code-enforcer</artifactId>
 	<packaging>jar</packaging>
 	<name>CLAUDE.md enforcer rule</name>
 	<url>https://maven.apache.org</url>

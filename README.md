@@ -304,7 +304,7 @@ Iterative (no memory) checks are keeping only one row at the time so they requir
 
 ## Agent file enforcement
 
-The `claude-md-enforcer` module is a set of custom
+The `claude-code-enforcer` module is a set of custom
 [`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)
 rules that **fail the build** when the repository's agent files are missing or
 malformed, keeping `CLAUDE.md`, `AGENTS.md`, and the skills under
@@ -327,7 +327,7 @@ The rules are wired into the root `pom.xml` and run at the repository root only.
 The check is **opt-in** via the `enforceClaudeMd` property, so ordinary builds
 are unaffected:
 ```
-mvn -pl claude-md-enforcer -am install   # install the rule jar once
+mvn -pl claude-code-enforcer -am install   # install the rule jar once
 mvn package -DenforceClaudeMd            # build with the checks enabled
 ```
 

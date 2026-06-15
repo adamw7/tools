@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -18,7 +19,7 @@ class SkillFilesExistRuleTest {
 	private Path tempDir;
 
 	@Test
-	void passesWhenEverySkillHasSkillFile() throws IOException {
+	void passesWhenEverySkillHasSkillFile() {
 		createSkill("git-commit");
 		createSkill("java-code-review");
 
@@ -47,9 +48,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenASkillIsMissingItsSkillFile() throws IOException {
+	void failsWhenASkillIsMissingItsSkillFile() {
 		createSkill("git-commit");
-		Files.createDirectory(tempDir.resolve("broken-skill"));
+		createDirectory(tempDir.resolve("broken-skill"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("Missing SKILL.md"), exception.getMessage());
@@ -57,9 +58,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenSkillFileIsEmpty() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("empty-skill"));
-		Files.writeString(skillDir.resolve("SKILL.md"), "   \n  ");
+	void failsWhenSkillFileIsEmpty() {
+		Path skillDir = createDirectory(tempDir.resolve("empty-skill"));
+		writeString(skillDir.resolve("SKILL.md"), "   \n  ");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("is empty"), exception.getMessage());
@@ -67,9 +68,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenSkillFileHasNoFrontMatter() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("untitled-skill"));
-		Files.writeString(skillDir.resolve("SKILL.md"), "# Just a heading, no front matter.");
+	void failsWhenSkillFileHasNoFrontMatter() {
+		Path skillDir = createDirectory(tempDir.resolve("untitled-skill"));
+		writeString(skillDir.resolve("SKILL.md"), "# Just a heading, no front matter.");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
@@ -77,9 +78,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenFrontMatterIsMissingARequiredKey() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("nameless-skill"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void failsWhenFrontMatterIsMissingARequiredKey() {
+		Path skillDir = createDirectory(tempDir.resolve("nameless-skill"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				description: Does a thing.
 				---
@@ -92,10 +93,10 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void reportsEverySkillProblemTogether() throws IOException {
-		Files.createDirectory(tempDir.resolve("no-file"));
-		Path empty = Files.createDirectory(tempDir.resolve("empty-skill"));
-		Files.writeString(empty.resolve("SKILL.md"), "");
+	void reportsEverySkillProblemTogether() {
+		createDirectory(tempDir.resolve("no-file"));
+		Path empty = createDirectory(tempDir.resolve("empty-skill"));
+		writeString(empty.resolve("SKILL.md"), "");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("no-file"), exception.getMessage());
@@ -103,9 +104,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenNameDoesNotMatchDirectory() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void failsWhenNameDoesNotMatchDirectory() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: commit
 				description: Mismatched name.
@@ -117,9 +118,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenNameIsNotKebabCase() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("Git_Commit"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void failsWhenNameIsNotKebabCase() {
+		Path skillDir = createDirectory(tempDir.resolve("Git_Commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: Git_Commit
 				description: Bad casing.
@@ -131,9 +132,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenDescriptionIsEmpty() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void failsWhenDescriptionIsEmpty() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: git-commit
 				description:
@@ -145,7 +146,7 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenDescriptionExceedsConfiguredMaximum() throws IOException {
+	void failsWhenDescriptionExceedsConfiguredMaximum() {
 		createSkill("git-commit");
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setMaxDescriptionLength(5);
@@ -155,9 +156,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void failsWhenAnUnknownFrontMatterKeyIsPresent() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void failsWhenAnUnknownFrontMatterKeyIsPresent() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: git-commit
 				descripton: Typo in the key.
@@ -172,9 +173,9 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void honoursConfiguredRequiredKeys() throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve("git-commit"));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	void honoursConfiguredRequiredKeys() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: git-commit
 				description: A skill.
@@ -188,8 +189,8 @@ class SkillFilesExistRuleTest {
 	}
 
 	@Test
-	void warnSeverityLogsInsteadOfFailing() throws IOException {
-		Files.createDirectory(tempDir.resolve("broken-skill"));
+	void warnSeverityLogsInsteadOfFailing() {
+		createDirectory(tempDir.resolve("broken-skill"));
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setSeverity("warn");
 		CapturingLogger logger = new CapturingLogger();
@@ -199,9 +200,9 @@ class SkillFilesExistRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("broken-skill")), logger.warnings().toString());
 	}
 
-	private void createSkill(String name) throws IOException {
-		Path skillDir = Files.createDirectory(tempDir.resolve(name));
-		Files.writeString(skillDir.resolve("SKILL.md"), """
+	private void createSkill(String name) {
+		Path skillDir = createDirectory(tempDir.resolve(name));
+		writeString(skillDir.resolve("SKILL.md"), """
 				---
 				name: %s
 				description: A skill named %s.
@@ -214,5 +215,21 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = new SkillFilesExistRule();
 		rule.setSkillsDir(skillsDir.toFile());
 		return rule;
+	}
+
+	private static void writeString(Path file, String content) {
+		try {
+			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static Path createDirectory(Path dir) {
+		try {
+			return Files.createDirectory(dir);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not create " + dir, e);
+		}
 	}
 }

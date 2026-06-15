@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +11,11 @@ import java.util.Optional;
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.text.FrontMatter;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
  * Enforcer rule that fails the build when any skill under the configured skills

@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +13,9 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when {@code .claude/settings.json} is

@@ -1,9 +1,11 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
 import java.util.List;
 
 import javax.inject.Named;
+
+import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
 
 /**
  * Enforcer rule that fails the build when {@code AGENTS.md} is missing or does

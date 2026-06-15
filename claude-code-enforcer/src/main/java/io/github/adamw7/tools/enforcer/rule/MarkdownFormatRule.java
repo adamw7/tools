@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.rule;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Base for enforcer rules that validate a Markdown document follows an expected
@@ -38,7 +40,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * projects without a recompile. Subclasses contribute the file, its name, the
  * defaults, and any document-specific checks.
  */
-abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
+public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String CODE_FENCE = "```";
 	private static final String HEADING_PREFIX = "#";
@@ -118,31 +120,31 @@ abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		return requiredSections != null ? requiredSections : defaultRequiredSections();
 	}
 
-	void setTitleHeading(String titleHeading) {
+	public void setTitleHeading(String titleHeading) {
 		this.titleHeading = titleHeading;
 	}
 
-	void setRequiredSections(List<String> requiredSections) {
+	public void setRequiredSections(List<String> requiredSections) {
 		this.requiredSections = requiredSections;
 	}
 
-	void setForbiddenTokens(List<String> forbiddenTokens) {
+	public void setForbiddenTokens(List<String> forbiddenTokens) {
 		this.forbiddenTokens = forbiddenTokens;
 	}
 
-	void setEnforceSectionOrder(boolean enforceSectionOrder) {
+	public void setEnforceSectionOrder(boolean enforceSectionOrder) {
 		this.enforceSectionOrder = enforceSectionOrder;
 	}
 
-	void setMaxLineLength(int maxLineLength) {
+	public void setMaxLineLength(int maxLineLength) {
 		this.maxLineLength = maxLineLength;
 	}
 
-	void setValidateFileReferences(boolean validateFileReferences) {
+	public void setValidateFileReferences(boolean validateFileReferences) {
 		this.validateFileReferences = validateFileReferences;
 	}
 
-	void setReferenceBaseDir(File referenceBaseDir) {
+	public void setReferenceBaseDir(File referenceBaseDir) {
 		this.referenceBaseDir = referenceBaseDir;
 	}
 

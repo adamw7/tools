@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.rule;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * directory parameter) always fails, because that is a build-setup mistake rather
  * than a document-quality problem.
  */
-abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
+public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	private static final String WARN = "warn";
 
@@ -51,7 +51,7 @@ abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 		return WARN.equalsIgnoreCase(severity);
 	}
 
-	void setSeverity(String severity) {
+	public void setSeverity(String severity) {
 		this.severity = severity;
 	}
 }

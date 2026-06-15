@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.rule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,11 +10,11 @@ import org.apache.maven.enforcer.rule.api.EnforcerLogger;
  * A test double for {@link EnforcerLogger} that records the warnings a rule
  * emits, so warn-severity behaviour can be asserted without a Maven runtime.
  */
-class CapturingLogger implements EnforcerLogger {
+public class CapturingLogger implements EnforcerLogger {
 
 	private final List<String> warnings = new ArrayList<>();
 
-	List<String> warnings() {
+	public List<String> warnings() {
 		return warnings;
 	}
 

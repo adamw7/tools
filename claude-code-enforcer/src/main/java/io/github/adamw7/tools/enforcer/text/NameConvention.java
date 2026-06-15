@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.text;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -10,13 +10,13 @@ import java.util.regex.Pattern;
  * drift from what is on disk. Skills and sub-agents both follow this convention,
  * so the checks live in one place.
  */
-final class NameConvention {
+public final class NameConvention {
 
 	/** Lower-case alphanumerics in hyphen-separated words, e.g. {@code git-commit}. */
 	private static final Pattern KEBAB_CASE = Pattern.compile("[a-z0-9]+(-[a-z0-9]+)*");
 
 	/** The Claude Code limit for skill and sub-agent names. */
-	static final int MAX_LENGTH = 64;
+	public static final int MAX_LENGTH = 64;
 
 	private NameConvention() {
 	}
@@ -27,7 +27,7 @@ final class NameConvention {
 	 * directory or file identifier). An empty name is reported once and the other
 	 * checks are skipped, since they would only restate the same problem.
 	 */
-	static void collect(String name, String expected, String where, List<String> violations) {
+	public static void collect(String name, String expected, String where, List<String> violations) {
 		if (name.isBlank()) {
 			violations.add("name must not be empty in " + where);
 			return;

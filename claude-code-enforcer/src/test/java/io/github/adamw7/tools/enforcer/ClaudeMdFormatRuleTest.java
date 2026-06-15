@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -43,14 +44,14 @@ class ClaudeMdFormatRuleTest {
 	private Path tempDir;
 
 	@Test
-	void passesForWellFormedFile() throws IOException {
+	void passesForWellFormedFile() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 
 		assertDoesNotThrow(rule::execute);
 	}
 
 	@Test
-	void passesWhenFileStartsWithByteOrderMark() throws IOException {
+	void passesWhenFileStartsWithByteOrderMark() {
 		ClaudeMdFormatRule rule = ruleFor((char) 0xFEFF + VALID_CONTENT);
 
 		assertDoesNotThrow(rule::execute);
@@ -74,7 +75,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenFileIsEmpty() throws IOException {
+	void failsWhenFileIsEmpty() {
 		ClaudeMdFormatRule rule = ruleFor("   \n  ");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -82,7 +83,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenTitleHeadingIsWrong() throws IOException {
+	void failsWhenTitleHeadingIsWrong() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Something Else"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -90,7 +91,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenAgentsReferenceIsMissing() throws IOException {
+	void failsWhenAgentsReferenceIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("AGENTS.md", "OTHER.md"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -98,7 +99,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenARequiredSectionIsMissing() throws IOException {
+	void failsWhenARequiredSectionIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Quality"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -106,7 +107,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() throws IOException {
+	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "```\n## Testing\n```"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -115,7 +116,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenTitleIsOnlyAPartialMatch() throws IOException {
+	void failsWhenTitleIsOnlyAPartialMatch() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# CLAUDE.md-extended"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -123,7 +124,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenARequiredSectionIsEmpty() throws IOException {
+	void failsWhenARequiredSectionIsEmpty() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("Ask before adding a new one.", ""));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -131,7 +132,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void passesWhenASectionContainsOnlySubsections() throws IOException {
+	void passesWhenASectionContainsOnlySubsections() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace(
 				"## Maven\nVersions live in the root pom.",
 				"## Maven\n### Versions\nVersions live in the root pom."));
@@ -140,7 +141,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenRealSectionIsEmptyDespiteFencedDuplicate() throws IOException {
+	void failsWhenRealSectionIsEmptyDespiteFencedDuplicate() {
 		String content = """
 				# CLAUDE.md
 
@@ -175,7 +176,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void reportsEveryProblemTogether() throws IOException {
+	void reportsEveryProblemTogether() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong").replace("## Maven", "## Build"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -184,7 +185,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenAForbiddenTokenAppears() throws IOException {
+	void failsWhenAForbiddenTokenAppears() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nTODO: finish this.\n");
 		rule.setForbiddenTokens(java.util.List.of("TODO"));
 
@@ -193,7 +194,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void ignoresAForbiddenTokenInsideACodeFence() throws IOException {
+	void ignoresAForbiddenTokenInsideACodeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\nTODO inside code\n```\n");
 		rule.setForbiddenTokens(java.util.List.of("TODO"));
 
@@ -201,7 +202,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void passesWhenSectionsAreInConfiguredOrder() throws IOException {
+	void passesWhenSectionsAreInConfiguredOrder() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setEnforceSectionOrder(true);
 
@@ -209,7 +210,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenRequiredSectionsAppearInTheWrongOrder() throws IOException {
+	void failsWhenRequiredSectionsAppearInTheWrongOrder() {
 		String reordered = """
 				# CLAUDE.md
 
@@ -241,7 +242,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenALineExceedsTheMaximumLength() throws IOException {
+	void failsWhenALineExceedsTheMaximumLength() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n" + "x".repeat(200) + "\n");
 		rule.setMaxLineLength(120);
 
@@ -250,7 +251,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenAFileReferenceIsMissing() throws IOException {
+	void failsWhenAFileReferenceIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setValidateFileReferences(true);
 
@@ -259,8 +260,8 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void passesWhenReferencedFilesExist() throws IOException {
-		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+	void passesWhenReferencedFilesExist() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setValidateFileReferences(true);
 
@@ -268,8 +269,8 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void ignoresLinkTitlesWhenValidatingReferences() throws IOException {
-		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+	void ignoresLinkTitlesWhenValidatingReferences() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [guide](AGENTS.md \"The agent guide\").\n");
 		rule.setValidateFileReferences(true);
 
@@ -277,8 +278,8 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void ignoresExternalLinksWhenValidatingReferences() throws IOException {
-		Files.writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+	void ignoresExternalLinksWhenValidatingReferences() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [site](https://example.com) and [top](#project).\n");
 		rule.setValidateFileReferences(true);
 
@@ -286,7 +287,7 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
-	void warnSeverityLogsInsteadOfFailing() throws IOException {
+	void warnSeverityLogsInsteadOfFailing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong"));
 		rule.setSeverity("WARN");
 		CapturingLogger logger = new CapturingLogger();
@@ -296,11 +297,19 @@ class ClaudeMdFormatRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("title heading")), logger.warnings().toString());
 	}
 
-	private ClaudeMdFormatRule ruleFor(String content) throws IOException {
+	private ClaudeMdFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve("CLAUDE.md");
-		Files.writeString(file, content);
+		writeString(file, content);
 		ClaudeMdFormatRule rule = new ClaudeMdFormatRule();
 		rule.setClaudeMdFile(file.toFile());
 		return rule;
+	}
+
+	private static void writeString(Path file, String content) {
+		try {
+			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
 	}
 }

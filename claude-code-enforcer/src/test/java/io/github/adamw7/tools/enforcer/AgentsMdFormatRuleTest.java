@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -46,14 +47,14 @@ class AgentsMdFormatRuleTest {
 	private Path tempDir;
 
 	@Test
-	void passesForWellFormedFile() throws IOException {
+	void passesForWellFormedFile() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT);
 
 		assertDoesNotThrow(rule::execute);
 	}
 
 	@Test
-	void passesWhenFileStartsWithByteOrderMark() throws IOException {
+	void passesWhenFileStartsWithByteOrderMark() {
 		AgentsMdFormatRule rule = ruleFor((char) 0xFEFF + VALID_CONTENT);
 
 		assertDoesNotThrow(rule::execute);
@@ -77,7 +78,7 @@ class AgentsMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenFileIsEmpty() throws IOException {
+	void failsWhenFileIsEmpty() {
 		AgentsMdFormatRule rule = ruleFor("   \n  ");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -85,7 +86,7 @@ class AgentsMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenTitleHeadingIsWrong() throws IOException {
+	void failsWhenTitleHeadingIsWrong() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# AGENTS.md", "# Something Else"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -93,7 +94,7 @@ class AgentsMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenARequiredSectionIsMissing() throws IOException {
+	void failsWhenARequiredSectionIsMissing() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Releasing", "## Shipping"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -101,7 +102,7 @@ class AgentsMdFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() throws IOException {
+	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Releasing", "```\n## Releasing\n```"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
@@ -110,7 +111,7 @@ class AgentsMdFormatRuleTest {
 	}
 
 	@Test
-	void honoursConfiguredTitleAndSections() throws IOException {
+	void honoursConfiguredTitleAndSections() {
 		String content = """
 				# Custom Guide
 
@@ -124,11 +125,19 @@ class AgentsMdFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
-	private AgentsMdFormatRule ruleFor(String content) throws IOException {
+	private AgentsMdFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve("AGENTS.md");
-		Files.writeString(file, content);
+		writeString(file, content);
 		AgentsMdFormatRule rule = new AgentsMdFormatRule();
 		rule.setAgentsMdFile(file.toFile());
 		return rule;
+	}
+
+	private static void writeString(Path file, String content) {
+		try {
+			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
 	}
 }

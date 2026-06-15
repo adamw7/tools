@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,7 +28,7 @@ class SettingsJsonValidRuleTest {
 	private Path tempDir;
 
 	@Test
-	void passesForValidJson() throws IOException {
+	void passesForValidJson() {
 		assertDoesNotThrow(ruleFor(VALID_SETTINGS)::execute);
 	}
 
@@ -47,20 +48,20 @@ class SettingsJsonValidRuleTest {
 	}
 
 	@Test
-	void failsWhenFileIsEmpty() throws IOException {
+	void failsWhenFileIsEmpty() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("   ")::execute);
 		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
 	}
 
 	@Test
-	void failsWhenJsonIsMalformed() throws IOException {
+	void failsWhenJsonIsMalformed() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
 				ruleFor("{ \"permissions\": ")::execute);
 		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
 	}
 
 	@Test
-	void failsWhenARequiredPermissionIsMissing() throws IOException {
+	void failsWhenARequiredPermissionIsMissing() {
 		SettingsJsonValidRule rule = ruleFor(VALID_SETTINGS);
 		rule.setRequiredPermissions(List.of("Bash(git *)"));
 
@@ -69,7 +70,7 @@ class SettingsJsonValidRuleTest {
 	}
 
 	@Test
-	void failsWhenAForbiddenPermissionIsPresent() throws IOException {
+	void failsWhenAForbiddenPermissionIsPresent() {
 		SettingsJsonValidRule rule = ruleFor(VALID_SETTINGS);
 		rule.setForbiddenPermissions(List.of("Edit"));
 
@@ -78,7 +79,7 @@ class SettingsJsonValidRuleTest {
 	}
 
 	@Test
-	void passesWhenPermissionPolicyIsSatisfied() throws IOException {
+	void passesWhenPermissionPolicyIsSatisfied() {
 		SettingsJsonValidRule rule = ruleFor(VALID_SETTINGS);
 		rule.setRequiredPermissions(List.of("Edit"));
 		rule.setForbiddenPermissions(List.of("Bash(*)"));
@@ -86,11 +87,19 @@ class SettingsJsonValidRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
-	private SettingsJsonValidRule ruleFor(String content) throws IOException {
+	private SettingsJsonValidRule ruleFor(String content) {
 		Path file = tempDir.resolve("settings.json");
-		Files.writeString(file, content);
+		writeString(file, content);
 		SettingsJsonValidRule rule = new SettingsJsonValidRule();
 		rule.setSettingsFile(file.toFile());
 		return rule;
+	}
+
+	private static void writeString(Path file, String content) {
+		try {
+			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
 	}
 }

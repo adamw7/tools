@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -19,7 +20,7 @@ class SubAgentFormatRuleTest {
 	private Path tempDir;
 
 	@Test
-	void passesWhenEveryDefinitionIsWellFormed() throws IOException {
+	void passesWhenEveryDefinitionIsWellFormed() {
 		createAgent("reviewer", "claude-opus-4-8");
 		createAgent("planner", "claude-sonnet-4-6");
 
@@ -32,8 +33,8 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void ignoresNonMarkdownFiles() throws IOException {
-		Files.writeString(tempDir.resolve("notes.txt"), "not an agent");
+	void ignoresNonMarkdownFiles() {
+		writeString(tempDir.resolve("notes.txt"), "not an agent");
 
 		assertDoesNotThrow(ruleFor(tempDir)::execute);
 	}
@@ -52,8 +53,8 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenDefinitionHasNoFrontMatter() throws IOException {
-		Files.writeString(tempDir.resolve("reviewer.md"), "# Reviewer\nNo front matter.");
+	void failsWhenDefinitionHasNoFrontMatter() {
+		writeString(tempDir.resolve("reviewer.md"), "# Reviewer\nNo front matter.");
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
@@ -61,8 +62,8 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenADescriptionIsMissing() throws IOException {
-		Files.writeString(tempDir.resolve("reviewer.md"), """
+	void failsWhenADescriptionIsMissing() {
+		writeString(tempDir.resolve("reviewer.md"), """
 				---
 				name: reviewer
 				---
@@ -74,8 +75,8 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenNameDoesNotMatchFileName() throws IOException {
-		Files.writeString(tempDir.resolve("reviewer.md"), """
+	void failsWhenNameDoesNotMatchFileName() {
+		writeString(tempDir.resolve("reviewer.md"), """
 				---
 				name: code-reviewer
 				description: Reviews code.
@@ -87,7 +88,7 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenModelIsNotAllowed() throws IOException {
+	void failsWhenModelIsNotAllowed() {
 		createAgent("reviewer", "claud-opus");
 		SubAgentFormatRule rule = ruleFor(tempDir);
 		rule.setAllowedModels(List.of("claude-opus-4-8", "claude-sonnet-4-6"));
@@ -97,7 +98,7 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
-	void passesWhenModelIsAllowed() throws IOException {
+	void passesWhenModelIsAllowed() {
 		createAgent("reviewer", "claude-opus-4-8");
 		SubAgentFormatRule rule = ruleFor(tempDir);
 		rule.setAllowedModels(List.of("claude-opus-4-8", "claude-sonnet-4-6"));
@@ -105,8 +106,8 @@ class SubAgentFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
-	private void createAgent(String name, String model) throws IOException {
-		Files.writeString(tempDir.resolve(name + ".md"), """
+	private void createAgent(String name, String model) {
+		writeString(tempDir.resolve(name + ".md"), """
 				---
 				name: %s
 				description: A sub-agent named %s.
@@ -120,5 +121,13 @@ class SubAgentFormatRuleTest {
 		SubAgentFormatRule rule = new SubAgentFormatRule();
 		rule.setAgentsDir(agentsDir.toFile());
 		return rule;
+	}
+
+	private static void writeString(Path file, String content) {
+		try {
+			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
 	}
 }

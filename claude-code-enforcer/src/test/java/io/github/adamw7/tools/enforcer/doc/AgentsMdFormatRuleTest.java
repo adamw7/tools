@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.doc;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;

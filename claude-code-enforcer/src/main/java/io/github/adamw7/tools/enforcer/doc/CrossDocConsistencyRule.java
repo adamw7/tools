@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +13,9 @@ import java.util.regex.Pattern;
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Enforcer rule that keeps two documents from contradicting each other. Because

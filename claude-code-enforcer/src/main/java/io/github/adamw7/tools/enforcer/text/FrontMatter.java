@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer;
+package io.github.adamw7.tools.enforcer.text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.Optional;
  * use, which is all the rules need. Parsing is shared here so every rule agrees
  * on what counts as front matter, which keys it declares, and each key's value.
  */
-final class FrontMatter {
+public final class FrontMatter {
 
 	private static final String DELIMITER = "---";
 	private static final char KEY_VALUE_SEPARATOR = ':';
@@ -29,7 +29,7 @@ final class FrontMatter {
 	 * when the content does not begin with a closed {@code ---} delimited block.
 	 * A byte-order mark, if any, must already be stripped by the caller.
 	 */
-	static Optional<FrontMatter> parse(String content) {
+	public static Optional<FrontMatter> parse(String content) {
 		List<String> allLines = content.lines().toList();
 		if (!MarkdownText.firstNonBlankLine(content).equals(DELIMITER)) {
 			return Optional.empty();
@@ -43,7 +43,7 @@ final class FrontMatter {
 	}
 
 	/** True when a {@code key:} entry is present, regardless of its value. */
-	boolean hasKey(String key) {
+	public boolean hasKey(String key) {
 		return lines.stream().anyMatch(line -> isEntryFor(line, key));
 	}
 
@@ -51,7 +51,7 @@ final class FrontMatter {
 	 * The trimmed value declared for {@code key}, or empty when the key is absent.
 	 * A present key with no value yields an empty string, not an empty optional.
 	 */
-	Optional<String> value(String key) {
+	public Optional<String> value(String key) {
 		return lines.stream()
 				.filter(line -> isEntryFor(line, key))
 				.findFirst()
@@ -59,7 +59,7 @@ final class FrontMatter {
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
-	List<String> keys() {
+	public List<String> keys() {
 		List<String> keys = new ArrayList<>();
 		for (String line : lines) {
 			addKey(line, keys);

@@ -1,9 +1,6 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,19 +64,11 @@ public class SettingsJsonValidRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private String readContent() throws EnforcerRuleException {
-		String content = MarkdownText.stripByteOrderMark(readAll());
+		String content = MarkdownText.read(settingsFile, "settings.json");
 		if (content.isBlank()) {
 			throw new EnforcerRuleException("settings.json is empty: " + settingsFile);
 		}
 		return content;
-	}
-
-	private String readAll() {
-		try {
-			return Files.readString(settingsFile.toPath());
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read settings.json at " + settingsFile, e);
-		}
 	}
 
 	private void parseAndCollect(String content, List<String> violations) {

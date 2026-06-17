@@ -1,9 +1,6 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -94,19 +91,11 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectContentViolations(File skillDirectory, File skillFile, List<String> violations) {
-		String content = readContent(skillFile);
+		String content = MarkdownText.read(skillFile, SKILL_FILE_NAME);
 		if (content.isBlank()) {
 			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
 		} else {
 			collectFrontMatterViolations(skillDirectory, skillFile, content, violations);
-		}
-	}
-
-	private String readContent(File skillFile) {
-		try {
-			return MarkdownText.stripByteOrderMark(Files.readString(skillFile.toPath()));
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + SKILL_FILE_NAME + " at " + skillFile, e);
 		}
 	}
 

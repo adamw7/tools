@@ -6,6 +6,7 @@ import java.util.List;
 import javax.inject.Named;
 
 import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
+import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 
 /**
  * Enforcer rule that fails the build when {@code CLAUDE.md} is missing or does
@@ -51,8 +52,8 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 	}
 
 	@Override
-	protected void collectAdditionalViolations(String content, List<String> violations) {
-		if (!containsOutsideCodeFences(content, AGENTS_REFERENCE)) {
+	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
+		if (!document.containsOutsideFences(AGENTS_REFERENCE)) {
 			violations.add("CLAUDE.md must reference " + AGENTS_REFERENCE + " as the source of truth");
 		}
 	}

@@ -1,9 +1,6 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -81,19 +78,11 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectDefinitionViolations(File definition, List<String> violations) {
-		String content = readContent(definition);
+		String content = MarkdownText.read(definition, "sub-agent definition");
 		if (content.isBlank()) {
 			violations.add("Sub-agent definition is empty: " + definition);
 		} else {
 			collectFrontMatterViolations(definition, content, violations);
-		}
-	}
-
-	private String readContent(File definition) {
-		try {
-			return MarkdownText.stripByteOrderMark(Files.readString(definition.toPath()));
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read sub-agent definition at " + definition, e);
 		}
 	}
 

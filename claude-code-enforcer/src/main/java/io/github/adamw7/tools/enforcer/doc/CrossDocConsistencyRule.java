@@ -1,9 +1,6 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -47,8 +44,8 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
 		verifyPatterns();
-		String first = readContent(claudeMdFile);
-		String second = readContent(agentsMdFile);
+		String first = MarkdownText.read(claudeMdFile, claudeMdFile.getName());
+		String second = MarkdownText.read(agentsMdFile, agentsMdFile.getName());
 		List<String> violations = new ArrayList<>();
 		for (String pattern : patterns()) {
 			collectPatternViolations(pattern, first, second, violations);
@@ -110,14 +107,6 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	private Optional<String> capture(Pattern pattern, String content) {
 		Matcher matcher = pattern.matcher(content);
 		return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
-	}
-
-	private String readContent(File file) {
-		try {
-			return MarkdownText.stripByteOrderMark(Files.readString(file.toPath()));
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + file, e);
-		}
 	}
 
 	private List<String> patterns() {

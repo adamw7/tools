@@ -1,11 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -13,6 +9,7 @@ import java.util.regex.Pattern;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
@@ -42,9 +39,6 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final String CODE_FENCE = "```";
-	private static final String HEADING_PREFIX = "#";
-	private static final char HEADING_CHAR = '#';
 	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)]+)\\)");
 	private static final Pattern EXTERNAL_REFERENCE = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
 
@@ -71,15 +65,15 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		String content = readContent();
+		MarkdownDocument document = readDocument();
 		List<String> violations = new ArrayList<>();
-		collectTitleViolation(content, violations);
-		collectSectionViolations(content, violations);
-		collectOrderViolations(content, violations);
-		collectForbiddenTokenViolations(content, violations);
-		collectLineLengthViolations(content, violations);
-		collectFileReferenceViolations(content, violations);
-		collectAdditionalViolations(content, violations);
+		collectTitleViolation(document, violations);
+		collectSectionViolations(document, violations);
+		collectOrderViolations(document, violations);
+		collectForbiddenTokenViolations(document, violations);
+		collectLineLengthViolations(document, violations);
+		collectFileReferenceViolations(document, violations);
+		collectAdditionalViolations(document, violations);
 		report(documentName() + " is not well formed:", violations);
 	}
 
@@ -96,20 +90,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	protected abstract List<String> defaultRequiredSections();
 
 	/** Hook for document-specific checks. The default implementation does nothing. */
-	protected void collectAdditionalViolations(String content, List<String> violations) {
-	}
-
-	/** True when {@code token} appears on a line outside a fenced code block. */
-	protected final boolean containsOutsideCodeFences(String content, String token) {
-		boolean insideCodeFence = false;
-		for (String line : lines(content)) {
-			if (line.strip().startsWith(CODE_FENCE)) {
-				insideCodeFence = !insideCodeFence;
-			} else if (!insideCodeFence && line.contains(token)) {
-				return true;
-			}
-		}
-		return false;
+	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
 	}
 
 	final String titleHeading() {
@@ -148,7 +129,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		this.referenceBaseDir = referenceBaseDir;
 	}
 
-	private String readContent() throws EnforcerRuleException {
+	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
 		if (file == null) {
 			throw new EnforcerRuleException("The " + documentName() + " file parameter is not configured");
@@ -156,41 +137,29 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		if (!file.isFile()) {
 			throw new EnforcerRuleException(documentName() + " does not exist at " + file);
 		}
-		String content = MarkdownText.stripByteOrderMark(readAll(file));
+		String content = MarkdownText.read(file, documentName());
 		if (content.isBlank()) {
 			throw new EnforcerRuleException(documentName() + " is empty: " + file);
 		}
-		return content;
+		return MarkdownDocument.parse(content);
 	}
 
-	private String readAll(File file) {
-		try {
-			return Files.readString(file.toPath());
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + documentName() + " at " + file, e);
-		}
-	}
-
-	private void collectTitleViolation(String content, List<String> violations) {
-		if (!MarkdownText.firstNonBlankLine(content).equals(titleHeading())) {
+	private void collectTitleViolation(MarkdownDocument document, List<String> violations) {
+		if (!document.firstNonBlankLine().equals(titleHeading())) {
 			violations.add(documentName() + " must start with the '" + titleHeading() + "' title heading");
 		}
 	}
 
-	private void collectSectionViolations(String content, List<String> violations) {
-		List<String> lines = lines(content);
-		boolean[] insideFence = fenceMask(lines);
-		Set<String> headings = headings(lines, insideFence);
+	private void collectSectionViolations(MarkdownDocument document, List<String> violations) {
 		for (String section : requiredSections()) {
-			addSectionViolation(lines, insideFence, headings, section, violations);
+			addSectionViolation(document, section, violations);
 		}
 	}
 
-	private void addSectionViolation(List<String> lines, boolean[] insideFence, Set<String> headings,
-			String section, List<String> violations) {
-		if (!headings.contains(section)) {
+	private void addSectionViolation(MarkdownDocument document, String section, List<String> violations) {
+		if (!document.hasHeading(section)) {
 			violations.add(documentName() + " is missing required section heading: " + section);
-		} else if (!hasBody(lines, insideFence, headingIndex(lines, insideFence, section))) {
+		} else if (!document.hasBody(section)) {
 			violations.add(documentName() + " has an empty section: " + section);
 		}
 	}
@@ -200,58 +169,39 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	 * in the same relative order as configured. Absent sections are already
 	 * reported by the section check, so only the present ones are compared here.
 	 */
-	private void collectOrderViolations(String content, List<String> violations) {
+	private void collectOrderViolations(MarkdownDocument document, List<String> violations) {
 		if (!enforceSectionOrder) {
 			return;
 		}
-		List<String> lines = lines(content);
-		boolean[] insideFence = fenceMask(lines);
-		Set<String> headings = headings(lines, insideFence);
-		List<String> expected = presentRequiredSections(headings);
-		List<String> actual = requiredHeadingsInOrder(lines, insideFence);
+		List<String> expected = presentRequiredSections(document);
+		List<String> actual = document.headingsInOrder(requiredSections());
 		if (!actual.equals(expected)) {
 			violations.add(documentName() + " sections are out of order; expected " + expected + " but found " + actual);
 		}
 	}
 
-	private List<String> presentRequiredSections(Set<String> headings) {
+	private List<String> presentRequiredSections(MarkdownDocument document) {
+		Set<String> headings = document.headings();
 		return requiredSections().stream().filter(headings::contains).toList();
 	}
 
-	private List<String> requiredHeadingsInOrder(List<String> lines, boolean[] insideFence) {
-		Set<String> required = new LinkedHashSet<>(requiredSections());
-		List<String> ordered = new ArrayList<>();
-		for (int i = 0; i < lines.size(); i++) {
-			addIfRequiredHeading(lines.get(i).strip(), insideFence[i], required, ordered);
-		}
-		return ordered;
-	}
-
-	private void addIfRequiredHeading(String line, boolean insideFence, Set<String> required, List<String> ordered) {
-		if (!insideFence && required.contains(line)) {
-			ordered.add(line);
-		}
-	}
-
-	private void collectForbiddenTokenViolations(String content, List<String> violations) {
+	private void collectForbiddenTokenViolations(MarkdownDocument document, List<String> violations) {
 		if (forbiddenTokens == null) {
 			return;
 		}
 		for (String token : forbiddenTokens) {
-			if (containsOutsideCodeFences(content, token)) {
+			if (document.containsOutsideFences(token)) {
 				violations.add(documentName() + " must not contain forbidden token: " + token);
 			}
 		}
 	}
 
-	private void collectLineLengthViolations(String content, List<String> violations) {
+	private void collectLineLengthViolations(MarkdownDocument document, List<String> violations) {
 		if (maxLineLength <= 0) {
 			return;
 		}
-		List<String> lines = lines(content);
-		boolean[] insideFence = fenceMask(lines);
-		for (int i = 0; i < lines.size(); i++) {
-			addLineLengthViolation(lines.get(i), insideFence[i], i, violations);
+		for (int i = 0; i < document.lineCount(); i++) {
+			addLineLengthViolation(document.line(i), document.isInsideFence(i), i, violations);
 		}
 	}
 
@@ -262,15 +212,13 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	private void collectFileReferenceViolations(String content, List<String> violations) {
+	private void collectFileReferenceViolations(MarkdownDocument document, List<String> violations) {
 		if (!validateFileReferences) {
 			return;
 		}
 		File baseDir = referenceBaseDir();
-		List<String> lines = lines(content);
-		boolean[] insideFence = fenceMask(lines);
-		for (int i = 0; i < lines.size(); i++) {
-			collectLineReferences(lines.get(i), insideFence[i], baseDir, violations);
+		for (int i = 0; i < document.lineCount(); i++) {
+			collectLineReferences(document.line(i), document.isInsideFence(i), baseDir, violations);
 		}
 	}
 
@@ -324,80 +272,5 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		File parent = documentFile().getAbsoluteFile().getParentFile();
 		return parent != null ? parent : new File(".");
-	}
-
-	/**
-	 * Marks every line that belongs to a fenced code block, including the opening
-	 * and closing {@code ```} delimiters, so heading detection and body detection
-	 * agree on what is code and what is document structure.
-	 */
-	private boolean[] fenceMask(List<String> lines) {
-		boolean[] mask = new boolean[lines.size()];
-		boolean insideCodeFence = false;
-		for (int i = 0; i < lines.size(); i++) {
-			boolean isFenceDelimiter = lines.get(i).strip().startsWith(CODE_FENCE);
-			mask[i] = insideCodeFence || isFenceDelimiter;
-			insideCodeFence = isFenceDelimiter != insideCodeFence;
-		}
-		return mask;
-	}
-
-	private Set<String> headings(List<String> lines, boolean[] insideFence) {
-		Set<String> headings = new LinkedHashSet<>();
-		for (int i = 0; i < lines.size(); i++) {
-			String trimmed = lines.get(i).strip();
-			if (!insideFence[i] && isHeading(trimmed)) {
-				headings.add(trimmed);
-			}
-		}
-		return headings;
-	}
-
-	private int headingIndex(List<String> lines, boolean[] insideFence, String section) {
-		for (int i = 0; i < lines.size(); i++) {
-			if (!insideFence[i] && lines.get(i).strip().equals(section)) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	/**
-	 * A section has a body when it is followed, before the next heading at its own
-	 * level or shallower, by any prose, a code block, or a deeper sub-heading. A
-	 * deeper heading is content that belongs to the section; a sibling or parent
-	 * heading ends it.
-	 */
-	private boolean hasBody(List<String> lines, boolean[] insideFence, int headingIndex) {
-		int sectionLevel = headingLevel(lines.get(headingIndex).strip());
-		for (int i = headingIndex + 1; i < lines.size(); i++) {
-			String line = lines.get(i).strip();
-			if (insideFence[i]) {
-				return true;
-			}
-			if (isHeading(line)) {
-				return headingLevel(line) > sectionLevel;
-			}
-			if (!line.isEmpty()) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean isHeading(String line) {
-		return line.startsWith(HEADING_PREFIX);
-	}
-
-	private int headingLevel(String heading) {
-		int level = 0;
-		while (level < heading.length() && heading.charAt(level) == HEADING_CHAR) {
-			level++;
-		}
-		return level;
-	}
-
-	private List<String> lines(String content) {
-		return content.lines().toList();
 	}
 }

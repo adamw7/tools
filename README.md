@@ -192,9 +192,21 @@ public interface Context {
     Set<ClassContainer> find(ClassContainer root, int depth);
 }
 ```
-where ClassContiner contains the path of the class and its sources.
+where `ClassContainer` contains the path of the class and its sources.
 The depth param tells the finder how deep we want to go in the tree of usages of the class.
 Of course when the depth is growing the tree grows very fast.
+
+The regex-based `Finder` is the default implementation. Pick the language with
+the `Language` enum (`Language.JAVA` is the default):
+
+```java
+Context context = new Finder(allContainers, Language.JAVA);
+Set<ClassContainer> used = context.find(root, depth);
+```
+
+`Language.JAVA` resolves `.java` files when mapping a referenced class name back
+to its source file, so the usage-tree building works out of the box for Java
+sources.
 
 ### Kotlin code context build up
 

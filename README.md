@@ -196,15 +196,37 @@ where ClassContiner contains the path of the class and its sources.
 The depth param tells the finder how deep we want to go in the tree of usages of the class.
 Of course when the depth is growing the tree grows very fast.
 
+### Kotlin code context build up
+
+Kotlin is supported with exactly the same features as Java. The regex-based
+`Finder` and the `Context` interface are language agnostic; the only difference
+is the source-file extension used to resolve a referenced class back to a file.
+Pick the language with the `Language` enum:
+
+```java
+Context context = new Finder(allContainers, Language.KOTLIN);
+Set<ClassContainer> used = context.find(root, depth);
+```
+
+`Language.JAVA` (the default) resolves `.java` files and `Language.KOTLIN`
+resolves `.kt` files, so the same usage-tree building works for Kotlin sources.
+
 ### Project tree
 
 A single class is rarely enough context — an agent usually needs to see how a
 whole project is laid out and how its files relate. `ProjectTreeBuilder` walks a
-Java project directory and produces a tree of its **folders, files and
-dependencies** in one structure:
+Java (or Kotlin) project directory and produces a tree of its **folders, files
+and dependencies** in one structure:
 
 ```java
 ProjectTreeNode root = new ProjectTreeBuilder(/* depth */ 1).build(Path.of("my-project"));
+System.out.println(new ProjectTreePrinter().print(root));
+```
+
+For a Kotlin project just pass the language; everything else stays the same:
+
+```java
+ProjectTreeNode root = new ProjectTreeBuilder(Language.KOTLIN, /* depth */ 1).build(Path.of("my-project"));
 System.out.println(new ProjectTreePrinter().print(root));
 ```
 
@@ -216,10 +238,11 @@ The building blocks are:
   files and dependencies are all described by the same tree.
 - **`ProjectTreeBuilder`** — scans the project directory recursively. Every
   folder becomes a directory node and every file a file node (directories are
-  listed before files, then alphabetically). For each `.java` file it resolves
-  the project classes it uses with the same regex-based `Context`, skipping the
-  file's own class. `depth` controls how deep the usage search goes, exactly as
-  in the `Context` interface above.
+  listed before files, then alphabetically). For each source file (`.java` or
+  `.kt`, depending on the configured `Language`) it resolves the project classes
+  it uses with the same regex-based `Context`, skipping the file's own class.
+  `depth` controls how deep the usage search goes, exactly as in the `Context`
+  interface above.
 - **`ContextFactory`** — decouples the builder from the concrete dependency
   finder (defaulting to `Finder`), so a different resolution strategy can be
   plugged in without changing the builder.

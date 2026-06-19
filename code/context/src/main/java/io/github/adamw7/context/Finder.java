@@ -11,9 +11,15 @@ import java.util.regex.Pattern;
 public class Finder implements Context {
 	private static final Logger log = LogManager.getLogger(Finder.class.getName());
 	private final Set<ClassContainer> allContainers;
+	private final Language language;
 
 	public Finder(Set<ClassContainer> allContainers) {
+		this(allContainers, Language.JAVA);
+	}
+
+	public Finder(Set<ClassContainer> allContainers, Language language) {
 		this.allContainers = allContainers;
+		this.language = language;
 	}
 
 	@Override
@@ -51,7 +57,7 @@ public class Finder implements Context {
 
 	private ClassContainer findContainer(String className) {
 		return allContainers.stream()
-				.filter(container -> container.className().equals(className + ".java"))
+				.filter(container -> container.className().equals(className + language.extension()))
 				.findAny()
 				.orElse(null);
 	}

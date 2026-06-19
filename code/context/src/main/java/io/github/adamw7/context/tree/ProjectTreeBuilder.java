@@ -4,6 +4,7 @@ import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Context;
 import io.github.adamw7.context.ContextFactory;
 import io.github.adamw7.context.Finder;
+import io.github.adamw7.context.Language;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -17,25 +18,34 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Builds a {@link ProjectTreeNode} tree from a Java project on disk. The tree
- * mirrors the project's folders and files; every {@code .java} file is enriched
- * with the classes it depends on, resolved by a {@link Context} over all the
- * project's sources. The result is a ready-to-serialise context for gen-AI
- * agents working with Java code.
+ * Builds a {@link ProjectTreeNode} tree from a Java or Kotlin project on disk.
+ * The tree mirrors the project's folders and files; every source file (a
+ * {@code .java} or {@code .kt} file, depending on the configured
+ * {@link Language}) is enriched with the classes it depends on, resolved by a
+ * {@link Context} over all the project's sources. The result is a
+ * ready-to-serialise context for gen-AI agents working with Java or Kotlin code.
  */
 public class ProjectTreeBuilder {
 
-	private static final String JAVA_EXTENSION = ".java";
-
 	private final ContextFactory contextFactory;
+	private final Language language;
 	private final int depth;
 
 	public ProjectTreeBuilder(int depth) {
-		this(Finder::new, depth);
+		this(Language.JAVA, depth);
+	}
+
+	public ProjectTreeBuilder(Language language, int depth) {
+		this(containers -> new Finder(containers, language), language, depth);
 	}
 
 	public ProjectTreeBuilder(ContextFactory contextFactory, int depth) {
+		this(contextFactory, Language.JAVA, depth);
+	}
+
+	public ProjectTreeBuilder(ContextFactory contextFactory, Language language, int depth) {
 		this.contextFactory = contextFactory;
+		this.language = language;
 		this.depth = depth;
 	}
 
@@ -47,15 +57,15 @@ public class ProjectTreeBuilder {
 
 	private Map<Path, ClassContainer> loadContainers(Path root) {
 		try (Stream<Path> paths = Files.walk(root)) {
-			return paths.filter(this::isJavaFile)
+			return paths.filter(this::isSourceFile)
 					.collect(Collectors.toMap(path -> path, this::toContainer));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
 	}
 
-	private boolean isJavaFile(Path path) {
-		return Files.isRegularFile(path) && path.getFileName().toString().endsWith(JAVA_EXTENSION);
+	private boolean isSourceFile(Path path) {
+		return Files.isRegularFile(path) && path.getFileName().toString().endsWith(language.extension());
 	}
 
 	private ClassContainer toContainer(Path path) {

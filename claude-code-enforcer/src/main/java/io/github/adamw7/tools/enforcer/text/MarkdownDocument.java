@@ -54,7 +54,7 @@ public final class MarkdownDocument {
 
 	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
 	public String firstNonBlankLine() {
-		return lines.stream().map(String::strip).filter(line -> !line.isEmpty()).findFirst().orElse("");
+		return MarkdownText.firstNonBlankLine(lines.stream());
 	}
 
 	/** True when {@code token} appears on a line outside a fenced code block. */

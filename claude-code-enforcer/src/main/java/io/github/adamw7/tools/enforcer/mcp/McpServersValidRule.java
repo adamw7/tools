@@ -1,17 +1,13 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 
 /**
  * Enforcer rule that fails the build when the project's {@code .mcp.json} is
@@ -35,7 +31,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * All problems found are reported together.
  */
 @Named("mcpServersValid")
-public class McpServersValidRule extends ClaudeCodeEnforcerRule {
+public class McpServersValidRule extends JsonFileRule {
 
 	private static final String MCP_SERVERS_KEY = "mcpServers";
 	private static final String TYPE_KEY = "type";
@@ -59,45 +55,33 @@ public class McpServersValidRule extends ClaudeCodeEnforcerRule {
 	private List<String> allowedTypes;
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
-		if (!mcpFile.isFile()) {
-			return;
-		}
-		String content = readContent();
-		List<String> violations = new ArrayList<>();
-		parseAndCollect(content, violations);
-		report("mcp.json is not well formed:", violations);
+	protected File jsonFile() {
+		return mcpFile;
 	}
 
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (mcpFile == null) {
-			throw new EnforcerRuleException("The mcpFile parameter is not configured");
-		}
+	@Override
+	protected String fileParameter() {
+		return "mcpFile";
 	}
 
-	private String readContent() throws EnforcerRuleException {
-		String content = MarkdownText.read(mcpFile, "mcp.json");
-		if (content.isBlank()) {
-			throw new EnforcerRuleException("mcp.json is empty: " + mcpFile);
-		}
-		return content;
+	@Override
+	protected String description() {
+		return "mcp.json";
 	}
 
-	private void parseAndCollect(String content, List<String> violations) {
-		JSONObject mcp = parse(content, violations);
-		if (mcp != null) {
-			collectServersViolations(mcp, violations);
-		}
+	@Override
+	protected String header() {
+		return "mcp.json is not well formed:";
 	}
 
-	private JSONObject parse(String content, List<String> violations) {
-		try {
-			return new JSONObject(content);
-		} catch (JSONException e) {
-			violations.add("mcp.json is not valid JSON: " + e.getMessage());
-			return null;
-		}
+	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
+	@Override
+	protected void handleMissingFile(File file) {
+	}
+
+	@Override
+	protected void collectViolations(JSONObject mcp, List<String> violations) {
+		collectServersViolations(mcp, violations);
 	}
 
 	private void collectServersViolations(JSONObject mcp, List<String> violations) {

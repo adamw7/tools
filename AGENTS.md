@@ -149,6 +149,13 @@ profile:
   `http` server needs a `url`). An explicit `type` outside `allowedTypes`
   (`stdio`, `sse`, `http` by default) is rejected, and `requiredServers` /
   `forbiddenServers` assert which servers must or must not be declared.
+- `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
+  sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
+  `skillsDir` (file name for commands and sub-agents, directory name for skills)
+  and fails when a name is used more than once, naming every source that uses it.
+  At least one directory must be configured, any configured directory must
+  exist, and uniqueness is checked across all of them at once, so a command that
+  clashes with a skill is caught just like two clashing commands.
 - `CrossDocConsistencyRule` (`crossDocConsistency`) keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
   regex (one capturing group) must capture the same value in both files, e.g.

@@ -58,15 +58,16 @@ public class KotlinProjectTreeBuilderTest {
 	}
 
 	@Test
-	void javaFilesAreIgnoredForKotlinProjects() throws IOException {
+	void onlyKotlinFilesAreAnalysedForDependencies() throws IOException {
 		Path pkg = createPackage("pkg");
 		writeKotlin(pkg, "A", "class A");
-		Files.writeString(pkg.resolve("Ignored.java"), "public class Ignored {}");
+		Files.writeString(pkg.resolve("Helper.java"), "public class Helper { A a; }");
 
 		ProjectTreeNode pkgNode = onlyChild(new ProjectTreeBuilder(Language.KOTLIN, 1).build(projectRoot));
 
-		assertEquals(1, pkgNode.children().size());
-		assertEquals("A.kt", pkgNode.children().get(0).name());
+		assertEquals(2, pkgNode.children().size());
+		ProjectTreeNode helper = child(pkgNode, "Helper.java");
+		assertTrue(helper.dependencies().isEmpty());
 	}
 
 	private Path createPackage(String name) throws IOException {

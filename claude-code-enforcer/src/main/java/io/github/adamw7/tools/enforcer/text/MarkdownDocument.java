@@ -11,14 +11,16 @@ import java.util.Set;
  * structural checks share it instead of each rebuilding it.
  * <p>
  * Headings are recognised on whole lines outside fenced code blocks, so a
- * heading mentioned inside a {@code ```} fence or in prose is not treated as
- * document structure. The fence mask includes the opening and closing
- * {@code ```} delimiters themselves, so heading detection and body detection
- * agree on what is code and what is structure.
+ * heading mentioned inside a {@code ```} or {@code ~~~} fence or in prose is not
+ * treated as document structure. The fence mask includes the opening and closing
+ * delimiters themselves, so heading detection and body detection agree on what is
+ * code and what is structure. A fence opened with one delimiter is only closed by
+ * the same delimiter, so a {@code ~~~} line inside a {@code ```} block stays code.
  */
 public final class MarkdownDocument {
 
-	private static final String CODE_FENCE = "```";
+	private static final String BACKTICK_FENCE = "```";
+	private static final String TILDE_FENCE = "~~~";
 	private static final String HEADING_PREFIX = "#";
 	private static final char HEADING_CHAR = '#';
 
@@ -149,12 +151,40 @@ public final class MarkdownDocument {
 
 	private static boolean[] fenceMask(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
-		boolean insideCodeFence = false;
+		String openMarker = null;
 		for (int i = 0; i < lines.size(); i++) {
-			boolean isFenceDelimiter = lines.get(i).strip().startsWith(CODE_FENCE);
-			mask[i] = insideCodeFence || isFenceDelimiter;
-			insideCodeFence = isFenceDelimiter != insideCodeFence;
+			openMarker = applyFence(lines.get(i).strip(), openMarker, mask, i);
 		}
 		return mask;
+	}
+
+	/**
+	 * Marks line {@code index} as code or structure and returns the fence marker
+	 * still open afterwards. A fence is only closed by the marker it was opened
+	 * with, so a {@code ~~~} line inside a {@code ```} block, or the reverse, stays
+	 * content rather than ending the block.
+	 */
+	private static String applyFence(String line, String openMarker, boolean[] mask, int index) {
+		String marker = fenceMarker(line);
+		if (openMarker == null) {
+			mask[index] = marker != null;
+			return marker;
+		}
+		mask[index] = true;
+		return closesFence(marker, openMarker) ? null : openMarker;
+	}
+
+	private static boolean closesFence(String marker, String openMarker) {
+		return marker != null && marker.charAt(0) == openMarker.charAt(0);
+	}
+
+	private static String fenceMarker(String line) {
+		if (line.startsWith(BACKTICK_FENCE)) {
+			return BACKTICK_FENCE;
+		}
+		if (line.startsWith(TILDE_FENCE)) {
+			return TILDE_FENCE;
+		}
+		return null;
 	}
 }

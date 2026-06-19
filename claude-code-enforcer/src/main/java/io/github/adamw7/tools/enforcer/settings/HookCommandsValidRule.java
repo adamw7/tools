@@ -189,7 +189,7 @@ public class HookCommandsValidRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		String script = localScriptPath(command);
-		if (script != null && !new File(script).isFile()) {
+		if (script != null && !new File(script).exists()) {
 			violations.add("hook event '" + event + "' references a missing script: " + script);
 		}
 	}

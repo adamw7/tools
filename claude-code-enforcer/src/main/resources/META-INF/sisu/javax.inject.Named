@@ -7,3 +7,4 @@ io.github.adamw7.tools.enforcer.doc.CrossDocConsistencyRule
 io.github.adamw7.tools.enforcer.definition.CommandFormatRule
 io.github.adamw7.tools.enforcer.settings.HookCommandsValidRule
 io.github.adamw7.tools.enforcer.mcp.McpServersValidRule
+io.github.adamw7.tools.enforcer.definition.UniqueNamesRule

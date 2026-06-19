@@ -417,6 +417,9 @@
 										<skillFilesExist>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</skillFilesExist>
+										<uniqueNames>
+											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
+										</uniqueNames>
 										<settingsJsonValid>
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 										</settingsJsonValid>

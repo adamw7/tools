@@ -362,6 +362,14 @@ consistent and in their expected shape:
   catching a mistyped `htttp`. `requiredServers` must all be present and
   `forbiddenServers` must all be absent, so a project can mandate an MCP server
   it relies on or ban one it does not want committed.
+- **`uniqueNames`** (`UniqueNamesRule`) — gathers the names of every command,
+  sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
+  `skillsDir` (a command's and a sub-agent's name is its `*.md` file name, a
+  skill's name is its directory name) and fails when one name is used more than
+  once, naming every file or directory that uses it. At least one directory must
+  be configured, and any directory that is configured must exist. Uniqueness is
+  checked across all configured directories at once, so a command that clashes
+  with a skill is caught just like two commands that clash.
 - **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
   is a regular expression with one capturing group; the captured value must

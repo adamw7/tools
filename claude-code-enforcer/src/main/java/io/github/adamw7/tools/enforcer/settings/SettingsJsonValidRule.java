@@ -6,13 +6,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 
 /**
  * Enforcer rule that fails the build when {@code .claude/settings.json} is
@@ -27,7 +24,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * reported together.
  */
 @Named("settingsJsonValid")
-public class SettingsJsonValidRule extends ClaudeCodeEnforcerRule {
+public class SettingsJsonValidRule extends JsonFileRule {
 
 	private static final String PERMISSIONS_KEY = "permissions";
 	private static final String ALLOW_KEY = "allow";
@@ -42,49 +39,28 @@ public class SettingsJsonValidRule extends ClaudeCodeEnforcerRule {
 	private List<String> forbiddenPermissions;
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
-		verifyFile();
-		String content = readContent();
-		List<String> violations = new ArrayList<>();
-		parseAndCollect(content, violations);
-		report("settings.json is not well formed:", violations);
+	protected File jsonFile() {
+		return settingsFile;
 	}
 
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (settingsFile == null) {
-			throw new EnforcerRuleException("The settingsFile parameter is not configured");
-		}
+	@Override
+	protected String fileParameter() {
+		return "settingsFile";
 	}
 
-	private void verifyFile() throws EnforcerRuleException {
-		if (!settingsFile.isFile()) {
-			throw new EnforcerRuleException("settings.json does not exist at " + settingsFile);
-		}
+	@Override
+	protected String description() {
+		return "settings.json";
 	}
 
-	private String readContent() throws EnforcerRuleException {
-		String content = MarkdownText.read(settingsFile, "settings.json");
-		if (content.isBlank()) {
-			throw new EnforcerRuleException("settings.json is empty: " + settingsFile);
-		}
-		return content;
+	@Override
+	protected String header() {
+		return "settings.json is not well formed:";
 	}
 
-	private void parseAndCollect(String content, List<String> violations) {
-		JSONObject settings = parse(content, violations);
-		if (settings != null) {
-			collectPermissionViolations(settings, violations);
-		}
-	}
-
-	private JSONObject parse(String content, List<String> violations) {
-		try {
-			return new JSONObject(content);
-		} catch (JSONException e) {
-			violations.add("settings.json is not valid JSON: " + e.getMessage());
-			return null;
-		}
+	@Override
+	protected void collectViolations(JSONObject settings, List<String> violations) {
+		collectPermissionViolations(settings, violations);
 	}
 
 	private void collectPermissionViolations(JSONObject settings, List<String> violations) {

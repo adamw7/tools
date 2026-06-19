@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.stream.Stream;
 
 /**
  * Small helpers for reading Markdown content. Shared by the enforcer rules so
@@ -40,10 +41,11 @@ public final class MarkdownText {
 
 	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
 	public static String firstNonBlankLine(String content) {
-		return content.lines()
-				.map(String::strip)
-				.filter(line -> !line.isEmpty())
-				.findFirst()
-				.orElse("");
+		return firstNonBlankLine(content.lines());
+	}
+
+	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
+	public static String firstNonBlankLine(Stream<String> lines) {
+		return lines.map(String::strip).filter(line -> !line.isEmpty()).findFirst().orElse("");
 	}
 }

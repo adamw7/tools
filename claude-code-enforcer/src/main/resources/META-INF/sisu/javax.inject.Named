@@ -4,3 +4,5 @@ io.github.adamw7.tools.enforcer.definition.SkillFilesExistRule
 io.github.adamw7.tools.enforcer.definition.SubAgentFormatRule
 io.github.adamw7.tools.enforcer.settings.SettingsJsonValidRule
 io.github.adamw7.tools.enforcer.doc.CrossDocConsistencyRule
+io.github.adamw7.tools.enforcer.definition.CommandFormatRule
+io.github.adamw7.tools.enforcer.settings.HookCommandsValidRule

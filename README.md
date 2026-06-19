@@ -182,6 +182,8 @@ See the [grpc-example module](grpc-example/README.md) for full details and how t
 
 ## Context engineering
 
+### Java code context build up
+
 For gen ai agents that work with Java code the context usually starts with one class but may get wider and be extended to the classes used by it etc so on.
 In order to build this tree there is a very simple and fast regex based interface:
 

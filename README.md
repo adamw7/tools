@@ -352,6 +352,16 @@ consistent and in their expected shape:
   `projectDir` and must exist on disk, so a renamed or missing hook script is
   caught. An optional `allowedEvents` whitelist rejects a mistyped event such as
   `SessionSart`, and `validateScriptReferences` can switch the script check off.
+- **`mcpServersValid`** (`McpServersValidRule`) — validates the project's
+  `.mcp.json`. A project-level MCP file is optional, so an absent file passes;
+  when present it must be non-empty and parse as JSON, and every entry under
+  `mcpServers` must be a JSON object with a well-formed transport. A `stdio`
+  server (the default when no `type` is declared) needs a non-blank `command`;
+  an `sse` or `http` server needs a non-blank `url`. An explicit `type` outside
+  the `allowedTypes` whitelist (`stdio`, `sse`, `http` by default) is reported,
+  catching a mistyped `htttp`. `requiredServers` must all be present and
+  `forbiddenServers` must all be absent, so a project can mandate an MCP server
+  it relies on or ban one it does not want committed.
 - **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
   is a regular expression with one capturing group; the captured value must

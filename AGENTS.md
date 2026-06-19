@@ -125,9 +125,23 @@ profile:
   every `*.md` sub-agent definition under a configured `agentsDir`; the `name`
   must match the file name, and an optional `allowedModels` list rejects an
   unknown `model`.
+- `CommandFormatRule` (`commandFormat`) treats every `*.md` file under a
+  configured `commandsDir` (e.g. `.claude/commands`) as a custom slash command:
+  it must be non-empty and its file name must be lower-case kebab-case (the
+  command's name comes from the file name). Front matter is optional, but a
+  present `description` must be non-empty, a present `model` must be in an
+  optional `allowedModels` list, and `allowedFrontMatterKeys` reports unknown
+  keys.
 - `SettingsJsonValidRule` (`settingsJsonValid`) checks that `.claude/settings.json`
   exists and is valid JSON, and can assert `requiredPermissions` and
   `forbiddenPermissions` against the `permissions.allow` list.
+- `HookCommandsValidRule` (`hookCommandsValid`) validates the `hooks` section of
+  `.claude/settings.json`: every event maps to an array of groups, each group
+  carries a `hooks` array, and every hook declares a non-blank `type` (a
+  `command` hook also a non-blank `command`). A `$CLAUDE_PROJECT_DIR`-rooted
+  script command is resolved against `projectDir` and must exist on disk. An
+  optional `allowedEvents` list rejects mistyped events and
+  `validateScriptReferences` toggles the script-existence check.
 - `CrossDocConsistencyRule` (`crossDocConsistency`) keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
   regex (one capturing group) must capture the same value in both files, e.g.

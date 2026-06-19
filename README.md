@@ -331,11 +331,27 @@ consistent and in their expected shape:
   YAML front matter block declaring every required key, and carry a `name` that
   follows the naming convention and matches its file name. An optional
   `allowedModels` whitelist rejects a mistyped `model` such as `claud-opus`.
+- **`commandFormat`** (`CommandFormatRule`) — treats every `*.md` file in the
+  configured commands directory (e.g. `.claude/commands`) as a custom slash
+  command: it must be non-empty and carry a file name that follows the Claude
+  Code naming convention, because the command's name comes from its file name.
+  Front matter is optional, but when present a `description` must be non-empty, a
+  `model` must be one of `allowedModels` when that whitelist is configured, and
+  an optional `allowedFrontMatterKeys` whitelist catches typos such as
+  `argument-hnt`.
 - **`settingsJsonValid`** (`SettingsJsonValidRule`) — checks that
   `.claude/settings.json` exists, is non-empty, and parses as JSON. It can also
   assert policy on `permissions.allow`: `requiredPermissions` must all be
   present and `forbiddenPermissions` must all be absent, so a project can mandate
   a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
+- **`hookCommandsValid`** (`HookCommandsValidRule`) — validates the `hooks`
+  section of `.claude/settings.json`: every event must map to an array of groups,
+  each group must carry a `hooks` array, and every hook must declare a non-blank
+  `type` (a `command` hook also a non-blank `command`). A command that points at
+  a project-local script through `$CLAUDE_PROJECT_DIR` is resolved against
+  `projectDir` and must exist on disk, so a renamed or missing hook script is
+  caught. An optional `allowedEvents` whitelist rejects a mistyped event such as
+  `SessionSart`, and `validateScriptReferences` can switch the script check off.
 - **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
   is a regular expression with one capturing group; the captured value must

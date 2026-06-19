@@ -204,6 +204,34 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void ignoresAForbiddenTokenInsideATildeFence() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n~~~\nTODO inside code\n~~~\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenSectionHeadingAppearsOnlyInsideTildeFence() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "~~~\n## Testing\n~~~"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
+				exception.getMessage());
+	}
+
+	@Test
+	void treatsABacktickLineInsideATildeFenceAsCode() {
+		// The ``` does not close the ~~~ block, so the ## Testing heading between the
+		// two backtick lines stays code and the required section is reported missing.
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "~~~\n```\n## Testing\n```\n~~~"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
+				exception.getMessage());
+	}
+
+	@Test
 	void passesWhenSectionsAreInConfiguredOrder() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setEnforceSectionOrder(true);

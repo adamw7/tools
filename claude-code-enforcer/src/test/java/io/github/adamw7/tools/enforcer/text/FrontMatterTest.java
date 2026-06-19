@@ -76,6 +76,17 @@ class FrontMatterTest {
 	}
 
 	@Test
+	void keysAgreeWithHasKeyWhenColonHasNoSeparatingSpace() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname:git-commit\n---\n").orElseThrow();
+
+		// A YAML mapping needs a space after the colon, so "name:git-commit" declares
+		// no key. keys(), hasKey() and value() must all agree on that.
+		assertEquals(List.of(), frontMatter.keys());
+		assertFalse(frontMatter.hasKey("name"));
+		assertEquals(Optional.empty(), frontMatter.value("name"));
+	}
+
+	@Test
 	void ignoresCommentsAndListItemsWhenListingKeys() {
 		FrontMatter frontMatter = FrontMatter.parse("""
 				---

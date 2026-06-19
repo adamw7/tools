@@ -62,22 +62,29 @@ public final class FrontMatter {
 	public List<String> keys() {
 		List<String> keys = new ArrayList<>();
 		for (String line : lines) {
-			addKey(line, keys);
+			entryKey(line).ifPresent(keys::add);
 		}
 		return keys;
 	}
 
-	private void addKey(String line, List<String> keys) {
+	/**
+	 * The key a line declares, or empty when the line is not a {@code key:} entry.
+	 * This shares its definition with {@link #hasKey} and {@link #value}, so the
+	 * three never disagree about whether a line declares a key: a bare {@code key:}
+	 * or a {@code key: value} (or {@code key:\tvalue}) counts, while {@code key:value}
+	 * without a separating space, comments, and list items do not.
+	 */
+	private Optional<String> entryKey(String line) {
 		String stripped = line.strip();
-		int separator = stripped.indexOf(KEY_VALUE_SEPARATOR);
-		if (isKeyLine(stripped, separator)) {
-			keys.add(stripped.substring(0, separator).strip());
+		if (stripped.startsWith("#") || stripped.startsWith("-")) {
+			return Optional.empty();
 		}
-	}
-
-	/** A key line is an unindented {@code key: ...} entry, not a nested value or a comment. */
-	private boolean isKeyLine(String stripped, int separator) {
-		return separator > 0 && !stripped.startsWith("#") && !stripped.startsWith("-");
+		int separator = stripped.indexOf(KEY_VALUE_SEPARATOR);
+		if (separator <= 0) {
+			return Optional.empty();
+		}
+		String key = stripped.substring(0, separator);
+		return isEntryFor(line, key) ? Optional.of(key) : Optional.empty();
 	}
 
 	private boolean isEntryFor(String line, String key) {

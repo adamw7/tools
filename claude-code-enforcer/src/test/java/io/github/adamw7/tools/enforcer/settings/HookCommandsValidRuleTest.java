@@ -40,6 +40,17 @@ class HookCommandsValidRuleTest {
 	}
 
 	@Test
+	void passesWhenCommandOnlyChangesIntoProjectDir() {
+		writeString(tempDir.resolve("run.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("cd $CLAUDE_PROJECT_DIR && bash run.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// $CLAUDE_PROJECT_DIR here resolves to the project directory itself, which
+		// exists, so it must not be reported as a missing script.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsWhenNotConfigured() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new HookCommandsValidRule()::execute);
 		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());

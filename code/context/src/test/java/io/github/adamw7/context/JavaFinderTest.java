@@ -13,7 +13,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-public class FinderTest {
+public class JavaFinderTest {
 
 	@TempDir
 	Path projectRoot;

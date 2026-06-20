@@ -40,6 +40,42 @@ public class KotlinFinderTest {
 		assertTrue(classes.isEmpty());
 	}
 
+	@Test
+	void ignoresClassNamesInTripleQuotedStrings() throws IOException {
+		ClassContainer a = writeKotlin("A", "class A");
+		ClassContainer b = writeKotlin("B", "class B { val s = \"\"\"uses A here\"\"\" }");
+		Set<ClassContainer> allContainers = new HashSet<>(Set.of(a, b));
+
+		Set<ClassContainer> classes = new Finder(allContainers, Language.KOTLIN).find(b, 1);
+
+		assertTrue(classes.isEmpty());
+	}
+
+	@Test
+	void ignoresClassNamesInComments() throws IOException {
+		ClassContainer a = writeKotlin("A", "class A");
+		ClassContainer b = writeKotlin("B", "class B { /* uses A */ }");
+		Set<ClassContainer> allContainers = new HashSet<>(Set.of(a, b));
+
+		Set<ClassContainer> classes = new Finder(allContainers, Language.KOTLIN).find(b, 1);
+
+		assertTrue(classes.isEmpty());
+	}
+
+	@Test
+	void resolvesTransitiveKotlinDependencies() throws IOException {
+		ClassContainer a = writeKotlin("A", "class A");
+		ClassContainer b = writeKotlin("B", "class B { val a: A = A() }");
+		ClassContainer c = writeKotlin("C", "class C { val b: B = B() }");
+		Set<ClassContainer> allContainers = new HashSet<>(Set.of(a, b, c));
+
+		Set<ClassContainer> classes = new Finder(allContainers, Language.KOTLIN).find(c, 2);
+
+		assertEquals(2, classes.size());
+		assertTrue(contains(classes, "A.kt"));
+		assertTrue(contains(classes, "B.kt"));
+	}
+
 	private ClassContainer writeKotlin(String className, String body) throws IOException {
 		Path path = projectRoot.resolve(className + ".kt");
 		Files.writeString(path, body);

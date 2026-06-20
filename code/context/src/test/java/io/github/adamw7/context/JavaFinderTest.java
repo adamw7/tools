@@ -48,7 +48,40 @@ public class JavaFinderTest {
 
 		Set<ClassContainer> dependencies = new Finder(containers(a, b)).find(b, 1);
 
+		assertEquals(1, dependencies.size());
 		assertEquals(names("A.java"), classNames(dependencies));
+	}
+
+	@Test
+	void findsAllDistinctDirectDependencies() throws IOException {
+		ClassContainer a = writeJava("A", "public class A {}");
+		ClassContainer c = writeJava("C", "public class C {}");
+		ClassContainer b = writeJava("B", "public class B { A a; C c; A again; }");
+
+		Set<ClassContainer> dependencies = new Finder(containers(a, b, c)).find(b, 1);
+
+		assertEquals(2, dependencies.size());
+		assertEquals(names("A.java", "C.java"), classNames(dependencies));
+	}
+
+	@Test
+	void reportsSharedDependencyOnlyOnceInDiamondGraph() throws IOException {
+		ClassContainer a = writeJava("A", "public class A {}");
+		ClassContainer b = writeJava("B", "public class B { A a; }");
+		ClassContainer c = writeJava("C", "public class C { A a; }");
+		ClassContainer d = writeJava("D", "public class D { B b; C c; }");
+
+		Set<ClassContainer> dependencies = new Finder(containers(a, b, c, d)).find(d, 3);
+
+		assertEquals(3, dependencies.size());
+		assertEquals(names("A.java", "B.java", "C.java"), classNames(dependencies));
+	}
+
+	@Test
+	void ignoresReferencesWithoutAMatchingSourceFile() throws IOException {
+		ClassContainer b = writeJava("B", "public class B { Unknown u; }");
+
+		assertTrue(new Finder(containers(b)).find(b, 1).isEmpty());
 	}
 
 	@Test
@@ -81,6 +114,7 @@ public class JavaFinderTest {
 
 		Set<ClassContainer> dependencies = new Finder(containers(a, b)).find(a, 10);
 
+		assertEquals(1, dependencies.size());
 		assertEquals(names("B.java"), classNames(dependencies));
 	}
 
@@ -98,6 +132,32 @@ public class JavaFinderTest {
 		ClassContainer b = writeJava("B", "public class B { String s = \"A\"; }");
 
 		assertTrue(new Finder(containers(a, b)).find(b, 1).isEmpty());
+	}
+
+	@Test
+	void ignoresClassNamesInCharacterLiterals() throws IOException {
+		ClassContainer a = writeJava("A", "public class A {}");
+		ClassContainer b = writeJava("B", "public class B { char c = 'A'; }");
+
+		assertTrue(new Finder(containers(a, b)).find(b, 1).isEmpty());
+	}
+
+	@Test
+	void ignoresClassNamesInMultiLineBlockComments() throws IOException {
+		ClassContainer a = writeJava("A", "public class A {}");
+		ClassContainer b = writeJava("B", "public class B {\n/*\n A spanning\n several A lines\n*/\n}");
+
+		assertTrue(new Finder(containers(a, b)).find(b, 1).isEmpty());
+	}
+
+	@Test
+	void findsDependencyMentionedOnlyOutsideCommentsAndLiterals() throws IOException {
+		ClassContainer a = writeJava("A", "public class A {}");
+		ClassContainer b = writeJava("B", "public class B { /* not A */ String s = \"A\"; A real; }");
+
+		Set<ClassContainer> dependencies = new Finder(containers(a, b)).find(b, 1);
+
+		assertEquals(names("A.java"), classNames(dependencies));
 	}
 
 	private ClassContainer writeJava(String className, String body) throws IOException {

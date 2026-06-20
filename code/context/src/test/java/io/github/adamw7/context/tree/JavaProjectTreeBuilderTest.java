@@ -39,8 +39,37 @@ public class JavaProjectTreeBuilderTest {
 		ProjectTreeNode pkgNode = onlyChild(new ProjectTreeBuilder(1).build(projectRoot));
 
 		ProjectTreeNode b = child(pkgNode, "B.java");
+		assertFalse(b.isDirectory());
 		assertEquals(1, b.dependencies().size());
 		assertTrue(b.dependencies().contains("A.java"));
+	}
+
+	@Test
+	void transitiveDependenciesAppearAtDepthTwo() throws IOException {
+		Path pkg = createPackage("pkg");
+		writeJava(pkg, "A", "public class A {}");
+		writeJava(pkg, "B", "public class B { A a; }");
+		writeJava(pkg, "C", "public class C { B b; }");
+
+		ProjectTreeNode pkgNode = onlyChild(new ProjectTreeBuilder(2).build(projectRoot));
+
+		ProjectTreeNode c = child(pkgNode, "C.java");
+		assertEquals(2, c.dependencies().size());
+		assertTrue(c.dependencies().contains("A.java"));
+		assertTrue(c.dependencies().contains("B.java"));
+	}
+
+	@Test
+	void dependenciesAreListedInSortedOrder() throws IOException {
+		Path pkg = createPackage("pkg");
+		writeJava(pkg, "A", "public class A {}");
+		writeJava(pkg, "C", "public class C {}");
+		writeJava(pkg, "B", "public class B { C c; A a; }");
+
+		ProjectTreeNode pkgNode = onlyChild(new ProjectTreeBuilder(1).build(projectRoot));
+
+		ProjectTreeNode b = child(pkgNode, "B.java");
+		assertEquals(java.util.List.of("A.java", "C.java"), java.util.List.copyOf(b.dependencies()));
 	}
 
 	@Test

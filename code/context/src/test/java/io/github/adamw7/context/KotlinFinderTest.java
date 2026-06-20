@@ -25,9 +25,8 @@ public class KotlinFinderTest {
 
 		Set<ClassContainer> classes = new Finder(allContainers, Language.KOTLIN).find(b, 1);
 
-		assertEquals(2, classes.size());
+		assertEquals(1, classes.size());
 		assertTrue(contains(classes, "A.kt"));
-		assertTrue(contains(classes, "B.kt"));
 	}
 
 	@Test

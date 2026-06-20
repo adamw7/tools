@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 public class ClassContainer {
 
@@ -29,5 +30,21 @@ public class ClassContainer {
 
 	public String className() {
 		return className;
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		if (this == other) {
+			return true;
+		}
+		if (!(other instanceof ClassContainer container)) {
+			return false;
+		}
+		return className.equals(container.className) && originalCode.equals(container.originalCode);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(className, originalCode);
 	}
 }

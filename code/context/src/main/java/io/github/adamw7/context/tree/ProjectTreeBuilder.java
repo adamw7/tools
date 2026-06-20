@@ -99,7 +99,6 @@ public class ProjectTreeBuilder {
 		}
 		context.find(container, depth).stream()
 				.map(ClassContainer::className)
-				.filter(dependency -> !dependency.equals(container.className()))
 				.sorted()
 				.forEach(node::addDependency);
 	}

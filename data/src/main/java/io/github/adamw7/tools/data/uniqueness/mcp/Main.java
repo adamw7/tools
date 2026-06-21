@@ -7,16 +7,20 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class Main {
 
     public static void main(String[] args) {
+        configureRuntime(args);
+        SpringApplication.run(Main.class, args);
+    }
+
+    static void configureRuntime(String[] args) {
         String transportMode = resolveTransportMode(args);
         System.setProperty("transport.mode", transportMode);
         if ("stdio".equals(transportMode)) {
             System.setProperty("spring.main.web-application-type", "none");
         }
         System.setProperty("spring.main.banner-mode", "off");
-        SpringApplication.run(Main.class, args);
     }
 
-    private static String resolveTransportMode(String[] args) {
+    static String resolveTransportMode(String[] args) {
         String prefix = "--transport.mode=";
         for (String arg : args) {
             if (arg.startsWith(prefix)) {

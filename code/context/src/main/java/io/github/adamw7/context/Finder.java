@@ -5,9 +5,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Resolves the classes a source file depends on by scanning its text for class
@@ -17,11 +19,14 @@ import java.util.regex.Pattern;
  * one of its own dependencies.
  *
  * <p>Resolution is by simple file name (a referenced {@code Foo} resolves to a
- * {@code Foo} source file of the configured {@link Language}). Comments, string
- * and character literals are stripped before matching so that class names
- * mentioned there are not reported as dependencies. Two source files sharing the
- * same simple name in different packages still cannot be told apart — that needs
- * package-aware resolution, which this name-based finder does not attempt.
+ * {@code Foo} source file of the configured {@link Language}). The containers are
+ * indexed by file name once at construction, so each reference resolves in
+ * constant time rather than by scanning every container. Comments, string and
+ * character literals are stripped before matching so that class names mentioned
+ * there are not reported as dependencies. Two source files sharing the same
+ * simple name in different packages still cannot be told apart — that needs
+ * package-aware resolution, which this name-based finder does not attempt; the
+ * first one encountered while indexing wins.
  */
 public class Finder implements Context {
 
@@ -38,7 +43,7 @@ public class Finder implements Context {
 			+ "|'(?:\\\\.|[^'\\\\])*'",    // character literal
 			Pattern.DOTALL);
 
-	private final Set<ClassContainer> allContainers;
+	private final Map<String, ClassContainer> containersByName;
 	private final Language language;
 
 	public Finder(Set<ClassContainer> allContainers) {
@@ -46,8 +51,15 @@ public class Finder implements Context {
 	}
 
 	public Finder(Set<ClassContainer> allContainers, Language language) {
-		this.allContainers = allContainers;
 		this.language = language;
+		this.containersByName = indexByName(allContainers);
+	}
+
+	private Map<String, ClassContainer> indexByName(Set<ClassContainer> allContainers) {
+		return allContainers.stream().collect(Collectors.toMap(
+				ClassContainer::className,
+				container -> container,
+				(first, second) -> first));
 	}
 
 	@Override
@@ -115,9 +127,6 @@ public class Finder implements Context {
 	}
 
 	private ClassContainer findContainer(String className) {
-		return allContainers.stream()
-				.filter(container -> container.className().equals(className + language.extension()))
-				.findAny()
-				.orElse(null);
+		return containersByName.get(className + language.extension());
 	}
 }

@@ -49,6 +49,29 @@ public class ToolArgumentsTest {
 	}
 
 	@Test
+	void optionalBoundedIntAcceptsValuesWithinRange() {
+		assertEquals(5, ToolArguments.optionalBoundedInt(Map.of("depth", 5), "depth", 1, 0, 10));
+	}
+
+	@Test
+	void optionalBoundedIntFallsBackToDefaultWhenMissing() {
+		assertEquals(1, ToolArguments.optionalBoundedInt(Map.of(), "depth", 1, 0, 10));
+	}
+
+	@Test
+	void optionalBoundedIntRejectsValuesAboveTheMaximum() {
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.optionalBoundedInt(Map.of("depth", 11), "depth", 1, 0, 10));
+		assertEquals("Argument depth must be between 0 and 10 but was 11", error.getMessage());
+	}
+
+	@Test
+	void optionalBoundedIntRejectsNegativeValues() {
+		assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.optionalBoundedInt(Map.of("depth", -1), "depth", 1, 0, 10));
+	}
+
+	@Test
 	void optionalLanguageFallsBackToDefault() {
 		assertEquals(Language.JAVA, ToolArguments.optionalLanguage(Map.of(), "language", Language.JAVA));
 	}

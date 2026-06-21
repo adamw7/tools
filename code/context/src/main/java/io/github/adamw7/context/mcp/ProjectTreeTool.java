@@ -6,7 +6,6 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.stereotype.Component;
 
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.tree.ProjectTreeBuilder;
@@ -26,13 +25,19 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
  * caller; JSON is the default as it is the most convenient for programmatic
  * consumers.
  */
-@Component
 public class ProjectTreeTool implements ContextTool {
 
 	private static final Logger log = LogManager.getLogger(ProjectTreeTool.class.getName());
 
 	private static final int DEFAULT_DEPTH = 1;
+	private static final int MAX_DEPTH = 10;
 	private static final String DEFAULT_FORMAT = "json";
+
+	private final PathPolicy pathPolicy;
+
+	public ProjectTreeTool(PathPolicy pathPolicy) {
+		this.pathPolicy = pathPolicy;
+	}
 
 	private final Tool toolDefinition = Tool.builder("project_tree",
 			Map.of(
@@ -63,9 +68,9 @@ public class ProjectTreeTool implements ContextTool {
 	}
 
 	private String buildTree(Map<String, Object> arguments) {
-		Path root = Path.of(ToolArguments.requiredString(arguments, "path"));
+		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
 		Language language = ToolArguments.optionalLanguage(arguments, "language", Language.JAVA);
-		int depth = ToolArguments.optionalInt(arguments, "depth", DEFAULT_DEPTH);
+		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
 		ProjectTreeNode tree = new ProjectTreeBuilder(language, depth).build(root);
 		return serializerFor(ToolArguments.optionalString(arguments, "format", DEFAULT_FORMAT)).serialize(tree);
 	}

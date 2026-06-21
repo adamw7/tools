@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.json.JSONArray;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -24,7 +25,15 @@ public class ContextFinderToolTest {
 	@TempDir
 	Path projectRoot;
 
-	private final ContextFinderTool tool = new ContextFinderTool();
+	@TempDir
+	Path outsideRoot;
+
+	private ContextFinderTool tool;
+
+	@BeforeEach
+	void setUp() {
+		tool = new ContextFinderTool(new PathPolicy(projectRoot.toString()));
+	}
 
 	@Test
 	void toolDefinitionExposesName() {
@@ -97,6 +106,21 @@ public class ContextFinderToolTest {
 	void missingClassNameIsRejected() {
 		Map<String, Object> arguments = new HashMap<>();
 		arguments.put("path", projectRoot.toString());
+		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
+	}
+
+	@Test
+	void pathOutsideTheAllowedRootIsRejected() {
+		Map<String, Object> arguments = arguments("B");
+		arguments.put("path", outsideRoot.toString());
+		assertThrows(SecurityException.class, () -> tool.apply(arguments));
+	}
+
+	@Test
+	void excessiveDepthIsRejected() throws IOException {
+		writeJava("A", "public class A {}");
+		Map<String, Object> arguments = arguments("A");
+		arguments.put("depth", 99);
 		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
 	}
 

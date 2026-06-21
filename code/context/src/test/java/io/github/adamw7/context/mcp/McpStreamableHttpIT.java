@@ -25,7 +25,10 @@ import io.modelcontextprotocol.spec.McpSchema;
 @SpringBootTest(
 		classes = Main.class,
 		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-		properties = { "transport.mode=streamable-http", "spring.main.banner-mode=off" })
+		properties = {
+				"transport.mode=streamable-http",
+				"spring.main.banner-mode=off",
+				"context.allowed-roots=${java.io.tmpdir}" })
 public class McpStreamableHttpIT {
 
 	@LocalServerPort

@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -32,6 +33,9 @@ import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 public class McpConfiguration {
 
 	private static final Logger log = LogManager.getLogger(McpConfiguration.class.getName());
+
+	@Value("${context.allowed-roots:}")
+	private String allowedRoots;
 
 	@Bean
 	public ObjectMapper objectMapper() {
@@ -92,7 +96,9 @@ public class McpConfiguration {
 	}
 
 	private void registerTools(McpSyncServer server) {
-		List<ContextTool> tools = List.of(new ProjectTreeTool(), new ContextFinderTool());
+		PathPolicy pathPolicy = new PathPolicy(allowedRoots);
+		log.info("Confining MCP file access to allowed roots: {}", pathPolicy.allowedRoots());
+		List<ContextTool> tools = List.of(new ProjectTreeTool(pathPolicy), new ContextFinderTool(pathPolicy));
 		tools.forEach(tool -> server.addTool(specificationFor(tool)));
 	}
 

@@ -8,7 +8,6 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
-import org.springframework.stereotype.Component;
 
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Finder;
@@ -26,12 +25,18 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
  * reported as an error result rather than an exception so the agent gets a clear,
  * actionable message.
  */
-@Component
 public class ContextFinderTool implements ContextTool {
 
 	private static final Logger log = LogManager.getLogger(ContextFinderTool.class.getName());
 
 	private static final int DEFAULT_DEPTH = 1;
+	private static final int MAX_DEPTH = 10;
+
+	private final PathPolicy pathPolicy;
+
+	public ContextFinderTool(PathPolicy pathPolicy) {
+		this.pathPolicy = pathPolicy;
+	}
 
 	private final Tool toolDefinition = Tool.builder("find_context",
 			Map.of(
@@ -57,9 +62,9 @@ public class ContextFinderTool implements ContextTool {
 	@Override
 	public CallToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP find_context tool for {}", arguments);
-		Path root = Path.of(ToolArguments.requiredString(arguments, "path"));
+		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
 		Language language = ToolArguments.optionalLanguage(arguments, "language", Language.JAVA);
-		int depth = ToolArguments.optionalInt(arguments, "depth", DEFAULT_DEPTH);
+		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
 		Set<ClassContainer> containers = Set.copyOf(new ProjectSources(language).load(root).values());
 
 		ClassContainer target = findTarget(containers, arguments, language);

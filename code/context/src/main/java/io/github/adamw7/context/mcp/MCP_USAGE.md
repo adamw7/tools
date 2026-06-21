@@ -109,6 +109,23 @@ java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar --transport.
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
 configurable through `server.port`).
 
+### HTTPS (TLS 1.3)
+
+To serve the streamable HTTP transport over HTTPS, point the standard Spring
+Boot SSL properties at a key store and enable SSL:
+
+```properties
+server.ssl.enabled=true
+server.ssl.key-store=classpath:keystore.p12
+server.ssl.key-store-password=changeit
+server.ssl.key-store-type=PKCS12
+```
+
+`TlsConfiguration` then pins the embedded connector to **TLS 1.3** — it forces
+`server.ssl.enabled-protocols` to `TLSv1.3`, so older protocols can never be
+negotiated even if they are requested. The endpoint is then served at
+`https://localhost:8082/mcp`.
+
 ## Configuring MCP Clients
 
 ### Claude Desktop (stdio)

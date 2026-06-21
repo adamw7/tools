@@ -160,6 +160,18 @@ public class JavaFinderTest {
 		assertEquals(names("A.java"), classNames(dependencies));
 	}
 
+	@Test
+	void resolvesReferenceWhenTwoSourceFilesShareTheSimpleName() {
+		ClassContainer firstA = new ClassContainer("A.java", "public class A {}");
+		ClassContainer secondA = new ClassContainer("A.java", "public class A { int x; }");
+		ClassContainer b = new ClassContainer("B.java", "public class B { A a; }");
+
+		Set<ClassContainer> dependencies = new Finder(containers(firstA, secondA, b)).find(b, 1);
+
+		assertEquals(1, dependencies.size());
+		assertEquals(names("A.java"), classNames(dependencies));
+	}
+
 	private ClassContainer writeJava(String className, String body) throws IOException {
 		Path path = projectRoot.resolve(className + ".java");
 		Files.writeString(path, body);

@@ -58,6 +58,7 @@ public class CSVDataSource extends AbstractFileSource {
 	@Override
 	public void open() {
 		log.info("Opening: {}", fileName);
+		opened = true;
 		if (columnsExist() && !columnsAreLoaded()) {
 			loadColumns();
 		}

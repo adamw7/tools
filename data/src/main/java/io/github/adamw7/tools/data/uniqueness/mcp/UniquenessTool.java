@@ -1,6 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
@@ -55,17 +55,14 @@ public class UniquenessTool implements Function<Map<String, Object>, CallToolRes
 		String fileName = String.valueOf(arguments.get("file"));
 		String columnName = String.valueOf(arguments.get("columns_name"));
 		int columnsRow = Integer.parseInt(String.valueOf(arguments.get("columns_row")));
-		try {
-			InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow);
+		try (InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow)) {
 			AbstractUniqueness check = new InMemoryUniquenessCheck();
-			
-			source.readAll();
-			
+
 			check.setDataSource(source);
 			Result result = check.exec(columnName);
-			print(result, columnName);		
+			print(result, columnName);
 			return String.valueOf(result.isUnique());
-		} catch (FileNotFoundException e) {
+		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
 	}

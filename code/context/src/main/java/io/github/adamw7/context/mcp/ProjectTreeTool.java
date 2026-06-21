@@ -1,0 +1,80 @@
+package io.github.adamw7.context.mcp;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
+
+import io.github.adamw7.context.Language;
+import io.github.adamw7.context.tree.ProjectTreeBuilder;
+import io.github.adamw7.context.tree.ProjectTreeJsonSerializer;
+import io.github.adamw7.context.tree.ProjectTreeMarkdownSerializer;
+import io.github.adamw7.context.tree.ProjectTreeNode;
+import io.github.adamw7.context.tree.ProjectTreePrinter;
+import io.github.adamw7.context.tree.ProjectTreeSerializer;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
+
+/**
+ * MCP tool that scans a Java or Kotlin project into a tree of folders, files and
+ * the classes each file depends on, then serialises it for a gen-AI agent. The
+ * output format ({@code json}, {@code markdown} or {@code text}) is chosen by the
+ * caller; JSON is the default as it is the most convenient for programmatic
+ * consumers.
+ */
+@Component
+public class ProjectTreeTool implements ContextTool {
+
+	private static final Logger log = LogManager.getLogger(ProjectTreeTool.class.getName());
+
+	private static final int DEFAULT_DEPTH = 1;
+	private static final String DEFAULT_FORMAT = "json";
+
+	private final Tool toolDefinition = Tool.builder("project_tree",
+			Map.of(
+					"type", "object",
+					"properties", Map.of(
+							"path", Map.of("type", "string",
+									"description", "absolute path to the project root directory"),
+							"language", Map.of("type", "string",
+									"description", "source language: java (default) or kotlin"),
+							"depth", Map.of("type", "integer",
+									"description", "how many levels of transitive dependencies to resolve (default 1)"),
+							"format", Map.of("type", "string",
+									"description", "output format: json (default), markdown or text")),
+					"required", List.of("path")))
+			.description("Scan a Java or Kotlin project into a tree of folders, files and class dependencies")
+			.build();
+
+	@Override
+	public Tool getToolDefinition() {
+		return toolDefinition;
+	}
+
+	@Override
+	public CallToolResult apply(Map<String, Object> arguments) {
+		log.info("Calling MCP project_tree tool for {}", arguments);
+		String rendered = buildTree(arguments);
+		return CallToolResult.builder().content(List.of(TextContent.builder(rendered).build())).isError(false).build();
+	}
+
+	private String buildTree(Map<String, Object> arguments) {
+		Path root = Path.of(ToolArguments.requiredString(arguments, "path"));
+		Language language = ToolArguments.optionalLanguage(arguments, "language", Language.JAVA);
+		int depth = ToolArguments.optionalInt(arguments, "depth", DEFAULT_DEPTH);
+		ProjectTreeNode tree = new ProjectTreeBuilder(language, depth).build(root);
+		return serializerFor(ToolArguments.optionalString(arguments, "format", DEFAULT_FORMAT)).serialize(tree);
+	}
+
+	private ProjectTreeSerializer serializerFor(String format) {
+		return switch (format.trim().toLowerCase(java.util.Locale.ROOT)) {
+			case "markdown" -> new ProjectTreeMarkdownSerializer();
+			case "text" -> new ProjectTreePrinter();
+			default -> new ProjectTreeJsonSerializer();
+		};
+	}
+}

@@ -5,6 +5,7 @@ import io.github.adamw7.context.Context;
 import io.github.adamw7.context.ContextFactory;
 import io.github.adamw7.context.Finder;
 import io.github.adamw7.context.Language;
+import io.github.adamw7.context.ProjectSources;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,7 +15,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -56,20 +56,7 @@ public class ProjectTreeBuilder {
 	}
 
 	private Map<Path, ClassContainer> loadContainers(Path root) {
-		try (Stream<Path> paths = Files.walk(root)) {
-			return paths.filter(this::isSourceFile)
-					.collect(Collectors.toMap(path -> path, this::toContainer));
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-	}
-
-	private boolean isSourceFile(Path path) {
-		return Files.isRegularFile(path) && path.getFileName().toString().endsWith(language.extension());
-	}
-
-	private ClassContainer toContainer(Path path) {
-		return ClassContainer.load(path, path.getFileName().toString());
+		return new ProjectSources(language).load(root);
 	}
 
 	private ProjectTreeNode buildNode(Path path, Context context, Map<Path, ClassContainer> containers) {

@@ -17,7 +17,9 @@ Maven project. The notable capabilities are:
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
   builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
   that scans a whole Java project into a tree of folders, files and
-  dependencies, to assemble context for gen-AI agents working with Java code.
+  dependencies, to assemble context for gen-AI agents working with Java code. An
+  **MCP server** (in the `io.github.adamw7.context.mcp` package) exposes the
+  project-tree and context-finder tools over stdio or streamable HTTP.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC; in-memory and iterative
   loading), a uniqueness-checking tool (finds whether a subset of columns can
   serve as a key, and searches for a smaller key), data structures (an
@@ -49,11 +51,17 @@ list).
 Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the
 context module, `io.github.adamw7.tools.*` elsewhere).
 
-The MCP server lives in
-`data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/`. Its entry
-point is `Main.java`; see
-[MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md)
-for client configuration (Claude Desktop, Cline, etc.).
+The repository ships two MCP servers, each a Spring Boot app whose entry point
+is `Main.java` and which supports stdio (default) or streamable HTTP
+(`--transport.mode=streamable-http`):
+
+- The uniqueness-checker server in
+  `data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/`; see its
+  [MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md).
+- The context-engineering server in
+  `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
+  `project_tree` and `find_context` tools; see its
+  [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
 
 ## Environment & toolchain
 

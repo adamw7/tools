@@ -1,5 +1,7 @@
 package io.github.adamw7.context;
 
+import java.util.Locale;
+
 /**
  * A programming language supported by the context finder. Each language is
  * identified by the file extension of its source files, which is how the
@@ -16,6 +18,17 @@ public enum Language {
 
 	Language(String extension) {
 		this.extension = extension;
+	}
+
+	/**
+	 * Resolves a language from its case-insensitive name (e.g. {@code "java"} or
+	 * {@code "kotlin"}), so callers such as the MCP tools can accept the language
+	 * as a plain string argument.
+	 *
+	 * @throws IllegalArgumentException if no language matches the given name
+	 */
+	public static Language fromName(String name) {
+		return valueOf(name.trim().toUpperCase(Locale.ROOT));
 	}
 
 	public String extension() {

@@ -271,6 +271,46 @@ The building blocks are:
 The result is a compact, human- and LLM-readable view of the project, ready to
 be handed to a gen-AI agent as context.
 
+### Output formats
+
+The tree can be rendered in several formats behind a single
+`ProjectTreeSerializer` interface, so a consumer depends on the abstraction
+rather than a concrete format and new formats can be added without touching the
+tree:
+
+```java
+ProjectTreeSerializer serializer = new ProjectTreeMarkdownSerializer(); // or JSON / printer
+String rendered = serializer.serialize(root);
+```
+
+- **`ProjectTreePrinter`** — indented plain text (shown above).
+- **`ProjectTreeMarkdownSerializer`** — a nested Markdown bullet list, with each
+  file's dependencies as indented child bullets. Well suited to documents and
+  chat-based agents.
+- **`ProjectTreeJsonSerializer`** — structured JSON (`name`, `type`,
+  `dependencies`, `children`) for programmatic consumers; `serializePretty`
+  produces indented JSON.
+
+### Token-budget-aware context
+
+A model's context window is finite, so `BudgetedContext` wraps any `Context` and
+trims its result to fit a token budget. Because `Finder` returns dependencies in
+breadth-first order (closest first), the decorator keeps that priority order and
+accepts containers until the next one would exceed the budget:
+
+```java
+TokenEstimator estimator = new HeuristicTokenEstimator(); // ~chars/4, no tokenizer dependency
+Context budgeted = new BudgetedContext(new Finder(allContainers), estimator, /* token budget */ 8000);
+Set<ClassContainer> used = budgeted.find(root, depth);
+```
+
+- **`TokenEstimator`** — abstracts how a piece of text is costed in tokens.
+- **`HeuristicTokenEstimator`** — a fast, dependency-free estimate from character
+  count (configurable characters-per-token, default `4`), rounded up so any
+  non-empty text costs at least one token.
+- **`BudgetedContext`** — a `Context` decorator that returns the highest-priority
+  prefix of the dependency graph that fits the budget.
+
 ## Data
 It contains:
 - data sources

@@ -5,12 +5,17 @@ package io.github.adamw7.context.tree;
  * files are listed hierarchically and each file's dependencies are printed
  * beneath it, giving a compact, human- and LLM-readable view of the project.
  */
-public class ProjectTreePrinter {
+public class ProjectTreePrinter implements ProjectTreeSerializer {
 
 	private static final String INDENT = "  ";
 	private static final String DIRECTORY_MARKER = "[dir] ";
 	private static final String FILE_MARKER = "[file] ";
 	private static final String DEPENDENCY_MARKER = "-> ";
+
+	@Override
+	public String serialize(ProjectTreeNode root) {
+		return print(root);
+	}
 
 	public String print(ProjectTreeNode root) {
 		StringBuilder builder = new StringBuilder();

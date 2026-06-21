@@ -12,7 +12,7 @@ public class Main {
         if ("stdio".equals(transportMode)) {
             System.setProperty("spring.main.web-application-type", "none");
         }
-        System.setProperty("banner-mode", "off");
+        System.setProperty("spring.main.banner-mode", "off");
         SpringApplication.run(Main.class, args);
     }
 

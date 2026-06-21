@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.io.FileInputStream;
@@ -125,6 +126,16 @@ public class CSVDataSourceTest {
 		}
 		Utils.close(source);
 		assertEquals(70, i);
+	}
+
+	@Test
+	public void closeReleasesUnderlyingScanner() throws IOException {
+		InMemoryCSVDataSource source = Utils.createInMemoryDataSource(Utils.getHouseholdFile(), COLUMNS_ROW);
+		source.open();
+		source.close();
+		// Once the scanner is genuinely closed, any further read attempt fails fast
+		// instead of silently keeping the file handle open.
+		assertThrows(IllegalStateException.class, source::nextRow);
 	}
 
 	@Test

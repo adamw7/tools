@@ -289,6 +289,13 @@ public class MapTest {
 	}
 	
 	@Test
+	public void zeroSizeIsRejected() {
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new OpenAddressingMap<>(0), "Expected constructor method to throw, but it didn't");
+
+		assertEquals("Wrong size: 0", thrown.getMessage());
+	}
+
+	@Test
 	public void nullKey() {
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new OpenAddressingMap<>(2).put(null, null), "Expected put method to throw, but it didn't");
 
@@ -299,5 +306,12 @@ public class MapTest {
 	@MethodSource("allImplementations")
 	public void empty(Map<Integer, String> map) {
 		assertTrue(map.isEmpty());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void notEmptyAfterPut(Map<Integer, String> map) {
+		map.put(1, "A");
+		assertFalse(map.isEmpty());
 	}
 }

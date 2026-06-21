@@ -70,4 +70,90 @@ public class ResultTest {
 		assertTrue(first.equals(sameRowDifferentOrder));
 		assertFalse(first.equals(differentRow));
 	}
+
+	@Test
+	public void equalToItself() {
+		Result result = new Result(true, new String[] { "year1" });
+
+		assertTrue(result.equals(result));
+	}
+
+	@Test
+	public void notEqualToNull() {
+		Result result = new Result(true, new String[] { "year1" });
+
+		assertFalse(result.equals(null));
+	}
+
+	@Test
+	public void notEqualToDifferentType() {
+		Result result = new Result(true, new String[] { "year1" });
+
+		assertFalse(result.equals("year1"));
+	}
+
+	@Test
+	public void differentUniquenessIsNotEqual() {
+		Result unique = new Result(true, new String[] { "year1" });
+		Result notUnique = new Result(false, new String[] { "year1" });
+
+		assertNotEquals(unique, notUnique);
+	}
+
+	@Test
+	public void differentBetterOptionsAreNotEqual() {
+		Set<Result> options = new HashSet<>();
+		options.add(new Result(true, new String[] { "year1" }));
+		Result withOptions = new Result(true, new String[] { "income" }, null, options);
+		Result withoutOptions = new Result(true, new String[] { "income" });
+
+		assertNotEquals(withOptions, withoutOptions);
+	}
+
+	@Test
+	public void differentColumnsHaveDifferentHashCodes() {
+		Result first = new Result(true, new String[] { "year1", "hlpi_name" });
+		Result second = new Result(true, new String[] { "year1", "income" });
+
+		assertNotEquals(first.hashCode(), second.hashCode());
+	}
+
+	@Test
+	public void unequalResultsHaveDifferentHashCodes() {
+		Result unique = new Result(true, new String[] { "year1" });
+		Result notUnique = new Result(false, new String[] { "year1" });
+
+		assertNotEquals(unique.hashCode(), notUnique.hashCode());
+	}
+
+	@Test
+	public void nullColumnsEqualOnlyOtherNullColumns() {
+		Result firstNull = new Result(true, null);
+		Result secondNull = new Result(true, null);
+		Result withColumns = new Result(true, new String[] { "year1" });
+
+		assertEquals(firstNull, secondNull);
+		assertNotEquals(firstNull, withColumns);
+		assertNotEquals(withColumns, firstNull);
+	}
+
+	@Test
+	public void nullColumnsContributeZeroToHashCode() {
+		Result firstNull = new Result(true, null);
+		Result secondNull = new Result(true, null);
+
+		assertEquals(firstNull.hashCode(), secondNull.hashCode());
+	}
+
+	@Test
+	public void toStringRendersAllFields() {
+		Result result = new Result(true, new String[] { "year1" }, new String[] { "2020" });
+
+		String text = result.toString();
+
+		assertTrue(text.contains("unique=true"), text);
+		assertTrue(text.contains("year1"), text);
+		assertTrue(text.contains("2020"), text);
+		assertTrue(text.contains("betterOptions="), text);
+	}
 }

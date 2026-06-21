@@ -58,6 +58,14 @@ public class KeyTest {
 	}
 
 	@Test
+	public void distinctKeysHaveDistinctHashCodes() {
+		Key first = new Key(new String[] { "x", "y" });
+		Key second = new Key(new String[] { "x", "z" });
+
+		assertNotEquals(first.hashCode(), second.hashCode());
+	}
+
+	@Test
 	public void toStringRendersValues() {
 		Key key = new Key(new String[] { "a", "b" });
 

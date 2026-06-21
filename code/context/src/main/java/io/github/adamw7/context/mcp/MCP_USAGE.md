@@ -126,6 +126,30 @@ server.ssl.key-store-type=PKCS12
 negotiated even if they are requested. The endpoint is then served at
 `https://localhost:8082/mcp`.
 
+## Security
+
+The tools read source files from disk, so access is constrained by design:
+
+- **Allowed roots.** Every `path` argument is resolved to its real location
+  (symlinks followed, `..` collapsed) and must fall within a configured allowed
+  root, otherwise the call is rejected. Configure the roots with
+  `context.allowed-roots` (a `File.pathSeparator`-separated list of absolute
+  paths). When left blank, the server's working directory is the single allowed
+  root. This prevents a client from steering the scanners at arbitrary files
+  such as `/etc` or a user's home directory.
+
+  ```properties
+  context.allowed-roots=/home/me/projects:/srv/code
+  ```
+
+- **Loopback binding.** The streamable HTTP transport binds to `127.0.0.1` by
+  default (`server.address`). The `/mcp` endpoint has **no authentication**, so
+  it must not be exposed on a routable interface. Change `server.address` only
+  after putting authentication in front of it.
+
+- **Bounded depth.** The `depth` argument is capped at `10` to bound the cost of
+  transitive dependency resolution.
+
 ## Configuring MCP Clients
 
 ### Claude Desktop (stdio)

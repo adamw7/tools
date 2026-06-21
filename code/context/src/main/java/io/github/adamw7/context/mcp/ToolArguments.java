@@ -33,6 +33,15 @@ final class ToolArguments {
 		return value == null ? defaultValue : Integer.parseInt(String.valueOf(value).trim());
 	}
 
+	static int optionalBoundedInt(Map<String, Object> arguments, String key, int defaultValue, int min, int max) {
+		int value = optionalInt(arguments, key, defaultValue);
+		if (value < min || value > max) {
+			throw new IllegalArgumentException(
+					"Argument " + key + " must be between " + min + " and " + max + " but was " + value);
+		}
+		return value;
+	}
+
 	static Language optionalLanguage(Map<String, Object> arguments, String key, Language defaultLanguage) {
 		Object value = arguments.get(key);
 		return value == null ? defaultLanguage : Language.fromName(String.valueOf(value));

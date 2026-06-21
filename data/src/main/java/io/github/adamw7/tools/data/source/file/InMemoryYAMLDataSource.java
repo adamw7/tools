@@ -1,32 +1,24 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-
-public class InMemoryYAMLDataSource extends AbstractFileSource implements InMemoryDataSource {
-	private final Map<String, String> fieldsMap = new HashMap<>();
-	private Iterator<String> mapIterator;
+public class InMemoryYAMLDataSource extends AbstractInMemoryMapDataSource {
 
 	public InMemoryYAMLDataSource(InputStream inputStream) {
 		super(inputStream);
-		scanner = createScanner(inputStream);
-		parse();
 	}
 
 	public InMemoryYAMLDataSource(String filePath) {
 		super(filePath);
-		parse();
 	}
 
-	private void parse() {
+	@Override
+	protected void parse() {
 		StringBuilder yamlContent = new StringBuilder();
 		while (scanner.hasNextLine()) {
 			yamlContent.append(scanner.nextLine()).append("\n");
@@ -77,61 +69,5 @@ public class InMemoryYAMLDataSource extends AbstractFileSource implements InMemo
 				fieldsMap.put(key, String.valueOf(value));
 			}
 		}
-	}
-
-	@Override
-	public void open() {
-		if (opened) {
-			throw new IllegalStateException("DataSource is already open");
-		}
-		mapIterator = fieldsMap.keySet().iterator();
-		opened = true;
-	}
-
-	@Override
-	public String[] nextRow() {
-		checkIfOpen();
-		if (mapIterator.hasNext()) {
-			String key = mapIterator.next();
-			String value = fieldsMap.get(key);
-			return new String[] { key, value };
-		}
-		return null;
-	}
-
-	@Override
-	public boolean hasMoreData() {
-		checkIfOpen();
-		return mapIterator.hasNext();
-	}
-
-	@Override
-	public void reset() {
-		checkIfOpen();
-		mapIterator = fieldsMap.keySet().iterator();
-	}
-
-	public Iterator<String[]> iterator() {
-		return new Iterator<>() {
-			@Override
-			public boolean hasNext() {
-				return hasMoreData();
-			}
-
-			@Override
-			public String[] next() {
-				return nextRow();
-			}
-		};
-	}
-
-	@Override
-	public String[] getColumnNames() {
-		return fieldsMap.keySet().toArray(new String[] {});
-	}
-
-	@Override
-	public List<String[]> readAll() {
-		return super.readAll();
 	}
 }

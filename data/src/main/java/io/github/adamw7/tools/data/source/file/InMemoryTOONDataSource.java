@@ -2,14 +2,9 @@ package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
-
-import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
 /**
  * Data source for TOON (Token-Oriented Object Notation) format files.
@@ -21,23 +16,18 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
  * - Tabular arrays (key[N]{field1,field2}: row1,row2...)
  * - Nested objects via indentation
  */
-public class InMemoryTOONDataSource extends AbstractFileSource implements InMemoryDataSource {
-
-	private final Map<String, String> fieldsMap = new HashMap<>();
-	private Iterator<String> mapIterator;
+public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 
 	public InMemoryTOONDataSource(InputStream inputStream) {
 		super(inputStream);
-		scanner = createScanner(inputStream);
-		parse();
 	}
 
 	public InMemoryTOONDataSource(String filePath) {
 		super(filePath);
-		parse();
 	}
 
-	private void parse() {
+	@Override
+	protected void parse() {
 		List<String> lines = new ArrayList<>();
 		while (scanner.hasNextLine()) {
 			lines.add(scanner.nextLine());
@@ -275,61 +265,5 @@ public class InMemoryTOONDataSource extends AbstractFileSource implements InMemo
 
 		fieldsMap.put(fullKey, ToonSyntax.unquote(value));
 		return index + 1;
-	}
-
-	@Override
-	public void open() {
-		if (opened) {
-			throw new IllegalStateException("DataSource is already open");
-		}
-		mapIterator = fieldsMap.keySet().iterator();
-		opened = true;
-	}
-
-	@Override
-	public String[] nextRow() {
-		checkIfOpen();
-		if (mapIterator.hasNext()) {
-			String key = mapIterator.next();
-			String value = fieldsMap.get(key);
-			return new String[] { key, value };
-		}
-		return null;
-	}
-
-	@Override
-	public boolean hasMoreData() {
-		checkIfOpen();
-		return mapIterator.hasNext();
-	}
-
-	@Override
-	public void reset() {
-		checkIfOpen();
-		mapIterator = fieldsMap.keySet().iterator();
-	}
-
-	public Iterator<String[]> iterator() {
-		return new Iterator<>() {
-			@Override
-			public boolean hasNext() {
-				return hasMoreData();
-			}
-
-			@Override
-			public String[] next() {
-				return nextRow();
-			}
-		};
-	}
-
-	@Override
-	public String[] getColumnNames() {
-		return fieldsMap.keySet().toArray(new String[] {});
-	}
-
-	@Override
-	public List<String[]> readAll() {
-		return super.readAll();
 	}
 }

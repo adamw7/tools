@@ -20,8 +20,9 @@ import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 /**
- * MCP tool that scans a Java or Kotlin project into a tree of folders, files and
- * the classes each file depends on, then serialises it for a gen-AI agent. The
+ * MCP tool that scans a Java, Kotlin or Scala project into a tree of folders,
+ * files and the classes each file depends on, then serialises it for a gen-AI
+ * agent. The
  * output format ({@code json}, {@code markdown} or {@code text}) is chosen by the
  * caller; JSON is the default as it is the most convenient for programmatic
  * consumers.
@@ -47,13 +48,13 @@ public class ProjectTreeTool implements ContextTool {
 							"path", Map.of("type", "string",
 									"description", "absolute path to the project root directory"),
 							"language", Map.of("type", "string",
-									"description", "source language: java (default) or kotlin"),
+									"description", "source language: java (default), kotlin or scala"),
 							"depth", Map.of("type", "integer",
 									"description", "how many levels of transitive dependencies to resolve (default 1)"),
 							"format", Map.of("type", "string",
 									"description", "output format: json (default), markdown, text or dot")),
 					"required", List.of("path")))
-			.description("Scan a Java or Kotlin project into a tree of folders, files and class dependencies")
+			.description("Scan a Java, Kotlin or Scala project into a tree of folders, files and class dependencies")
 			.build();
 
 	@Override

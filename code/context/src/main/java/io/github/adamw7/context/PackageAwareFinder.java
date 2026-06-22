@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,27 +24,17 @@ import java.util.stream.Collectors;
  * the whole project, that sole candidate. An ambiguous reference with no import to
  * disambiguate it is left unresolved rather than guessed.
  *
- * <p>Like {@link Finder}, traversal is a depth-bounded breadth-first expansion in
- * which every class is visited once, so cycles terminate and the root is never
- * reported as its own dependency. Comments and string or character literals are
- * stripped before matching. The package/import grammar this relies on
- * ({@code package a.b;} and {@code import a.b.C;}) is shared by Java, Kotlin and
- * Scala, so it serves every {@link Language} the finder supports.
+ * <p>Like {@link Finder}, traversal is the depth-bounded breadth-first expansion
+ * provided by {@link AbstractFinder} in which every class is visited once, so
+ * cycles terminate and the root is never reported as its own dependency. Comments
+ * and string or character literals are stripped before matching. The
+ * package/import grammar this relies on ({@code package a.b;} and
+ * {@code import a.b.C;}) is shared by Java, Kotlin and Scala, so it serves every
+ * {@link Language} the finder supports.
  */
-public class PackageAwareFinder implements Context {
+public class PackageAwareFinder extends AbstractFinder {
 
 	private static final Logger log = LogManager.getLogger(PackageAwareFinder.class.getName());
-
-	private static final Pattern CLASS_REFERENCE =
-			Pattern.compile("\\b[A-Z][A-Za-z0-9_]*(\\.[A-Z][A-Za-z0-9_]*)*\\b");
-
-	private static final Pattern COMMENTS_AND_LITERALS = Pattern.compile(
-			"\"\"\".*?\"\"\""              // triple-quoted string
-			+ "|//[^\\n]*"                 // line comment
-			+ "|/\\*.*?\\*/"               // block comment
-			+ "|\"(?:\\\\.|[^\"\\\\])*\""  // string literal
-			+ "|'(?:\\\\.|[^'\\\\])*'",    // character literal
-			Pattern.DOTALL);
 
 	private static final Pattern PACKAGE = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)");
 
@@ -77,7 +66,7 @@ public class PackageAwareFinder implements Context {
 	}
 
 	private String fullyQualifiedName(ClassContainer container) {
-		return qualify(packageOf(container.originalCode()), simpleName(container));
+		return qualify(packageOf(stripCommentsAndLiterals(container.originalCode())), simpleName(container));
 	}
 
 	private String simpleName(ClassContainer container) {
@@ -86,49 +75,7 @@ public class PackageAwareFinder implements Context {
 	}
 
 	@Override
-	public Set<ClassContainer> find(ClassContainer root, int depth) {
-		requirePositiveDepth(depth);
-		Set<ClassContainer> dependencies = new LinkedHashSet<>();
-		Set<ClassContainer> visited = new HashSet<>();
-		visited.add(root);
-		expand(root, depth, dependencies, visited);
-		return dependencies;
-	}
-
-	private void requirePositiveDepth(int depth) {
-		if (depth <= 0) {
-			throw new IllegalArgumentException("Depth must be positive and received: " + depth);
-		}
-	}
-
-	private void expand(ClassContainer root, int depth, Set<ClassContainer> dependencies,
-			Set<ClassContainer> visited) {
-		Set<ClassContainer> frontier = Set.of(root);
-		for (int level = 0; level < depth && !frontier.isEmpty(); level++) {
-			frontier = nextLevel(frontier, dependencies, visited);
-		}
-	}
-
-	private Set<ClassContainer> nextLevel(Set<ClassContainer> frontier,
-			Set<ClassContainer> dependencies, Set<ClassContainer> visited) {
-		Set<ClassContainer> next = new LinkedHashSet<>();
-		for (ClassContainer current : frontier) {
-			addNewDependencies(current, dependencies, visited, next);
-		}
-		return next;
-	}
-
-	private void addNewDependencies(ClassContainer current, Set<ClassContainer> dependencies,
-			Set<ClassContainer> visited, Set<ClassContainer> next) {
-		for (ClassContainer dependency : findDirectDependencies(current)) {
-			if (visited.add(dependency)) {
-				dependencies.add(dependency);
-				next.add(dependency);
-			}
-		}
-	}
-
-	private Set<ClassContainer> findDirectDependencies(ClassContainer source) {
+	protected Set<ClassContainer> findDirectDependencies(ClassContainer source) {
 		String code = stripCommentsAndLiterals(source.originalCode());
 		ResolutionScope scope = scopeOf(code);
 		Set<ClassContainer> dependencies = new LinkedHashSet<>();
@@ -191,17 +138,18 @@ public class PackageAwareFinder implements Context {
 		return packageName.isEmpty() ? simpleName : packageName + "." + simpleName;
 	}
 
-	private ResolutionScope scopeOf(String code) {
-		return new ResolutionScope(packageOf(code), explicitImports(code), wildcardPackages(code));
+	private ResolutionScope scopeOf(String strippedCode) {
+		return new ResolutionScope(packageOf(strippedCode), explicitImports(strippedCode),
+				wildcardPackages(strippedCode));
 	}
 
-	private String packageOf(String code) {
-		Matcher matcher = PACKAGE.matcher(stripCommentsAndLiterals(code));
+	private String packageOf(String strippedCode) {
+		Matcher matcher = PACKAGE.matcher(strippedCode);
 		return matcher.find() ? matcher.group(1) : "";
 	}
 
-	private Map<String, String> explicitImports(String code) {
-		Matcher matcher = IMPORT.matcher(code);
+	private Map<String, String> explicitImports(String strippedCode) {
+		Matcher matcher = IMPORT.matcher(strippedCode);
 		Map<String, String> imports = new HashMap<>();
 		while (matcher.find()) {
 			recordExplicitImport(matcher.group(1), imports);
@@ -215,8 +163,8 @@ public class PackageAwareFinder implements Context {
 		}
 	}
 
-	private List<String> wildcardPackages(String code) {
-		Matcher matcher = IMPORT.matcher(code);
+	private List<String> wildcardPackages(String strippedCode) {
+		Matcher matcher = IMPORT.matcher(strippedCode);
 		List<String> packages = new ArrayList<>();
 		while (matcher.find()) {
 			recordWildcard(matcher.group(1), packages);
@@ -233,10 +181,6 @@ public class PackageAwareFinder implements Context {
 	private String lastSegment(String dotted) {
 		int dot = dotted.lastIndexOf('.');
 		return dot < 0 ? dotted : dotted.substring(dot + 1);
-	}
-
-	private String stripCommentsAndLiterals(String code) {
-		return COMMENTS_AND_LITERALS.matcher(code).replaceAll(" ");
 	}
 
 	/**

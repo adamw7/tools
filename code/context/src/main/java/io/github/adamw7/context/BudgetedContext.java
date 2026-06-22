@@ -47,16 +47,16 @@ public class BudgetedContext implements Context {
 		return withinBudget;
 	}
 
-	private void fill(Iterator<ClassContainer> candidates, int remaining, Set<ClassContainer> accepted) {
-		if (!candidates.hasNext()) {
-			return;
+	private void fill(Iterator<ClassContainer> candidates, int budget, Set<ClassContainer> accepted) {
+		int remaining = budget;
+		while (candidates.hasNext()) {
+			ClassContainer candidate = candidates.next();
+			int cost = estimator.estimate(candidate.originalCode());
+			if (cost > remaining) {
+				return;
+			}
+			accepted.add(candidate);
+			remaining -= cost;
 		}
-		ClassContainer candidate = candidates.next();
-		int cost = estimator.estimate(candidate.originalCode());
-		if (cost > remaining) {
-			return;
-		}
-		accepted.add(candidate);
-		fill(candidates, remaining - cost, accepted);
 	}
 }

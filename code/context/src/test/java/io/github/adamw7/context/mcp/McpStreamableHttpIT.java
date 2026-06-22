@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,11 +59,12 @@ public class McpStreamableHttpIT {
 	}
 
 	@Test
-	void listsBothContextTools() {
+	void listsAllContextTools() {
 		McpSchema.ListToolsResult tools = client.listTools();
 
 		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("project_tree")));
 		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("find_context")));
+		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("estimate_tokens")));
 	}
 
 	@Test
@@ -90,5 +92,58 @@ public class McpStreamableHttpIT {
 		assertFalse(result.isError());
 		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
 		assertEquals("A.java", new JSONArray(dependencies).getString(0));
+	}
+
+	@Test
+	void estimateTokensToolReportsATokenBreakdown() {
+		McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder("estimate_tokens")
+				.arguments(Map.of("path", projectRoot.toString(), "class_name", "B"))
+				.build();
+
+		McpSchema.CallToolResult result = client.callTool(request);
+
+		assertFalse(result.isError());
+		JSONObject report = new JSONObject(((McpSchema.TextContent) result.content().getFirst()).text());
+		assertTrue(report.getInt("total") > 0);
+		JSONArray classes = report.getJSONArray("classes");
+		assertTrue(containsClass(classes, "B.java"));
+		assertTrue(containsClass(classes, "A.java"));
+	}
+
+	@Test
+	void projectTreeToolHonoursTheRequestedFormat() {
+		McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder("project_tree")
+				.arguments(Map.of("path", projectRoot.toString(), "format", "markdown"))
+				.build();
+
+		McpSchema.CallToolResult result = client.callTool(request);
+
+		assertFalse(result.isError());
+		String tree = ((McpSchema.TextContent) result.content().getFirst()).text();
+		assertTrue(tree.contains("- "));
+		assertTrue(tree.contains("depends on:"));
+		assertTrue(tree.contains("A.java"));
+	}
+
+	@Test
+	void findContextToolReportsAnErrorForAnUnknownClass() {
+		McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder("find_context")
+				.arguments(Map.of("path", projectRoot.toString(), "class_name", "Missing"))
+				.build();
+
+		McpSchema.CallToolResult result = client.callTool(request);
+
+		assertTrue(result.isError());
+		String message = ((McpSchema.TextContent) result.content().getFirst()).text();
+		assertTrue(message.contains("Class not found: Missing"));
+	}
+
+	private boolean containsClass(JSONArray classes, String className) {
+		for (int index = 0; index < classes.length(); index++) {
+			if (className.equals(classes.getJSONObject(index).getString("class"))) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

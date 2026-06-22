@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
@@ -22,6 +23,10 @@ import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
 @Configuration
 public class McpConfiguration {
+
+	static final String SSE_ENDPOINT = "/sse";
+
+	static final String SSE_MESSAGE_ENDPOINT = "/mcp/message";
 
 	private static final Logger log = LogManager.getLogger(McpConfiguration.class.getName());
 
@@ -53,6 +58,27 @@ public class McpConfiguration {
 			HttpServletStreamableServerTransportProvider transport) {
 		ServletRegistrationBean<HttpServletStreamableServerTransportProvider> registration =
 				new ServletRegistrationBean<>(transport, "/mcp");
+		registration.setAsyncSupported(true);
+		return registration;
+	}
+
+	@Bean
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
+	public HttpServletSseServerTransportProvider sseServerTransport() {
+		log.info("Creating HttpServletSseServerTransport");
+		return HttpServletSseServerTransportProvider.builder()
+				.jsonMapper(new JacksonMcpJsonMapper(objectMapper()))
+				.sseEndpoint(SSE_ENDPOINT)
+				.messageEndpoint(SSE_MESSAGE_ENDPOINT)
+				.build();
+	}
+
+	@Bean
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
+	public ServletRegistrationBean<HttpServletSseServerTransportProvider> sseServletRegistration(
+			HttpServletSseServerTransportProvider transport) {
+		ServletRegistrationBean<HttpServletSseServerTransportProvider> registration =
+				new ServletRegistrationBean<>(transport, SSE_ENDPOINT, SSE_MESSAGE_ENDPOINT);
 		registration.setAsyncSupported(true);
 		return registration;
 	}

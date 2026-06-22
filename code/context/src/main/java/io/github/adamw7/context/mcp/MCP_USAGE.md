@@ -32,8 +32,10 @@ The implementation lives in a package separate from the core finders:
 
 The server uses:
 
-- **Transport**: stdio (default) or streamable HTTP
-  (`--transport.mode=streamable-http`), which serves the MCP endpoint at `/mcp`.
+- **Transport**: stdio (default), streamable HTTP
+  (`--transport.mode=streamable-http`), which serves the MCP endpoint at `/mcp`,
+  or the legacy HTTP+SSE transport (`--transport.mode=sse`), which serves the
+  event stream at `/sse` and accepts JSON-RPC messages at `/mcp/message`.
 - **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
@@ -139,6 +141,18 @@ java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar --transport.
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
 configurable through `server.port`).
 
+### HTTP+SSE (legacy)
+
+```bash
+java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar --transport.mode=sse
+```
+
+This is the legacy HTTP+SSE transport (MCP protocol revision 2024-11-05),
+kept for clients that predate streamable HTTP. The server opens the event
+stream at `http://localhost:8082/sse` and accepts JSON-RPC messages POSTed to
+`http://localhost:8082/mcp/message`. Prefer `streamable-http` for new clients;
+this transport is deprecated in the current MCP specification.
+
 ### HTTPS (TLS 1.3)
 
 To serve the streamable HTTP transport over HTTPS, point the standard Spring
@@ -172,10 +186,11 @@ The tools read source files from disk, so access is constrained by design:
   context.allowed-roots=/home/me/projects:/srv/code
   ```
 
-- **Loopback binding.** The streamable HTTP transport binds to `127.0.0.1` by
-  default (`server.address`). The `/mcp` endpoint has **no authentication**, so
-  it must not be exposed on a routable interface. Change `server.address` only
-  after putting authentication in front of it.
+- **Loopback binding.** The HTTP transports (streamable HTTP and HTTP+SSE) bind
+  to `127.0.0.1` by default (`server.address`). The `/mcp`, `/sse` and
+  `/mcp/message` endpoints have **no authentication**, so they must not be
+  exposed on a routable interface. Change `server.address` only after putting
+  authentication in front of them.
 
 - **Bounded depth.** The `depth` argument is capped at `10` to bound the cost of
   transitive dependency resolution.
@@ -206,6 +221,19 @@ The tools read source files from disk, so access is constrained by design:
     "context-engineering": {
       "type": "http",
       "url": "http://localhost:8082/mcp"
+    }
+  }
+}
+```
+
+### HTTP+SSE client (legacy)
+
+```json
+{
+  "mcpServers": {
+    "context-engineering": {
+      "type": "sse",
+      "url": "http://localhost:8082/sse"
     }
   }
 }

@@ -331,7 +331,10 @@ It contains:
 - MCP server
   - Model Context Protocol server exposing uniqueness checking as a tool for AI assistants
   - Compatible with Claude Desktop, Cline, and other MCP clients
-  - Transport: stdio over JSON-RPC (Spring Boot, no HTTP server started)
+  - Transports (select with `--transport.mode`):
+    - `stdio` (default) — JSON-RPC over stdin/stdout (Spring Boot, no HTTP server started)
+    - `streamable-http` — the modern HTTP transport served at `/mcp`
+    - `sse` — the legacy HTTP+SSE transport for older clients: the event stream is served at `/sse` and JSON-RPC messages are POSTed to `/mcp/message`
   - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
   - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`
   - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for client configuration (Claude Desktop, Cline) and usage examples

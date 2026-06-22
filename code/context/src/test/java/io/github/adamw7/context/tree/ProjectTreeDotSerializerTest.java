@@ -68,4 +68,68 @@ public class ProjectTreeDotSerializerTest {
 
 		assertTrue(dot.contains("\\\""));
 	}
+
+	@Test
+	void escapesBackslashesInNames() {
+		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
+		ProjectTreeNode file = ProjectTreeNode.file(Path.of("project/B.java"));
+		file.addDependency("a\\b");
+		root.addChild(file);
+
+		String dot = serializer.serialize(root);
+
+		assertTrue(dot.contains("\"B.java\" -> \"a\\\\b\";"));
+	}
+
+	@Test
+	void emitsNoEdgesForAFileWithoutDependencies() {
+		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
+		root.addChild(ProjectTreeNode.file(Path.of("project/A.java")));
+
+		String dot = serializer.serialize(root);
+
+		assertFalse(dot.contains("->"));
+	}
+
+	@Test
+	void preservesDependencyInsertionOrder() {
+		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
+		ProjectTreeNode file = ProjectTreeNode.file(Path.of("project/B.java"));
+		file.addDependency("A.java");
+		file.addDependency("C.java");
+		root.addChild(file);
+
+		String dot = serializer.serialize(root);
+
+		assertTrue(dot.indexOf("-> \"A.java\"") < dot.indexOf("-> \"C.java\""));
+	}
+
+	@Test
+	void emitsEdgesForEveryFileInTheTree() {
+		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
+		ProjectTreeNode first = ProjectTreeNode.file(Path.of("project/B.java"));
+		first.addDependency("A.java");
+		ProjectTreeNode second = ProjectTreeNode.file(Path.of("project/D.java"));
+		second.addDependency("C.java");
+		root.addChild(first);
+		root.addChild(second);
+
+		String dot = serializer.serialize(root);
+
+		assertTrue(dot.contains("\"B.java\" -> \"A.java\";"));
+		assertTrue(dot.contains("\"D.java\" -> \"C.java\";"));
+	}
+
+	@Test
+	void everyLineIsTerminatedAndTheGraphIsClosed() {
+		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
+		ProjectTreeNode file = ProjectTreeNode.file(Path.of("project/B.java"));
+		file.addDependency("A.java");
+		root.addChild(file);
+
+		String dot = serializer.serialize(root);
+
+		assertTrue(dot.contains(";" + System.lineSeparator()));
+		assertTrue(dot.trim().endsWith("}"));
+	}
 }

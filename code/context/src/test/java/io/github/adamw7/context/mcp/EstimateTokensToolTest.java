@@ -117,6 +117,51 @@ public class EstimateTokensToolTest {
 		assertEquals(1, report.getInt("total"));
 	}
 
+	@Test
+	void includesTransitiveDependenciesAtTheRequestedDepth() throws IOException {
+		writeJava("A", "AAAA");
+		writeJava("B", "A");
+		writeJava("C", "B");
+
+		Map<String, Object> arguments = arguments("C");
+		arguments.put("depth", 2);
+
+		JSONObject report = report(tool.apply(arguments));
+
+		assertEquals(6, report.getInt("total"));
+		assertEquals(3, report.getJSONArray("classes").length());
+		assertEquals("C.java", report.getJSONArray("classes").getJSONObject(0).getString("class"));
+		assertEquals("B.java", report.getJSONArray("classes").getJSONObject(1).getString("class"));
+		assertEquals("A.java", report.getJSONArray("classes").getJSONObject(2).getString("class"));
+	}
+
+	@Test
+	void boundsTheBreakdownToTheGivenDepth() throws IOException {
+		writeJava("A", "AAAA");
+		writeJava("B", "A");
+		writeJava("C", "B");
+
+		JSONObject report = report(tool.apply(arguments("C")));
+
+		assertEquals(2, report.getJSONArray("classes").length());
+		assertEquals(2, report.getInt("total"));
+	}
+
+	@Test
+	void estimatesKotlinSourcesWhenRequested() throws IOException {
+		Files.writeString(projectRoot.resolve("Foo.kt"), "FF");
+		Files.writeString(projectRoot.resolve("Bar.kt"), "Foo");
+
+		Map<String, Object> arguments = arguments("Bar");
+		arguments.put("language", "kotlin");
+
+		JSONObject report = report(tool.apply(arguments));
+
+		assertEquals(5, report.getInt("total"));
+		assertEquals("Bar.kt", report.getJSONArray("classes").getJSONObject(0).getString("class"));
+		assertEquals("Foo.kt", report.getJSONArray("classes").getJSONObject(1).getString("class"));
+	}
+
 	private TokenEstimator oneTokenPerCharacter() {
 		return text -> text == null ? 0 : text.length();
 	}

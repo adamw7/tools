@@ -32,7 +32,22 @@ public class LanguageTest {
 	}
 
 	@Test
+	void resolvesScalaIgnoringSurroundingWhitespace() {
+		assertEquals(Language.SCALA, Language.fromName("  scala  "));
+	}
+
+	@Test
+	void supportsExactlyThreeLanguages() {
+		assertEquals(3, Language.values().length);
+	}
+
+	@Test
 	void rejectsUnknownLanguage() {
 		assertThrows(IllegalArgumentException.class, () -> Language.fromName("rust"));
+	}
+
+	@Test
+	void rejectsABlankName() {
+		assertThrows(IllegalArgumentException.class, () -> Language.fromName(""));
 	}
 }

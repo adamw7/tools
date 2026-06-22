@@ -53,6 +53,45 @@ public class SubwordTokenEstimatorTest {
 	}
 
 	@Test
+	void underscoresAndDigitsArePartOfAWord() {
+		assertEquals(2, estimator.estimate("foo_bar"));
+		assertEquals(2, estimator.estimate("abc123"));
+	}
+
+	@Test
+	void leadingAndTrailingPunctuationEachCostOneToken() {
+		assertEquals(3, estimator.estimate("(a)"));
+		assertEquals(2, estimator.estimate(".a"));
+	}
+
+	@Test
+	void aRunOfSymbolsCostsOneTokenPerSymbol() {
+		assertEquals(4, estimator.estimate("+-*/"));
+	}
+
+	@Test
+	void unicodeLettersCountAsWordCharacters() {
+		assertEquals(1, estimator.estimate("café"));
+	}
+
+	@Test
+	void aCustomCharactersPerTokenSplitsLongWords() {
+		SubwordTokenEstimator threeCharsPerToken = new SubwordTokenEstimator(3);
+
+		assertEquals(3, threeCharsPerToken.estimate("abcdefg"));
+	}
+
+	@Test
+	void exposesTheDefaultCharactersPerTokenConstant() {
+		assertEquals(4, SubwordTokenEstimator.DEFAULT_CHARACTERS_PER_TOKEN);
+	}
+
+	@Test
+	void countsAMixedWordAndSymbolSequence() {
+		assertEquals(4, estimator.estimate("foo = bar;"));
+	}
+
+	@Test
 	void rejectsNonPositiveCharactersPerToken() {
 		assertThrows(IllegalArgumentException.class, () -> new SubwordTokenEstimator(0));
 		assertThrows(IllegalArgumentException.class, () -> new SubwordTokenEstimator(-1));

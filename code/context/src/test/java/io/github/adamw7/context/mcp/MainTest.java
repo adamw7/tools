@@ -83,4 +83,14 @@ public class MainTest {
 		// application type must not be forced to "none" here.
 		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
 	}
+
+	@Test
+	public void configureRuntimeKeepsWebApplicationForSseMode() {
+		Main.configureRuntime(new String[] { "--transport.mode=sse" });
+
+		// The SSE transport exposes the /sse and /mcp/message servlets, so it
+		// likewise needs a web server and must not be forced to "none".
+		assertEquals("sse", System.getProperty(TRANSPORT_MODE));
+		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
+	}
 }

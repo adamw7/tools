@@ -107,14 +107,14 @@ public class EstimateTokensToolTest {
 	}
 
 	@Test
-	void defaultsToTheHeuristicEstimatorWhenNoneIsGiven() throws IOException {
-		writeJava("A", "abcd");
+	void defaultsToTheSubwordEstimatorWhenNoneIsGiven() throws IOException {
+		writeJava("A", "a.b");
 		EstimateTokensTool defaultTool = new EstimateTokensTool(new PathPolicy(projectRoot.toString()));
 
 		JSONObject report = report(defaultTool.apply(arguments("A")));
 
 		assertFalse(report.getJSONArray("classes").isEmpty());
-		assertEquals(1, report.getInt("total"));
+		assertEquals(3, report.getInt("total"));
 	}
 
 	@Test

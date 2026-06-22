@@ -2,8 +2,8 @@
 
 This document describes the architecture of the `tools` repository using the
 [C4 model](https://c4model.com/) (Context → Container → Component). Diagrams are
-written in [Mermaid](https://mermaid.js.org/) C4 syntax and render directly on
-GitHub.
+written in [Mermaid](https://mermaid.js.org/) flowchart syntax, styled with the
+standard C4 colour scheme, and render directly on GitHub.
 
 `tools` is a multi-module Maven library of Java tooling. Its notable
 capabilities are compile-time-safe protobuf **code generation**, **context
@@ -11,6 +11,13 @@ engineering** for gen-AI agents working with Java code, and a **data** toolkit
 (data sources, a uniqueness/key finder, and data structures). Two of the modules
 also ship **MCP servers** (Spring Boot apps) so AI assistants can call the tools
 directly.
+
+> **Legend** —
+> 🟦 dark&nbsp;blue = person ·
+> 🔵 blue = the `tools` system ·
+> 🔹 light&nbsp;blue = container (Maven module / app) ·
+> 🟪 purple = MCP server ·
+> ⬜ grey = external system
 
 ---
 
@@ -20,74 +27,94 @@ How the `tools` system relates to its users and the external systems it depends
 on.
 
 ```mermaid
-C4Context
-    title System Context — tools
+flowchart TB
+    dev["👤 Java Developer<br/><i>Builds apps with the library,<br/>the protogen plugin & the gRPC example</i>"]
+    agent["👤 AI Agent / Assistant<br/><i>Calls the MCP servers</i>"]
 
-    Person(dev, "Java Developer", "Builds apps using the library, the protogen Maven plugin and the gRPC example")
-    Person(agent, "AI Agent / Assistant", "Calls the MCP servers to analyse Java projects and check data uniqueness")
+    subgraph sys [" "]
+        tools["<b>tools</b><br/>Java tooling: code generation,<br/>context engineering, data &amp;<br/>uniqueness, CLAUDE.md enforcement"]
+    end
 
-    System_Boundary(tools, "tools (multi-module Maven project)") {
-        System(toolsSys, "tools", "Java tooling: code generation, context engineering, data sources & uniqueness, CLAUDE.md enforcement")
-    }
+    mavenCentral["📦 Maven Central<br/><i>Resolves / publishes artifacts</i>"]
+    projectSrc["🗂️ Java Project Sources<br/><i>Scanned for context</i>"]
+    db["🛢️ Relational Database<br/><i>JDBC data source</i>"]
+    files["📄 Data Files<br/><i>CSV / JSON / YAML / TOON / GZip</i>"]
+    ci["⚙️ GitHub Actions CI<br/><i>Builds, tests, enforces CLAUDE.md</i>"]
 
-    System_Ext(mavenCentral, "Maven Central", "Publishes & resolves released artifacts")
-    System_Ext(projectSrc, "Java Project Sources", "A target project's source tree, scanned for context")
-    System_Ext(db, "Relational Database", "JDBC-accessible data source")
-    System_Ext(files, "Data Files", "CSV / JSON / YAML / TOON / GZip inputs")
-    System_Ext(ci, "GitHub Actions CI", "Builds, tests and runs the CLAUDE.md enforcer")
+    dev -->|"Adds as dependency /<br/>runs the Maven plugin"| tools
+    agent -->|"Invokes tools<br/>(MCP: stdio / HTTP)"| tools
+    tools -->|"Resolves deps /<br/>published to (HTTPS)"| mavenCentral
+    tools -->|"Scans classes &amp;<br/>builds project tree"| projectSrc
+    tools -->|"Reads rows (JDBC)"| db
+    tools -->|"Reads / streams records"| files
+    ci -->|"mvn -B package<br/>-DenforceClaudeMd"| tools
 
-    Rel(dev, toolsSys, "Adds as dependency / runs the Maven plugin", "Maven")
-    Rel(agent, toolsSys, "Invokes tools", "MCP (stdio / streamable HTTP)")
-    Rel(toolsSys, mavenCentral, "Resolves deps / is published to", "HTTPS")
-    Rel(toolsSys, projectSrc, "Scans classes & builds project tree", "File I/O")
-    Rel(toolsSys, db, "Reads rows", "JDBC")
-    Rel(toolsSys, files, "Reads / streams records", "File I/O")
-    Rel(ci, toolsSys, "Builds & enforces", "mvn -B package -DenforceClaudeMd")
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef system fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class dev,agent person
+    class tools system
+    class mavenCentral,projectSrc,db,files,ci ext
+    style sys fill:none,stroke:none
 ```
 
 ---
 
 ## Level 2 — Containers (Maven modules)
 
-Each Maven module is treated as a container. The two MCP servers are runnable
-Spring Boot applications; the other modules are libraries/plugins.
+Each Maven module is a container. The two MCP servers are runnable Spring Boot
+applications (purple); the other modules are libraries / plugins.
 
 ```mermaid
-C4Container
-    title Container View — tools modules
+flowchart TB
+    dev["👤 Java Developer"]
+    agent["👤 AI Agent / Assistant"]
 
-    Person(dev, "Java Developer")
-    Person(agent, "AI Agent / Assistant")
+    subgraph tools ["tools  (multi-module Maven project)"]
+        direction TB
 
-    System_Boundary(tools, "tools") {
-        Container(enforcer, "claude-code-enforcer", "Java / maven-enforcer rules", "Fails the build when CLAUDE.md / AGENTS.md / skills / settings are missing or malformed")
+        enforcer["<b>claude-code-enforcer</b><br/><i>maven-enforcer rules</i><br/>Fails the build on malformed<br/>CLAUDE.md / AGENTS.md / skills / settings"]
+        protogen["<b>code/protogen-maven-plugin</b><br/><i>Maven plugin</i><br/>Generates proto2 builders that catch<br/>missing required fields at compile time"]
+        grpc["<b>grpc-example</b><br/><i>Java example</i><br/>End-to-end gRPC demo using the<br/>compile-time-safe builders"]
+        assembly["<b>assembly</b><br/><i>Executable jar</i><br/>Bundles SampleApp"]
 
-        Container(protogen, "code/protogen-maven-plugin", "Maven plugin (Java 25)", "Generates proto2 builders that detect missing required fields at compile time")
+        context["<b>code/context</b><br/><i>Library + MCP server</i><br/>Class-usage finder + ProjectTreeBuilder"]
+        contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens"])
 
-        Container(context, "code/context", "Java library + Spring Boot MCP server", "Regex-based class-usage finder + ProjectTreeBuilder; exposes project_tree, find_context, estimate_tokens")
+        data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap"]
+        dataMcp(["🟪 Uniqueness MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>check uniqueness"])
 
-        Container(data, "data", "Java library + Spring Boot MCP server", "Data sources, uniqueness/key finder, OpenAddressingMap; exposes the uniqueness checker as a tool")
+        context --- contextMcp
+        data --- dataMcp
+    end
 
-        Container(grpc, "grpc-example", "Java example", "End-to-end gRPC demo using the compile-time-safe generated builders")
+    projectSrc["🗂️ Java Project Sources"]
+    db["🛢️ Relational Database"]
+    files["📄 Data Files"]
 
-        Container(assembly, "assembly", "Executable jar-with-dependencies", "Bundles SampleApp (io.github.adamw7.tools.data.SampleApp)")
-    }
+    dev -->|"Configures / runs"| protogen
+    dev -->|"Studies / runs"| grpc
+    dev -->|"Runs SampleApp"| assembly
+    agent -->|"MCP"| contextMcp
+    agent -->|"MCP"| dataMcp
 
-    System_Ext(projectSrc, "Java Project Sources")
-    System_Ext(db, "Relational Database")
-    System_Ext(files, "Data Files")
+    protogen -.->|"generates builders<br/>consumed by"| grpc
+    assembly -.->|"bundles"| data
+    contextMcp --> context
+    dataMcp --> data
+    context -->|"scans"| projectSrc
+    data -->|"reads (JDBC)"| db
+    data -->|"reads / streams"| files
 
-    Rel(dev, protogen, "Configures in pom / runs", "Maven")
-    Rel(dev, grpc, "Studies / runs the example")
-    Rel(dev, assembly, "Runs SampleApp")
-    Rel(agent, context, "project_tree / find_context / estimate_tokens", "MCP")
-    Rel(agent, data, "check uniqueness", "MCP")
-
-    Rel(protogen, grpc, "Generates builders consumed by", "compile time")
-    Rel(assembly, data, "Bundles", "Maven")
-    Rel(context, projectSrc, "Scans", "File I/O")
-    Rel(data, db, "Reads", "JDBC")
-    Rel(data, files, "Reads / streams", "File I/O")
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef container fill:#438dd5,stroke:#2e6295,color:#fff
+    classDef mcp fill:#6b3fa0,stroke:#46296b,color:#fff
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class dev,agent person
+    class enforcer,protogen,grpc,assembly,context,data container
+    class contextMcp,dataMcp mcp
+    class projectSrc,db,files ext
+    style tools fill:#f2f7fc,stroke:#438dd5,color:#08427b
 ```
 
 ---
@@ -97,45 +124,62 @@ C4Container
 Key components inside the `data` module and how they collaborate.
 
 ```mermaid
-C4Component
-    title Component View — data module
+flowchart TB
+    agent["👤 AI Agent / Assistant"]
 
-    Person(agent, "AI Agent / Assistant")
+    subgraph data ["data module"]
+        direction TB
 
-    Container_Boundary(data, "data") {
-        Component(mcpMain, "Main + McpConfiguration", "Spring Boot", "Boots the uniqueness MCP server (stdio / streamable-http)")
-        Component(uniqTool, "UniquenessTool", "MCP tool", "Adapts the uniqueness checker to an MCP tool call")
+        subgraph mcpLayer ["MCP server"]
+            mcpMain["<b>Main + McpConfiguration</b><br/><i>Spring Boot</i><br/>stdio / streamable-http"]
+            uniqTool["<b>UniquenessTool</b><br/><i>MCP tool</i>"]
+        end
 
-        Component(uniqApi, "Uniqueness / AbstractUniqueness", "Interface + base", "Contract for uniqueness checks")
-        Component(inMem, "InMemoryUniquenessCheck", "Component", "Checks key uniqueness holding data in memory")
-        Component(noMem, "NoMemoryUniquenessCheck", "Component", "Streaming uniqueness check, no full in-memory load")
-        Component(keyFinder, "KeyFinder", "Component", "Searches for a smaller column subset that is still a key")
-        Component(result, "Key / Result", "Value objects", "Outcome of uniqueness checks")
+        subgraph uniq ["Uniqueness"]
+            uniqApi["<b>Uniqueness / AbstractUniqueness</b><br/><i>contract</i>"]
+            inMem["<b>InMemoryUniquenessCheck</b>"]
+            noMem["<b>NoMemoryUniquenessCheck</b><br/><i>streaming</i>"]
+            keyFinder["<b>KeyFinder</b><br/><i>finds a smaller key</i>"]
+            result["<b>Key / Result</b><br/><i>value objects</i>"]
+        end
 
-        Component(srcIfc, "IterableDataSource / InMemoryDataSource", "Interfaces", "Abstractions over record sources")
-        Component(fileSrc, "File sources", "CSV / JSON / YAML / TOON", "In-memory & iterative file readers")
-        Component(dbSrc, "SQL sources", "JDBC", "InMemory / Iterable SQL data sources")
-        Component(compression, "ZipUtils", "Component", "GZip support")
-        Component(structure, "OpenAddressingMap", "Data structure", "Open-addressing Map implementation")
-    }
+        subgraph srcs ["Data sources & structures"]
+            srcIfc["<b>Iterable / InMemory<br/>DataSource</b><br/><i>interfaces</i>"]
+            fileSrc["<b>File sources</b><br/>CSV · JSON · YAML · TOON"]
+            dbSrc["<b>SQL sources</b><br/><i>JDBC</i>"]
+            compression["<b>ZipUtils</b><br/><i>GZip</i>"]
+            structure["<b>OpenAddressingMap</b>"]
+        end
+    end
 
-    System_Ext(db, "Relational Database")
-    System_Ext(files, "Data Files")
+    db["🛢️ Relational Database"]
+    files["📄 Data Files"]
 
-    Rel(agent, mcpMain, "Connects", "MCP")
-    Rel(mcpMain, uniqTool, "Exposes")
-    Rel(uniqTool, uniqApi, "Invokes")
-    Rel(uniqApi, inMem, "Implemented by")
-    Rel(uniqApi, noMem, "Implemented by")
-    Rel(uniqApi, keyFinder, "Used by")
-    Rel(uniqApi, result, "Produces")
-    Rel(inMem, srcIfc, "Reads from")
-    Rel(noMem, srcIfc, "Reads from")
-    Rel(srcIfc, fileSrc, "Implemented by")
-    Rel(srcIfc, dbSrc, "Implemented by")
-    Rel(fileSrc, compression, "Uses")
-    Rel(fileSrc, files, "Reads")
-    Rel(dbSrc, db, "Reads", "JDBC")
+    agent -->|"MCP"| mcpMain
+    mcpMain --> uniqTool
+    uniqTool --> uniqApi
+    uniqApi --> inMem
+    uniqApi --> noMem
+    uniqApi --> keyFinder
+    uniqApi --> result
+    inMem --> srcIfc
+    noMem --> srcIfc
+    srcIfc --> fileSrc
+    srcIfc --> dbSrc
+    fileSrc --> compression
+    fileSrc --> files
+    dbSrc -->|"JDBC"| db
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class agent person
+    class mcpMain,uniqTool,uniqApi,inMem,noMem,keyFinder,result,srcIfc,fileSrc,dbSrc,compression,structure comp
+    class db,files ext
+    style data fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style mcpLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
+    style uniq fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style srcs fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
 ```
 
 ---
@@ -145,46 +189,60 @@ C4Component
 Key components inside the context-engineering module.
 
 ```mermaid
-C4Component
-    title Component View — code/context module
+flowchart TB
+    agent["👤 AI Agent / Assistant"]
 
-    Person(agent, "AI Agent / Assistant")
+    subgraph context ["code/context module"]
+        direction TB
 
-    Container_Boundary(context, "code/context") {
-        Component(mcpMain, "Main + McpConfiguration", "Spring Boot", "Boots the context MCP server (stdio / streamable-http), with PathPolicy & TLS config")
-        Component(treeTool, "ProjectTreeTool", "MCP tool", "Exposes project_tree")
-        Component(finderTool, "ContextFinderTool", "MCP tool", "Exposes find_context")
-        Component(tokenTool, "EstimateTokensTool", "MCP tool", "Exposes estimate_tokens")
+        subgraph mcpLayer ["MCP server"]
+            mcpMain["<b>Main + McpConfiguration</b><br/><i>Spring Boot · PathPolicy · TLS</i>"]
+            treeTool["<b>ProjectTreeTool</b><br/><i>project_tree</i>"]
+            finderTool["<b>ContextFinderTool</b><br/><i>find_context</i>"]
+            tokenTool["<b>EstimateTokensTool</b><br/><i>estimate_tokens</i>"]
+        end
 
-        Component(finder, "Finder / AbstractFinder / PackageAwareFinder", "Component", "Regex-based class-usage finder")
-        Component(context_, "Context / BudgetedContext / ContextFactory", "Component", "Assembles (budgeted) context for a class")
-        Component(treeBuilder, "ProjectTreeBuilder", "Component", "Scans a project into a tree of folders, files & dependencies")
-        Component(treeNode, "ProjectTreeNode", "Model", "Tree node")
-        Component(serializers, "ProjectTree*Serializer", "Component", "JSON / Markdown / DOT / printer output")
-        Component(tokens, "TokenEstimator impls", "Component", "Heuristic & subword token estimation")
-        Component(sources, "ProjectSources / Language", "Component", "Source discovery & language detection")
-    }
+        subgraph core ["Core"]
+            finder["<b>Finder / AbstractFinder /<br/>PackageAwareFinder</b><br/><i>regex class-usage finder</i>"]
+            context_["<b>Context / BudgetedContext /<br/>ContextFactory</b>"]
+            treeBuilder["<b>ProjectTreeBuilder</b><br/><i>scans project → tree</i>"]
+            treeNode["<b>ProjectTreeNode</b><br/><i>model</i>"]
+            serializers["<b>ProjectTree*Serializer</b><br/>JSON · Markdown · DOT · printer"]
+            tokens["<b>TokenEstimator impls</b><br/>heuristic · subword"]
+            sources["<b>ProjectSources / Language</b>"]
+        end
+    end
 
-    System_Ext(projectSrc, "Java Project Sources")
+    projectSrc["🗂️ Java Project Sources"]
 
-    Rel(agent, mcpMain, "Connects", "MCP")
-    Rel(mcpMain, treeTool, "Exposes")
-    Rel(mcpMain, finderTool, "Exposes")
-    Rel(mcpMain, tokenTool, "Exposes")
+    agent -->|"MCP"| mcpMain
+    mcpMain --> treeTool
+    mcpMain --> finderTool
+    mcpMain --> tokenTool
 
-    Rel(treeTool, treeBuilder, "Uses")
-    Rel(finderTool, context_, "Uses")
-    Rel(finderTool, finder, "Uses")
-    Rel(tokenTool, tokens, "Uses")
+    treeTool --> treeBuilder
+    finderTool --> context_
+    finderTool --> finder
+    tokenTool --> tokens
 
-    Rel(treeBuilder, treeNode, "Builds")
-    Rel(treeBuilder, serializers, "Serialized by")
-    Rel(treeBuilder, sources, "Uses")
-    Rel(finder, sources, "Uses")
-    Rel(context_, finder, "Uses")
+    treeBuilder --> treeNode
+    treeBuilder --> serializers
+    treeBuilder --> sources
+    finder --> sources
+    context_ --> finder
 
-    Rel(finder, projectSrc, "Scans", "File I/O")
-    Rel(treeBuilder, projectSrc, "Scans", "File I/O")
+    finder -->|"scans"| projectSrc
+    treeBuilder -->|"scans"| projectSrc
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class agent person
+    class mcpMain,treeTool,finderTool,tokenTool,finder,context_,treeBuilder,treeNode,serializers,tokens,sources comp
+    class projectSrc ext
+    style context fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style mcpLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
+    style core fill:#fff7ec,stroke:#d59a43,color:#7a5418
 ```
 
 ---

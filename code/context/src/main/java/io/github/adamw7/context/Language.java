@@ -12,7 +12,8 @@ import java.util.Locale;
 public enum Language {
 
 	JAVA(".java"),
-	KOTLIN(".kt");
+	KOTLIN(".kt"),
+	SCALA(".scala");
 
 	private final String extension;
 

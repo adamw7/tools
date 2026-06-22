@@ -60,7 +60,7 @@ is `Main.java` and which supports stdio (default) or streamable HTTP
   [MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md).
 - The context-engineering server in
   `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
-  `project_tree` and `find_context` tools; see its
+  `project_tree`, `find_context` and `estimate_tokens` tools; see its
   [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
 
 ## Environment & toolchain

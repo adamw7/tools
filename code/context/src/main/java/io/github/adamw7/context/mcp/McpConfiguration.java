@@ -24,8 +24,8 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
 /**
- * Wires the context-engineering MCP server. The server exposes the project-tree
- * and context-finder tools over either stdio (the default) or a streamable HTTP
+ * Wires the context-engineering MCP server. The server exposes the project-tree,
+ * context-finder and token-estimate tools over either stdio (the default) or a streamable HTTP
  * transport selected with {@code --transport.mode=streamable-http}; the latter
  * registers the {@code /mcp} servlet so MCP clients can connect over HTTP.
  */
@@ -98,7 +98,8 @@ public class McpConfiguration {
 	private void registerTools(McpSyncServer server) {
 		PathPolicy pathPolicy = new PathPolicy(allowedRoots);
 		log.info("Confining MCP file access to allowed roots: {}", pathPolicy.allowedRoots());
-		List<ContextTool> tools = List.of(new ProjectTreeTool(pathPolicy), new ContextFinderTool(pathPolicy));
+		List<ContextTool> tools = List.of(new ProjectTreeTool(pathPolicy), new ContextFinderTool(pathPolicy),
+				new EstimateTokensTool(pathPolicy));
 		tools.forEach(tool -> server.addTool(specificationFor(tool)));
 	}
 

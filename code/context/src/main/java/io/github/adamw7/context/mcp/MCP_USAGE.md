@@ -7,13 +7,16 @@ Desktop, Cline, or any other MCP-compatible client.
 
 ## Overview
 
-The server exposes two tools:
+The server exposes three tools:
 
-- **`project_tree`** — scans a Java or Kotlin project into a tree of folders,
-  files and the classes each file depends on, then serialises it as JSON
-  (default), Markdown or plain text.
+- **`project_tree`** — scans a Java, Kotlin or Scala project into a tree of
+  folders, files and the classes each file depends on, then serialises it as JSON
+  (default), Markdown, plain text or Graphviz DOT.
 - **`find_context`** — resolves the classes a single source file depends on,
   bounded by a configurable depth, and returns them as a JSON array.
+- **`estimate_tokens`** — estimates the LLM token cost of the context assembled
+  for a class (the class itself plus its dependencies), returning a per-class
+  breakdown and the total.
 
 ## Architecture
 
@@ -23,7 +26,8 @@ The implementation lives in a package separate from the core finders:
 2. **McpConfiguration.java** — Spring configuration that wires the transports and
    registers the tools.
 3. **ContextTool.java** — the abstraction every tool implements.
-4. **ProjectTreeTool.java** / **ContextFinderTool.java** — the two tools.
+4. **ProjectTreeTool.java** / **ContextFinderTool.java** / **EstimateTokensTool.java**
+   — the three tools.
 5. **ToolArguments.java** — shared parsing of the call arguments.
 
 The server uses:
@@ -53,9 +57,9 @@ Scans a project into a tree of folders, files and class dependencies.
 **Parameters:**
 
 - `path` (string, required): absolute path to the project root directory
-- `language` (string, optional): `java` (default) or `kotlin`
+- `language` (string, optional): `java` (default), `kotlin` or `scala`
 - `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
-- `format` (string, optional): `json` (default), `markdown` or `text`
+- `format` (string, optional): `json` (default), `markdown`, `text` or `dot`
 
 **Example:**
 
@@ -76,11 +80,37 @@ Finds the classes a given class depends on, within a project.
 
 - `path` (string, required): absolute path to the project root directory
 - `class_name` (string, required): simple name of the class to inspect, e.g. `Foo` or `Foo.java`
-- `language` (string, optional): `java` (default) or `kotlin`
+- `language` (string, optional): `java` (default), `kotlin` or `scala`
 - `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
 
 **Returns:** a JSON array of dependency class names, e.g. `["A.java","B.java"]`.
 An unknown class is reported as an error result.
+
+**Example:**
+
+```json
+{
+  "path": "/path/to/project",
+  "class_name": "B",
+  "depth": 1
+}
+```
+
+### estimate_tokens
+
+Estimates the LLM token cost of the context assembled for a class and its
+dependencies, to a bounded depth.
+
+**Parameters:**
+
+- `path` (string, required): absolute path to the project root directory
+- `class_name` (string, required): simple name of the class to inspect, e.g. `Foo` or `Foo.java`
+- `language` (string, optional): `java` (default), `kotlin` or `scala`
+- `depth` (integer, optional): levels of transitive dependencies to include (default `1`)
+
+**Returns:** a JSON object with the `total` token estimate and a `classes` array of
+`{ "class": ..., "tokens": ... }` entries, the target class first. An unknown
+class is reported as an error result.
 
 **Example:**
 
@@ -185,7 +215,7 @@ The tools read source files from disk, so access is constrained by design:
 
 The server advertises:
 
-- **Tools**: true (`project_tree`, `find_context`)
+- **Tools**: true (`project_tree`, `find_context`, `estimate_tokens`)
 - **Resources**: false
 - **Prompts**: false
 

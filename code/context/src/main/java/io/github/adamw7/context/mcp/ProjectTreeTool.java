@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.tree.ProjectTreeBuilder;
+import io.github.adamw7.context.tree.ProjectTreeDotSerializer;
 import io.github.adamw7.context.tree.ProjectTreeJsonSerializer;
 import io.github.adamw7.context.tree.ProjectTreeMarkdownSerializer;
 import io.github.adamw7.context.tree.ProjectTreeNode;
@@ -50,7 +51,7 @@ public class ProjectTreeTool implements ContextTool {
 							"depth", Map.of("type", "integer",
 									"description", "how many levels of transitive dependencies to resolve (default 1)"),
 							"format", Map.of("type", "string",
-									"description", "output format: json (default), markdown or text")),
+									"description", "output format: json (default), markdown, text or dot")),
 					"required", List.of("path")))
 			.description("Scan a Java or Kotlin project into a tree of folders, files and class dependencies")
 			.build();
@@ -79,6 +80,7 @@ public class ProjectTreeTool implements ContextTool {
 		return switch (format.trim().toLowerCase(java.util.Locale.ROOT)) {
 			case "markdown" -> new ProjectTreeMarkdownSerializer();
 			case "text" -> new ProjectTreePrinter();
+			case "dot" -> new ProjectTreeDotSerializer();
 			default -> new ProjectTreeJsonSerializer();
 		};
 	}

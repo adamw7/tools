@@ -19,7 +19,35 @@ public class LanguageTest {
 	}
 
 	@Test
+	void resolvesScalaIgnoringCase() {
+		assertEquals(Language.SCALA, Language.fromName("scala"));
+		assertEquals(Language.SCALA, Language.fromName("SCALA"));
+	}
+
+	@Test
+	void exposesTheSourceExtensionOfEachLanguage() {
+		assertEquals(".java", Language.JAVA.extension());
+		assertEquals(".kt", Language.KOTLIN.extension());
+		assertEquals(".scala", Language.SCALA.extension());
+	}
+
+	@Test
+	void resolvesScalaIgnoringSurroundingWhitespace() {
+		assertEquals(Language.SCALA, Language.fromName("  scala  "));
+	}
+
+	@Test
+	void supportsExactlyThreeLanguages() {
+		assertEquals(3, Language.values().length);
+	}
+
+	@Test
 	void rejectsUnknownLanguage() {
-		assertThrows(IllegalArgumentException.class, () -> Language.fromName("scala"));
+		assertThrows(IllegalArgumentException.class, () -> Language.fromName("rust"));
+	}
+
+	@Test
+	void rejectsABlankName() {
+		assertThrows(IllegalArgumentException.class, () -> Language.fromName(""));
 	}
 }

@@ -225,7 +225,7 @@ These are hard requirements for any code you add or modify:
 To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is currently
-   a `-SNAPSHOT`, e.g. `1.6.0-SNAPSHOT`).
+   a `-SNAPSHOT`, e.g. `2.2.0-SNAPSHOT`).
 2. Commit and push.
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.

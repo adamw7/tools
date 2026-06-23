@@ -44,7 +44,8 @@ Solution:
 <plugin>
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
-	<version>1.5.0</version>
+	<!-- Use the latest release: https://github.com/adamw7/tools/releases/latest -->
+	<version>2.1.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
 		<pkgs>
@@ -508,3 +509,7 @@ In order to release a new version - X you need to:
 2. Commit and push
 3. Check if all builds pass
 4. Release and mark as latest in GitHub
+
+# License
+
+This project is licensed under the [MIT License](LICENSE).

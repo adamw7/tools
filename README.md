@@ -2,6 +2,103 @@
 
 Library of tooling for various purposes.
 
+## Claude Code files Maven enforcer
+
+The `claude-code-enforcer` module is a set of custom
+[`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)
+rules that **fail the build** when the repository's Claude Code files are
+missing or malformed, keeping `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`,
+the sub-agents under `.claude/agents`, and the skills under `.claude/skills`
+consistent and in their expected shape:
+
+- **`claudeMdFormat`** (`ClaudeMdFormatRule`) — checks that `CLAUDE.md` exists
+  and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
+  tolerated), references `AGENTS.md`, and contains every required section
+  heading.
+- **`agentsMdFormat`** (`AgentsMdFormatRule`) — applies the same structural
+  checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
+  every required section heading.
+- **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
+  directory under `.claude/skills` contains a non-empty `SKILL.md` that opens
+  with a YAML front matter block declaring every required key (`name`,
+  `description` by default). The `name` must follow the Claude Code naming
+  convention (lower-case kebab-case, bounded length) and match the skill's
+  directory name; the `description` must be non-empty and within
+  `maxDescriptionLength`. An optional `allowedFrontMatterKeys` whitelist catches
+  typos such as `descripton`.
+- **`subAgentFormat`** (`SubAgentFormatRule`) — treats every `*.md` file in the
+  configured agents directory as a sub-agent: it must be non-empty, open with a
+  YAML front matter block declaring every required key, and carry a `name` that
+  follows the naming convention and matches its file name. An optional
+  `allowedModels` whitelist rejects a mistyped `model` such as `claud-opus`.
+- **`commandFormat`** (`CommandFormatRule`) — treats every `*.md` file in the
+  configured commands directory (e.g. `.claude/commands`) as a custom slash
+  command: it must be non-empty and carry a file name that follows the Claude
+  Code naming convention, because the command's name comes from its file name.
+  Front matter is optional, but when present a `description` must be non-empty, a
+  `model` must be one of `allowedModels` when that whitelist is configured, and
+  an optional `allowedFrontMatterKeys` whitelist catches typos such as
+  `argument-hnt`.
+- **`settingsJsonValid`** (`SettingsJsonValidRule`) — checks that
+  `.claude/settings.json` exists, is non-empty, and parses as JSON. It can also
+  assert policy on `permissions.allow`: `requiredPermissions` must all be
+  present and `forbiddenPermissions` must all be absent, so a project can mandate
+  a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
+- **`hookCommandsValid`** (`HookCommandsValidRule`) — validates the `hooks`
+  section of `.claude/settings.json`: every event must map to an array of groups,
+  each group must carry a `hooks` array, and every hook must declare a non-blank
+  `type` (a `command` hook also a non-blank `command`). A command that points at
+  a project-local script through `$CLAUDE_PROJECT_DIR` is resolved against
+  `projectDir` and must exist on disk, so a renamed or missing hook script is
+  caught. An optional `allowedEvents` whitelist rejects a mistyped event such as
+  `SessionSart`, and `validateScriptReferences` can switch the script check off.
+- **`mcpServersValid`** (`McpServersValidRule`) — validates the project's
+  `.mcp.json`. A project-level MCP file is optional, so an absent file passes;
+  when present it must be non-empty and parse as JSON, and every entry under
+  `mcpServers` must be a JSON object with a well-formed transport. A `stdio`
+  server (the default when no `type` is declared) needs a non-blank `command`;
+  an `sse` or `http` server needs a non-blank `url`. An explicit `type` outside
+  the `allowedTypes` whitelist (`stdio`, `sse`, `http` by default) is reported,
+  catching a mistyped `htttp`. `requiredServers` must all be present and
+  `forbiddenServers` must all be absent, so a project can mandate an MCP server
+  it relies on or ban one it does not want committed.
+- **`uniqueNames`** (`UniqueNamesRule`) — gathers the names of every command,
+  sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
+  `skillsDir` (a command's and a sub-agent's name is its `*.md` file name, a
+  skill's name is its directory name) and fails when one name is used more than
+  once, naming every file or directory that uses it. At least one directory must
+  be configured, and any directory that is configured must exist. Uniqueness is
+  checked across all configured directories at once, so a command that clashes
+  with a skill is caught just like two commands that clash.
+- **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
+  `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
+  is a regular expression with one capturing group; the captured value must
+  agree between the two files (or be absent from both). For example
+  `Java (\d+)` fails the build if one file says `Java 25` and the other `Java
+  24`.
+
+The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
+base class that performs the file-existence, BOM, title, and section checks. It
+also exposes optional checks, each disabled by default: `forbiddenTokens` that
+must not appear outside code fences, `enforceSectionOrder` to require the
+sections in the configured order, a `maxLineLength` cap, and
+`validateFileReferences` to confirm that Markdown links to local files resolve
+to something on disk.
+
+Every rule extends a common `ClaudeCodeEnforcerRule` base that reports all
+violations together and honours a `severity` option: the default `error` fails
+the build, while `<severity>warn</severity>` downgrades the same violations to a
+logged warning so a team can adopt a rule gradually.
+
+The rules are wired into the root `pom.xml` and run at the repository root only.
+The check is **opt-in** via the `enforceClaudeMd` property, so ordinary builds
+are unaffected:
+```
+mvn -pl claude-code-enforcer -am install   # install the rule jar once
+mvn package -DenforceClaudeMd            # build with the checks enabled
+```
+
+
 ## Code generation
 
 Problem:
@@ -398,102 +495,6 @@ Notes:
 
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
-
-## Claude Code files Maven enforcer
-
-The `claude-code-enforcer` module is a set of custom
-[`maven-enforcer-plugin`](https://maven.apache.org/enforcer/maven-enforcer-plugin/)
-rules that **fail the build** when the repository's Claude Code files are
-missing or malformed, keeping `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`,
-the sub-agents under `.claude/agents`, and the skills under `.claude/skills`
-consistent and in their expected shape:
-
-- **`claudeMdFormat`** (`ClaudeMdFormatRule`) — checks that `CLAUDE.md` exists
-  and is non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
-  tolerated), references `AGENTS.md`, and contains every required section
-  heading.
-- **`agentsMdFormat`** (`AgentsMdFormatRule`) — applies the same structural
-  checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
-  every required section heading.
-- **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
-  directory under `.claude/skills` contains a non-empty `SKILL.md` that opens
-  with a YAML front matter block declaring every required key (`name`,
-  `description` by default). The `name` must follow the Claude Code naming
-  convention (lower-case kebab-case, bounded length) and match the skill's
-  directory name; the `description` must be non-empty and within
-  `maxDescriptionLength`. An optional `allowedFrontMatterKeys` whitelist catches
-  typos such as `descripton`.
-- **`subAgentFormat`** (`SubAgentFormatRule`) — treats every `*.md` file in the
-  configured agents directory as a sub-agent: it must be non-empty, open with a
-  YAML front matter block declaring every required key, and carry a `name` that
-  follows the naming convention and matches its file name. An optional
-  `allowedModels` whitelist rejects a mistyped `model` such as `claud-opus`.
-- **`commandFormat`** (`CommandFormatRule`) — treats every `*.md` file in the
-  configured commands directory (e.g. `.claude/commands`) as a custom slash
-  command: it must be non-empty and carry a file name that follows the Claude
-  Code naming convention, because the command's name comes from its file name.
-  Front matter is optional, but when present a `description` must be non-empty, a
-  `model` must be one of `allowedModels` when that whitelist is configured, and
-  an optional `allowedFrontMatterKeys` whitelist catches typos such as
-  `argument-hnt`.
-- **`settingsJsonValid`** (`SettingsJsonValidRule`) — checks that
-  `.claude/settings.json` exists, is non-empty, and parses as JSON. It can also
-  assert policy on `permissions.allow`: `requiredPermissions` must all be
-  present and `forbiddenPermissions` must all be absent, so a project can mandate
-  a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
-- **`hookCommandsValid`** (`HookCommandsValidRule`) — validates the `hooks`
-  section of `.claude/settings.json`: every event must map to an array of groups,
-  each group must carry a `hooks` array, and every hook must declare a non-blank
-  `type` (a `command` hook also a non-blank `command`). A command that points at
-  a project-local script through `$CLAUDE_PROJECT_DIR` is resolved against
-  `projectDir` and must exist on disk, so a renamed or missing hook script is
-  caught. An optional `allowedEvents` whitelist rejects a mistyped event such as
-  `SessionSart`, and `validateScriptReferences` can switch the script check off.
-- **`mcpServersValid`** (`McpServersValidRule`) — validates the project's
-  `.mcp.json`. A project-level MCP file is optional, so an absent file passes;
-  when present it must be non-empty and parse as JSON, and every entry under
-  `mcpServers` must be a JSON object with a well-formed transport. A `stdio`
-  server (the default when no `type` is declared) needs a non-blank `command`;
-  an `sse` or `http` server needs a non-blank `url`. An explicit `type` outside
-  the `allowedTypes` whitelist (`stdio`, `sse`, `http` by default) is reported,
-  catching a mistyped `htttp`. `requiredServers` must all be present and
-  `forbiddenServers` must all be absent, so a project can mandate an MCP server
-  it relies on or ban one it does not want committed.
-- **`uniqueNames`** (`UniqueNamesRule`) — gathers the names of every command,
-  sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
-  `skillsDir` (a command's and a sub-agent's name is its `*.md` file name, a
-  skill's name is its directory name) and fails when one name is used more than
-  once, naming every file or directory that uses it. At least one directory must
-  be configured, and any directory that is configured must exist. Uniqueness is
-  checked across all configured directories at once, so a command that clashes
-  with a skill is caught just like two commands that clash.
-- **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
-  `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
-  is a regular expression with one capturing group; the captured value must
-  agree between the two files (or be absent from both). For example
-  `Java (\d+)` fails the build if one file says `Java 25` and the other `Java
-  24`.
-
-The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
-base class that performs the file-existence, BOM, title, and section checks. It
-also exposes optional checks, each disabled by default: `forbiddenTokens` that
-must not appear outside code fences, `enforceSectionOrder` to require the
-sections in the configured order, a `maxLineLength` cap, and
-`validateFileReferences` to confirm that Markdown links to local files resolve
-to something on disk.
-
-Every rule extends a common `ClaudeCodeEnforcerRule` base that reports all
-violations together and honours a `severity` option: the default `error` fails
-the build, while `<severity>warn</severity>` downgrades the same violations to a
-logged warning so a team can adopt a rule gradually.
-
-The rules are wired into the root `pom.xml` and run at the repository root only.
-The check is **opt-in** via the `enforceClaudeMd` property, so ordinary builds
-are unaffected:
-```
-mvn -pl claude-code-enforcer -am install   # install the rule jar once
-mvn package -DenforceClaudeMd            # build with the checks enabled
-```
 
 # Building
 ```

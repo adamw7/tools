@@ -265,6 +265,39 @@ public class MapTest {
 	}
 	
 	@ParameterizedTest
+	@MethodSource("conflictingHashImplementations")
+	public void liveEntriesFoundPastTombstoneInProbeChain(Map<ConflictingKey, String> map) {
+		ConflictingKey first = new ConflictingKey(1, "1");
+		ConflictingKey middle = new ConflictingKey(2, "2");
+		ConflictingKey last = new ConflictingKey(3, "3");
+		map.put(first, "A");
+		map.put(middle, "B");
+		map.put(last, "C");
+
+		assertEquals("B", map.remove(middle));
+
+		assertNull(map.get(middle));
+		assertEquals("A", map.get(first));
+		assertEquals("C", map.get(last));
+		assertEquals(2, map.size());
+	}
+
+	@ParameterizedTest
+	@MethodSource("conflictingHashImplementations")
+	public void missingKeyInProbeChainWithTombstoneReturnsNull(Map<ConflictingKey, String> map) {
+		ConflictingKey present = new ConflictingKey(1, "1");
+		ConflictingKey removed = new ConflictingKey(2, "2");
+		map.put(present, "A");
+		map.put(removed, "B");
+		map.remove(removed);
+
+		assertNull(map.get(new ConflictingKey(99, "99")));
+		assertNull(map.remove(new ConflictingKey(99, "99")));
+		assertEquals(1, map.size());
+		assertEquals("A", map.get(present));
+	}
+
+	@ParameterizedTest
 	@MethodSource("allImplementations")
 	public void multipleClear(Map<Integer, String> map) {
 		final int size = OpenAddressingMap.DEFAULT_SIZE * 5; // forcing resize

@@ -59,12 +59,25 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public V get(Object key) {
+		Wrapper<K, V> wrapper = find(key);
+		return wrapper == null ? null : wrapper.value;
+	}
+
+	/**
+	 * Probes the double-hashing sequence for {@code key} and returns its live
+	 * wrapper, or {@code null} when the key is absent. An empty (never-used) slot
+	 * ends the search: {@link #put} always fills the first such slot, so the key
+	 * cannot lie beyond it. Tombstones ({@code removed}) are skipped rather than
+	 * treated as terminal, because live entries may sit past them.
+	 */
+	private Wrapper<K, V> find(Object key) {
 		for (int i = 0; i < array.length; ++i) {
-			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = array[hash];
-			
+			Wrapper<K, V> wrapper = array[hash(key, i)];
+			if (wrapper == null) {
+				return null;
+			}
 			if (valid(wrapper) && wrapper.key.equals(key)) {
-				return wrapper.value;
+				return wrapper;
 			}
 		}
 		return null;
@@ -127,17 +140,13 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public V remove(Object key) {
-		for (int i = 0; i < array.length; ++i) {
-			int hash = hash(key, i);
-			Wrapper<K, V> wrapper = array[hash];
-			
-			if (valid(wrapper) && wrapper.key.equals(key)) {
-				wrapper.removed = true;
-				size--;
-				return wrapper.value;
-			}
+		Wrapper<K, V> wrapper = find(key);
+		if (wrapper == null) {
+			return null;
 		}
-		return null;
+		wrapper.removed = true;
+		size--;
+		return wrapper.value;
 	}
 
 	@Override

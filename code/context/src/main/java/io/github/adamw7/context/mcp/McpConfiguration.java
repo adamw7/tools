@@ -102,20 +102,18 @@ public class McpConfiguration {
 	@ConditionalOnBean(McpServerTransportProvider.class)
 	public McpSyncServer mcpSyncServer(McpServerTransportProvider transport) {
 		log.info("Initializing McpSyncServer with transport: {}", transport);
-		McpSyncServer syncServer = McpServer.sync(transport)
-				.serverInfo("context-engineering-server", "0.0.1")
-				.capabilities(McpSchema.ServerCapabilities.builder()
-						.tools(true).resources(false, false).prompts(false).build())
-				.build();
-		registerTools(syncServer);
-		return syncServer;
+		return buildServer(McpServer.sync(transport));
 	}
 
 	@Bean(destroyMethod = "close")
 	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "streamable-http")
 	public McpSyncServer mcpSyncServerStreamable(McpStreamableServerTransportProvider transport) {
 		log.info("Initializing McpSyncServer with streamable transport: {}", transport);
-		McpSyncServer syncServer = McpServer.sync(transport)
+		return buildServer(McpServer.sync(transport));
+	}
+
+	private McpSyncServer buildServer(McpServer.SyncSpecification<?> spec) {
+		McpSyncServer syncServer = spec
 				.serverInfo("context-engineering-server", "0.0.1")
 				.capabilities(McpSchema.ServerCapabilities.builder()
 						.tools(true).resources(false, false).prompts(false).build())

@@ -130,12 +130,14 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private void resize() {
-		size = newSize();
-		OpenAddressingMap<K, V> newMap = new OpenAddressingMap<>(size);
-		newMap.putAll(this);
-		clear();
-		putAll(newMap);
-		newMap.clear();
+		Wrapper<K, V>[] old = array;
+		initArray(newSize());
+		size = 0;
+		for (Wrapper<K, V> wrapper : old) {
+			if (valid(wrapper)) {
+				put(wrapper.key, wrapper.value);
+			}
+		}
 	}
 
 	@Override

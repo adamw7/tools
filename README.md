@@ -498,10 +498,12 @@ Iterative (no memory) checks are keeping only one row at the time so they requir
 
 ### Open-addressing map
 
-`OpenAddressingMap<K, V>` is a `java.util.Map` implementation backed by a
-**single array** instead of an array of buckets with linked nodes. It is a
-simpler, allocation-light alternative to `HashMap` when you want a plain map
-without the per-entry node objects of separate chaining.
+`OpenAddressingMap<K, V>` is a `java.util.Map` implementation that is **simpler
+than `java.util.HashMap` because it uses only one array**: entries are stored
+directly in a single array via open addressing, instead of `HashMap`'s array of
+buckets with linked (or tree-ified) nodes. That makes it an allocation-light
+alternative when you want a plain map without the per-entry node objects of
+separate chaining.
 
 ```java
 Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 64

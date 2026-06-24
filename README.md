@@ -496,6 +496,69 @@ Notes:
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
+### Open-addressing map
+
+`OpenAddressingMap<K, V>` is a `java.util.Map` implementation backed by a
+**single array** instead of an array of buckets with linked nodes. It is a
+simpler, allocation-light alternative to `HashMap` when you want a plain map
+without the per-entry node objects of separate chaining.
+
+```java
+Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 64
+map.put("a", 1);
+map.put("b", 2);
+map.get("a");          // 1
+map.remove("b");       // 2
+map.containsKey("b");  // false
+```
+
+How it works:
+
+- **Double hashing** resolves collisions: a key's probe sequence is
+  `h1 + i * h2` (modulo the array length), which spreads probes better than
+  linear probing and avoids primary clustering. `h1`/`h2` are derived from the
+  key's `hashCode()` and a prime chosen as the largest prime smaller than the
+  array length.
+- **Tombstones for removal**: `remove` marks a slot as removed rather than
+  clearing it, so probe sequences that ran *through* that slot still find the
+  entries placed after it. `put` reuses the first free slot and a never-used
+  (`null`) slot terminates a lookup.
+- **Automatic resizing**: when the array is about to fill up, it grows by a
+  `1.2` factor and all live entries are re-hashed into the new array (tombstones
+  are dropped in the process). The initial capacity can be set via
+  `new OpenAddressingMap<>(size)` (minimum effective size is 3); a
+  non-positive size is rejected with `IllegalArgumentException`.
+
+Caveats:
+
+- **Null keys are not supported** — `put`/`get` with a `null` key throw
+  `IllegalArgumentException`.
+- **Null values are not distinguishable from absence**: `get` returns `null`
+  for a missing key and `containsKey` is defined as `get(key) != null`, so a key
+  mapped to a `null` value is reported as absent. Avoid storing `null` values.
+- It is **not thread-safe**; guard external synchronization if shared across
+  threads.
+
+### Network kill-switch
+
+`Switch` turns **all JVM outbound network access off** for the lifetime of the
+process. It is useful when you want to guarantee that a data-processing run stays
+offline — e.g. no accidental calls out while loading and checking local data.
+
+```java
+boolean changed = Switch.off(); // true the first time, false if already off
+```
+
+`Switch.off()` installs a default `ProxySelector` that refuses every proxy
+selection by throwing `UnsupportedOperationException("The network is off")`, so
+any subsequent attempt to open an outbound connection fails fast. The method is:
+
+- **One-way** — there is no `on()`; once off, the JVM stays offline. Apply it
+  early, only when you really mean to seal the process.
+- **Idempotent and thread-safe** — it is `synchronized` and guarded by a
+  `volatile` flag; calling it again is a no-op that logs a warning and returns
+  `false`.
+
 # Building
 ```
 mvn clean install

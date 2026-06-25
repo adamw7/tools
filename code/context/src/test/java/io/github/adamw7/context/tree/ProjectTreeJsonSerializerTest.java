@@ -4,12 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 public class ProjectTreeJsonSerializerTest {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private final ProjectTreeJsonSerializer serializer = new ProjectTreeJsonSerializer();
 
@@ -17,10 +22,10 @@ public class ProjectTreeJsonSerializerTest {
 	void serializesNameAndTypeForADirectory() {
 		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
 
-		JSONObject json = new JSONObject(serializer.serialize(root));
+		JsonNode json = parse(serializer.serialize(root));
 
-		assertEquals("project", json.getString("name"));
-		assertEquals("directory", json.getString("type"));
+		assertEquals("project", json.get("name").asText());
+		assertEquals("directory", json.get("type").asText());
 	}
 
 	@Test
@@ -28,11 +33,11 @@ public class ProjectTreeJsonSerializerTest {
 		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
 		root.addChild(ProjectTreeNode.file(Path.of("project/A.java")));
 
-		JSONObject json = new JSONObject(serializer.serialize(root));
-		JSONObject child = json.getJSONArray("children").getJSONObject(0);
+		JsonNode json = parse(serializer.serialize(root));
+		JsonNode child = json.get("children").get(0);
 
-		assertEquals("file", child.getString("type"));
-		assertEquals("A.java", child.getString("name"));
+		assertEquals("file", child.get("type").asText());
+		assertEquals("A.java", child.get("name").asText());
 	}
 
 	@Test
@@ -43,12 +48,12 @@ public class ProjectTreeJsonSerializerTest {
 		file.addDependency("C.java");
 		root.addChild(file);
 
-		JSONObject json = new JSONObject(serializer.serialize(root));
-		JSONArray dependencies = json.getJSONArray("children").getJSONObject(0).getJSONArray("dependencies");
+		JsonNode json = parse(serializer.serialize(root));
+		JsonNode dependencies = json.get("children").get(0).get("dependencies");
 
-		assertEquals(2, dependencies.length());
-		assertTrue(dependencies.toList().contains("A.java"));
-		assertTrue(dependencies.toList().contains("C.java"));
+		assertEquals(2, dependencies.size());
+		assertTrue(textValues(dependencies).contains("A.java"));
+		assertTrue(textValues(dependencies).contains("C.java"));
 	}
 
 	@Test
@@ -58,11 +63,11 @@ public class ProjectTreeJsonSerializerTest {
 		pkg.addChild(ProjectTreeNode.file(Path.of("project/pkg/A.java")));
 		root.addChild(pkg);
 
-		JSONObject json = new JSONObject(serializer.serialize(root));
-		JSONObject pkgJson = json.getJSONArray("children").getJSONObject(0);
+		JsonNode json = parse(serializer.serialize(root));
+		JsonNode pkgJson = json.get("children").get(0);
 
-		assertEquals("pkg", pkgJson.getString("name"));
-		assertEquals("A.java", pkgJson.getJSONArray("children").getJSONObject(0).getString("name"));
+		assertEquals("pkg", pkgJson.get("name").asText());
+		assertEquals("A.java", pkgJson.get("children").get(0).get("name").asText());
 	}
 
 	@Test
@@ -70,9 +75,23 @@ public class ProjectTreeJsonSerializerTest {
 		ProjectTreeNode root = ProjectTreeNode.directory(Path.of("project"));
 		root.addChild(ProjectTreeNode.file(Path.of("project/A.java")));
 
-		JSONObject pretty = new JSONObject(serializer.serializePretty(root, 2));
+		JsonNode pretty = parse(serializer.serializePretty(root, 2));
 
-		assertEquals("project", pretty.getString("name"));
-		assertEquals(1, pretty.getJSONArray("children").length());
+		assertEquals("project", pretty.get("name").asText());
+		assertEquals(1, pretty.get("children").size());
+	}
+
+	private JsonNode parse(String json) {
+		try {
+			return MAPPER.readTree(json);
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON: " + json, e);
+		}
+	}
+
+	private List<String> textValues(JsonNode array) {
+		List<String> values = new ArrayList<>();
+		array.forEach(node -> values.add(node.asText()));
+		return values;
 	}
 }

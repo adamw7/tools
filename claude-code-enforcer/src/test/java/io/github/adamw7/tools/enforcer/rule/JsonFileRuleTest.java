@@ -15,8 +15,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -71,7 +72,7 @@ class JsonFileRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertNotNull(rule.parsedRoot, "collectViolations must receive the parsed object");
-		assertEquals("value", rule.parsedRoot.getString("name"));
+		assertEquals("value", rule.parsedRoot.get("name").asText());
 	}
 
 	@Test
@@ -123,7 +124,7 @@ class JsonFileRuleTest {
 		private File file;
 		private boolean optional;
 		private final List<String> injectedViolations = new ArrayList<>();
-		private JSONObject parsedRoot;
+		private JsonNode parsedRoot;
 
 		void setFile(File file) {
 			this.file = file;
@@ -165,7 +166,7 @@ class JsonFileRuleTest {
 		}
 
 		@Override
-		protected void collectViolations(JSONObject root, List<String> violations) {
+		protected void collectViolations(JsonNode root, List<String> violations) {
 			this.parsedRoot = root;
 			violations.addAll(injectedViolations);
 		}

@@ -5,10 +5,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
+import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when the {@code hooks} section of
@@ -74,23 +74,23 @@ public class HookCommandsValidRule extends JsonFileRule {
 	}
 
 	@Override
-	protected void collectViolations(JSONObject settings, List<String> violations) {
+	protected void collectViolations(JsonNode settings, List<String> violations) {
 		collectHookViolations(settings, violations);
 	}
 
-	private void collectHookViolations(JSONObject settings, List<String> violations) {
-		JSONObject hooks = settings.optJSONObject(HOOKS_KEY);
+	private void collectHookViolations(JsonNode settings, List<String> violations) {
+		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
 		if (hooks == null) {
 			return;
 		}
-		for (String event : hooks.keySet()) {
+		for (String event : JsonNodes.fieldNames(hooks)) {
 			collectEventViolations(event, hooks, violations);
 		}
 	}
 
-	private void collectEventViolations(String event, JSONObject hooks, List<String> violations) {
+	private void collectEventViolations(String event, JsonNode hooks, List<String> violations) {
 		addEventNameViolation(event, violations);
-		JSONArray groups = hooks.optJSONArray(event);
+		JsonNode groups = JsonNodes.arrayAt(hooks, event);
 		if (groups == null) {
 			violations.add("hook event '" + event + "' must be a JSON array");
 		} else {
@@ -104,13 +104,13 @@ public class HookCommandsValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectGroupsViolations(String event, JSONArray groups, List<String> violations) {
-		for (int i = 0; i < groups.length(); i++) {
-			collectGroupViolations(event, groups.optJSONObject(i), violations);
+	private void collectGroupsViolations(String event, JsonNode groups, List<String> violations) {
+		for (int i = 0; i < groups.size(); i++) {
+			collectGroupViolations(event, JsonNodes.objectAt(groups, i), violations);
 		}
 	}
 
-	private void collectGroupViolations(String event, JSONObject group, List<String> violations) {
+	private void collectGroupViolations(String event, JsonNode group, List<String> violations) {
 		if (group == null) {
 			violations.add("hook event '" + event + "' has an entry that is not a JSON object");
 		} else {
@@ -118,22 +118,22 @@ public class HookCommandsValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectEntriesViolations(String event, JSONObject group, List<String> violations) {
-		JSONArray entries = group.optJSONArray(HOOKS_KEY);
+	private void collectEntriesViolations(String event, JsonNode group, List<String> violations) {
+		JsonNode entries = JsonNodes.arrayAt(group, HOOKS_KEY);
 		if (entries == null) {
 			violations.add("hook event '" + event + "' entry is missing a 'hooks' array");
 		} else {
-			collectEntriesViolations(event, entries, violations);
+			collectHookEntries(event, entries, violations);
 		}
 	}
 
-	private void collectEntriesViolations(String event, JSONArray entries, List<String> violations) {
-		for (int i = 0; i < entries.length(); i++) {
-			collectEntryViolations(event, entries.optJSONObject(i), violations);
+	private void collectHookEntries(String event, JsonNode entries, List<String> violations) {
+		for (int i = 0; i < entries.size(); i++) {
+			collectEntryViolations(event, JsonNodes.objectAt(entries, i), violations);
 		}
 	}
 
-	private void collectEntryViolations(String event, JSONObject entry, List<String> violations) {
+	private void collectEntryViolations(String event, JsonNode entry, List<String> violations) {
 		if (entry == null) {
 			violations.add("hook event '" + event + "' has a hook that is not a JSON object");
 		} else {
@@ -141,8 +141,8 @@ public class HookCommandsValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectTypedEntryViolations(String event, JSONObject entry, List<String> violations) {
-		String type = entry.optString(TYPE_KEY, "").strip();
+	private void collectTypedEntryViolations(String event, JsonNode entry, List<String> violations) {
+		String type = JsonNodes.textAt(entry, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
 			violations.add("hook event '" + event + "' has a hook missing 'type'");
 		} else if (type.equals(COMMAND_TYPE)) {
@@ -150,8 +150,8 @@ public class HookCommandsValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectCommandViolations(String event, JSONObject entry, List<String> violations) {
-		String command = entry.optString(COMMAND_KEY, "").strip();
+	private void collectCommandViolations(String event, JsonNode entry, List<String> violations) {
+		String command = JsonNodes.textAt(entry, COMMAND_KEY, "").strip();
 		if (command.isBlank()) {
 			violations.add("hook event '" + event + "' has a command hook with an empty 'command'");
 		} else {

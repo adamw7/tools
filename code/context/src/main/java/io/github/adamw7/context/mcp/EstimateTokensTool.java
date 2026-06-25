@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
@@ -24,6 +25,8 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
  * clear, actionable message.
  */
 public class EstimateTokensTool extends AbstractClassContextTool {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private final TokenEstimator estimator;
 
@@ -60,12 +63,12 @@ public class EstimateTokensTool extends AbstractClassContextTool {
 	@Override
 	protected String result(Set<ClassContainer> containers, ClassContainer target, Language language, int depth) {
 		List<ClassContainer> context = assembleContext(containers, target, language, depth);
-		JSONArray classes = new JSONArray();
+		ArrayNode classes = MAPPER.createArrayNode();
 		int total = 0;
 		for (ClassContainer container : context) {
 			int tokens = estimator.estimate(container.originalCode());
 			total += tokens;
-			classes.put(classEntry(container, tokens));
+			classes.add(classEntry(container, tokens));
 		}
 		return report(total, classes).toString();
 	}
@@ -78,17 +81,17 @@ public class EstimateTokensTool extends AbstractClassContextTool {
 		return context;
 	}
 
-	private JSONObject classEntry(ClassContainer container, int tokens) {
-		JSONObject entry = new JSONObject();
+	private ObjectNode classEntry(ClassContainer container, int tokens) {
+		ObjectNode entry = MAPPER.createObjectNode();
 		entry.put("class", container.className());
 		entry.put("tokens", tokens);
 		return entry;
 	}
 
-	private JSONObject report(int total, JSONArray classes) {
-		JSONObject report = new JSONObject();
+	private ObjectNode report(int total, ArrayNode classes) {
+		ObjectNode report = MAPPER.createObjectNode();
 		report.put("total", total);
-		report.put("classes", classes);
+		report.set("classes", classes);
 		return report;
 	}
 }

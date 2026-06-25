@@ -8,11 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.json.JSONArray;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,6 +30,8 @@ public class ContextFinderToolTest {
 
 	@TempDir
 	Path outsideRoot;
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private ContextFinderTool tool;
 
@@ -53,7 +58,7 @@ public class ContextFinderToolTest {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");
 
-		List<Object> dependencies = dependencies(tool.apply(arguments("B")));
+		List<String> dependencies = dependencies(tool.apply(arguments("B")));
 
 		assertEquals(List.of("A.java"), dependencies);
 	}
@@ -63,7 +68,7 @@ public class ContextFinderToolTest {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");
 
-		List<Object> dependencies = dependencies(tool.apply(arguments("B.java")));
+		List<String> dependencies = dependencies(tool.apply(arguments("B.java")));
 
 		assertEquals(List.of("A.java"), dependencies);
 	}
@@ -77,7 +82,7 @@ public class ContextFinderToolTest {
 		Map<String, Object> arguments = arguments("C");
 		arguments.put("depth", 2);
 
-		List<Object> dependencies = dependencies(tool.apply(arguments));
+		List<String> dependencies = dependencies(tool.apply(arguments));
 
 		assertEquals(List.of("A.java", "B.java"), dependencies);
 	}
@@ -135,8 +140,15 @@ public class ContextFinderToolTest {
 		Files.writeString(projectRoot.resolve(className + ".java"), body);
 	}
 
-	private List<Object> dependencies(CallToolResult result) {
-		return new JSONArray(text(result)).toList();
+	private List<String> dependencies(CallToolResult result) {
+		try {
+			JsonNode array = MAPPER.readTree(text(result));
+			List<String> values = new ArrayList<>();
+			array.forEach(node -> values.add(node.asText()));
+			return values;
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON result", e);
+		}
 	}
 
 	private String text(CallToolResult result) {

@@ -9,8 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,8 @@ import io.modelcontextprotocol.spec.McpSchema;
 				"spring.main.banner-mode=off",
 				"context.allowed-roots=${java.io.tmpdir}" })
 public class McpStreamableHttpIT {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	@LocalServerPort
 	private int port;
@@ -91,7 +94,7 @@ public class McpStreamableHttpIT {
 
 		assertFalse(result.isError());
 		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertEquals("A.java", new JSONArray(dependencies).getString(0));
+		assertEquals("A.java", parse(dependencies).get(0).asText());
 	}
 
 	@Test
@@ -103,9 +106,9 @@ public class McpStreamableHttpIT {
 		McpSchema.CallToolResult result = client.callTool(request);
 
 		assertFalse(result.isError());
-		JSONObject report = new JSONObject(((McpSchema.TextContent) result.content().getFirst()).text());
-		assertTrue(report.getInt("total") > 0);
-		JSONArray classes = report.getJSONArray("classes");
+		JsonNode report = parse(((McpSchema.TextContent) result.content().getFirst()).text());
+		assertTrue(report.get("total").asInt() > 0);
+		JsonNode classes = report.get("classes");
 		assertTrue(containsClass(classes, "B.java"));
 		assertTrue(containsClass(classes, "A.java"));
 	}
@@ -138,12 +141,20 @@ public class McpStreamableHttpIT {
 		assertTrue(message.contains("Class not found: Missing"));
 	}
 
-	private boolean containsClass(JSONArray classes, String className) {
-		for (int index = 0; index < classes.length(); index++) {
-			if (className.equals(classes.getJSONObject(index).getString("class"))) {
+	private boolean containsClass(JsonNode classes, String className) {
+		for (int index = 0; index < classes.size(); index++) {
+			if (className.equals(classes.get(index).get("class").asText())) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	private JsonNode parse(String json) {
+		try {
+			return MAPPER.readTree(json);
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON: " + json, e);
+		}
 	}
 }

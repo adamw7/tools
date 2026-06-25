@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-import org.json.JSONException;
-import org.json.JSONObject;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -20,12 +22,14 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * <p>
  * Subclasses contribute the file, its parameter name, a human-readable
  * description used in messages, the report header, and the document-specific
- * checks against the parsed {@link JSONObject}. A misconfigured rule (missing
+ * checks against the parsed {@link JsonNode}. A misconfigured rule (missing
  * file parameter) or a missing or empty file always fails, because that is a
  * build-setup mistake; a rule whose file is optional overrides
  * {@link #handleMissingFile} to pass instead.
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	@Override
 	public final void execute() throws EnforcerRuleException {
@@ -38,7 +42,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		List<String> violations = new ArrayList<>();
-		JSONObject root = parse(readContent(file), violations);
+		JsonNode root = parse(readContent(file), violations);
 		if (root != null) {
 			collectViolations(root, violations);
 		}
@@ -58,7 +62,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	protected abstract String header();
 
 	/** Document-specific checks against the parsed JSON. */
-	protected abstract void collectViolations(JSONObject root, List<String> violations);
+	protected abstract void collectViolations(JsonNode root, List<String> violations);
 
 	/**
 	 * How to react when the file is absent. The default fails the build, because a
@@ -77,11 +81,16 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 		return content;
 	}
 
-	private JSONObject parse(String content, List<String> violations) {
+	private JsonNode parse(String content, List<String> violations) {
 		try {
-			return new JSONObject(content);
-		} catch (JSONException e) {
-			violations.add(description() + " is not valid JSON: " + e.getMessage());
+			JsonNode root = MAPPER.readTree(content);
+			if (root == null || !root.isObject()) {
+				violations.add(description() + " is not valid JSON: expected a JSON object");
+				return null;
+			}
+			return root;
+		} catch (JsonProcessingException e) {
+			violations.add(description() + " is not valid JSON: " + e.getOriginalMessage());
 			return null;
 		}
 	}

@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,6 +30,8 @@ public class EstimateTokensToolTest {
 
 	@TempDir
 	Path outsideRoot;
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private EstimateTokensTool tool;
 
@@ -54,24 +58,24 @@ public class EstimateTokensToolTest {
 		writeJava("A", "AA");
 		writeJava("B", "A");
 
-		JSONObject report = report(tool.apply(arguments("B")));
+		JsonNode report = report(tool.apply(arguments("B")));
 
-		assertEquals(3, report.getInt("total"));
-		assertEquals(2, report.getJSONArray("classes").length());
-		assertEquals("B.java", report.getJSONArray("classes").getJSONObject(0).getString("class"));
-		assertEquals(1, report.getJSONArray("classes").getJSONObject(0).getInt("tokens"));
-		assertEquals("A.java", report.getJSONArray("classes").getJSONObject(1).getString("class"));
-		assertEquals(2, report.getJSONArray("classes").getJSONObject(1).getInt("tokens"));
+		assertEquals(3, report.get("total").asInt());
+		assertEquals(2, report.get("classes").size());
+		assertEquals("B.java", report.get("classes").get(0).get("class").asText());
+		assertEquals(1, report.get("classes").get(0).get("tokens").asInt());
+		assertEquals("A.java", report.get("classes").get(1).get("class").asText());
+		assertEquals(2, report.get("classes").get(1).get("tokens").asInt());
 	}
 
 	@Test
 	void aClassWithoutDependenciesReportsOnlyItself() throws IOException {
 		writeJava("A", "AAAA");
 
-		JSONObject report = report(tool.apply(arguments("A")));
+		JsonNode report = report(tool.apply(arguments("A")));
 
-		assertEquals(4, report.getInt("total"));
-		assertEquals(1, report.getJSONArray("classes").length());
+		assertEquals(4, report.get("total").asInt());
+		assertEquals(1, report.get("classes").size());
 	}
 
 	@Test
@@ -111,10 +115,10 @@ public class EstimateTokensToolTest {
 		writeJava("A", "a.b");
 		EstimateTokensTool defaultTool = new EstimateTokensTool(new PathPolicy(projectRoot.toString()));
 
-		JSONObject report = report(defaultTool.apply(arguments("A")));
+		JsonNode report = report(defaultTool.apply(arguments("A")));
 
-		assertFalse(report.getJSONArray("classes").isEmpty());
-		assertEquals(3, report.getInt("total"));
+		assertFalse(report.get("classes").isEmpty());
+		assertEquals(3, report.get("total").asInt());
 	}
 
 	@Test
@@ -126,13 +130,13 @@ public class EstimateTokensToolTest {
 		Map<String, Object> arguments = arguments("C");
 		arguments.put("depth", 2);
 
-		JSONObject report = report(tool.apply(arguments));
+		JsonNode report = report(tool.apply(arguments));
 
-		assertEquals(6, report.getInt("total"));
-		assertEquals(3, report.getJSONArray("classes").length());
-		assertEquals("C.java", report.getJSONArray("classes").getJSONObject(0).getString("class"));
-		assertEquals("B.java", report.getJSONArray("classes").getJSONObject(1).getString("class"));
-		assertEquals("A.java", report.getJSONArray("classes").getJSONObject(2).getString("class"));
+		assertEquals(6, report.get("total").asInt());
+		assertEquals(3, report.get("classes").size());
+		assertEquals("C.java", report.get("classes").get(0).get("class").asText());
+		assertEquals("B.java", report.get("classes").get(1).get("class").asText());
+		assertEquals("A.java", report.get("classes").get(2).get("class").asText());
 	}
 
 	@Test
@@ -141,10 +145,10 @@ public class EstimateTokensToolTest {
 		writeJava("B", "A");
 		writeJava("C", "B");
 
-		JSONObject report = report(tool.apply(arguments("C")));
+		JsonNode report = report(tool.apply(arguments("C")));
 
-		assertEquals(2, report.getJSONArray("classes").length());
-		assertEquals(2, report.getInt("total"));
+		assertEquals(2, report.get("classes").size());
+		assertEquals(2, report.get("total").asInt());
 	}
 
 	@Test
@@ -155,11 +159,11 @@ public class EstimateTokensToolTest {
 		Map<String, Object> arguments = arguments("Bar");
 		arguments.put("language", "kotlin");
 
-		JSONObject report = report(tool.apply(arguments));
+		JsonNode report = report(tool.apply(arguments));
 
-		assertEquals(5, report.getInt("total"));
-		assertEquals("Bar.kt", report.getJSONArray("classes").getJSONObject(0).getString("class"));
-		assertEquals("Foo.kt", report.getJSONArray("classes").getJSONObject(1).getString("class"));
+		assertEquals(5, report.get("total").asInt());
+		assertEquals("Bar.kt", report.get("classes").get(0).get("class").asText());
+		assertEquals("Foo.kt", report.get("classes").get(1).get("class").asText());
 	}
 
 	private TokenEstimator oneTokenPerCharacter() {
@@ -177,8 +181,12 @@ public class EstimateTokensToolTest {
 		Files.writeString(projectRoot.resolve(className + ".java"), body);
 	}
 
-	private JSONObject report(CallToolResult result) {
-		return new JSONObject(text(result));
+	private JsonNode report(CallToolResult result) {
+		try {
+			return MAPPER.readTree(text(result));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON result", e);
+		}
 	}
 
 	private String text(CallToolResult result) {

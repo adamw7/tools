@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.source.file;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.params.provider.Arguments.of;
@@ -8,6 +7,7 @@ import static org.junit.jupiter.params.provider.Arguments.of;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,8 @@ public class JSONDataSourceTest {
 		source.open();
         String[] columnNames = source.getColumnNames();
         assertEquals(10, columnNames.length);
-        assertArrayEquals(new String[]{"cars", "fruits", "year", "city", "name", "model", "state", "people", "age", "manufacturer"}, columnNames);
+        assertEquals(Set.of("cars", "fruits", "year", "city", "name", "model", "state", "people", "age", "manufacturer"),
+                Set.of(columnNames));
         source.close();
     }
 

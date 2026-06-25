@@ -2,6 +2,25 @@
 
 Library of tooling for various purposes.
 
+## Table of Contents
+
+- [Claude Code files Maven enforcer](#claude-code-files-maven-enforcer)
+- [Code generation](#code-generation)
+- [gRPC example](#grpc-example)
+- [Context engineering](#context-engineering)
+  - [Java code context build up](#java-code-context-build-up)
+  - [Kotlin code context build up](#kotlin-code-context-build-up)
+  - [Scala code context build up](#scala-code-context-build-up)
+  - [Project tree](#project-tree)
+  - [Output formats](#output-formats)
+  - [Token-budget-aware context](#token-budget-aware-context)
+- [Data](#data)
+  - [Open-addressing map](#open-addressing-map)
+  - [Network kill-switch](#network-kill-switch)
+- [Building](#building)
+- [Releasing](#releasing)
+- [License](#license)
+
 ## Claude Code files Maven enforcer
 
 The `claude-code-enforcer` module is a set of custom

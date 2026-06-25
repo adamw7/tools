@@ -83,6 +83,12 @@
 			</dependency>
 			<dependency>
 				<groupId>org.apache.derby</groupId>
+				<artifactId>derbyclient</artifactId>
+				<version>10.17.1.0</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.derby</groupId>
 				<artifactId>derbytools</artifactId>
 				<version>10.17.1.0</version>
 				<scope>test</scope>

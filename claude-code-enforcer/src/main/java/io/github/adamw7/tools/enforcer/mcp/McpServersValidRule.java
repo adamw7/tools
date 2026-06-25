@@ -5,9 +5,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
+import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when the project's {@code .mcp.json} is
@@ -80,12 +81,12 @@ public class McpServersValidRule extends JsonFileRule {
 	}
 
 	@Override
-	protected void collectViolations(JSONObject mcp, List<String> violations) {
+	protected void collectViolations(JsonNode mcp, List<String> violations) {
 		collectServersViolations(mcp, violations);
 	}
 
-	private void collectServersViolations(JSONObject mcp, List<String> violations) {
-		JSONObject servers = mcp.optJSONObject(MCP_SERVERS_KEY);
+	private void collectServersViolations(JsonNode mcp, List<String> violations) {
+		JsonNode servers = JsonNodes.objectAt(mcp, MCP_SERVERS_KEY);
 		if (servers == null) {
 			violations.add("mcp.json is missing the 'mcpServers' object");
 		} else {
@@ -93,15 +94,15 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectKnownServersViolations(JSONObject servers, List<String> violations) {
-		for (String name : servers.keySet()) {
-			collectServerViolations(name, servers.optJSONObject(name), violations);
+	private void collectKnownServersViolations(JsonNode servers, List<String> violations) {
+		for (String name : JsonNodes.fieldNames(servers)) {
+			collectServerViolations(name, JsonNodes.objectAt(servers, name), violations);
 		}
 		collectRequiredServers(servers, violations);
 		collectForbiddenServers(servers, violations);
 	}
 
-	private void collectServerViolations(String name, JSONObject server, List<String> violations) {
+	private void collectServerViolations(String name, JsonNode server, List<String> violations) {
 		if (server == null) {
 			violations.add("mcp.json server '" + name + "' must be a JSON object");
 		} else {
@@ -109,8 +110,8 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectTransportViolations(String name, JSONObject server, List<String> violations) {
-		String type = server.optString(TYPE_KEY, "").strip();
+	private void collectTransportViolations(String name, JsonNode server, List<String> violations) {
+		String type = JsonNodes.textAt(server, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
 			collectInferredTransportViolations(name, server, violations);
 		} else {
@@ -118,7 +119,7 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectInferredTransportViolations(String name, JSONObject server, List<String> violations) {
+	private void collectInferredTransportViolations(String name, JsonNode server, List<String> violations) {
 		if (server.has(COMMAND_KEY)) {
 			collectCommandViolation(name, server, violations);
 		} else {
@@ -127,7 +128,7 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectExplicitTransportViolations(String name, JSONObject server, String type,
+	private void collectExplicitTransportViolations(String name, JsonNode server, String type,
 			List<String> violations) {
 		if (!allowedTypes().contains(type)) {
 			violations.add("mcp.json server '" + name + "' has an unsupported type: " + type);
@@ -138,19 +139,19 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectCommandViolation(String name, JSONObject server, List<String> violations) {
-		if (server.optString(COMMAND_KEY, "").isBlank()) {
+	private void collectCommandViolation(String name, JsonNode server, List<String> violations) {
+		if (JsonNodes.textAt(server, COMMAND_KEY, "").isBlank()) {
 			violations.add("mcp.json server '" + name + "' (stdio) is missing a 'command'");
 		}
 	}
 
-	private void collectUrlViolation(String name, String type, JSONObject server, List<String> violations) {
-		if (server.optString(URL_KEY, "").isBlank()) {
+	private void collectUrlViolation(String name, String type, JsonNode server, List<String> violations) {
+		if (JsonNodes.textAt(server, URL_KEY, "").isBlank()) {
 			violations.add("mcp.json server '" + name + "' (" + type + ") is missing a 'url'");
 		}
 	}
 
-	private void collectRequiredServers(JSONObject servers, List<String> violations) {
+	private void collectRequiredServers(JsonNode servers, List<String> violations) {
 		if (requiredServers == null) {
 			return;
 		}
@@ -161,7 +162,7 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private void collectForbiddenServers(JSONObject servers, List<String> violations) {
+	private void collectForbiddenServers(JsonNode servers, List<String> violations) {
 		if (forbiddenServers == null) {
 			return;
 		}

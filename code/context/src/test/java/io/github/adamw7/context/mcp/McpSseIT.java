@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.json.JSONArray;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -91,6 +93,14 @@ public class McpSseIT {
 
 		assertFalse(result.isError());
 		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertEquals("A.java", new JSONArray(dependencies).getString(0));
+		assertEquals("A.java", parse(dependencies).get(0).asText());
+	}
+
+	private JsonNode parse(String json) {
+		try {
+			return new ObjectMapper().readTree(json);
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON: " + json, e);
+		}
 	}
 }

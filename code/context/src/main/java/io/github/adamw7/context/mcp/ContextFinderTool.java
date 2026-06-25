@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.json.JSONArray;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
@@ -21,6 +22,8 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
  * a clear, actionable message.
  */
 public class ContextFinderTool extends AbstractClassContextTool {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	public ContextFinderTool(PathPolicy pathPolicy) {
 		super(pathPolicy);
@@ -53,6 +56,8 @@ public class ContextFinderTool extends AbstractClassContextTool {
 				.map(ClassContainer::className)
 				.sorted()
 				.toList();
-		return new JSONArray(dependencies).toString();
+		ArrayNode array = MAPPER.createArrayNode();
+		dependencies.forEach(array::add);
+		return array.toString();
 	}
 }

@@ -1,7 +1,11 @@
 package io.github.adamw7.context.tree;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Renders a {@link ProjectTreeNode} tree as JSON. Each node becomes an object
@@ -14,6 +18,7 @@ public class ProjectTreeJsonSerializer implements ProjectTreeSerializer {
 
 	private static final String DIRECTORY_TYPE = "directory";
 	private static final String FILE_TYPE = "file";
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	@Override
 	public String serialize(ProjectTreeNode root) {
@@ -21,21 +26,39 @@ public class ProjectTreeJsonSerializer implements ProjectTreeSerializer {
 	}
 
 	public String serializePretty(ProjectTreeNode root, int indentFactor) {
-		return toJson(root).toString(indentFactor);
+		try {
+			return MAPPER.writer(prettyPrinter(indentFactor)).writeValueAsString(toJson(root));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Failed to serialize project tree", e);
+		}
 	}
 
-	private JSONObject toJson(ProjectTreeNode node) {
-		JSONObject object = new JSONObject();
+	private DefaultPrettyPrinter prettyPrinter(int indentFactor) {
+		DefaultIndenter indenter = new DefaultIndenter(" ".repeat(indentFactor), "\n");
+		DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
+		printer.indentObjectsWith(indenter);
+		printer.indentArraysWith(indenter);
+		return printer;
+	}
+
+	private ObjectNode toJson(ProjectTreeNode node) {
+		ObjectNode object = MAPPER.createObjectNode();
 		object.put("name", node.name());
 		object.put("type", node.isDirectory() ? DIRECTORY_TYPE : FILE_TYPE);
-		object.put("dependencies", new JSONArray(node.dependencies()));
-		object.put("children", childrenOf(node));
+		object.set("dependencies", dependenciesOf(node));
+		object.set("children", childrenOf(node));
 		return object;
 	}
 
-	private JSONArray childrenOf(ProjectTreeNode node) {
-		JSONArray children = new JSONArray();
-		node.children().forEach(child -> children.put(toJson(child)));
+	private ArrayNode dependenciesOf(ProjectTreeNode node) {
+		ArrayNode dependencies = MAPPER.createArrayNode();
+		node.dependencies().forEach(dependencies::add);
+		return dependencies;
+	}
+
+	private ArrayNode childrenOf(ProjectTreeNode node) {
+		ArrayNode children = MAPPER.createArrayNode();
+		node.children().forEach(child -> children.add(toJson(child)));
 		return children;
 	}
 }

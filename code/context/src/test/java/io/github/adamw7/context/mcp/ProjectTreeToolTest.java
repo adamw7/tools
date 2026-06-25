@@ -12,7 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,6 +28,8 @@ public class ProjectTreeToolTest {
 
 	@TempDir
 	Path outsideRoot;
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	private ProjectTreeTool tool;
 
@@ -52,11 +55,11 @@ public class ProjectTreeToolTest {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");
 
-		JSONObject tree = new JSONObject(text(tool.apply(arguments())));
+		JsonNode tree = MAPPER.readTree(text(tool.apply(arguments())));
 
-		assertEquals(projectRoot.getFileName().toString(), tree.getString("name"));
-		assertEquals("directory", tree.getString("type"));
-		assertEquals(2, tree.getJSONArray("children").length());
+		assertEquals(projectRoot.getFileName().toString(), tree.get("name").asText());
+		assertEquals("directory", tree.get("type").asText());
+		assertEquals(2, tree.get("children").size());
 	}
 
 	@Test

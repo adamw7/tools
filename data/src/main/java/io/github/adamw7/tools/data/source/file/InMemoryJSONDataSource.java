@@ -1,12 +1,15 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
+import java.util.Map;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class InMemoryJSONDataSource extends AbstractInMemoryMapDataSource {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	public InMemoryJSONDataSource(InputStream inputStream) {
 		super(inputStream);
@@ -25,43 +28,56 @@ public class InMemoryJSONDataSource extends AbstractInMemoryMapDataSource {
 		parseJSON(jsonContent.toString());
 	}
 
-	private void parseJSON(String jsonString) throws JSONException {
-		JSONObject jsonArray = new JSONObject(jsonString);
-		extractFieldNames(jsonArray);
-		flattenJSON(jsonArray);
+	private void parseJSON(String jsonString) {
+		JsonNode root = read(jsonString);
+		extractFieldNames(root);
+		flatten(root);
 	}
 
-	private void extractFieldNames(JSONObject jsonObject) throws JSONException {
-		for (String key : jsonObject.keySet()) {
-			Object value = jsonObject.get(key);
-			fieldsMap.put(key, String.valueOf(value));
-			if (value instanceof JSONObject jsonObjectValue) {
-				extractFieldNames(jsonObjectValue);
+	private JsonNode read(String jsonString) {
+		try {
+			return MAPPER.readTree(jsonString);
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Invalid JSON input", e);
+		}
+	}
+
+	private void extractFieldNames(JsonNode node) {
+		for (Map.Entry<String, JsonNode> field : node.properties()) {
+			JsonNode value = field.getValue();
+			fieldsMap.put(field.getKey(), asText(value));
+			if (value.isObject()) {
+				extractFieldNames(value);
 			}
 		}
 	}
 
-	private void flattenJSON(JSONArray jsonArray) throws JSONException {
-		for (int i = 0; i < jsonArray.length(); i++) {
-			Object value = jsonArray.get(i);
-			if (value instanceof JSONArray jsonArrayValue) {
-				flattenJSON(jsonArrayValue);
-			} else if (value instanceof JSONObject jsonObjectValue) {
-				flattenJSON(jsonObjectValue);
-			}
+	private void flatten(JsonNode node) {
+		if (node.isArray()) {
+			flattenArray(node);
+		} else if (node.isObject()) {
+			flattenObject(node);
 		}
 	}
 
-	private void flattenJSON(JSONObject jsonObject) throws JSONException {
-		for (String key : jsonObject.keySet()) {
-			Object value = jsonObject.get(key);
-			if (value instanceof JSONArray jsonArrayValue) {
-				flattenJSON(jsonArrayValue);
-			} else if (value instanceof JSONObject jsonObjectValue) {
-				flattenJSON(jsonObjectValue);
+	private void flattenArray(JsonNode array) {
+		for (JsonNode element : array) {
+			flatten(element);
+		}
+	}
+
+	private void flattenObject(JsonNode object) {
+		for (Map.Entry<String, JsonNode> field : object.properties()) {
+			JsonNode value = field.getValue();
+			if (value.isContainerNode()) {
+				flatten(value);
 			} else {
-				fieldsMap.put(key, String.valueOf(value));
+				fieldsMap.put(field.getKey(), value.asText());
 			}
 		}
+	}
+
+	private String asText(JsonNode value) {
+		return value.isContainerNode() ? value.toString() : value.asText();
 	}
 }

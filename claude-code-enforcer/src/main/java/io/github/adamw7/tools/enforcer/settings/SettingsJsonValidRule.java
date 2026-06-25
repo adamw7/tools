@@ -6,10 +6,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
+import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when {@code .claude/settings.json} is
@@ -59,11 +59,11 @@ public class SettingsJsonValidRule extends JsonFileRule {
 	}
 
 	@Override
-	protected void collectViolations(JSONObject settings, List<String> violations) {
+	protected void collectViolations(JsonNode settings, List<String> violations) {
 		collectPermissionViolations(settings, violations);
 	}
 
-	private void collectPermissionViolations(JSONObject settings, List<String> violations) {
+	private void collectPermissionViolations(JsonNode settings, List<String> violations) {
 		if (requiredPermissions == null && forbiddenPermissions == null) {
 			return;
 		}
@@ -72,16 +72,16 @@ public class SettingsJsonValidRule extends JsonFileRule {
 		collectForbiddenPermissions(allow, violations);
 	}
 
-	private List<String> allowList(JSONObject settings) {
-		JSONObject permissions = settings.optJSONObject(PERMISSIONS_KEY);
-		JSONArray allow = permissions != null ? permissions.optJSONArray(ALLOW_KEY) : null;
+	private List<String> allowList(JsonNode settings) {
+		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
+		JsonNode allow = permissions != null ? JsonNodes.arrayAt(permissions, ALLOW_KEY) : null;
 		return allow != null ? toStringList(allow) : List.of();
 	}
 
-	private List<String> toStringList(JSONArray array) {
+	private List<String> toStringList(JsonNode array) {
 		List<String> entries = new ArrayList<>();
-		for (int i = 0; i < array.length(); i++) {
-			entries.add(array.getString(i));
+		for (int i = 0; i < array.size(); i++) {
+			entries.add(array.get(i).asText());
 		}
 		return entries;
 	}

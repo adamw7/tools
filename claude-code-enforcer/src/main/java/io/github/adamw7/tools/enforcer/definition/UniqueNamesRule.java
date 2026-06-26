@@ -32,8 +32,6 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 @Named("uniqueNames")
 public class UniqueNamesRule extends ClaudeCodeEnforcerRule {
 
-	private static final String MARKDOWN_SUFFIX = ".md";
-
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
 
@@ -65,9 +63,9 @@ public class UniqueNamesRule extends ClaudeCodeEnforcerRule {
 		if (directory == null) {
 			return;
 		}
-		verifyDirectory(directory, label);
-		for (File markdown : listMarkdownFiles(directory)) {
-			record(baseName(markdown), markdown.toString(), sourcesByName);
+		DefinitionFiles.verifyDirectory(directory, label);
+		for (File markdown : DefinitionFiles.markdownFiles(directory)) {
+			record(DefinitionFiles.baseName(markdown), markdown.toString(), sourcesByName);
 		}
 	}
 
@@ -76,15 +74,9 @@ public class UniqueNamesRule extends ClaudeCodeEnforcerRule {
 		if (directory == null) {
 			return;
 		}
-		verifyDirectory(directory, "Skills");
-		for (File skill : listSubdirectories(directory)) {
+		DefinitionFiles.verifyDirectory(directory, "Skills");
+		for (File skill : DefinitionFiles.subdirectories(directory)) {
 			record(skill.getName(), skill.toString(), sourcesByName);
-		}
-	}
-
-	private void verifyDirectory(File directory, String label) throws EnforcerRuleException {
-		if (!directory.isDirectory()) {
-			throw new EnforcerRuleException(label + " directory does not exist at " + directory);
 		}
 	}
 
@@ -106,25 +98,6 @@ public class UniqueNamesRule extends ClaudeCodeEnforcerRule {
 			violations.add("name '" + entry.getKey() + "' is used by " + sources.size()
 					+ " definitions: " + String.join(", ", sources));
 		}
-	}
-
-	private File[] listMarkdownFiles(File directory) {
-		File[] files = directory.listFiles(this::isMarkdownFile);
-		return files != null ? files : new File[0];
-	}
-
-	private File[] listSubdirectories(File directory) {
-		File[] directories = directory.listFiles(File::isDirectory);
-		return directories != null ? directories : new File[0];
-	}
-
-	private boolean isMarkdownFile(File file) {
-		return file.isFile() && file.getName().endsWith(MARKDOWN_SUFFIX);
-	}
-
-	private String baseName(File markdown) {
-		String name = markdown.getName();
-		return name.substring(0, name.length() - MARKDOWN_SUFFIX.length());
 	}
 
 	void setCommandsDir(File commandsDir) {

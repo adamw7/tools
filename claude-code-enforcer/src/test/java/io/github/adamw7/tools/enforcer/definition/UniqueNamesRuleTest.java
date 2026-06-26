@@ -65,6 +65,18 @@ class UniqueNamesRuleTest {
 	}
 
 	@Test
+	void ignoresSubdirectoriesNamedLikeMarkdownInTheCommandsDirectory() {
+		Path commands = createDir("commands");
+		createDir("commands/review.md");
+		writeMarkdown(commands.resolve("review.md/inner.md"));
+
+		UniqueNamesRule rule = new UniqueNamesRule();
+		rule.setCommandsDir(commands.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsWhenNotConfigured() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new UniqueNamesRule()::execute);
 		assertTrue(exception.getMessage().contains("must be configured"), exception.getMessage());

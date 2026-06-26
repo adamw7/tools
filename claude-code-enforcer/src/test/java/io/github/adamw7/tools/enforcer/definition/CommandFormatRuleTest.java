@@ -48,6 +48,37 @@ class CommandFormatRuleTest {
 	}
 
 	@Test
+	void ignoresSubdirectoriesNamedLikeMarkdown() {
+		createDirectory(tempDir.resolve("nested.md"));
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
+	@Test
+	void passesWhenModelIsAllowed() {
+		writeString(tempDir.resolve("review.md"), """
+				---
+				model: claude-opus-4-8
+				---
+				Review the diff.
+				""");
+		CommandFormatRule rule = ruleFor(tempDir);
+		rule.setAllowedModels(List.of("claude-opus-4-8", "claude-sonnet-4-6"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void reportsEveryCommandProblemTogether() {
+		writeString(tempDir.resolve("blank.md"), "   ");
+		writeString(tempDir.resolve("BadName.md"), "Review the pull request.");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("blank.md"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("BadName.md"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenNotConfigured() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new CommandFormatRule()::execute);
 		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
@@ -142,6 +173,14 @@ class CommandFormatRuleTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static void createDirectory(Path dir) {
+		try {
+			Files.createDirectory(dir);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not create " + dir, e);
 		}
 	}
 }

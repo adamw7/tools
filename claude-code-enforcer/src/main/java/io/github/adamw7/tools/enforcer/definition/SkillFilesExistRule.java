@@ -56,9 +56,9 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		verifyDirectory();
+		DefinitionFiles.verifyDirectory(skillsDir, "Skills");
 		List<String> violations = new ArrayList<>();
-		for (File skillDirectory : listSkillDirectories()) {
+		for (File skillDirectory : DefinitionFiles.subdirectories(skillsDir)) {
 			collectSkillViolations(skillDirectory, violations);
 		}
 		report("Skill files are not well formed:", violations);
@@ -68,17 +68,6 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 		if (skillsDir == null) {
 			throw new EnforcerRuleException("The skillsDir parameter is not configured");
 		}
-	}
-
-	private void verifyDirectory() throws EnforcerRuleException {
-		if (!skillsDir.isDirectory()) {
-			throw new EnforcerRuleException("Skills directory does not exist at " + skillsDir);
-		}
-	}
-
-	private File[] listSkillDirectories() {
-		File[] skillDirectories = skillsDir.listFiles(File::isDirectory);
-		return skillDirectories != null ? skillDirectories : new File[0];
 	}
 
 	private void collectSkillViolations(File skillDirectory, List<String> violations) {

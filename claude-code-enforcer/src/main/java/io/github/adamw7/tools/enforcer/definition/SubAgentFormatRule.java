@@ -30,7 +30,6 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 @Named("subAgentFormat")
 public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final String MARKDOWN_SUFFIX = ".md";
 	private static final String NAME_KEY = "name";
 	private static final String DESCRIPTION_KEY = "description";
 	private static final String MODEL_KEY = "model";
@@ -48,9 +47,9 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		verifyDirectory();
+		DefinitionFiles.verifyDirectory(agentsDir, "Agents");
 		List<String> violations = new ArrayList<>();
-		for (File definition : listDefinitions()) {
+		for (File definition : DefinitionFiles.markdownFiles(agentsDir)) {
 			collectDefinitionViolations(definition, violations);
 		}
 		report("Sub-agent files are not well formed:", violations);
@@ -60,21 +59,6 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 		if (agentsDir == null) {
 			throw new EnforcerRuleException("The agentsDir parameter is not configured");
 		}
-	}
-
-	private void verifyDirectory() throws EnforcerRuleException {
-		if (!agentsDir.isDirectory()) {
-			throw new EnforcerRuleException("Agents directory does not exist at " + agentsDir);
-		}
-	}
-
-	private File[] listDefinitions() {
-		File[] definitions = agentsDir.listFiles(this::isMarkdownFile);
-		return definitions != null ? definitions : new File[0];
-	}
-
-	private boolean isMarkdownFile(File file) {
-		return file.isFile() && file.getName().endsWith(MARKDOWN_SUFFIX);
 	}
 
 	private void collectDefinitionViolations(File definition, List<String> violations) {
@@ -112,7 +96,7 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	private void collectNameViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		frontMatter.value(NAME_KEY).ifPresent(
-				name -> NameConvention.collect(name, baseName(definition), definition.toString(), violations));
+				name -> NameConvention.collect(name, DefinitionFiles.baseName(definition), definition.toString(), violations));
 	}
 
 	private void collectModelViolations(File definition, FrontMatter frontMatter, List<String> violations) {
@@ -126,11 +110,6 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 		if (!allowedModels.contains(model)) {
 			violations.add("Sub-agent declares unsupported model '" + model + "' in: " + definition);
 		}
-	}
-
-	private String baseName(File definition) {
-		String name = definition.getName();
-		return name.substring(0, name.length() - MARKDOWN_SUFFIX.length());
 	}
 
 	private List<String> requiredKeys() {

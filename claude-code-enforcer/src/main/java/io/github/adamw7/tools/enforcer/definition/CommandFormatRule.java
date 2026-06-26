@@ -33,7 +33,6 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 @Named("commandFormat")
 public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final String MARKDOWN_SUFFIX = ".md";
 	private static final String DESCRIPTION_KEY = "description";
 	private static final String MODEL_KEY = "model";
 
@@ -49,9 +48,9 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		verifyDirectory();
+		DefinitionFiles.verifyDirectory(commandsDir, "Commands");
 		List<String> violations = new ArrayList<>();
-		for (File command : listCommands()) {
+		for (File command : DefinitionFiles.markdownFiles(commandsDir)) {
 			collectCommandViolations(command, violations);
 		}
 		report("Command files are not well formed:", violations);
@@ -61,21 +60,6 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 		if (commandsDir == null) {
 			throw new EnforcerRuleException("The commandsDir parameter is not configured");
 		}
-	}
-
-	private void verifyDirectory() throws EnforcerRuleException {
-		if (!commandsDir.isDirectory()) {
-			throw new EnforcerRuleException("Commands directory does not exist at " + commandsDir);
-		}
-	}
-
-	private File[] listCommands() {
-		File[] commands = commandsDir.listFiles(this::isMarkdownFile);
-		return commands != null ? commands : new File[0];
-	}
-
-	private boolean isMarkdownFile(File file) {
-		return file.isFile() && file.getName().endsWith(MARKDOWN_SUFFIX);
 	}
 
 	private void collectCommandViolations(File command, List<String> violations) {
@@ -88,7 +72,7 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectNonEmptyViolations(File command, String content, List<String> violations) {
-		String baseName = baseName(command);
+		String baseName = DefinitionFiles.baseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
 		FrontMatter.parse(content)
 				.ifPresent(frontMatter -> collectFrontMatterViolations(command, frontMatter, violations));
@@ -136,11 +120,6 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 		if (!allowedModels.contains(model)) {
 			violations.add("Command declares unsupported model '" + model + "' in: " + command);
 		}
-	}
-
-	private String baseName(File command) {
-		String name = command.getName();
-		return name.substring(0, name.length() - MARKDOWN_SUFFIX.length());
 	}
 
 	void setCommandsDir(File commandsDir) {

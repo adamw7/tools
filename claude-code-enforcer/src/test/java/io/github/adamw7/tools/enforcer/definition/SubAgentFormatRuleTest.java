@@ -40,6 +40,23 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
+	void ignoresSubdirectoriesNamedLikeMarkdown() {
+		createDirectory(tempDir.resolve("nested.md"));
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
+	@Test
+	void reportsEveryDefinitionProblemTogether() {
+		writeString(tempDir.resolve("reviewer.md"), "# Reviewer\nNo front matter.");
+		writeString(tempDir.resolve("planner.md"), "# Planner\nNo front matter either.");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("reviewer.md"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("planner.md"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenNotConfigured() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new SubAgentFormatRule()::execute);
 		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
@@ -128,6 +145,14 @@ class SubAgentFormatRuleTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static void createDirectory(Path dir) {
+		try {
+			Files.createDirectory(dir);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not create " + dir, e);
 		}
 	}
 }

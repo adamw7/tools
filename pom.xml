@@ -39,6 +39,7 @@
 	</scm>
 	<modules>
 		<module>claude-code-enforcer</module>
+		<module>mcp-common</module>
 		<module>data</module>
 		<module>code</module>
 		<module>grpc-example</module>

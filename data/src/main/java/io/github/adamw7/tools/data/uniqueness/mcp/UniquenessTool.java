@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,12 +14,13 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
+import io.github.adamw7.tools.mcp.McpTool;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 @Component
-public class UniquenessTool implements Function<Map<String, Object>, CallToolResult> {
+public class UniquenessTool implements McpTool {
 	
 	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 

@@ -33,6 +33,7 @@ See [README.md](README.md) for worked code examples of each capability.
 ```
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer        # custom maven-enforcer rule validating CLAUDE.md
+├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
@@ -44,7 +45,8 @@ tools (root pom, packaging=pom)
 └── data-test                   # standalone test module for the data module
 ```
 
-Root reactor modules are `claude-code-enforcer`, `data`, `code`, and `assembly`.
+Root reactor modules are `claude-code-enforcer`, `mcp-common`, `data`, `code`,
+and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 

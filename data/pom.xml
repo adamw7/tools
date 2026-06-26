@@ -79,6 +79,11 @@
 	</dependencyManagement>
 	<dependencies>
 		<dependency>
+			<groupId>io.github.adamw7</groupId>
+			<artifactId>tools.mcp-common</artifactId>
+			<version>${revision}</version>
+		</dependency>
+		<dependency>
 			<groupId>io.modelcontextprotocol.sdk</groupId>
 			<artifactId>mcp-json-jackson2</artifactId>
 		</dependency>

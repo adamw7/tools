@@ -92,7 +92,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		}
 
 		if (!inlineValues.isEmpty()) {
-			parseInlineArray(key, inlineValues);
+			ToonSyntax.emitInlineArray(fieldsMap::put, key, inlineValues);
 			return index + 1;
 		}
 
@@ -100,16 +100,12 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 	}
 
 	private int parseTabularArray(List<String> lines, int startIndex, String arrayKey, int count, String fieldsStr, String inlineValues) {
-		String[] fields = fieldsStr.split(",");
-		fieldsMap.put(arrayKey, String.valueOf(count));
-
-		for (String field : fields) {
-			fieldsMap.put(field.trim(), field.trim());
-		}
+		String[] fields = ToonSyntax.splitFields(fieldsStr);
+		ToonSyntax.emitTabularHeader(fieldsMap::put, arrayKey, count, fields);
 
 		int rowIndex = 0;
 		if (inlineValues != null && !inlineValues.trim().isEmpty()) {
-			parseTabularRow(arrayKey, fields, inlineValues.trim(), rowIndex++);
+			ToonSyntax.emitTabularRow(fieldsMap::put, arrayKey, fields, inlineValues.trim(), rowIndex++);
 		}
 
 		return parseTabularRows(lines, startIndex + 1, arrayKey, count, rowIndex, fields);
@@ -122,7 +118,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		while (i < lines.size() && rowIndex < count && !isNewSection(lines, i)) {
 			String trimmed = lines.get(i).trim();
 			if (!trimmed.isEmpty()) {
-				parseTabularRow(arrayKey, fields, trimmed, rowIndex++);
+				ToonSyntax.emitTabularRow(fieldsMap::put, arrayKey, fields, trimmed, rowIndex++);
 			}
 			i++;
 		}
@@ -132,36 +128,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 
 	private boolean isNewSection(List<String> lines, int index) {
 		String line = lines.get(index);
-		String trimmed = line.trim();
-
-		if (trimmed.isEmpty()) {
-			return false;
-		}
-
-		boolean isTopLevel = ToonSyntax.indentationOf(line) == 0;
-		boolean isKeyValue = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed).matches();
-		boolean isArrayHeader = ToonSyntax.ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
-
-		return isTopLevel && (isKeyValue || isArrayHeader);
-	}
-
-	private void parseTabularRow(String arrayKey, String[] fields, String rowData, int rowIndex) {
-		String[] values = ToonSyntax.splitRow(rowData);
-		int limit = Math.min(fields.length, values.length);
-
-		for (int j = 0; j < limit; j++) {
-			String key = arrayKey + "[" + rowIndex + "]." + fields[j].trim();
-			fieldsMap.put(key, ToonSyntax.unquote(values[j].trim()));
-		}
-	}
-
-	private void parseInlineArray(String key, String values) {
-		String[] items = ToonSyntax.splitRow(values);
-		fieldsMap.put(key, String.valueOf(items.length));
-
-		for (int j = 0; j < items.length; j++) {
-			fieldsMap.put(key + "[" + j + "]", ToonSyntax.unquote(items[j].trim()));
-		}
+		return ToonSyntax.isTopLevelSection(ToonSyntax.indentationOf(line), line.trim());
 	}
 
 	private int parseNestedArray(List<String> lines, int startIndex, String arrayKey, int count) {
@@ -173,7 +140,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 			String line = lines.get(i);
 			String trimmed = line.trim();
 
-			if (shouldExitNestedContext(trimmed, ToonSyntax.indentationOf(line), baseIndent)) {
+			if (shouldExitNested(trimmed, ToonSyntax.indentationOf(line), baseIndent)) {
 				fieldsMap.put(arrayKey, String.valueOf(count));
 				return i;
 			}
@@ -199,14 +166,10 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		return 0;
 	}
 
-	private boolean shouldExitNestedContext(String trimmed, int currentIndent, int baseIndent) {
-		return !trimmed.isEmpty() && baseIndent > 0 && currentIndent < baseIndent;
-	}
-
 	private int processListItem(String arrayKey, String trimmed, int itemIndex) {
 		String content = trimmed.substring(1).trim();
 
-		if (isArrayHeader(content)) {
+		if (ToonSyntax.ARRAY_HEADER_PATTERN.matcher(content).matches()) {
 			return itemIndex;
 		}
 
@@ -215,10 +178,6 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		}
 
 		return itemIndex + 1;
-	}
-
-	private boolean isArrayHeader(String content) {
-		return ToonSyntax.ARRAY_HEADER_PATTERN.matcher(content).matches();
 	}
 
 	private int parseNestedObject(List<String> lines, int startIndex, String parentKey) {
@@ -230,7 +189,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 			String trimmed = line.trim();
 			int currentIndent = ToonSyntax.indentationOf(line);
 
-			if (shouldExitNestedObject(trimmed, currentIndent, baseIndent)) {
+			if (shouldExitNested(trimmed, currentIndent, baseIndent)) {
 				return i;
 			}
 
@@ -244,7 +203,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		return i;
 	}
 
-	private boolean shouldExitNestedObject(String trimmed, int currentIndent, int baseIndent) {
+	private boolean shouldExitNested(String trimmed, int currentIndent, int baseIndent) {
 		return !trimmed.isEmpty() && baseIndent > 0 && currentIndent < baseIndent;
 	}
 

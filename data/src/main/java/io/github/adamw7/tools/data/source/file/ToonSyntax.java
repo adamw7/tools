@@ -2,12 +2,16 @@ package io.github.adamw7.tools.data.source.file;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 
 /**
- * Lexical helpers shared by the TOON (Token-Oriented Object Notation) data sources:
- * the line patterns, indentation measurement and value tokenising used to interpret a
- * single line of TOON text.
+ * Lexical and grammar helpers shared by the TOON (Token-Oriented Object Notation) data sources:
+ * the line patterns, indentation measurement and value tokenising used to interpret a single
+ * line of TOON text, plus the rules that flatten array headers and rows into {@code key/value}
+ * pairs. The pairs are handed to a {@link BiConsumer} sink so the in-memory source can collect
+ * them in a map while the iterable source enqueues them as rows, without either re-implementing
+ * the grammar.
  */
 final class ToonSyntax {
 
@@ -15,6 +19,56 @@ final class ToonSyntax {
 	static final Pattern KEY_VALUE_PATTERN = Pattern.compile("^(\\w+(?:\\.\\w+)*):\\s*(.*)$");
 
 	private ToonSyntax() {
+	}
+
+	/**
+	 * Whether {@code trimmed} at the given indentation starts a new top-level section, i.e. a
+	 * key-value pair or array header at column zero. Used to detect where a tabular array's rows
+	 * end and the surrounding document resumes.
+	 */
+	static boolean isTopLevelSection(int indent, String trimmed) {
+		if (indent != 0 || trimmed.isEmpty()) {
+			return false;
+		}
+		return KEY_VALUE_PATTERN.matcher(trimmed).matches()
+				|| ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
+	}
+
+	/** Splits a comma-separated tabular field list, trimming each field name. */
+	static String[] splitFields(String fieldsText) {
+		String[] raw = fieldsText.split(",");
+		String[] trimmed = new String[raw.length];
+		for (int i = 0; i < raw.length; i++) {
+			trimmed[i] = raw[i].trim();
+		}
+		return trimmed;
+	}
+
+	/** Emits the header pairs of a tabular array: its declared count, then each field as its own key. */
+	static void emitTabularHeader(BiConsumer<String, String> sink, String arrayKey, int count, String[] fields) {
+		sink.accept(arrayKey, String.valueOf(count));
+		for (String field : fields) {
+			sink.accept(field, field);
+		}
+	}
+
+	/** Emits one tabular row as {@code arrayKey[rowIndex].field = value} pairs, ignoring surplus values. */
+	static void emitTabularRow(BiConsumer<String, String> sink, String arrayKey, String[] fields,
+			String rowData, int rowIndex) {
+		String[] values = splitRow(rowData);
+		int limit = Math.min(fields.length, values.length);
+		for (int j = 0; j < limit; j++) {
+			sink.accept(arrayKey + "[" + rowIndex + "]." + fields[j], unquote(values[j].trim()));
+		}
+	}
+
+	/** Emits an inline primitive array as its element count followed by each {@code key[j] = value} pair. */
+	static void emitInlineArray(BiConsumer<String, String> sink, String key, String values) {
+		String[] items = splitRow(values);
+		sink.accept(key, String.valueOf(items.length));
+		for (int j = 0; j < items.length; j++) {
+			sink.accept(key + "[" + j + "]", unquote(items[j].trim()));
+		}
 	}
 
 	static int indentationOf(String line) {

@@ -2,9 +2,12 @@ package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 
 import org.junit.jupiter.api.Test;
@@ -119,5 +122,58 @@ public class ToonSyntaxTest {
 		assertEquals("rows", matcher.group(1));
 		assertEquals("2", matcher.group(2));
 		assertEquals("id,name", matcher.group(4));
+	}
+
+	@Test
+	public void topLevelSectionRecognisesKeyValueAtColumnZero() {
+		assertTrue(ToonSyntax.isTopLevelSection(0, "name: value"));
+	}
+
+	@Test
+	public void topLevelSectionRecognisesArrayHeaderAtColumnZero() {
+		assertTrue(ToonSyntax.isTopLevelSection(0, "rows[2]{id,name}:"));
+	}
+
+	@Test
+	public void indentedLineIsNotTopLevelSection() {
+		assertFalse(ToonSyntax.isTopLevelSection(2, "name: value"));
+	}
+
+	@Test
+	public void emptyLineIsNotTopLevelSection() {
+		assertFalse(ToonSyntax.isTopLevelSection(0, ""));
+	}
+
+	@Test
+	public void splitFieldsTrimsEachName() {
+		assertArrayEquals(new String[] { "id", "name", "age" }, ToonSyntax.splitFields("id, name , age"));
+	}
+
+	@Test
+	public void emitTabularHeaderEmitsCountThenFields() {
+		Map<String, String> sink = new LinkedHashMap<>();
+		ToonSyntax.emitTabularHeader(sink::put, "rows", 3, new String[] { "id", "name" });
+		assertEquals("3", sink.get("rows"));
+		assertEquals("id", sink.get("id"));
+		assertEquals("name", sink.get("name"));
+	}
+
+	@Test
+	public void emitTabularRowFlattensValuesAndIgnoresSurplus() {
+		Map<String, String> sink = new LinkedHashMap<>();
+		ToonSyntax.emitTabularRow(sink::put, "rows", new String[] { "id", "name" }, "7,\"Alice\",extra", 1);
+		assertEquals("7", sink.get("rows[1].id"));
+		assertEquals("Alice", sink.get("rows[1].name"));
+		assertEquals(2, sink.size());
+	}
+
+	@Test
+	public void emitInlineArrayEmitsLengthThenElements() {
+		Map<String, String> sink = new LinkedHashMap<>();
+		ToonSyntax.emitInlineArray(sink::put, "tags", "a, b, c");
+		assertEquals("3", sink.get("tags"));
+		assertEquals("a", sink.get("tags[0]"));
+		assertEquals("b", sink.get("tags[1]"));
+		assertEquals("c", sink.get("tags[2]"));
 	}
 }

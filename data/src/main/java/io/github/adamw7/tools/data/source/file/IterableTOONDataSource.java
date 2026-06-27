@@ -140,18 +140,15 @@ public class IterableTOONDataSource extends AbstractIterableFileSource {
 		if (fields != null && !fields.isEmpty()) {
 			startTabular(arrayKey, count, indent, fields, inline);
 		} else if (!inline.isEmpty()) {
-			parseInlineArray(arrayKey, inline);
+			ToonSyntax.emitInlineArray(this::enqueue, arrayKey, inline);
 		} else {
 			block = new NestedArrayBlock(arrayKey, count);
 		}
 	}
 
 	private void startTabular(String arrayKey, int count, int indent, String fieldsText, String inline) {
-		String[] fields = splitFields(fieldsText);
-		enqueue(arrayKey, String.valueOf(count));
-		for (String field : fields) {
-			enqueue(field, field);
-		}
+		String[] fields = ToonSyntax.splitFields(fieldsText);
+		ToonSyntax.emitTabularHeader(this::enqueue, arrayKey, count, fields);
 
 		TabularBlock tabular = new TabularBlock(arrayKey, fields, count);
 		block = tabular;
@@ -161,23 +158,6 @@ public class IterableTOONDataSource extends AbstractIterableFileSource {
 			if (tabular.isComplete()) {
 				closeBlock();
 			}
-		}
-	}
-
-	private String[] splitFields(String fieldsText) {
-		String[] raw = fieldsText.split(",");
-		String[] trimmed = new String[raw.length];
-		for (int i = 0; i < raw.length; i++) {
-			trimmed[i] = raw[i].trim();
-		}
-		return trimmed;
-	}
-
-	private void parseInlineArray(String arrayKey, String inline) {
-		String[] items = ToonSyntax.splitRow(inline);
-		enqueue(arrayKey, String.valueOf(items.length));
-		for (int j = 0; j < items.length; j++) {
-			enqueue(arrayKey + "[" + j + "]", ToonSyntax.unquote(items[j].trim()));
 		}
 	}
 
@@ -223,24 +203,12 @@ public class IterableTOONDataSource extends AbstractIterableFileSource {
 
 		@Override
 		boolean continues(int indent, String trimmed) {
-			return rowIndex < count && !isNewSection(indent, trimmed);
-		}
-
-		private boolean isNewSection(int indent, String trimmed) {
-			if (indent != 0) {
-				return false;
-			}
-			return ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed).matches()
-					|| ToonSyntax.ARRAY_HEADER_PATTERN.matcher(trimmed).matches();
+			return rowIndex < count && !ToonSyntax.isTopLevelSection(indent, trimmed);
 		}
 
 		@Override
 		void consume(int indent, String trimmed) {
-			String[] values = ToonSyntax.splitRow(trimmed);
-			int limit = Math.min(fields.length, values.length);
-			for (int j = 0; j < limit; j++) {
-				enqueue(arrayKey + "[" + rowIndex + "]." + fields[j], ToonSyntax.unquote(values[j].trim()));
-			}
+			ToonSyntax.emitTabularRow(IterableTOONDataSource.this::enqueue, arrayKey, fields, trimmed, rowIndex);
 			rowIndex++;
 		}
 

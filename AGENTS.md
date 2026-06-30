@@ -246,9 +246,10 @@ ordinary and CI builds never need GPG keys or Central credentials. The release
 job requires four repository secrets: `MAVEN_CENTRAL_USERNAME` and
 `MAVEN_CENTRAL_PASSWORD` (a Central Portal user token), plus
 `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing key). Only the
-reusable library modules are published; the example/test/app modules
-(`grpc-example`, `protogen-maven-plugin-test`, `assembly`) set
-`maven.deploy.skip` and are excluded from both deployments.
+reusable library modules are published to Central; the example/test/app modules
+(`grpc-example`, `protogen-maven-plugin-test`, `assembly`) set the
+central-publishing plugin's `skipPublishing` property, so they are left out of
+the Central bundle while still deploying to GitHub Packages as before.
 
 To publish from a workstation: `mvn -P release deploy` with the same `central`
 server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.

@@ -16,6 +16,8 @@ Library of tooling for various purposes.
   - [Token-budget-aware context](#token-budget-aware-context)
 - [Data](#data)
   - [Open-addressing map](#open-addressing-map)
+  - [Open-addressing set](#open-addressing-set)
+  - [Primitive int-keyed map](#primitive-int-keyed-map)
   - [Network kill-switch](#network-kill-switch)
 - [Building](#building)
 - [Releasing](#releasing)
@@ -559,6 +561,50 @@ Caveats:
   mapped to a `null` value is reported as absent. Avoid storing `null` values.
 - It is **not thread-safe**; guard external synchronization if shared across
   threads.
+
+### Open-addressing set
+
+`OpenAddressingSet<E>` is a `java.util.Set` backed by an `OpenAddressingMap`, in
+the same way that `java.util.HashSet` is backed by a `java.util.HashMap`.
+Elements are stored as keys of the underlying map against a shared sentinel
+value, so all of the open-addressing behaviour (double hashing, tombstone
+removal and automatic resizing) is **reused rather than re-implemented**.
+
+```java
+Set<String> set = new OpenAddressingSet<>(); // default capacity 64
+set.add("a");          // true  (newly added)
+set.add("a");          // false (already present)
+set.contains("a");     // true
+set.remove("a");       // true
+```
+
+It inherits the map's caveats: **null elements are not supported** (they are
+rejected with `IllegalArgumentException`) and it is **not thread-safe**. The
+initial capacity can be set via `new OpenAddressingSet<>(size)`.
+
+### Primitive int-keyed map
+
+`IntKeyOpenAddressingMap<V>` is a primitive `int`-keyed sibling of
+`OpenAddressingMap`. It uses the same double-hashing open-addressing strategy,
+but stores keys in an `int[]` so that lookups and inserts **never box the key**.
+That makes it an allocation-light choice for large, integer-keyed maps where the
+autoboxing of a `Map<Integer, V>` would otherwise dominate.
+
+```java
+IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
+map.put(1, "a");
+map.get(1);              // "a"
+map.getOrDefault(2, ""); // ""  (absent)
+map.remove(1);           // "a"
+int[] keys = map.keys(); // live keys, unboxed
+```
+
+It deliberately does **not** implement `java.util.Map`, because that interface is
+defined in terms of `Object` keys and would reintroduce the very boxing this
+class exists to avoid; instead it mirrors the relevant map operations with
+primitive `int` keys. Unlike `OpenAddressingMap`, **`null` values are stored
+faithfully** and reported by `containsKey(int)` — only `get(int)` cannot tell a
+stored `null` from an absent key. It is **not thread-safe**.
 
 ### Network kill-switch
 

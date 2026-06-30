@@ -202,6 +202,24 @@ class SkillFilesExistRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("broken-skill")), logger.warnings().toString());
 	}
 
+	@Test
+	void autoFixRepairsAMissingClosingDelimiter() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		Path file = skillDir.resolve("SKILL.md");
+		writeString(file, """
+				---
+				name: git-commit
+				description: A skill named git-commit.
+				# Body
+				""");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setAutoFix(true);
+		rule.setLog(new CapturingLogger());
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(readString(file).contains("---\n# Body"), readString(file));
+	}
+
 	private void createSkill(String name) {
 		Path skillDir = createDirectory(tempDir.resolve(name));
 		writeString(skillDir.resolve("SKILL.md"), """
@@ -224,6 +242,14 @@ class SkillFilesExistRuleTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static String readString(Path file) {
+		try {
+			return Files.readString(file);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not read " + file, e);
 		}
 	}
 

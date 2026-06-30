@@ -14,6 +14,8 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
+
 class SubAgentFormatRuleTest {
 
 	@TempDir
@@ -123,6 +125,36 @@ class SubAgentFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	@Test
+	void autoFixRepairsAMissingClosingDelimiter() {
+		Path file = tempDir.resolve("reviewer.md");
+		writeString(file, """
+				---
+				name: reviewer
+				description: Reviews code.
+				# Reviewer
+				""");
+		SubAgentFormatRule rule = ruleFor(tempDir);
+		rule.setAutoFix(true);
+		rule.setLog(new CapturingLogger());
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(readString(file).contains("---\n# Reviewer"), readString(file));
+	}
+
+	@Test
+	void malformedFrontMatterStillFailsWithoutAutoFix() {
+		writeString(tempDir.resolve("reviewer.md"), """
+				---
+				name: reviewer
+				description: Reviews code.
+				# Reviewer
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
+	}
+
 	private void createAgent(String name, String model) {
 		writeString(tempDir.resolve(name + ".md"), """
 				---
@@ -145,6 +177,14 @@ class SubAgentFormatRuleTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static String readString(Path file) {
+		try {
+			return Files.readString(file);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not read " + file, e);
 		}
 	}
 

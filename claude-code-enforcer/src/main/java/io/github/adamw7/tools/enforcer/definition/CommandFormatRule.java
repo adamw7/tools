@@ -45,6 +45,9 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	/** Optional whitelist of model identifiers a command may declare. */
 	private List<String> allowedModels;
 
+	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
+	private boolean autoFix;
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
@@ -74,7 +77,8 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectNonEmptyViolations(File command, String content, List<String> violations) {
 		String baseName = DefinitionFiles.baseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
-		FrontMatter.parse(content)
+		String fixed = FrontMatterAutoFix.apply(command, "command definition", content, autoFix, getLog());
+		FrontMatter.parse(fixed)
 				.ifPresent(frontMatter -> collectFrontMatterViolations(command, frontMatter, violations));
 	}
 
@@ -132,6 +136,10 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setAllowedModels(List<String> allowedModels) {
 		this.allowedModels = allowedModels;
+	}
+
+	void setAutoFix(boolean autoFix) {
+		this.autoFix = autoFix;
 	}
 
 	@Override

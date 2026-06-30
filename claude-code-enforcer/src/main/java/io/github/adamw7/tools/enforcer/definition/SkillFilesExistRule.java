@@ -53,6 +53,9 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 	/** Maximum allowed description length. */
 	private int maxDescriptionLength = DEFAULT_MAX_DESCRIPTION_LENGTH;
 
+	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
+	private boolean autoFix;
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
@@ -84,7 +87,8 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 		if (content.isBlank()) {
 			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
 		} else {
-			collectFrontMatterViolations(skillDirectory, skillFile, content, violations);
+			String fixed = FrontMatterAutoFix.apply(skillFile, SKILL_FILE_NAME, content, autoFix, getLog());
+			collectFrontMatterViolations(skillDirectory, skillFile, fixed, violations);
 		}
 	}
 
@@ -168,6 +172,10 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	void setMaxDescriptionLength(int maxDescriptionLength) {
 		this.maxDescriptionLength = maxDescriptionLength;
+	}
+
+	void setAutoFix(boolean autoFix) {
+		this.autoFix = autoFix;
 	}
 
 	@Override

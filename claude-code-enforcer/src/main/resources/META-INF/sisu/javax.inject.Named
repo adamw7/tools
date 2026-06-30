@@ -8,3 +8,6 @@ io.github.adamw7.tools.enforcer.definition.CommandFormatRule
 io.github.adamw7.tools.enforcer.settings.HookCommandsValidRule
 io.github.adamw7.tools.enforcer.mcp.McpServersValidRule
 io.github.adamw7.tools.enforcer.definition.UniqueNamesRule
+io.github.adamw7.tools.enforcer.settings.HooksFormatRule
+io.github.adamw7.tools.enforcer.mcp.McpConfigFormatRule
+io.github.adamw7.tools.enforcer.definition.UniqueDescriptionsRule

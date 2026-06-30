@@ -161,7 +161,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public void clear() {
-		initArray(size >= array.length ? newSize() : size);
+		initArray(size >= array.length ? newSize() : Math.max(size, 1));
 		size = 0;
 	}
 

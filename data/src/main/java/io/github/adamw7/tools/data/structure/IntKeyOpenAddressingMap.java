@@ -1,0 +1,209 @@
+package io.github.adamw7.tools.data.structure;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import io.github.adamw7.tools.data.structure.internal.Primes;
+
+/**
+ * A primitive {@code int}-keyed sibling of {@link OpenAddressingMap}. It uses
+ * the same double-hashing open-addressing strategy, but stores keys in an
+ * {@code int[]} so that lookups and inserts never box the key. This makes it an
+ * allocation-light choice for large, integer-keyed maps where the autoboxing of
+ * a {@code Map<Integer, V>} would dominate.
+ *
+ * <p>It deliberately does <em>not</em> implement {@link java.util.Map}, because
+ * that interface is defined in terms of {@code Object} keys and would reintroduce
+ * the boxing this class exists to avoid. The API mirrors the relevant map
+ * operations with primitive {@code int} keys instead.
+ *
+ * <p>Unlike {@link OpenAddressingMap}, {@code null} values are stored faithfully
+ * and reported by {@link #containsKey(int)}; only {@link #get(int)} cannot tell a
+ * stored {@code null} from an absent key. The class is not thread-safe.
+ */
+public class IntKeyOpenAddressingMap<V> {
+
+	private static final double MULTIPLIER = 1.2;
+	static final int DEFAULT_SIZE = 64;
+
+	private static final byte EMPTY = 0;
+	private static final byte LIVE = 1;
+	private static final byte TOMBSTONE = 2;
+
+	private int prime;
+	private int[] keys;
+	private V[] values;
+	private byte[] state;
+	private int size;
+
+	public IntKeyOpenAddressingMap(int size) {
+		initArrays(size);
+	}
+
+	public IntKeyOpenAddressingMap() {
+		this(DEFAULT_SIZE);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void initArrays(int size) {
+		if (size <= 0) {
+			throw new IllegalArgumentException("Wrong size: " + size);
+		}
+		int newSize = Math.max(size, 3); // array of size 2 would force prime = 1
+		keys = new int[newSize];
+		values = (V[]) new Object[newSize];
+		state = new byte[newSize];
+		prime = Primes.findMaxSmallerThan(newSize);
+	}
+
+	public int size() {
+		return size;
+	}
+
+	public boolean isEmpty() {
+		return size == 0;
+	}
+
+	public boolean containsKey(int key) {
+		return indexOf(key) >= 0;
+	}
+
+	public boolean containsValue(Object value) {
+		return values().contains(value);
+	}
+
+	public V get(int key) {
+		int index = indexOf(key);
+		return index < 0 ? null : values[index];
+	}
+
+	public V getOrDefault(int key, V defaultValue) {
+		int index = indexOf(key);
+		return index < 0 ? defaultValue : values[index];
+	}
+
+	/**
+	 * Probes the double-hashing sequence for {@code key} and returns the index of
+	 * its live slot, or {@code -1} when the key is absent. An {@link #EMPTY} slot
+	 * ends the search; {@link #TOMBSTONE} slots are skipped because live entries
+	 * may sit past them in the probe chain.
+	 */
+	private int indexOf(int key) {
+		for (int i = 0; i < keys.length; ++i) {
+			int index = hash(key, i);
+			if (state[index] == EMPTY) {
+				return -1;
+			}
+			if (state[index] == LIVE && keys[index] == key) {
+				return index;
+			}
+		}
+		return -1;
+	}
+
+	private int hash(int key, int iteration) {
+		// double hashing, matching OpenAddressingMap
+		int hashCode = Integer.hashCode(key);
+		int h1 = h1(hashCode);
+		int h2 = h2(hashCode);
+		return Math.abs((h1 + (iteration * h2)) % keys.length);
+	}
+
+	private int h2(int hashCode) {
+		return 1 + (Math.abs(hashCode) % (keys.length - 1));
+	}
+
+	private int h1(int hashCode) {
+		return prime - (hashCode % prime);
+	}
+
+	public V put(int key, V value) {
+		checkIfResizeNeeded();
+		for (int i = 0; i < keys.length; ++i) {
+			int index = hash(key, i);
+			if (state[index] == EMPTY) {
+				return insert(index, key, value);
+			} else if (state[index] == LIVE && keys[index] == key) {
+				return overwrite(index, value);
+			} // tombstones are skipped
+		}
+		resize();
+		return put(key, value);
+	}
+
+	private V insert(int index, int key, V value) {
+		keys[index] = key;
+		values[index] = value;
+		state[index] = LIVE;
+		size++;
+		return null;
+	}
+
+	private V overwrite(int index, V value) {
+		V previous = values[index];
+		values[index] = value;
+		return previous;
+	}
+
+	private void checkIfResizeNeeded() {
+		if (size + 1 >= keys.length) {
+			resize();
+		}
+	}
+
+	private void resize() {
+		int[] oldKeys = keys;
+		V[] oldValues = values;
+		byte[] oldState = state;
+		initArrays(newSize());
+		size = 0;
+		for (int i = 0; i < oldState.length; ++i) {
+			if (oldState[i] == LIVE) {
+				put(oldKeys[i], oldValues[i]);
+			}
+		}
+	}
+
+	public V remove(int key) {
+		int index = indexOf(key);
+		if (index < 0) {
+			return null;
+		}
+		V previous = values[index];
+		state[index] = TOMBSTONE;
+		values[index] = null;
+		size--;
+		return previous;
+	}
+
+	public void clear() {
+		initArrays(keys.length);
+		size = 0;
+	}
+
+	private int newSize() {
+		return (int) (keys.length * MULTIPLIER);
+	}
+
+	public int[] keys() {
+		int[] result = new int[size];
+		int next = 0;
+		for (int i = 0; i < state.length; ++i) {
+			if (state[i] == LIVE) {
+				result[next++] = keys[i];
+			}
+		}
+		return result;
+	}
+
+	public Collection<V> values() {
+		List<V> result = new ArrayList<>(size);
+		for (int i = 0; i < state.length; ++i) {
+			if (state[i] == LIVE) {
+				result.add(values[i]);
+			}
+		}
+		return result;
+	}
+}

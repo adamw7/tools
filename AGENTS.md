@@ -232,6 +232,27 @@ To release version `X`:
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.
 
+Creating the GitHub release fires two workflows:
+
+- `maven-publish.yml` deploys to **GitHub Packages** (the default `mvn deploy`,
+  using the `distributionManagement` repository).
+- `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
+  Portal. It runs `mvn -P release deploy`; the `release` profile attaches the
+  sources and javadoc jars, GPG-signs every artifact, and hands the bundle to
+  the `central-publishing-maven-plugin` (`autoPublish=true`).
+
+Maven Central publishing is **opt-in** through the `release` profile, so
+ordinary and CI builds never need GPG keys or Central credentials. The release
+job requires four repository secrets: `MAVEN_CENTRAL_USERNAME` and
+`MAVEN_CENTRAL_PASSWORD` (a Central Portal user token), plus
+`MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing key). Only the
+reusable library modules are published; the example/test/app modules
+(`grpc-example`, `protogen-maven-plugin-test`, `assembly`) set
+`maven.deploy.skip` and are excluded from both deployments.
+
+To publish from a workstation: `mvn -P release deploy` with the same `central`
+server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.
+
 ## Pull requests & commits
 
 - Use clear, descriptive, conventional commit messages.

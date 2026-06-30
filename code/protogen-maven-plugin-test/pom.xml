@@ -15,8 +15,9 @@
 		<!-- This module only exercises generated protobuf classes, so the
 		     instruction-coverage gate is not meaningful here. -->
 		<jacoco.skip>true</jacoco.skip>
-		<!-- Integration-test module, not a published library. -->
-		<maven.deploy.skip>true</maven.deploy.skip>
+		<!-- Integration-test module, not a published library; keep it out of
+		     the Maven Central deployment (release profile). -->
+		<skipPublishing>true</skipPublishing>
 	</properties>
 	<build>
 		<plugins>

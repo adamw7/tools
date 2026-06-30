@@ -51,6 +51,17 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 		return WARN.equalsIgnoreCase(severity);
 	}
 
+	/**
+	 * Fails when a required directory parameter was not configured, which is a
+	 * build-setup mistake rather than a content problem and so always fails
+	 * regardless of {@link #severity}.
+	 */
+	protected final void requireConfigured(Object parameter, String name) throws EnforcerRuleException {
+		if (parameter == null) {
+			throw new EnforcerRuleException("The " + name + " parameter is not configured");
+		}
+	}
+
 	public void setSeverity(String severity) {
 		this.severity = severity;
 	}

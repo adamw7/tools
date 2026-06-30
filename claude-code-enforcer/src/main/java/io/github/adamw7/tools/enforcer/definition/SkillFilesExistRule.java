@@ -58,19 +58,13 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
+		requireConfigured(skillsDir, "skillsDir");
 		DefinitionFiles.verifyDirectory(skillsDir, "Skills");
 		List<String> violations = new ArrayList<>();
 		for (File skillDirectory : DefinitionFiles.subdirectories(skillsDir)) {
 			collectSkillViolations(skillDirectory, violations);
 		}
 		report("Skill files are not well formed:", violations);
-	}
-
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (skillsDir == null) {
-			throw new EnforcerRuleException("The skillsDir parameter is not configured");
-		}
 	}
 
 	private void collectSkillViolations(File skillDirectory, List<String> violations) {

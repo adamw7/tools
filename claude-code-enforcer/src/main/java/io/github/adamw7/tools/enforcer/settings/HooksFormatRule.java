@@ -78,7 +78,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
+		requireConfigured(hooksDir, "hooksDir");
 		List<String> violations = new ArrayList<>();
 		List<File> scripts = scriptFiles();
 		for (File script : scripts) {
@@ -86,12 +86,6 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		collectWiringViolations(scripts, violations);
 		report("Hook scripts are not well formed:", violations);
-	}
-
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (hooksDir == null) {
-			throw new EnforcerRuleException("The hooksDir parameter is not configured");
-		}
 	}
 
 	private List<File> scriptFiles() {

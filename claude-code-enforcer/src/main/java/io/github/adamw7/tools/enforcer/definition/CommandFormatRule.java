@@ -34,7 +34,6 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String DESCRIPTION_KEY = "description";
-	private static final String MODEL_KEY = "model";
 
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
@@ -50,19 +49,13 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
+		requireConfigured(commandsDir, "commandsDir");
 		DefinitionFiles.verifyDirectory(commandsDir, "Commands");
 		List<String> violations = new ArrayList<>();
 		for (File command : DefinitionFiles.markdownFiles(commandsDir)) {
 			collectCommandViolations(command, violations);
 		}
 		report("Command files are not well formed:", violations);
-	}
-
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (commandsDir == null) {
-			throw new EnforcerRuleException("The commandsDir parameter is not configured");
-		}
 	}
 
 	private void collectCommandViolations(File command, List<String> violations) {
@@ -85,7 +78,7 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectFrontMatterViolations(File command, FrontMatter frontMatter, List<String> violations) {
 		collectUnknownKeys(command, frontMatter, violations);
 		collectDescriptionViolations(command, frontMatter, violations);
-		collectModelViolations(command, frontMatter, violations);
+		ModelAllowlist.collect(allowedModels, frontMatter, "Command", command, violations);
 	}
 
 	private void collectUnknownKeys(File command, FrontMatter frontMatter, List<String> violations) {
@@ -110,19 +103,6 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	private void addDescriptionViolation(File command, String description, List<String> violations) {
 		if (description.isBlank()) {
 			violations.add("Command description must not be empty in: " + command);
-		}
-	}
-
-	private void collectModelViolations(File command, FrontMatter frontMatter, List<String> violations) {
-		if (allowedModels == null) {
-			return;
-		}
-		frontMatter.value(MODEL_KEY).ifPresent(model -> addModelViolation(command, model, violations));
-	}
-
-	private void addModelViolation(File command, String model, List<String> violations) {
-		if (!allowedModels.contains(model)) {
-			violations.add("Command declares unsupported model '" + model + "' in: " + command);
 		}
 	}
 

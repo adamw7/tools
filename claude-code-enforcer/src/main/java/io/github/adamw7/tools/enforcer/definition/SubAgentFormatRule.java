@@ -32,7 +32,6 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String NAME_KEY = "name";
 	private static final String DESCRIPTION_KEY = "description";
-	private static final String MODEL_KEY = "model";
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of(NAME_KEY, DESCRIPTION_KEY);
 
 	/** The {@code .claude/agents} directory to scan. Injected from the rule configuration. */
@@ -49,19 +48,13 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
+		requireConfigured(agentsDir, "agentsDir");
 		DefinitionFiles.verifyDirectory(agentsDir, "Agents");
 		List<String> violations = new ArrayList<>();
 		for (File definition : DefinitionFiles.markdownFiles(agentsDir)) {
 			collectDefinitionViolations(definition, violations);
 		}
 		report("Sub-agent files are not well formed:", violations);
-	}
-
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (agentsDir == null) {
-			throw new EnforcerRuleException("The agentsDir parameter is not configured");
-		}
 	}
 
 	private void collectDefinitionViolations(File definition, List<String> violations) {
@@ -87,7 +80,7 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		collectMissingKeys(definition, frontMatter, violations);
 		collectNameViolations(definition, frontMatter, violations);
-		collectModelViolations(definition, frontMatter, violations);
+		ModelAllowlist.collect(allowedModels, frontMatter, "Sub-agent", definition, violations);
 	}
 
 	private void collectMissingKeys(File definition, FrontMatter frontMatter, List<String> violations) {
@@ -101,19 +94,6 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectNameViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		frontMatter.value(NAME_KEY).ifPresent(
 				name -> NameConvention.collect(name, DefinitionFiles.baseName(definition), definition.toString(), violations));
-	}
-
-	private void collectModelViolations(File definition, FrontMatter frontMatter, List<String> violations) {
-		if (allowedModels == null) {
-			return;
-		}
-		frontMatter.value(MODEL_KEY).ifPresent(model -> addModelViolation(definition, model, violations));
-	}
-
-	private void addModelViolation(File definition, String model, List<String> violations) {
-		if (!allowedModels.contains(model)) {
-			violations.add("Sub-agent declares unsupported model '" + model + "' in: " + definition);
-		}
 	}
 
 	private List<String> requiredKeys() {

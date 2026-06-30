@@ -11,7 +11,6 @@ import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -28,63 +27,19 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * Comparison ignores case and runs of whitespace, so {@code Reviews code.} and
  * {@code reviews   code.} are treated as the same description. Definitions with
  * no description, or a blank one, are skipped here because the format rules
- * already report those. The three directories ({@code commandsDir},
- * {@code agentsDir}, {@code skillsDir}) are each optional and at least one must
- * be configured; a configured directory must exist. All clashes are reported
- * together.
+ * already report those. All clashes are reported together.
  */
 @Named("uniqueDescriptions")
-public class UniqueDescriptionsRule extends ClaudeCodeEnforcerRule {
+public class UniqueDescriptionsRule extends MultiDefinitionRule {
 
 	private static final String DESCRIPTION_KEY = "description";
-	private static final String SKILL_FILE_NAME = "SKILL.md";
-
-	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
-	private File commandsDir;
-
-	/** The {@code .claude/agents} directory to scan. Injected from the rule configuration. */
-	private File agentsDir;
-
-	/** The {@code .claude/skills} directory to scan. Injected from the rule configuration. */
-	private File skillsDir;
 
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
 		Map<String, Description> byNormalizedText = new LinkedHashMap<>();
-		collectMarkdownDescriptions(commandsDir, "Commands", byNormalizedText);
-		collectMarkdownDescriptions(agentsDir, "Agents", byNormalizedText);
-		collectSkillDescriptions(skillsDir, byNormalizedText);
+		forEachDefinition((definitionFile, source, name) -> record(definitionFile, source, byNormalizedText));
 		report("Claude Code descriptions must be unique:", duplicates(byNormalizedText));
-	}
-
-	private void verifyConfigured() throws EnforcerRuleException {
-		if (commandsDir == null && agentsDir == null && skillsDir == null) {
-			throw new EnforcerRuleException(
-					"At least one of commandsDir, agentsDir or skillsDir must be configured");
-		}
-	}
-
-	private void collectMarkdownDescriptions(File directory, String label, Map<String, Description> byText)
-			throws EnforcerRuleException {
-		if (directory == null) {
-			return;
-		}
-		DefinitionFiles.verifyDirectory(directory, label);
-		for (File markdown : DefinitionFiles.markdownFiles(directory)) {
-			record(markdown, markdown, byText);
-		}
-	}
-
-	private void collectSkillDescriptions(File directory, Map<String, Description> byText)
-			throws EnforcerRuleException {
-		if (directory == null) {
-			return;
-		}
-		DefinitionFiles.verifyDirectory(directory, "Skills");
-		for (File skill : DefinitionFiles.subdirectories(directory)) {
-			record(new File(skill, SKILL_FILE_NAME), skill, byText);
-		}
 	}
 
 	private void record(File definitionFile, File source, Map<String, Description> byText) {
@@ -115,24 +70,6 @@ public class UniqueDescriptionsRule extends ClaudeCodeEnforcerRule {
 			description.addDuplicateViolation(violations);
 		}
 		return violations;
-	}
-
-	void setCommandsDir(File commandsDir) {
-		this.commandsDir = commandsDir;
-	}
-
-	void setAgentsDir(File agentsDir) {
-		this.agentsDir = agentsDir;
-	}
-
-	void setSkillsDir(File skillsDir) {
-		this.skillsDir = skillsDir;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("UniqueDescriptionsRule[commandsDir=%s, agentsDir=%s, skillsDir=%s]",
-				commandsDir, agentsDir, skillsDir);
 	}
 
 	/** A description's original text and the sources that declare an equivalent of it. */

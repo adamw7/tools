@@ -31,6 +31,20 @@ public final class MarkdownText {
 		}
 	}
 
+	/**
+	 * Writes {@code content} to {@code file} as UTF-8, overwriting any existing
+	 * content. An {@link IOException} is wrapped in an {@link UncheckedIOException}
+	 * describing the document, mirroring {@link #read} so a write failure surfaces
+	 * the same way.
+	 */
+	public static void write(File file, String content, String description) {
+		try {
+			Files.writeString(file.toPath(), content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + description + " at " + file, e);
+		}
+	}
+
 	/** Removes a single leading UTF-8 byte-order mark, if present. */
 	public static String stripByteOrderMark(String content) {
 		if (!content.isEmpty() && content.charAt(0) == BYTE_ORDER_MARK) {

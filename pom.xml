@@ -410,6 +410,9 @@
 										<uniqueNames>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</uniqueNames>
+										<uniqueDescriptions>
+											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
+										</uniqueDescriptions>
 										<settingsJsonValid>
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 										</settingsJsonValid>
@@ -417,9 +420,17 @@
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 											<projectDir>${project.basedir}</projectDir>
 										</hookCommandsValid>
+										<hooksFormat>
+											<hooksDir>${project.basedir}/.claude/hooks</hooksDir>
+											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
+											<projectDir>${project.basedir}</projectDir>
+										</hooksFormat>
 										<mcpServersValid>
 											<mcpFile>${project.basedir}/.mcp.json</mcpFile>
 										</mcpServersValid>
+										<mcpConfigFormat>
+											<mcpFile>${project.basedir}/.mcp.json</mcpFile>
+										</mcpConfigFormat>
 										<crossDocConsistency>
 											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
 											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>

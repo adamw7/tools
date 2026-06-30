@@ -162,6 +162,22 @@ class CommandFormatRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("blank.md")), logger.warnings().toString());
 	}
 
+	@Test
+	void autoFixRewritesMalformedFrontMatterInPlace() {
+		Path file = tempDir.resolve("review.md");
+		writeString(file, """
+				---
+				description: Reviews the diff.
+				Review the diff.
+				""");
+		CommandFormatRule rule = ruleFor(tempDir);
+		rule.setAutoFix(true);
+		rule.setLog(new CapturingLogger());
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(readString(file).contains("---\nReview the diff."), readString(file));
+	}
+
 	private CommandFormatRule ruleFor(Path commandsDir) {
 		CommandFormatRule rule = new CommandFormatRule();
 		rule.setCommandsDir(commandsDir.toFile());
@@ -173,6 +189,14 @@ class CommandFormatRuleTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static String readString(Path file) {
+		try {
+			return Files.readString(file);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not read " + file, e);
 		}
 	}
 

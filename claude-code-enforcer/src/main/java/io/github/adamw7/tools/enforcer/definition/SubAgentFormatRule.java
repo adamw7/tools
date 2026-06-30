@@ -44,6 +44,9 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	/** Optional whitelist of model identifiers a sub-agent may declare. */
 	private List<String> allowedModels;
 
+	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
+	private boolean autoFix;
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
@@ -66,7 +69,8 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 		if (content.isBlank()) {
 			violations.add("Sub-agent definition is empty: " + definition);
 		} else {
-			collectFrontMatterViolations(definition, content, violations);
+			String fixed = FrontMatterAutoFix.apply(definition, "sub-agent definition", content, autoFix, getLog());
+			collectFrontMatterViolations(definition, fixed, violations);
 		}
 	}
 
@@ -126,6 +130,10 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setAllowedModels(List<String> allowedModels) {
 		this.allowedModels = allowedModels;
+	}
+
+	void setAutoFix(boolean autoFix) {
+		this.autoFix = autoFix;
 	}
 
 	@Override

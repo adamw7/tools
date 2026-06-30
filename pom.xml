@@ -14,7 +14,8 @@
 	<version>${revision}</version>
 	<packaging>pom</packaging>
 	<name>Tools root pom</name>
-	<url>https://maven.apache.org</url>
+	<description>A library of Java tooling: compile-time-safe protobuf builder generation, a regex-based code-context finder with an MCP server, and data sources with uniqueness checking.</description>
+	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<revision>2.2.0-SNAPSHOT</revision>
 		<maven.compiler.source>25</maven.compiler.source>
@@ -37,6 +38,14 @@
 		<url>https://github.com/adamw7/tools</url>
 		<tag>HEAD</tag>
 	</scm>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<modules>
 		<module>claude-code-enforcer</module>
 		<module>mcp-common</module>
@@ -304,6 +313,26 @@
 						</dependency>
 					</dependencies>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-source-plugin</artifactId>
+					<version>3.4.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<version>3.12.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-gpg-plugin</artifactId>
+					<version>3.2.8</version>
+				</plugin>
+				<plugin>
+					<groupId>org.sonatype.central</groupId>
+					<artifactId>central-publishing-maven-plugin</artifactId>
+					<version>0.11.0</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
@@ -520,6 +549,79 @@
 								</goals>
 							</execution>
 						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<!-- Publishes signed artifacts (sources, javadoc, GPG signatures)
+			     to Maven Central via the Sonatype Central Portal. Opt-in with
+			     -Prelease so ordinary and CI builds never need GPG keys or
+			     Central credentials. The central-publishing-maven-plugin runs
+			     with extensions enabled, so it takes over the deploy phase in
+			     place of the default maven-deploy-plugin (GitHub Packages). -->
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<doclint>none</doclint>
+							<failOnError>false</failOnError>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<!-- Non-interactive signing for CI; the passphrase
+							     is supplied via the gpg.passphrase property. -->
+							<gpgArguments>
+								<arg>--pinentry-mode</arg>
+								<arg>loopback</arg>
+							</gpgArguments>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<extensions>true</extensions>
+						<configuration>
+							<!-- Server credentials live under this id in settings.xml. -->
+							<publishingServerId>central</publishingServerId>
+							<autoPublish>true</autoPublish>
+							<waitUntil>published</waitUntil>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>

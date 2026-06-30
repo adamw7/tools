@@ -15,6 +15,8 @@
 		<!-- This module only exercises generated protobuf/gRPC classes, so the
 		     instruction-coverage gate is not meaningful here. -->
 		<jacoco.skip>true</jacoco.skip>
+		<!-- End-to-end example, not a published library. -->
+		<maven.deploy.skip>true</maven.deploy.skip>
 	</properties>
 	<build>
 		<plugins>

@@ -11,6 +11,14 @@
 	<packaging>jar</packaging>
 	<name>assembly</name>
 	<url>https://maven.apache.org</url>
+	<properties>
+		<!-- This module only assembles a runnable SampleApp distribution, not a
+		     reusable library, so keep it out of the GitHub Packages deployment
+		     that maven-deploy-plugin performs on `mvn deploy`. (The Maven Central
+		     release profile already excludes it via the central-publishing
+		     plugin's skipPublishing flag below.) -->
+		<maven.deploy.skip>true</maven.deploy.skip>
+	</properties>
 	<build>
 		<plugins>
 			<plugin>

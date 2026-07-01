@@ -1,11 +1,20 @@
-# Publishes packages when a GitHub release is created.
+# Publishes packages when a GitHub release is created, and offers a manual
+# staged-only dry run for validating the Maven Central bundle without releasing.
 #
-# The "github-packages" job builds and deploys to GitHub Packages.
+# The "github-packages" job builds and deploys to GitHub Packages. It runs on
+# release only.
 #
 # The "central" job publishes signed artifacts to Maven Central (Sonatype
 # Central Portal) via the opt-in "release" profile. Publishing is bound to
-# the deploy phase, so it runs only here (on release) and never during an
-# ordinary `mvn install` build.
+# the deploy phase, so it runs only here and never during an ordinary
+# `mvn install` build. It runs in two modes:
+#   * on release        -> full publish (autoPublish=true, waitUntil=published)
+#   * on workflow_dispatch -> staged-only dry run (autoPublish=false,
+#                            waitUntil=validated): the bundle is uploaded and
+#                            validated by Central but left staged, so nothing is
+#                            released. Drop or publish it manually in the portal.
+# Central rejects -SNAPSHOT versions, so trigger the dry run from a commit whose
+# revision is a real version, or pass a non-SNAPSHOT "revision" input.
 #
 # Required repository secrets for the Maven Central job:
 #   MAVEN_CENTRAL_USERNAME  - Central Portal user token name
@@ -18,10 +27,17 @@ name: Maven Publish
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: "Version for the staged-only Central dry run (must NOT be a -SNAPSHOT). Leave blank to use the pom's revision."
+        required: false
+        default: ""
 
 jobs:
   github-packages:
-
+    # Publish to GitHub Packages only for real releases, not the manual dry run.
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -105,7 +121,20 @@ jobs:
         run: mvn -B -pl claude-code-enforcer -am install
 
       - name: Publish to Maven Central
-        run: mvn -B -P release deploy
+        # On release: full publish. On manual dispatch: staged-only dry run
+        # (autoPublish=false, waitUntil=validated) so Central validates the
+        # bundle but nothing is released.
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            revision_arg=""
+            if [ -n "${{ github.event.inputs.revision }}" ]; then
+              revision_arg="-Drevision=${{ github.event.inputs.revision }}"
+            fi
+            echo "Staged-only Central dry run: autoPublish=false, waitUntil=validated $revision_arg"
+            mvn -B -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
+          else
+            mvn -B -P release deploy
+          fi
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

@@ -330,11 +330,6 @@
 					<version>3.12.0</version>
 				</plugin>
 				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-gpg-plugin</artifactId>
-					<version>3.2.8</version>
-				</plugin>
-				<plugin>
 					<groupId>org.sonatype.central</groupId>
 					<artifactId>central-publishing-maven-plugin</artifactId>
 					<version>0.11.0</version>
@@ -595,27 +590,6 @@
 						<configuration>
 							<doclint>none</doclint>
 							<failOnError>false</failOnError>
-						</configuration>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-gpg-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>sign-artifacts</id>
-								<phase>verify</phase>
-								<goals>
-									<goal>sign</goal>
-								</goals>
-							</execution>
-						</executions>
-						<configuration>
-							<!-- Non-interactive signing for CI; the passphrase
-							     is supplied via the gpg.passphrase property. -->
-							<gpgArguments>
-								<arg>--pinentry-mode</arg>
-								<arg>loopback</arg>
-							</gpgArguments>
 						</configuration>
 					</plugin>
 					<plugin>

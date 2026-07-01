@@ -2,10 +2,10 @@
 #
 # The "github-packages" job builds and deploys to GitHub Packages.
 #
-# The "central" job publishes signed library artifacts to Maven Central
-# (Sonatype Central Portal). The example/test/app modules (grpc-example,
-# protogen-maven-plugin-test, assembly) set maven.deploy.skip and are
-# excluded from the deployment.
+# The "central" job publishes signed artifacts to Maven Central (Sonatype
+# Central Portal) via the opt-in "release" profile. Publishing is bound to
+# the deploy phase, so it runs only here (on release) and never during an
+# ordinary `mvn install` build.
 #
 # Required repository secrets for the Maven Central job:
 #   MAVEN_CENTRAL_USERNAME  - Central Portal user token name

@@ -555,13 +555,23 @@
 			</build>
 		</profile>
 		<profile>
-			<!-- Publishes signed artifacts (sources, javadoc, GPG signatures)
-			     to Maven Central via the Sonatype Central Portal. Opt-in with
-			     -Prelease so ordinary and CI builds never need GPG keys or
-			     Central credentials. The central-publishing-maven-plugin runs
+			<!-- Publishes artifacts (sources, javadoc) to Maven Central via
+			     the Sonatype Central Portal. Opt-in with -Prelease so ordinary
+			     and CI builds never need Central credentials. The
+			     central-publishing-maven-plugin runs
 			     with extensions enabled, so it takes over the deploy phase in
 			     place of the default maven-deploy-plugin (GitHub Packages). -->
 			<id>release</id>
+			<properties>
+				<!-- The root parent is spring-boot-starter-parent, which binds
+				     the spring-boot-maven-plugin repackage goal. For the data and
+				     context modules that rewrites the main jar into an executable
+				     fat jar, which the Central Portal rejects ("Executable bundles
+				     are not supported"). Skip repackage under -Prelease so Central
+				     receives plain library jars; ordinary and Docker builds still
+				     produce the executable jars. -->
+				<spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>

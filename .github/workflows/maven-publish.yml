@@ -13,7 +13,7 @@
 #   MAVEN_GPG_PRIVATE_KEY   - ASCII-armored GPG private key used for signing
 #   MAVEN_GPG_PASSPHRASE    - passphrase for that GPG key
 
-name: Maven Package
+name: Maven Publish
 
 on:
   release:

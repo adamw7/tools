@@ -52,4 +52,25 @@
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
+	<profiles>
+		<profile>
+			<!-- This module only assembles a runnable SampleApp distribution
+			     (jar-with-dependencies / bin bundle), not a reusable library,
+			     so keep it out of the Maven Central bundle that the release
+			     profile publishes. skipPublishing is honoured per module by the
+			     central-publishing-maven-plugin. -->
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<configuration>
+							<skipPublishing>true</skipPublishing>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

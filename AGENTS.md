@@ -252,6 +252,20 @@ key). All modules in the reactor are published to Central.
 To publish from a workstation: `mvn -P release deploy` with the same `central`
 server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.
 
+### Staged-only dry run (validate without releasing)
+
+`maven-publish.yml` also accepts a manual `workflow_dispatch` trigger that runs
+the `central` job as a **staged-only dry run**: it signs and uploads the bundle
+so the Central Portal validates it, but overrides the plugin with
+`-Dcentral.autoPublish=false -Dcentral.waitUntil=validated`, leaving the
+deployment staged (not released). Drop or publish it manually in the portal. Use
+it to confirm the bundle passes Central's checks before a real release. Central
+rejects `-SNAPSHOT` versions, so run it from a commit whose `revision` is a real
+version, or supply a non-`SNAPSHOT` `revision` input. Locally, the same staged
+check is `mvn -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated`.
+The `central.autoPublish` (default `true`) and `central.waitUntil` (default
+`published`) properties drive this; the defaults keep a real release publishing.
+
 ## Pull requests & commits
 
 - Use clear, descriptive, conventional commit messages.

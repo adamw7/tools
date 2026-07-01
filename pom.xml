@@ -25,6 +25,12 @@
 		<protobuf.version>4.33.4</protobuf.version>
 		<grpc.version>1.82.1</grpc.version>
 		<argLine/>
+		<!-- Maven Central publishing behavior for the release profile. Defaults
+		     publish on release; overridable so the maven-publish.yml
+		     workflow_dispatch dry run can upload and validate without
+		     publishing: -Dcentral.autoPublish=false -Dcentral.waitUntil=validated. -->
+		<central.autoPublish>true</central.autoPublish>
+		<central.waitUntil>published</central.waitUntil>
 	</properties>
 	<licenses>
 		<license>
@@ -619,8 +625,8 @@
 						<configuration>
 							<!-- Server credentials live under this id in settings.xml. -->
 							<publishingServerId>central</publishingServerId>
-							<autoPublish>true</autoPublish>
-							<waitUntil>published</waitUntil>
+							<autoPublish>${central.autoPublish}</autoPublish>
+							<waitUntil>${central.waitUntil}</waitUntil>
 						</configuration>
 					</plugin>
 				</plugins>

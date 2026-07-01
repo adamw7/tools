@@ -232,24 +232,22 @@ To release version `X`:
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.
 
-Creating the GitHub release fires two workflows:
+Creating the GitHub release fires `maven-publish.yml`, which runs two jobs:
 
-- `maven-publish.yml` deploys to **GitHub Packages** (the default `mvn deploy`,
+- `github-packages` deploys to **GitHub Packages** (the default `mvn deploy`,
   using the `distributionManagement` repository).
-- `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
-  Portal. It runs `mvn -P release deploy`; the `release` profile attaches the
-  sources and javadoc jars, GPG-signs every artifact, and hands the bundle to
-  the `central-publishing-maven-plugin` (`autoPublish=true`).
+- `central` deploys to **Maven Central** via the Sonatype Central Portal. It
+  runs `mvn -P release deploy`; the `release` profile attaches the sources and
+  javadoc jars, GPG-signs every artifact, and hands the bundle to the
+  `central-publishing-maven-plugin` (`autoPublish=true`).
 
-Maven Central publishing is **opt-in** through the `release` profile, so
-ordinary and CI builds never need GPG keys or Central credentials. The release
-job requires four repository secrets: `MAVEN_CENTRAL_USERNAME` and
-`MAVEN_CENTRAL_PASSWORD` (a Central Portal user token), plus
-`MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing key). Only the
-reusable library modules are published to Central; the example/test/app modules
-(`grpc-example`, `protogen-maven-plugin-test`, `assembly`) set the
-central-publishing plugin's `skipPublishing` property, so they are left out of
-the Central bundle while still deploying to GitHub Packages as before.
+Maven Central publishing is **opt-in** through the `release` profile, and the
+`central-publishing-maven-plugin` is bound to the `deploy` phase, so ordinary
+and CI builds (`mvn install`) never publish and never need GPG keys or Central
+credentials. The release job requires four repository secrets:
+`MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal user
+token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing
+key). All modules in the reactor are published to Central.
 
 To publish from a workstation: `mvn -P release deploy` with the same `central`
 server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.

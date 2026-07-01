@@ -11,11 +11,6 @@
 	<packaging>jar</packaging>
 	<name>assembly</name>
 	<url>https://maven.apache.org</url>
-	<properties>
-		<!-- Executable jar-with-dependencies bundle, not a reusable library;
-		     keep it out of the Maven Central deployment (release profile). -->
-		<skipPublishing>true</skipPublishing>
-	</properties>
 	<build>
 		<plugins>
 			<plugin>

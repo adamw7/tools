@@ -234,8 +234,11 @@ To release version `X`:
 
 Creating the GitHub release fires `maven-publish.yml`, which runs two jobs:
 
-- `github-packages` deploys to **GitHub Packages** (the default `mvn deploy`,
-  using the `distributionManagement` repository).
+- `github-packages` deploys to **GitHub Packages** (`mvn deploy -P github-packages`,
+  using the `distributionManagement` repository). The `github-packages` profile
+  attaches the javadoc jar so the published coordinates ship javadoc alongside
+  the main jar; the default `mvn deploy` would otherwise publish the main jar
+  only.
 - `central` deploys to **Maven Central** via the Sonatype Central Portal. It
   runs `mvn -P release deploy`; the `release` profile attaches the sources and
   javadoc jars, GPG-signs every artifact, and hands the bundle to the

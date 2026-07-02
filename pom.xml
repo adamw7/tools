@@ -334,6 +334,11 @@
 					<artifactId>central-publishing-maven-plugin</artifactId>
 					<version>0.11.0</version>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-gpg-plugin</artifactId>
+					<version>3.2.7</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
@@ -577,6 +582,61 @@
 			</properties>
 			<build>
 				<plugins>
+					<!-- The root pom uses a CI-friendly ${revision} version. Maven
+					     Central rejects a pom that still contains the unresolved
+					     ${revision} (and a raw child pom omits the parent-inherited
+					     license/scm/developers and the managed dependency versions).
+					     Flatten every published module into a self-contained pom so
+					     the version resolves and that metadata is inlined. Only the
+					     release build flattens; ordinary and CI builds are
+					     unaffected. -->
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>flatten-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>flatten-release</id>
+								<phase>process-resources</phase>
+								<goals>
+									<goal>flatten</goal>
+								</goals>
+								<configuration>
+									<updatePomFile>true</updatePomFile>
+									<flattenMode>oss</flattenMode>
+								</configuration>
+							</execution>
+							<execution>
+								<id>flatten-release-clean</id>
+								<phase>clean</phase>
+								<goals>
+									<goal>clean</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<!-- Maven Central requires every artifact to be GPG-signed. The
+					     signing key and passphrase come from the environment
+					     (MAVEN_GPG_PRIVATE_KEY / MAVEN_GPG_PASSPHRASE); loopback
+					     pinentry keeps gpg non-interactive on CI. -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>

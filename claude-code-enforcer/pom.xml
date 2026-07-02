@@ -12,6 +12,14 @@
 	<name>CLAUDE.md enforcer rule</name>
 	<description>Custom maven-enforcer rule that validates CLAUDE.md documents for structure and naming conventions during the build.</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<build>
 		<plugins>
 			<plugin>

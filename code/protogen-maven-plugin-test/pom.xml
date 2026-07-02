@@ -12,6 +12,14 @@
 	<name>protogen-maven-plugin-test</name>
 	<description>Integration test module that exercises the protogen-maven-plugin by generating and compiling protobuf builders end to end.</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<properties>
 		<!-- This module only exercises generated protobuf classes, so the
 		     instruction-coverage gate is not meaningful here. -->

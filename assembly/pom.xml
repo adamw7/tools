@@ -12,6 +12,14 @@
 	<name>assembly</name>
 	<description>Builds an executable jar-with-dependencies bundling the tools modules (mainClass: io.github.adamw7.tools.data.SampleApp).</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<properties>
 		<!-- This module only assembles a runnable SampleApp distribution, not a
 		     reusable library, so keep it out of the GitHub Packages deployment

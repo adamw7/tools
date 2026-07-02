@@ -12,6 +12,14 @@
 	<name>Test for data</name>
 	<description>Standalone test module that validates the data module's sources, uniqueness checks and data structures independently of the root reactor.</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<build>
 		<plugins>
 			<plugin>

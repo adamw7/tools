@@ -12,6 +12,14 @@
 	<name>Shared MCP server scaffolding</name>
 	<description>Shared MCP server scaffolding providing transport wiring and the tool SPI reused by the repository's MCP servers.</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<dependencyManagement>
 		<dependencies>
 			<dependency>

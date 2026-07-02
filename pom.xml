@@ -387,6 +387,38 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- The root pom uses a CI-friendly ${revision} version, so the
+			     installed/deployed pom of every module would otherwise still
+			     contain the literal ${revision} in its <parent> and in
+			     inter-module dependency versions. Flatten every module (this
+			     execution is inherited by all reactor modules and their
+			     submodules) into a self-contained pom whose versions are
+			     resolved, which is required for Maven Central and for the
+			     claude-code-enforcer module consumed as a plugin dependency. -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>flatten-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>flatten</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>flatten</goal>
+						</goals>
+						<configuration>
+							<updatePomFile>true</updatePomFile>
+							<flattenMode>oss</flattenMode>
+						</configuration>
+					</execution>
+					<execution>
+						<id>flatten-clean</id>
+						<phase>clean</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 

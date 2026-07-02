@@ -12,6 +12,14 @@
 	<name>Tooling for data</name>
 	<description>Data sources (CSV, GZip, JDBC; in-memory and iterative), a uniqueness-checking tool, data structures, and an MCP server exposing the uniqueness checker.</description>
 	<url>https://maven.apache.org</url>
+	<developers>
+		<developer>
+			<id>adamw7</id>
+			<name>Adam Witkowski</name>
+			<email>adamwitkowski3@gmail.com</email>
+			<url>https://github.com/adamw7</url>
+		</developer>
+	</developers>
 	<build>
 		<plugins>
 			<plugin>

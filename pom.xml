@@ -562,6 +562,19 @@
 			     with extensions enabled, so it takes over the deploy phase in
 			     place of the default maven-deploy-plugin (GitHub Packages). -->
 			<id>release</id>
+			<properties>
+				<!-- The data and context modules apply spring-boot:repackage,
+				     which by default replaces the main jar with an executable
+				     Spring Boot bundle (nested BOOT-INF dependencies plus a
+				     launch script from <executable>true</executable>). Maven
+				     Central rejects executable bundles ("Executable bundles are
+				     not supported"), and such a fat jar is not a usable library
+				     dependency anyway. Skip repackaging for the release so the
+				     plain, reusable library jar is what gets published. The
+				     executable jar remains available from ordinary local builds
+				     for running the MCP servers. -->
+				<spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>

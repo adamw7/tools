@@ -72,7 +72,7 @@ jobs:
       - name: Bootstrap CLAUDE.md enforcer rule
         # The custom enforcer rule is consumed as a plugin dependency by the
         # root build, so it must be installed to the local repo first.
-        run: mvn -B -pl claude-code-enforcer -am install
+        run: mvn -B -X -pl claude-code-enforcer -am install
 
       - name: Publish to Maven Central
         # On release: full publish. On manual dispatch: staged-only dry run
@@ -91,9 +91,9 @@ jobs:
               revision_arg="-Drevision=${{ github.event.inputs.revision }}"
             fi
             echo "Staged-only Central dry run: autoPublish=false, waitUntil=validated $revision_arg"
-            mvn -B -P release -pl '!assembly,!grpc-example' deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
+            mvn -B -X -P release -pl '!assembly,!grpc-example' deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
           else
-            mvn -B -P release -pl '!assembly,!grpc-example' deploy
+            mvn -B -X -P release -pl '!assembly,!grpc-example' deploy
           fi
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}

@@ -10,6 +10,7 @@
 	<artifactId>tools.assembly</artifactId>
 	<packaging>jar</packaging>
 	<name>assembly</name>
+	<description>Builds an executable jar-with-dependencies bundling the tools modules (mainClass: io.github.adamw7.tools.data.SampleApp).</description>
 	<url>https://maven.apache.org</url>
 	<properties>
 		<!-- This module only assembles a runnable SampleApp distribution, not a

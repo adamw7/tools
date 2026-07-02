@@ -10,6 +10,7 @@
 	<artifactId>tools.data</artifactId>
 	<packaging>jar</packaging>
 	<name>Tooling for data</name>
+	<description>Data sources (CSV, GZip, JDBC; in-memory and iterative), a uniqueness-checking tool, data structures, and an MCP server exposing the uniqueness checker.</description>
 	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>

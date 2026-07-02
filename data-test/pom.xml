@@ -10,6 +10,7 @@
 	<artifactId>tools.data-test</artifactId>
 	<packaging>jar</packaging>
 	<name>Test for data</name>
+	<description>Standalone test module that validates the data module's sources, uniqueness checks and data structures independently of the root reactor.</description>
 	<url>https://maven.apache.org</url>
 	<build>
 		<plugins>

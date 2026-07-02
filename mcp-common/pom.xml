@@ -10,6 +10,7 @@
 	<artifactId>tools.mcp-common</artifactId>
 	<packaging>jar</packaging>
 	<name>Shared MCP server scaffolding</name>
+	<description>Shared MCP server scaffolding providing transport wiring and the tool SPI reused by the repository's MCP servers.</description>
 	<url>https://maven.apache.org</url>
 	<dependencyManagement>
 		<dependencies>

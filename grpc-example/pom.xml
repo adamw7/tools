@@ -10,6 +10,7 @@
 	<artifactId>grpc-example</artifactId>
 	<packaging>jar</packaging>
 	<name>grpc-example</name>
+	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
 	<url>https://maven.apache.org</url>
 	<properties>
 		<!-- This module only exercises generated protobuf/gRPC classes, so the

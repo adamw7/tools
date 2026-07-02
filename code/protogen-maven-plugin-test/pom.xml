@@ -10,6 +10,7 @@
 	<artifactId>protogen-maven-plugin-test</artifactId>
 	<packaging>jar</packaging>
 	<name>protogen-maven-plugin-test</name>
+	<description>Integration test module that exercises the protogen-maven-plugin by generating and compiling protobuf builders end to end.</description>
 	<url>https://maven.apache.org</url>
 	<properties>
 		<!-- This module only exercises generated protobuf classes, so the

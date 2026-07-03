@@ -11,7 +11,7 @@
 	<packaging>jar</packaging>
 	<name>CLAUDE.md enforcer rule</name>
 	<description>Custom maven-enforcer rule that validates CLAUDE.md documents for structure and naming conventions during the build.</description>
-	<url>https://maven.apache.org</url>
+	<url>https://github.com/adamw7/tools</url>
 	<developers>
 		<developer>
 			<id>adamw7</id>

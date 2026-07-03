@@ -11,7 +11,7 @@
 	<packaging>maven-plugin</packaging>
 	<name>protogen-maven-plugin</name>
 	<description>Maven plugin that generates fluent, type-safe builders for protobuf-generated message classes during the generate-sources phase.</description>
-	<url>https://maven.apache.org</url>
+	<url>https://github.com/adamw7/tools</url>
 	<developers>
 		<developer>
 			<id>adamw7</id>

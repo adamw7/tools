@@ -661,6 +661,9 @@ any subsequent attempt to open an outbound connection fails fast. The method is:
 - **Idempotent and thread-safe** — it is `synchronized` and guarded by a
   `volatile` flag; calling it again is a no-op that logs a warning and returns
   `false`.
+  
+The switch can be used for example if there is a need to make sure no network connections
+are open while running unit tests.
 
 # Building
 ```

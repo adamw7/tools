@@ -275,26 +275,6 @@ check is `mvn -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=
 The `central.autoPublish` (default `true`) and `central.waitUntil` (default
 `published`) properties drive this; the defaults keep a real release publishing.
 
-### Release pom guardrail (offline, no credentials)
-
-Because every published module uses CI-friendly `${revision}` versioning and
-inherits its `groupId`/`version` from the parent, the pom that actually reaches
-Central is the **flattened** one (flatten-maven-plugin, `oss` mode, bound to
-`process-resources`). If that flattening ever regresses, Central rejects the
-upload with `Failed to get coordinates from pom file …` — it reads coordinates
-only from the flattened pom's direct `groupId`/`artifactId`/`version` and
-resolves neither properties nor parent inheritance. This is exactly what sank
-the 2.4.0 release, which predated the flatten fix.
-
-`scripts/linux/check-release-poms.sh` guards against it without needing Central
-credentials or a network upload: it runs the release-profile
-`process-resources` for the Central reactor, then asserts every module's
-flattened pom has resolved (non-`${…}`) coordinates and the metadata the Portal
-requires (`name`, `description`, `url`, `licenses`, `developers`, `scm`). It
-runs as the `verify-release-poms` job in `maven.yml` on every push/PR, and as a
-fail-fast step in `central-publish.yml` before the actual upload. Run it locally
-with `./scripts/linux/check-release-poms.sh`.
-
 ## Pull requests & commits
 
 - Use clear, descriptive, conventional commit messages.

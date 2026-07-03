@@ -1,10 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Matcher;
 
 /**
  * Data source for TOON (Token-Oriented Object Notation) format files.
@@ -15,6 +11,10 @@ import java.util.regex.Matcher;
  * - Primitive arrays (key[N]: val1,val2,...)
  * - Tabular arrays (key[N]{field1,field2}: row1,row2...)
  * - Nested objects via indentation
+ *
+ * <p>The whole document is flattened eagerly into {@link #fieldsMap}; parsing is delegated to
+ * the shared {@link ToonFlattener}, the same grammar the streaming
+ * {@link IterableTOONDataSource} drives, so the two cannot diverge.</p>
  */
 public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 
@@ -28,201 +28,10 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 
 	@Override
 	protected void parse() {
-		List<String> lines = new ArrayList<>();
+		ToonFlattener flattener = new ToonFlattener(fieldsMap::put);
 		while (scanner.hasNextLine()) {
-			lines.add(scanner.nextLine());
+			flattener.accept(scanner.nextLine());
 		}
-		parseTOON(lines);
-	}
-
-	private void parseTOON(List<String> lines) {
-		int i = 0;
-		while (i < lines.size()) {
-			i = processLine(lines, i);
-		}
-	}
-
-	private int processLine(List<String> lines, int index) {
-		String line = lines.get(index);
-		String trimmed = line.trim();
-
-		if (trimmed.isEmpty()) {
-			return index + 1;
-		}
-
-		return tryParseArrayHeader(lines, index, trimmed)
-				.or(() -> tryParseKeyValue(lines, index, trimmed))
-				.orElseGet(() -> index + 1);
-    }
-
-	private Optional<Integer> tryParseArrayHeader(List<String> lines, int index, String trimmed) {
-		Matcher arrayMatcher = ToonSyntax.ARRAY_HEADER_PATTERN.matcher(trimmed);
-		if (!arrayMatcher.matches()) {
-			return Optional.empty();
-		}
-
-		String key = arrayMatcher.group(1);
-		int count = Integer.parseInt(arrayMatcher.group(2));
-		String fields = arrayMatcher.group(4);
-		String inlineValues = arrayMatcher.group(5);
-
-		return Optional.of(parseArray(lines, index, key, count, fields, inlineValues));
-	}
-
-	private Optional<Integer> tryParseKeyValue(List<String> lines, int index, String trimmed) {
-		Matcher kvMatcher = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed);
-		if (!kvMatcher.matches()) {
-			return Optional.empty();
-		}
-
-		String key = kvMatcher.group(1);
-		String value = kvMatcher.group(2);
-
-		if (value.isEmpty()) {
-			return Optional.of(parseNestedObject(lines, index, key));
-		}
-
-		fieldsMap.put(key, ToonSyntax.unquote(value));
-		return Optional.of(index + 1);
-	}
-
-	private int parseArray(List<String> lines, int index, String key, int count, String fields, String inlineValues) {
-		if (fields != null && !fields.isEmpty()) {
-			return parseTabularArray(lines, index, key, count, fields, inlineValues);
-		}
-
-		if (!inlineValues.isEmpty()) {
-			ToonSyntax.emitInlineArray(fieldsMap::put, key, inlineValues);
-			return index + 1;
-		}
-
-		return parseNestedArray(lines, index, key, count);
-	}
-
-	private int parseTabularArray(List<String> lines, int startIndex, String arrayKey, int count, String fieldsStr, String inlineValues) {
-		String[] fields = ToonSyntax.splitFields(fieldsStr);
-		ToonSyntax.emitTabularHeader(fieldsMap::put, arrayKey, count, fields);
-
-		int rowIndex = 0;
-		if (inlineValues != null && !inlineValues.trim().isEmpty()) {
-			ToonSyntax.emitTabularRow(fieldsMap::put, arrayKey, fields, inlineValues.trim(), rowIndex++);
-		}
-
-		return parseTabularRows(lines, startIndex + 1, arrayKey, count, rowIndex, fields);
-	}
-
-	private int parseTabularRows(List<String> lines, int startIndex, String arrayKey, int count, int initialRowIndex, String[] fields) {
-		int i = startIndex;
-		int rowIndex = initialRowIndex;
-
-		while (i < lines.size() && rowIndex < count && !isNewSection(lines, i)) {
-			String trimmed = lines.get(i).trim();
-			if (!trimmed.isEmpty()) {
-				ToonSyntax.emitTabularRow(fieldsMap::put, arrayKey, fields, trimmed, rowIndex++);
-			}
-			i++;
-		}
-
-		return i;
-	}
-
-	private boolean isNewSection(List<String> lines, int index) {
-		String line = lines.get(index);
-		return ToonSyntax.isTopLevelSection(ToonSyntax.indentationOf(line), line.trim());
-	}
-
-	private int parseNestedArray(List<String> lines, int startIndex, String arrayKey, int count) {
-		int i = startIndex + 1;
-		int itemIndex = 0;
-		int baseIndent = findBaseIndent(lines, i);
-
-		while (i < lines.size() && itemIndex < count) {
-			String line = lines.get(i);
-			String trimmed = line.trim();
-
-			if (shouldExitNested(trimmed, ToonSyntax.indentationOf(line), baseIndent)) {
-				fieldsMap.put(arrayKey, String.valueOf(count));
-				return i;
-			}
-
-			if (trimmed.startsWith("-")) {
-				itemIndex = processListItem(arrayKey, trimmed, itemIndex);
-			}
-
-			i++;
-		}
-
-		fieldsMap.put(arrayKey, String.valueOf(count));
-		return i;
-	}
-
-	private int findBaseIndent(List<String> lines, int startIndex) {
-		for (int i = startIndex; i < lines.size(); i++) {
-			String line = lines.get(i);
-			if (!line.trim().isEmpty()) {
-				return ToonSyntax.indentationOf(line);
-			}
-		}
-		return 0;
-	}
-
-	private int processListItem(String arrayKey, String trimmed, int itemIndex) {
-		String content = trimmed.substring(1).trim();
-
-		if (ToonSyntax.ARRAY_HEADER_PATTERN.matcher(content).matches()) {
-			return itemIndex;
-		}
-
-		if (!content.isEmpty()) {
-			fieldsMap.put(arrayKey + "[" + itemIndex + "]", ToonSyntax.unquote(content));
-		}
-
-		return itemIndex + 1;
-	}
-
-	private int parseNestedObject(List<String> lines, int startIndex, String parentKey) {
-		int i = startIndex + 1;
-		int baseIndent = findBaseIndent(lines, i);
-
-		while (i < lines.size()) {
-			String line = lines.get(i);
-			String trimmed = line.trim();
-			int currentIndent = ToonSyntax.indentationOf(line);
-
-			if (shouldExitNested(trimmed, currentIndent, baseIndent)) {
-				return i;
-			}
-
-			if (!trimmed.isEmpty()) {
-				i = parseNestedKeyValue(lines, i, parentKey, trimmed);
-			} else {
-				i++;
-			}
-		}
-
-		return i;
-	}
-
-	private boolean shouldExitNested(String trimmed, int currentIndent, int baseIndent) {
-		return !trimmed.isEmpty() && baseIndent > 0 && currentIndent < baseIndent;
-	}
-
-	private int parseNestedKeyValue(List<String> lines, int index, String parentKey, String trimmed) {
-		Matcher kvMatcher = ToonSyntax.KEY_VALUE_PATTERN.matcher(trimmed);
-
-		if (!kvMatcher.matches()) {
-			return index + 1;
-		}
-
-		String key = kvMatcher.group(1);
-		String value = kvMatcher.group(2);
-		String fullKey = parentKey + "." + key;
-
-		if (value.isEmpty()) {
-			return parseNestedObject(lines, index, fullKey);
-		}
-
-		fieldsMap.put(fullKey, ToonSyntax.unquote(value));
-		return index + 1;
+		flattener.finish();
 	}
 }

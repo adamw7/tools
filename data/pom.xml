@@ -12,14 +12,6 @@
 	<name>Tooling for data</name>
 	<description>Data sources (CSV, GZip, JDBC; in-memory and iterative), a uniqueness-checking tool, data structures, and an MCP server exposing the uniqueness checker.</description>
 	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
 	<build>
 		<plugins>
 			<plugin>
@@ -39,16 +31,16 @@
 					<argLine>@{argLine} --add-reads datamodule=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
-	        <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>io.github.adamw7.tools.data.uniqueness.mcp.Main</mainClass>
-                    <executable>true</executable>
-                    <layout>JAR</layout>
-                    <jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
-                </configuration>
-            </plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>io.github.adamw7.tools.data.uniqueness.mcp.Main</mainClass>
+					<executable>true</executable>
+					<layout>JAR</layout>
+					<jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 	<profiles>

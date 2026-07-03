@@ -12,24 +12,8 @@
 	<name>protogen-maven-plugin</name>
 	<description>Maven plugin that generates fluent, type-safe builders for protobuf-generated message classes during the generate-sources phase.</description>
 	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-plugin-plugin</artifactId>
-			</plugin>
 			<plugin>
 				<groupId>io.github.ascopes</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>

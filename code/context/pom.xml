@@ -12,20 +12,8 @@
 	<name>Context engineering</name>
 	<description>Fast, regex-based finder that builds the tree of classes used by a given class and assembles context for gen-AI agents, exposed over an MCP server.</description>
 	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

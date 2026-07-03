@@ -18,7 +18,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Run tests with JaCoCo
-      run: mvn -B verify -Pcoverage --file pom.xml
+      run: mvn -B -ntp verify -Pcoverage --file pom.xml
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       with:

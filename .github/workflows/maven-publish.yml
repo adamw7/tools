@@ -36,6 +36,6 @@ jobs:
       # The github-packages profile attaches the javadoc jar so the GitHub
       # Packages coordinates ship javadoc alongside the main jar (the default
       # maven-deploy-plugin would otherwise publish the main jar only).
-      run: mvn -B deploy -P github-packages -s $GITHUB_WORKSPACE/settings.xml --file pom.xml
+      run: mvn -B -ntp deploy -P github-packages -s $GITHUB_WORKSPACE/settings.xml --file pom.xml
       env:
         GITHUB_TOKEN: ${{ github.token }}

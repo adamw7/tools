@@ -20,7 +20,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Run PIT mutation testing
-      run: mvn -B test -Ppitest --file pom.xml
+      run: mvn -B -ntp test -Ppitest --file pom.xml
     - name: Upload mutation testing reports
       uses: actions/upload-artifact@v4
       with:

@@ -106,8 +106,8 @@ removed anything, plain `mvn install` is fine and faster.
 **Quiet builds.** `.mvn/maven.config` passes `--no-transfer-progress` to every
 `mvn` invocation from the repo root, so builds never print the
 `Downloading from.../Downloaded from...` artifact-transfer noise — locally or in
-CI. It is the one place that flag lives; individual commands and workflows do not
-need to repeat it.
+CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
+quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
 
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
 (`mvn -B -pl claude-code-enforcer -am install`) and then runs

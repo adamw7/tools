@@ -7,28 +7,25 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
 import io.github.adamw7.tools.data.structure.internal.Wrapper;
 
 public class OpenAddressingMap<K, V> implements Map<K, V> {
 
-	private static final double MULTIPLIER = 1.2;
-	static final int DEFAULT_SIZE = 64;
+	static final int DEFAULT_SIZE = DoubleHashing.DEFAULT_SIZE;
 	int prime;
-	
+
 	protected Wrapper<K, V>[] array;
 	protected int size;
-	
+
 	public OpenAddressingMap(int size) {
 		initArray(size);
 	}
 
 	@SuppressWarnings("unchecked")
 	private void initArray(int size) {
-		if (size <= 0) {
-			throw new IllegalArgumentException("Wrong size: " + size);
-		}
-		int newSize = Math.max(size, 3); // array of size 2 would force prime = 1
+		int newSize = DoubleHashing.tableSize(size);
 		array = new Wrapper[newSize];
 		prime = Primes.findMaxSmallerThan(newSize);
 	}
@@ -86,21 +83,8 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	private int hash(Object key, int iteration) {
 		if (key == null) {
 			throw new IllegalArgumentException("Key is null");
-		} else {
-			// double hashing
-			int hashCode = key.hashCode();
-			int h1 = h1(hashCode);
-			int h2 = h2(hashCode);
-			return Math.abs((h1 + (iteration * h2)) % array.length);
 		}
-	}
-
-	private int h2(int hashCode) {
-		return 1 + (Math.abs(hashCode) % (array.length - 1));
-	}
-
-	private int h1(int hashCode) {
-		return prime - (hashCode % prime);
+		return DoubleHashing.probe(key.hashCode(), prime, array.length, iteration);
 	}
 
 	@Override
@@ -110,17 +94,25 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			int hash = hash(key, i);
 			Wrapper<K, V> wrapper = array[hash];
 			if (wrapper == null) {
-				array[hash] = new Wrapper<>(key, value);
-				size++;
-				return null;
+				return insert(hash, key, value);
 			} else if (wrapper.key.equals(key)) {
-				V previous = wrapper.value;
-				array[hash] = new Wrapper<>(key, value);
-				return previous;
+				return overwrite(hash, key, value);
 			} // removed are skipped
 		}
 		resize();
 		return put(key, value);
+	}
+
+	private V insert(int hash, K key, V value) {
+		array[hash] = new Wrapper<>(key, value);
+		size++;
+		return null;
+	}
+
+	private V overwrite(int hash, K key, V value) {
+		V previous = array[hash].value;
+		array[hash] = new Wrapper<>(key, value);
+		return previous;
 	}
 
 	private void checkIfResizeNeeded() {
@@ -166,7 +158,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private int newSize() {
-		return (int) (array.length * MULTIPLIER);
+		return DoubleHashing.grownSize(array.length);
 	}
 
 	@Override

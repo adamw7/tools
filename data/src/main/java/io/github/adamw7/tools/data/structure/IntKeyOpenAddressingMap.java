@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
 
 /**
@@ -24,8 +25,7 @@ import io.github.adamw7.tools.data.structure.internal.Primes;
  */
 public class IntKeyOpenAddressingMap<V> {
 
-	private static final double MULTIPLIER = 1.2;
-	static final int DEFAULT_SIZE = 64;
+	static final int DEFAULT_SIZE = DoubleHashing.DEFAULT_SIZE;
 
 	private static final byte EMPTY = 0;
 	private static final byte LIVE = 1;
@@ -47,10 +47,7 @@ public class IntKeyOpenAddressingMap<V> {
 
 	@SuppressWarnings("unchecked")
 	private void initArrays(int size) {
-		if (size <= 0) {
-			throw new IllegalArgumentException("Wrong size: " + size);
-		}
-		int newSize = Math.max(size, 3); // array of size 2 would force prime = 1
+		int newSize = DoubleHashing.tableSize(size);
 		keys = new int[newSize];
 		values = (V[]) new Object[newSize];
 		state = new byte[newSize];
@@ -103,19 +100,7 @@ public class IntKeyOpenAddressingMap<V> {
 	}
 
 	private int hash(int key, int iteration) {
-		// double hashing, matching OpenAddressingMap
-		int hashCode = Integer.hashCode(key);
-		int h1 = h1(hashCode);
-		int h2 = h2(hashCode);
-		return Math.abs((h1 + (iteration * h2)) % keys.length);
-	}
-
-	private int h2(int hashCode) {
-		return 1 + (Math.abs(hashCode) % (keys.length - 1));
-	}
-
-	private int h1(int hashCode) {
-		return prime - (hashCode % prime);
+		return DoubleHashing.probe(Integer.hashCode(key), prime, keys.length, iteration);
 	}
 
 	public V put(int key, V value) {
@@ -183,7 +168,7 @@ public class IntKeyOpenAddressingMap<V> {
 	}
 
 	private int newSize() {
-		return (int) (keys.length * MULTIPLIER);
+		return DoubleHashing.grownSize(keys.length);
 	}
 
 	public int[] keys() {

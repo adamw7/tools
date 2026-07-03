@@ -11,7 +11,7 @@
 	<packaging>jar</packaging>
 	<name>assembly</name>
 	<description>Builds an executable jar-with-dependencies bundling the tools modules (mainClass: io.github.adamw7.tools.data.SampleApp).</description>
-	<url>https://maven.apache.org</url>
+	<url>https://github.com/adamw7/tools</url>
 	<developers>
 		<developer>
 			<id>adamw7</id>

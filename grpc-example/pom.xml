@@ -11,7 +11,7 @@
 	<packaging>jar</packaging>
 	<name>grpc-example</name>
 	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
-	<url>https://maven.apache.org</url>
+	<url>https://github.com/adamw7/tools</url>
 	<developers>
 		<developer>
 			<id>adamw7</id>

@@ -8,8 +8,12 @@
 
 name: Java CI with Maven
 
+# Only build main on push and PRs targeting main. Leaving `push` unfiltered
+# meant a push to a branch that also had an open PR fired both the `push` and
+# `pull_request` events, running the whole build twice for the same commit.
 on:
   push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 

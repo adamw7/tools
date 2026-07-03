@@ -18,4 +18,4 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Run MCP streamable HTTP integration tests
-      run: mvn -B verify -P integration-tests --file pom.xml
+      run: mvn -B -ntp verify -P integration-tests --file pom.xml

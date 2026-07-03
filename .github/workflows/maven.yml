@@ -36,14 +36,14 @@ jobs:
       # installed to the local repo first. The claude-md-enforce profile is
       # off here (no -DenforceClaudeMd), so the module is not asked to depend
       # on itself while it is being built.
-      run: mvn -B -pl claude-code-enforcer -am install
+      run: mvn -B -ntp -pl claude-code-enforcer -am install
     - name: Build with Maven
       # -DenforceClaudeMd activates the claude-md-enforce profile so the root
       # build fails when CLAUDE.md is missing or malformed. This is the only
       # workflow that runs the check.
       run: |
         start=$(date +%s)
-        mvn -B package -DenforceClaudeMd --file pom.xml
+        mvn -B -ntp package -DenforceClaudeMd --file pom.xml
         end=$(date +%s)
         duration=$((end - start))
         echo "Build took ${duration} seconds."

@@ -103,6 +103,12 @@ generates protobuf builders into `target/`; stale generated output from a
 previous build can otherwise linger and mask the change. If you have not
 removed anything, plain `mvn install` is fine and faster.
 
+**Quiet builds.** `.mvn/maven.config` passes `--no-transfer-progress` to every
+`mvn` invocation from the repo root, so builds never print the
+`Downloading from.../Downloaded from...` artifact-transfer noise — locally or in
+CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
+quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
+
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
 (`mvn -B -pl claude-code-enforcer -am install`) and then runs
 `mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for

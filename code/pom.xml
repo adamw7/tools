@@ -12,14 +12,6 @@
 	<name>Tooling for code</name>
 	<description>Aggregator module for code-oriented tooling: the protobuf builder-generating Maven plugin and the regex-based class-usage context finder.</description>
 	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
 	<modules>
 		<module>protogen-maven-plugin</module>
 		<module>protogen-maven-plugin-test</module>

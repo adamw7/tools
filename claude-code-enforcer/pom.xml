@@ -12,27 +12,10 @@
 	<name>CLAUDE.md enforcer rule</name>
 	<description>Custom maven-enforcer rule that validates CLAUDE.md documents for structure and naming conventions during the build.</description>
 	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-			</plugin>
-			<!-- flatten-maven-plugin is inherited from the root pom, which
-			     flattens the CI-friendly ${revision} out of every module's pom.
-			     This module needs it because it is consumed as a
-			     maven-enforcer-plugin dependency resolved from a repository
-			     outside the reactor. -->
-		</plugins>
-	</build>
+	<!-- flatten-maven-plugin is inherited from the root pom, which flattens the
+	     CI-friendly ${revision} out of every module's pom. This module needs it
+	     because it is consumed as a maven-enforcer-plugin dependency resolved
+	     from a repository outside the reactor. -->
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.maven.enforcer</groupId>

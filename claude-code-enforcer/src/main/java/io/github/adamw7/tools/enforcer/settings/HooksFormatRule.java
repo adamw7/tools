@@ -248,11 +248,10 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private Path expand(String token) {
-		if (token.contains(PROJECT_DIR_BRACED)) {
-			return absolute(token.replace(PROJECT_DIR_BRACED, projectDir().getPath()));
-		}
-		if (token.contains(PROJECT_DIR_PLAIN)) {
-			return absolute(token.replace(PROJECT_DIR_PLAIN, projectDir().getPath()));
+		for (String projectDirToken : List.of(PROJECT_DIR_BRACED, PROJECT_DIR_PLAIN)) {
+			if (token.contains(projectDirToken)) {
+				return absolute(token.replace(projectDirToken, projectDir().getPath()));
+			}
 		}
 		return null;
 	}

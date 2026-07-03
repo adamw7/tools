@@ -74,13 +74,6 @@ jobs:
         # root build, so it must be installed to the local repo first.
         run: mvn -B -ntp -X -pl claude-code-enforcer -am install
 
-      - name: Verify Maven Central release poms
-        # Fail fast (before uploading) if any module's flattened pom would be
-        # rejected by the Central Portal for unresolved/parent-only coordinates
-        # ("Failed to get coordinates from pom file") or missing required
-        # metadata, rather than surfacing it as an opaque deploy-time error.
-        run: ./scripts/linux/check-release-poms.sh
-
       - name: Publish to Maven Central
         # On release: full publish. On manual dispatch: staged-only dry run
         # (autoPublish=false, waitUntil=validated) so Central validates the

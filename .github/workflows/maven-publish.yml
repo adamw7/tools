@@ -28,13 +28,14 @@ jobs:
         server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
         settings-path: ${{ github.workspace }} # location for the settings.xml file
 
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
-
     - name: Publish to GitHub Packages Apache Maven
+      # A single `mvn deploy` runs the full lifecycle (compile, test, package)
+      # before deploying, so there is no separate `mvn package` step: adding one
+      # would just build the whole reactor twice in this job.
+      #
       # The github-packages profile attaches the javadoc jar so the GitHub
       # Packages coordinates ship javadoc alongside the main jar (the default
       # maven-deploy-plugin would otherwise publish the main jar only).
-      run: mvn deploy -P github-packages -s $GITHUB_WORKSPACE/settings.xml
+      run: mvn -B deploy -P github-packages -s $GITHUB_WORKSPACE/settings.xml --file pom.xml
       env:
         GITHUB_TOKEN: ${{ github.token }}

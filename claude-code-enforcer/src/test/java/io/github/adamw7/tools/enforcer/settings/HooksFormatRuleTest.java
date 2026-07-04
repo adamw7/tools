@@ -3,10 +3,12 @@ package io.github.adamw7.tools.enforcer.settings;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -53,6 +55,7 @@ class HooksFormatRuleTest {
 
 	@Test
 	void failsWhenScriptIsNotExecutable() {
+		assumeTrue(supportsExecutableBit(), "filesystem has no executable bit to clear");
 		writeScript("session-start.sh", "#!/bin/sh\n", false);
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
@@ -157,9 +160,21 @@ class HooksFormatRuleTest {
 	private void writeScript(String name, String content, boolean executable) {
 		Path file = hooksDir().resolve(name);
 		writeString(file, content);
-		if (!file.toFile().setExecutable(executable)) {
-			throw new IllegalStateException("Could not set executable bit on " + file);
+		setExecutable(file.toFile(), executable);
+	}
+
+	private void setExecutable(File file, boolean executable) {
+		if (file.setExecutable(executable) || file.canExecute() == executable) {
+			return;
 		}
+		if (!executable) {
+			return; // Windows cannot clear the executable bit; every file stays executable
+		}
+		throw new IllegalStateException("Could not set executable bit on " + file);
+	}
+
+	private boolean supportsExecutableBit() {
+		return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
 	}
 
 	private void writeString(Path file, String content) {

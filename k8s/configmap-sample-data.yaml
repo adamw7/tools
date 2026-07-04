@@ -1,0 +1,16 @@
+# Sample CSV data mounted into the uniqueness-check Job at /data.
+# SampleApp reads a CSV file and reports whether a chosen column is unique.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tools-sample-data
+  labels:
+    app.kubernetes.io/name: tools
+    app.kubernetes.io/component: sample-data
+data:
+  # 'id' is unique, 'country' repeats (PL twice) -> NOT unique.
+  people.csv: |
+    id,name,country
+    1,Alice,PL
+    2,Bob,US
+    3,Carol,PL

@@ -26,7 +26,7 @@ public class Methods {
 		}
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(");
-		builder.append(field.getName()).append(");");			
+		builder.append(field.getName()).append(");");
 		builder.append("return this;}");
 
 		return builder;
@@ -66,7 +66,7 @@ public class Methods {
 		} else if (field.isRepeated()) {
 			method = ".addAll";
 		} else {
-			method = ".set";			
+			method = ".set";
 		}
 		return method + suffix;
 	}
@@ -94,8 +94,8 @@ public class Methods {
 		builder.append(" clear").append(fieldName);
 		builder.append("() {");
 		builder.append(classOrBuilder).append(".clear").append(fieldName).append("();");
-		builder.append("return new ").append(returnType.replace("Ifc", "Impl")).append("(").append(classOrBuilder)
-				.append(");}");
+		builder.append("return new ").append(returnType.replace(Utils.IFC_SUFFIX, Utils.IMPL_SUFFIX)).append("(")
+				.append(classOrBuilder).append(");}");
 
 		return builder;
 	}
@@ -144,7 +144,7 @@ public class Methods {
 		StringBuilder builder = new StringBuilder("set");
 		builder.append(Utils.toUpperCamelCase(field.getName()));
 		builder.append("(");
-		builder.append(typeMappings.get(field));					
+		builder.append(typeMappings.get(field));
 		builder.append(" ").append(field.getName()).append(")");
 
 		return builder;

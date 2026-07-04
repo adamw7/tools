@@ -6,9 +6,7 @@ import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -29,8 +27,6 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
-
 	@Override
 	public final void execute() throws EnforcerRuleException {
 		File file = jsonFile();
@@ -42,7 +38,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		List<String> violations = new ArrayList<>();
-		JsonNode root = parse(readContent(file), violations);
+		JsonNode root = JsonNodes.parseObject(readContent(file), description(), violations);
 		if (root != null) {
 			collectViolations(root, violations);
 		}
@@ -79,19 +75,5 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 			throw new EnforcerRuleException(description() + " is empty: " + file);
 		}
 		return content;
-	}
-
-	private JsonNode parse(String content, List<String> violations) {
-		try {
-			JsonNode root = MAPPER.readTree(content);
-			if (root == null || !root.isObject()) {
-				violations.add(description() + " is not valid JSON: expected a JSON object");
-				return null;
-			}
-			return root;
-		} catch (JsonProcessingException e) {
-			violations.add(description() + " is not valid JSON: " + e.getOriginalMessage());
-			return null;
-		}
 	}
 }

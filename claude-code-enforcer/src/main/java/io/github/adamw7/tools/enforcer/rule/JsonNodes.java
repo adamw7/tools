@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Null-safe accessors over Jackson {@link JsonNode} that mirror the optional
@@ -14,7 +16,29 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public final class JsonNodes {
 
+	private static final ObjectMapper MAPPER = new ObjectMapper();
+
 	private JsonNodes() {
+	}
+
+	/**
+	 * Parses {@code content} into a JSON object node. When it is not valid JSON or
+	 * not a JSON object, a violation naming {@code description} (e.g.
+	 * {@code settings.json}) is added and {@code null} is returned, so a parse
+	 * failure is reported alongside structural problems rather than thrown.
+	 */
+	public static JsonNode parseObject(String content, String description, List<String> violations) {
+		try {
+			JsonNode root = MAPPER.readTree(content);
+			if (root == null || !root.isObject()) {
+				violations.add(description + " is not valid JSON: expected a JSON object");
+				return null;
+			}
+			return root;
+		} catch (JsonProcessingException e) {
+			violations.add(description + " is not valid JSON: " + e.getOriginalMessage());
+			return null;
+		}
 	}
 
 	/** The child object at {@code key}, or null when it is absent or not an object. */

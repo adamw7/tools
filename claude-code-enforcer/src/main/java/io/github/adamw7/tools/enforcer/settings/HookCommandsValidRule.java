@@ -38,8 +38,6 @@ public class HookCommandsValidRule extends JsonFileRule {
 	private static final String TYPE_KEY = "type";
 	private static final String COMMAND_KEY = "command";
 	private static final String COMMAND_TYPE = "command";
-	private static final String PROJECT_DIR_BRACED = "${CLAUDE_PROJECT_DIR}";
-	private static final String PROJECT_DIR_PLAIN = "$CLAUDE_PROJECT_DIR";
 
 	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
 	private File settingsFile;
@@ -171,32 +169,14 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	/** The resolved on-disk path of a {@code $CLAUDE_PROJECT_DIR}-rooted token, or null when none is referenced. */
 	private String localScriptPath(String command) {
+		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
 		for (String token : command.split("\\s+")) {
-			String expanded = expand(token);
+			String expanded = projectDirs.expand(token);
 			if (expanded != null) {
 				return expanded;
 			}
 		}
 		return null;
-	}
-
-	private String expand(String token) {
-		if (token.contains(PROJECT_DIR_BRACED)) {
-			return token.replace(PROJECT_DIR_BRACED, projectDir().getPath());
-		}
-		if (token.contains(PROJECT_DIR_PLAIN)) {
-			return token.replace(PROJECT_DIR_PLAIN, projectDir().getPath());
-		}
-		return null;
-	}
-
-	private File projectDir() {
-		if (projectDir != null) {
-			return projectDir;
-		}
-		File claudeDir = settingsFile.getAbsoluteFile().getParentFile();
-		File root = claudeDir != null ? claudeDir.getParentFile() : null;
-		return root != null ? root : new File(".");
 	}
 
 	void setSettingsFile(File settingsFile) {

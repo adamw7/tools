@@ -7,7 +7,10 @@ import java.util.regex.Pattern;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Utils {
-	
+
+	public static final String IFC_SUFFIX = "Ifc";
+	public static final String IMPL_SUFFIX = "Impl";
+
 	private Utils() {}
 
 	public static String to(FieldDescriptor fieldDescriptor, String suffix) {
@@ -40,11 +43,11 @@ public class Utils {
 	}
 	
 	public static String getNextIfc(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {
-		return getNext(className, fields, requiredField, "Ifc");
+		return getNext(className, fields, requiredField, IFC_SUFFIX);
 	}
-	
+
 	public static String getNextImpl(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {
-		return getNext(className, fields, requiredField, "Impl");
+		return getNext(className, fields, requiredField, IMPL_SUFFIX);
 	}
 
 	private static String getNext(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField, String suffix) {

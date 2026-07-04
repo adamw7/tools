@@ -15,21 +15,10 @@ public class Methods {
 	}
 
 	public StringBuilder setter(FieldDescriptor field, String returnType) {
-		StringBuilder builder = newOverride();
-		builder.append("public ").append(returnType).append(" ");
-		builder.append(generateSetter(field)).append(" {");
-		builder.append("builder.");
-		if (isPureRepeated(field)) {
-			builder.append("addAll");
-		} else {
-			builder.append("set");
-		}
-		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("(");
-		builder.append(field.getName()).append(");");
-		builder.append("return this;}");
-
-		return builder;
+		String call = isPureRepeated(field) ? "addAll" : "set";
+		String fieldName = Utils.toUpperCamelCase(field.getName());
+		return override("public %s %s {builder.%s%s(%s);return this;}"
+				.formatted(returnType, generateSetter(field), call, fieldName, field.getName()));
 	}
 
 	private boolean isPureRepeated(FieldDescriptor field) {
@@ -37,25 +26,16 @@ public class Methods {
 	}
 
 	public StringBuilder build() {
-		StringBuilder builder = newOverride();
-		builder.append("public ").append(className).append(" build() {return builder.build();}");
-
-		return builder;
+		return override("public %s build() {return builder.build();}".formatted(className));
 	}
 
 	public StringBuilder requiredSetter(String classOrBuilder, FieldDescriptor field,
 			List<FieldDescriptor> requiredFields) {
-		StringBuilder builder = newOverride();
 		String returnType = Utils.getNextIfc(className, requiredFields, field);
-		builder.append("public ").append(returnType).append(" ").append(generateSetter(field))
-				.append(" {");
-		builder.append(classOrBuilder).append(builderMethodName(field));
-		builder.append("(");
-		builder.append(field.getName()).append("); return new ");
-		builder.append(Utils.getNextImpl(className, requiredFields, field)).append("(")
-				.append(classOrBuilder).append(");}");
-
-		return builder;
+		String nextImpl = Utils.getNextImpl(className, requiredFields, field);
+		return override("public %s %s {%s%s(%s); return new %s(%s);}".formatted(returnType,
+				generateSetter(field), classOrBuilder, builderMethodName(field), field.getName(),
+				nextImpl, classOrBuilder));
 	}
 
 	private String builderMethodName(FieldDescriptor field) {
@@ -75,12 +55,9 @@ public class Methods {
 		if (!needsHas(field)) {
 			return new StringBuilder();
 		}
-		StringBuilder builder = newOverride();
 		String fieldName = Utils.toUpperCamelCase(field.getName());
-		builder.append("public boolean has").append(fieldName);
-		builder.append("() {return ").append(classOrBuilder).append(".has").append(fieldName).append("();}");
-
-		return builder;
+		return override("public boolean has%s() {return %s.has%s();}"
+				.formatted(fieldName, classOrBuilder, fieldName));
 	}
 
 	private boolean needsHas(FieldDescriptor field) {
@@ -88,66 +65,41 @@ public class Methods {
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
-		StringBuilder builder = newOverride();
 		String fieldName = Utils.toUpperCamelCase(field.getName());
-		builder.append("public ").append(returnType);
-		builder.append(" clear").append(fieldName);
-		builder.append("() {");
-		builder.append(classOrBuilder).append(".clear").append(fieldName).append("();");
-		builder.append("return new ").append(returnType.replace(Utils.IFC_SUFFIX, Utils.IMPL_SUFFIX)).append("(")
-				.append(classOrBuilder).append(");}");
-
-		return builder;
+		String impl = returnType.replace(Utils.IFC_SUFFIX, Utils.IMPL_SUFFIX);
+		return override("public %s clear%s() {%s.clear%s();return new %s(%s);}"
+				.formatted(returnType, fieldName, classOrBuilder, fieldName, impl, classOrBuilder));
 	}
 
-	private StringBuilder newOverride() {
-		return new StringBuilder("@Override").append(System.lineSeparator());
+	private StringBuilder override(String body) {
+		return new StringBuilder("@Override").append(System.lineSeparator()).append(body);
 	}
 
 	public StringBuilder constructor(String implName, String classOrBuilder) {
-		StringBuilder builder = new StringBuilder("public ");
-		builder.append(implName).append("(Builder ").append(classOrBuilder);
-		builder.append(") {this.").append(classOrBuilder).append(" = ").append(classOrBuilder).append(";}");
-		return builder;
+		return new StringBuilder("public %s(Builder %s) {this.%s = %s;}"
+				.formatted(implName, classOrBuilder, classOrBuilder, classOrBuilder));
 	}
 
 	public StringBuilder declareSetter(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder(returnType);
-		builder.append(" ");
-		builder.append(generateSetter(field));
-		builder.append(";");
-
-		return builder;
+		return new StringBuilder("%s %s;".formatted(returnType, generateSetter(field)));
 	}
 
 	public StringBuilder declareHas(FieldDescriptor field) {
 		if (!needsHas(field)) {
 			return new StringBuilder();
 		}
-		StringBuilder builder = new StringBuilder("boolean has");
-		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("();");
-
-		return builder;
+		return new StringBuilder(
+				"boolean has%s();".formatted(Utils.toUpperCamelCase(field.getName())));
 	}
 
 	public StringBuilder declareClear(FieldDescriptor field, String returnType) {
-		StringBuilder builder = new StringBuilder(returnType);
-		builder.append(" clear");
-		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("();");
-
-		return builder;
+		return new StringBuilder(
+				"%s clear%s();".formatted(returnType, Utils.toUpperCamelCase(field.getName())));
 	}
 
-	private StringBuilder generateSetter(FieldDescriptor field) {
-		StringBuilder builder = new StringBuilder("set");
-		builder.append(Utils.toUpperCamelCase(field.getName()));
-		builder.append("(");
-		builder.append(typeMappings.get(field));
-		builder.append(" ").append(field.getName()).append(")");
-
-		return builder;
+	private String generateSetter(FieldDescriptor field) {
+		return "set%s(%s %s)".formatted(Utils.toUpperCamelCase(field.getName()),
+				typeMappings.get(field), field.getName());
 	}
 
 }

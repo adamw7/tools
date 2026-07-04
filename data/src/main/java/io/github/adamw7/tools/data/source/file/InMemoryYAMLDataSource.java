@@ -26,48 +26,41 @@ public class InMemoryYAMLDataSource extends AbstractInMemoryMapDataSource {
 		parseYAML(yamlContent.toString());
 	}
 
-	@SuppressWarnings("unchecked")
 	private void parseYAML(String yamlString) {
 		try {
 			ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 			Object parsed = yamlMapper.readValue(yamlString, Object.class);
-			if (parsed instanceof Map) {
-				flattenMap("", (Map<String, Object>) parsed);
-			} else if (parsed instanceof List) {
-				flattenList("", (List<Object>) parsed);
+			if (parsed instanceof Map<?, ?> map) {
+				flattenMap("", map);
+			} else if (parsed instanceof List<?> list) {
+				flattenList("", list);
 			}
 		} catch (Exception e) {
 			throw new IllegalArgumentException("Failed to parse YAML", e);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void flattenMap(String prefix, Map<String, Object> map) {
-		for (Map.Entry<String, Object> entry : map.entrySet()) {
-			String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
-			Object value = entry.getValue();
-			if (value instanceof Map) {
-				flattenMap(key, (Map<String, Object>) value);
-			} else if (value instanceof List) {
-				flattenList(key, (List<Object>) value);
-			} else {
-				fieldsMap.put(key, String.valueOf(value));
-			}
+	private void flattenMap(String prefix, Map<?, ?> map) {
+		for (Map.Entry<?, ?> entry : map.entrySet()) {
+			String key = prefix.isEmpty() ? String.valueOf(entry.getKey())
+					: prefix + "." + entry.getKey();
+			flattenValue(key, entry.getValue());
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void flattenList(String prefix, List<Object> list) {
+	private void flattenList(String prefix, List<?> list) {
 		for (int i = 0; i < list.size(); i++) {
-			String key = prefix + "[" + i + "]";
-			Object value = list.get(i);
-			if (value instanceof Map) {
-				flattenMap(key, (Map<String, Object>) value);
-			} else if (value instanceof List) {
-				flattenList(key, (List<Object>) value);
-			} else {
-				fieldsMap.put(key, String.valueOf(value));
-			}
+			flattenValue(prefix + "[" + i + "]", list.get(i));
+		}
+	}
+
+	private void flattenValue(String key, Object value) {
+		if (value instanceof Map<?, ?> map) {
+			flattenMap(key, map);
+		} else if (value instanceof List<?> list) {
+			flattenList(key, list);
+		} else {
+			fieldsMap.put(key, String.valueOf(value));
 		}
 	}
 }

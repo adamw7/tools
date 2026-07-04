@@ -1,16 +1,24 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.adamw7.tools.data.source.file.PathValidator;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
@@ -18,6 +26,44 @@ import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTrans
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
 public class McpConfigurationTest {
+
+    @AfterEach
+    public void clearBaseDir() {
+        // tools() confines file access through global PathValidator state; reset it
+        // so the restriction does not leak into other tests.
+        PathValidator.clearAllowedBaseDir();
+    }
+
+    @Test
+    public void confinesFileAccessToConfiguredBaseDir(@TempDir Path baseDir) throws IOException {
+        Path insideFile = Files.createFile(baseDir.resolve("data.csv"));
+        McpConfiguration config = new McpConfiguration();
+        config.allowedBaseDir = baseDir.toString();
+
+        config.tools();
+
+        assertThrows(SecurityException.class,
+                () -> PathValidator.validate(outsideBase(baseDir)));
+        assertDoesNotThrow(() -> PathValidator.validate(insideFile.toRealPath().toString()));
+    }
+
+    @Test
+    public void defaultsToWorkingDirectoryWhenBaseDirBlank(@TempDir Path outsideDir) throws IOException {
+        Path outsideFile = Files.createFile(outsideDir.resolve("data.csv"));
+        McpConfiguration config = new McpConfiguration();
+        config.allowedBaseDir = "   ";
+
+        config.tools();
+
+        // The JUnit temp dir lives outside the module's working directory, so a file
+        // there must be rejected once access is confined to the default base.
+        assertThrows(SecurityException.class,
+                () -> PathValidator.validate(outsideFile.toRealPath().toString()));
+    }
+
+    private String outsideBase(Path baseDir) {
+        return baseDir.getParent().resolve("outside-the-base-dir.csv").toString();
+    }
 
     @Test
     public void happyPath() throws Exception {

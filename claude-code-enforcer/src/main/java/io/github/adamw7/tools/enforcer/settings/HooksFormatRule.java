@@ -11,9 +11,7 @@ import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
@@ -46,14 +44,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
-	private static final String HOOKS_KEY = "hooks";
-	private static final String TYPE_KEY = "type";
-	private static final String COMMAND_KEY = "command";
-	private static final String COMMAND_TYPE = "command";
 	private static final String SHEBANG = "#!";
-	private static final String PROJECT_DIR_BRACED = "${CLAUDE_PROJECT_DIR}";
-	private static final String PROJECT_DIR_PLAIN = "$CLAUDE_PROJECT_DIR";
 
 	/** The {@code .claude/hooks} directory to scan. Injected from the rule configuration. */
 	private File hooksDir;
@@ -145,22 +136,12 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private JsonNode parseSettings(File file, List<String> violations) {
-		try {
-			JsonNode root = MAPPER.readTree(MarkdownText.read(file, "settings.json"));
-			if (root == null || !root.isObject()) {
-				violations.add("settings.json is not valid JSON: expected a JSON object");
-				return null;
-			}
-			return root;
-		} catch (JsonProcessingException e) {
-			violations.add("settings.json is not valid JSON: " + e.getOriginalMessage());
-			return null;
-		}
+		return JsonNodes.parseObject(MarkdownText.read(file, "settings.json"), "settings.json", violations);
 	}
 
 	private Set<Path> collectReferencedScripts(JsonNode settings, List<String> violations) {
 		Set<Path> referenced = new LinkedHashSet<>();
-		for (String command : hookCommands(settings)) {
+		for (String command : HookCommands.from(settings)) {
 			addReferencedScript(command, referenced, violations);
 		}
 		return referenced;
@@ -192,81 +173,30 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	private List<String> hookCommands(JsonNode settings) {
-		List<String> commands = new ArrayList<>();
-		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
-		if (hooks != null) {
-			collectEventCommands(hooks, commands);
-		}
-		return commands;
-	}
-
-	private void collectEventCommands(JsonNode hooks, List<String> commands) {
-		for (String event : JsonNodes.fieldNames(hooks)) {
-			collectGroupCommands(JsonNodes.arrayAt(hooks, event), commands);
-		}
-	}
-
-	private void collectGroupCommands(JsonNode groups, List<String> commands) {
-		if (groups == null) {
-			return;
-		}
-		for (int i = 0; i < groups.size(); i++) {
-			collectEntryCommands(JsonNodes.objectAt(groups, i), commands);
-		}
-	}
-
-	private void collectEntryCommands(JsonNode group, List<String> commands) {
-		if (group == null) {
-			return;
-		}
-		JsonNode entries = JsonNodes.arrayAt(group, HOOKS_KEY);
-		if (entries == null) {
-			return;
-		}
-		for (int i = 0; i < entries.size(); i++) {
-			collectCommand(JsonNodes.objectAt(entries, i), commands);
-		}
-	}
-
-	private void collectCommand(JsonNode entry, List<String> commands) {
-		if (entry != null && COMMAND_TYPE.equals(JsonNodes.textAt(entry, TYPE_KEY, "").strip())) {
-			commands.add(JsonNodes.textAt(entry, COMMAND_KEY, "").strip());
-		}
-	}
-
 	/** The absolute path a command's {@code $CLAUDE_PROJECT_DIR} token resolves to when it lands in the hooks directory, else null. */
 	private Path scriptInHooksDir(String command) {
 		Path hooks = hooksDir.getAbsoluteFile().toPath().normalize();
+		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
 		for (String token : command.split("\\s+")) {
-			Path resolved = expand(token);
-			if (resolved != null && resolved.startsWith(hooks)) {
+			Path resolved = resolveInHooks(projectDirs, token, hooks);
+			if (resolved != null) {
 				return resolved;
 			}
 		}
 		return null;
 	}
 
-	private Path expand(String token) {
-		for (String projectDirToken : List.of(PROJECT_DIR_BRACED, PROJECT_DIR_PLAIN)) {
-			if (token.contains(projectDirToken)) {
-				return absolute(token.replace(projectDirToken, projectDir().getPath()));
-			}
+	private Path resolveInHooks(ClaudeProjectDir projectDirs, String token, Path hooks) {
+		String expanded = projectDirs.expand(token);
+		if (expanded == null) {
+			return null;
 		}
-		return null;
+		Path resolved = absolute(expanded);
+		return resolved.startsWith(hooks) ? resolved : null;
 	}
 
 	private Path absolute(String path) {
 		return new File(path).getAbsoluteFile().toPath().normalize();
-	}
-
-	private File projectDir() {
-		if (projectDir != null) {
-			return projectDir;
-		}
-		File claudeDir = settingsFile.getAbsoluteFile().getParentFile();
-		File root = claudeDir != null ? claudeDir.getParentFile() : null;
-		return root != null ? root : new File(".");
 	}
 
 	void setHooksDir(File hooksDir) {

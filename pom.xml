@@ -156,6 +156,14 @@
 				<artifactId>grpc-protobuf</artifactId>
 				<version>${grpc.version}</version>
 			</dependency>
+			<!-- The gRPC tree requests error_prone_annotations at two versions
+			     (grpc directly vs. gson transitively). Pin the highest so the
+			     dependencyConvergence enforcer rule is satisfied. -->
+			<dependency>
+				<groupId>com.google.errorprone</groupId>
+				<artifactId>error_prone_annotations</artifactId>
+				<version>2.48.0</version>
+			</dependency>
 			<dependency>
 				<groupId>io.grpc</groupId>
 				<artifactId>grpc-stub</artifactId>
@@ -183,6 +191,25 @@
 				<groupId>org.eclipse.jdt</groupId>
 				<artifactId>org.eclipse.jdt.core</artifactId>
 				<version>3.46.0</version>
+			</dependency>
+			<!-- org.eclipse.jdt.core drags in the Eclipse platform tree, whose
+			     internal artifacts resolve to several different versions along
+			     different paths. Pin the highest requested version of each so the
+			     dependencyConvergence enforcer rule is satisfied. -->
+			<dependency>
+				<groupId>org.eclipse.platform</groupId>
+				<artifactId>org.eclipse.osgi</artifactId>
+				<version>3.24.200</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.platform</groupId>
+				<artifactId>org.eclipse.equinox.common</artifactId>
+				<version>3.20.400</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.platform</groupId>
+				<artifactId>org.eclipse.core.runtime</artifactId>
+				<version>3.34.200</version>
 			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.jackson</groupId>
@@ -400,6 +427,8 @@
 								<requirePluginVersions>
 									<banSnapshots>false</banSnapshots>
 								</requirePluginVersions>
+								<dependencyConvergence />
+								<requireNoRepositories />
 							</rules>
 						</configuration>
 					</execution>

@@ -16,9 +16,12 @@ for a run-to-completion workload is a **Job**, not a Deployment.
 | `log4j2.properties`          | Console log config baked into the image so results reach stdout.    |
 | `configmap-sample-data.yaml` | Sample CSV (`people.csv`) mounted at `/data`.                       |
 | `job-uniqueness-check.yaml`  | Job that runs `SampleApp` against the CSV and prints the result.    |
-| `run-on-minikube.sh`         | One-shot: build → image → minikube → load → apply → logs.           |
+| `run-on-minikube.sh`         | One-shot (Linux/macOS): build → image → minikube → load → apply → logs. |
+| `run-on-minikube.ps1`        | One-shot (Windows): installs minikube/kubectl if missing, then the same. |
 
 ## Quick start
+
+### Linux / macOS
 
 Prerequisites on your machine: `docker`, `minikube`, `kubectl`, JDK 25 + Maven.
 
@@ -26,6 +29,18 @@ Prerequisites on your machine: `docker`, `minikube`, `kubectl`, JDK 25 + Maven.
 ./k8s/run-on-minikube.sh
 # check a different column:
 COLUMN=id ./k8s/run-on-minikube.sh
+```
+
+### Windows
+
+Prerequisites: Docker Desktop and a JDK 25 + Maven (or the `mvnw.cmd` wrapper).
+The script downloads `minikube` and `kubectl` automatically when they are not
+already on `PATH`.
+
+```powershell
+.\k8s\run-on-minikube.ps1
+# check a different column:
+.\k8s\run-on-minikube.ps1 -Column id
 ```
 
 Expected output (default column `country`, which repeats):

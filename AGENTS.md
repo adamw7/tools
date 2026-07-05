@@ -25,6 +25,11 @@ Maven project. The notable capabilities are:
   serve as a key, and searches for a smaller key), data structures (an
   open-addressing `Map` implementation), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
+- **BPMN** (`bpmn`) — a dependency-free BPMN 2.0 parser that reads `.bpmn` XML
+  (using only the JDK XML APIs, hardened against XXE) into a Java process model
+  of flow nodes and sequence flows, plus a `ProcessValidator` that flags
+  structural defects such as a missing start/end event, sequence flows that
+  reference unknown nodes, and unreachable or dead-end nodes.
 
 See [README.md](README.md) for worked code examples of each capability, and
 [docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model
@@ -42,6 +47,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
 │   └── context                     # regex-based class-usage context finder
+├── bpmn                        # dependency-free BPMN 2.0 parser + process validator
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # builds an executable jar-with-dependencies
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)
@@ -49,7 +55,7 @@ tools (root pom, packaging=pom)
 ```
 
 Root reactor modules are `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-and `assembly`.
+`bpmn`, and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  targetNamespace="http://example.com/orders">
+  <bpmn:process id="orderProcess" name="Order handling">
+    <bpmn:startEvent id="start" name="Order received"/>
+    <bpmn:userTask id="review" name="Review order"/>
+    <bpmn:exclusiveGateway id="approved" name="Approved?"/>
+    <bpmn:serviceTask id="ship" name="Ship order"/>
+    <bpmn:endEvent id="done" name="Order shipped"/>
+    <bpmn:endEvent id="rejected" name="Order rejected"/>
+
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="review"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="review" targetRef="approved"/>
+    <bpmn:sequenceFlow id="f3" name="yes" sourceRef="approved" targetRef="ship"/>
+    <bpmn:sequenceFlow id="f4" name="no" sourceRef="approved" targetRef="rejected"/>
+    <bpmn:sequenceFlow id="f5" sourceRef="ship" targetRef="done"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="diagram">
+    <bpmndi:BPMNPlane bpmnElement="orderProcess"/>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

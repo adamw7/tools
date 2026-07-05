@@ -1,0 +1,27 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.github.adamw7</groupId>
+		<artifactId>tools</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>tools.bpmn</artifactId>
+	<packaging>jar</packaging>
+	<name>Tooling for BPMN</name>
+	<description>A dependency-free BPMN 2.0 parser that reads .bpmn XML into a Java process model, plus a structural validator for the parsed processes.</description>
+	<url>https://github.com/adamw7/tools</url>
+	<dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

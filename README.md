@@ -19,6 +19,9 @@ Library of tooling for various purposes.
   - [Open-addressing set](#open-addressing-set)
   - [Primitive int-keyed map](#primitive-int-keyed-map)
   - [Network kill-switch](#network-kill-switch)
+- [BPMN](#bpmn)
+  - [Parsing a process](#parsing-a-process)
+  - [Validating a process](#validating-a-process)
 - [Building](#building)
 - [Releasing](#releasing)
 - [License](#license)
@@ -664,6 +667,57 @@ any subsequent attempt to open an outbound connection fails fast. The method is:
   
 The switch can be used for example if there is a need to make sure no network connections
 are open while running unit tests.
+
+## BPMN
+
+The `bpmn` module reads [BPMN 2.0](https://www.omg.org/spec/BPMN/2.0/) process
+definitions into a small, immutable Java model and checks them for common
+structural defects. It depends only on the JDK XML APIs — no third-party BPMN
+engine — and its parser is namespace-aware and hardened against XML external
+entity (XXE) attacks (DOCTYPE declarations and external entities are rejected).
+
+### Parsing a process
+
+`BpmnParser` turns a `.bpmn` document (from an `InputStream`, `Path`, or
+`String`) into a `BpmnModel`: the document's `targetNamespace` and the
+`Process`es it declares. Each `Process` holds its `FlowNode`s (events,
+activities and gateways, each tagged with a `FlowNodeType`) and its
+`SequenceFlow`s, with lookup helpers for navigating the graph. Elements the
+parser does not recognise — documentation, lane sets, diagram interchange — are
+ignored.
+
+```java
+BpmnModel model = new BpmnParser().parse(Path.of("order-process.bpmn"));
+
+Process process = model.processes().get(0);
+process.nodesOfType(FlowNodeType.USER_TASK)      // every user task
+       .forEach(task -> System.out.println(task.name()));
+
+process.outgoing("approved");  // the sequence flows leaving the "approved" gateway
+```
+
+Malformed XML, a root element other than `<definitions>`, or an unreadable file
+all raise a `BpmnParseException`.
+
+### Validating a process
+
+`ProcessValidator` runs a set of structural rules over a parsed `Process` and
+returns the `ValidationIssue`s it finds. Errors mean the process is
+structurally invalid; warnings flag suspicious but tolerable traits.
+
+```java
+ProcessValidator validator = new ProcessValidator();
+
+List<ValidationIssue> issues = validator.validate(process);
+issues.forEach(issue ->
+        System.out.println(issue.severity() + ": " + issue.message()));
+
+boolean ok = validator.isValid(process); // true when there are no ERROR issues
+```
+
+The rules cover a missing start or end event, sequence flows whose `sourceRef`
+or `targetRef` match no node, and nodes that are unreachable (no incoming flow)
+or dead ends (no outgoing flow).
 
 # Building
 ```

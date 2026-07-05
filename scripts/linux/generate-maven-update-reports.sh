@@ -1,3 +1,3 @@
 #!/bin/bash
-mvn versions:plugin-updates-aggregate-report &
-mvn versions:dependency-updates-aggregate-report &
+set -euo pipefail
+mvn versions:plugin-updates-aggregate-report versions:dependency-updates-aggregate-report

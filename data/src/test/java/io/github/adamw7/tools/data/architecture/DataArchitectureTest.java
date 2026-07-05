@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.architecture;
 
+import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -12,6 +13,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.library.GeneralCodingRules;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
@@ -98,18 +100,6 @@ public class DataArchitectureTest {
 			.because("the structure package is a reusable collections library and must not couple to data sources");
 
 	@ArchTest
-	static final ArchRule fileSourcesDoNotDependOnDatabaseSources = noClasses()
-			.that().resideInAPackage(FILE_PACKAGE)
-			.should().dependOnClassesThat().resideInAPackage(DB_PACKAGE)
-			.because("file and database data sources are interchangeable implementations that must stay decoupled");
-
-	@ArchTest
-	static final ArchRule databaseSourcesDoNotDependOnFileSources = noClasses()
-			.that().resideInAPackage(DB_PACKAGE)
-			.should().dependOnClassesThat().resideInAPackage(FILE_PACKAGE)
-			.because("file and database data sources are interchangeable implementations that must stay decoupled");
-
-	@ArchTest
 	static final ArchRule uniquenessCoreDoesNotDependOnMcpAdapter = noClasses()
 			.that().resideInAPackage(UNIQUENESS_PACKAGE)
 			.and().resideOutsideOfPackage(MCP_PACKAGE)
@@ -118,6 +108,41 @@ public class DataArchitectureTest {
 
 	@ArchTest
 	static final ArchRule productionCodeLogsThroughLog4j = noClasses()
-			.should().dependOnClassesThat().resideInAnyPackage("java.util.logging..", "java.lang.System$Logger")
+			.should().dependOnClassesThat().resideInAPackage("java.util.logging..")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.lang.System$Logger")
 			.because("logging must go through log4j2 so configuration stays in one place");
+
+	@ArchTest
+	static final ArchRule noAccessToStandardStreams =
+			GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
+
+	@ArchTest
+	static final ArchRule noGenericExceptionsAreThrown =
+			GeneralCodingRules.NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS;
+
+	@ArchTest
+	static final ArchRule noJavaUtilLogging =
+			GeneralCodingRules.NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING;
+
+	@ArchTest
+	static final ArchRule noJodaTime =
+			GeneralCodingRules.NO_CLASSES_SHOULD_USE_JODATIME;
+
+	@ArchTest
+	static final ArchRule productionCodeDoesNotHaltTheJvm = noClasses()
+			.should().callMethod(System.class, "exit", int.class)
+			.because("a library must never terminate the host JVM; it should throw instead");
+
+	@ArchTest
+	static final ArchRule sourceLayersDependInOneDirection = layeredArchitecture()
+			.consideringOnlyDependenciesInLayers()
+			.layer("Contracts").definedBy(INTERFACES_PACKAGE)
+			.layer("Compression").definedBy("..compression..")
+			.layer("FileSources").definedBy(FILE_PACKAGE)
+			.layer("DbSources").definedBy(DB_PACKAGE)
+			.whereLayer("FileSources").mayOnlyAccessLayers("Contracts", "Compression")
+			.whereLayer("DbSources").mayOnlyAccessLayers("Contracts")
+			.whereLayer("Compression").mayNotAccessAnyLayer()
+			.as("the source layers must depend only downwards: concrete sources on their "
+					+ "contracts (and, for files, on compression), never on each other");
 }

@@ -26,7 +26,10 @@ Maven project. The notable capabilities are:
   open-addressing `Map` implementation), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
 
-See [README.md](README.md) for worked code examples of each capability.
+See [README.md](README.md) for worked code examples of each capability, and
+[docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model
+(System Context → Containers → Components, as Mermaid diagrams) of how the
+modules and MCP servers fit together.
 
 ## Module layout
 
@@ -75,6 +78,23 @@ transport (`--transport.mode=sse`, event stream at `/sse`, messages at
   `JAVA_HOME`, and pre-fetches dependencies (`mvn dependency:go-offline`).
 - **Maven 3.9.x.** Build from the repository root.
 
+## Helper scripts
+
+`scripts/` holds developer-environment conveniences (not part of the Maven
+build), with parallel `linux/` (`*.sh`) and `windows/` (`*.bat`/`*.ps1`)
+variants:
+
+- `install-jdk-25` — downloads and installs Eclipse Temurin JDK 25 (the
+  toolchain the build requires); skips the download when JDK 25 is already
+  present.
+- `generate-maven-update-reports` — runs the `versions-maven-plugin`
+  (`plugin-updates-aggregate-report` + `dependency-updates-aggregate-report`)
+  to report available plugin and dependency updates.
+- `update-claude-code` — runs `claude update` to update the Claude Code CLI.
+- `update-git-client` — upgrades the system `git` via the host package manager.
+- `update-git-repos-async` — `git pull`s every git repository in the script's
+  parent directory in parallel.
+
 ## Build, test, and run
 
 ```bash
@@ -114,6 +134,42 @@ CI (`.github/workflows/maven.yml`) installs the enforcer rule
 `mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
 pull requests targeting `main`. It is the only workflow that runs the CLAUDE.md
 check; the other workflows build normally and are unaffected.
+
+## Testing, coverage & mutation testing
+
+- **Unit tests** run in the normal `test`/`package` lifecycle
+  (`mvn -pl <module> test`). Write tests for all new logic — behavior, edge
+  cases, and error paths.
+- **MCP integration tests** are gated behind the `integration-tests` profile
+  (defined in `data` and `code/context`) and exercise the MCP servers over
+  streamable HTTP: `mvn -P integration-tests verify`. Test classes ending in
+  `IT` belong to this profile.
+- **Coverage** is the opt-in `coverage` profile (JaCoCo): `mvn -Pcoverage verify`
+  produces reports at `**/target/site/jacoco/` and **fails the build** if bundle
+  instruction coverage drops below **80%** (`COVEREDRATIO >= 0.80`).
+- **Mutation testing** is the opt-in `pitest` profile (PIT + JUnit 5):
+  `mvn -Ppitest test` writes HTML/XML reports to `**/target/pit-reports/`. It
+  excludes `*IT` integration tests and does not fail when a class has no
+  mutations.
+
+## Continuous integration
+
+Workflows live in `.github/workflows/`. Only the first three below gate pull
+requests to `main`; the rest run on a schedule (or manually).
+
+| Workflow | Trigger | What it runs |
+| --- | --- | --- |
+| `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. |
+| `docker.yml` | push, PR → `main` | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
+| `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
+| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests). |
+| `coverage.yml` | weekly | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
+| `pitest.yml` | weekly; manual | `mvn test -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
+| `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
+
+Every workflow builds on JDK 25 (Temurin) and passes `-ntp` to keep the log
+free of artifact-transfer noise.
 
 ## CLAUDE.md enforcement
 
@@ -238,17 +294,18 @@ To release version `X`:
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.
 
-Creating the GitHub release fires `maven-publish.yml`, which runs two jobs:
+Creating the GitHub release fires two separate workflows:
 
-- `github-packages` deploys to **GitHub Packages** (`mvn deploy -P github-packages`,
-  using the `distributionManagement` repository). The `github-packages` profile
-  attaches the javadoc jar so the published coordinates ship javadoc alongside
-  the main jar; the default `mvn deploy` would otherwise publish the main jar
-  only.
-- `central` deploys to **Maven Central** via the Sonatype Central Portal. It
-  runs `mvn -P release deploy`; the `release` profile attaches the sources and
-  javadoc jars, GPG-signs every artifact, and hands the bundle to the
-  `central-publishing-maven-plugin` (`autoPublish=true`).
+- `maven-publish.yml` deploys to **GitHub Packages**
+  (`mvn deploy -P github-packages`, using the `distributionManagement`
+  repository). The `github-packages` profile attaches the javadoc jar so the
+  published coordinates ship javadoc alongside the main jar; the default
+  `mvn deploy` would otherwise publish the main jar only.
+- `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
+  Portal. It runs `mvn -P release deploy` (excluding the `assembly` and
+  `grpc-example` modules, which are not reusable libraries); the `release`
+  profile attaches the sources and javadoc jars, GPG-signs every artifact, and
+  hands the bundle to the `central-publishing-maven-plugin` (`autoPublish=true`).
 
 Maven Central publishing is **opt-in** through the `release` profile, and the
 `central-publishing-maven-plugin` is bound to the `deploy` phase, so ordinary
@@ -263,7 +320,7 @@ server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.
 
 ### Staged-only dry run (validate without releasing)
 
-`maven-publish.yml` also accepts a manual `workflow_dispatch` trigger that runs
+`central-publish.yml` also accepts a manual `workflow_dispatch` trigger that runs
 the `central` job as a **staged-only dry run**: it signs and uploads the bundle
 so the Central Portal validates it, but overrides the plugin with
 `-Dcentral.autoPublish=false -Dcentral.waitUntil=validated`, leaving the
@@ -274,6 +331,39 @@ version, or supply a non-`SNAPSHOT` `revision` input. Locally, the same staged
 check is `mvn -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated`.
 The `central.autoPublish` (default `true`) and `central.waitUntil` (default
 `published`) properties drive this; the defaults keep a real release publishing.
+
+## Containers & Kubernetes
+
+The repository ships two Dockerfiles with different purposes:
+
+- `assembly/Dockerfile` packages the `jar-with-dependencies` built by the
+  `assembly` module. CI (`docker.yml`) builds this image on every push and PR
+  to `main` but never runs it. **Caveat:** the `data` jar is repackaged with
+  `spring-boot:repackage` (nested `BOOT-INF/` layout), so this image cannot
+  launch `SampleApp` with `java -jar` — see `k8s/README.md` for the full
+  explanation.
+- `k8s/Dockerfile` is a dedicated deployment image that expands the fat jar into
+  a flat `classes/` + `lib/` classpath and adds a console `log4j2.properties`, so
+  `SampleApp`'s result reaches stdout (and thus `kubectl logs`).
+
+The `k8s/` directory runs `SampleApp` (the CSV column-uniqueness checker) on a
+local minikube cluster as a run-to-completion **Job** (not a Deployment):
+`configmap-sample-data.yaml` mounts a sample CSV, `job-uniqueness-check.yaml`
+runs the check, and `run-on-minikube.sh` / `run-on-minikube.ps1` drive the whole
+flow (build → image → minikube → load → apply → logs). Pick the column to check
+with the `COLUMN` env var (Linux/macOS) or `-Column` parameter (Windows). See
+[k8s/README.md](k8s/README.md) for quick-start, manual steps, and the sandbox
+limitations that prevent running a minikube control plane in this repo's
+automated environment.
+
+## Security
+
+- Report vulnerabilities privately by email to the address in
+  [SECURITY.md](SECURITY.md); do not open a public issue for them.
+- [SECURITY.md](SECURITY.md) also lists which released versions currently
+  receive security fixes (only the latest line is supported).
+- `codeql.yml` runs GitHub CodeQL analysis on every push and PR to `main` and on
+  a weekly schedule; keep new code free of the issues it flags.
 
 ## Pull requests & commits
 

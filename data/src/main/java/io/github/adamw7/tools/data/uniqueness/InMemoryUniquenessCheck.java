@@ -1,8 +1,6 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
@@ -36,21 +34,9 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 		return handleSuccessfulCheck(keyCandidates);
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates) {
-		Set<Result> uniqueCandidates = new HashSet<>();
-		for (String candidate : keyCandidates) {
-			Set<String> set = createSmallerSet(keyCandidates, candidate);
-			if (!set.isEmpty()) {
-				dataSource.reset();
-				String[] newCandidates = set.toArray(new String[keyCandidates.length - 1]);
-				Integer[] indices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
-				Result result = findUnique(indices, newCandidates);
-				if (result.unique) {
-					uniqueCandidates.add(result);
-				}
-			}
-		}
-
-		return uniqueCandidates;
+	@Override
+	protected Result checkSubset(String[] newCandidates) {
+		Integer[] indices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
+		return findUnique(indices, newCandidates);
 	}
 }

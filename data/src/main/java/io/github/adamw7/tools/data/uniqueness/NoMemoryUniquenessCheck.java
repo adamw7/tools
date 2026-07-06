@@ -1,8 +1,5 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class NoMemoryUniquenessCheck extends AbstractUniqueness<IterableDataSource> {
@@ -31,18 +28,8 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness<IterableDataSour
 		return result;
 	}
 
-	protected Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates) {
-		Set<Result> uniqueCandidates  = new HashSet<>();
-		for (String candidate : keyCandidates) {
-			Set<String> set = createSmallerSet(keyCandidates, candidate);
-			if (!set.isEmpty()) {
-				dataSource.reset();
-				Result result = exec(set.toArray(new String[keyCandidates.length - 1]));
-				if (result.unique) {
-					uniqueCandidates.add(result);
-				}
-			}
-		}
-		return uniqueCandidates;
+	@Override
+	protected Result checkSubset(String[] newCandidates) {
+		return exec(newCandidates);
 	}
 }

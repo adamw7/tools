@@ -83,13 +83,34 @@ public abstract class AbstractUniqueness<T extends IterableDataSource> implement
 		Set<Result> set = findPotentiallySmallerSetOfCandidates(keyCandidates);
 		return new Result(true, keyCandidates, null, set);
 	}
-	
-	protected Set<String> createSmallerSet(String[] keyCandidates, String candidate) {
+
+	private Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates) {
+		Set<Result> uniqueCandidates = new HashSet<>();
+		for (String candidate : keyCandidates) {
+			Set<String> smaller = createSmallerSet(keyCandidates, candidate);
+			addIfUnique(uniqueCandidates, smaller, keyCandidates.length);
+		}
+		return uniqueCandidates;
+	}
+
+	private void addIfUnique(Set<Result> uniqueCandidates, Set<String> smaller, int originalSize) {
+		if (smaller.isEmpty()) {
+			return;
+		}
+		dataSource.reset();
+		String[] newCandidates = smaller.toArray(new String[originalSize - 1]);
+		Result result = checkSubset(newCandidates);
+		if (result.unique) {
+			uniqueCandidates.add(result);
+		}
+	}
+
+	private Set<String> createSmallerSet(String[] keyCandidates, String candidate) {
 		Set<String> set = new HashSet<>(Arrays.asList(keyCandidates));
 		set.remove(candidate);
 		return set;
 	}
-	
+
 	protected void close(IterableDataSource dataSource) {
 		try {
 			dataSource.close();
@@ -97,8 +118,8 @@ public abstract class AbstractUniqueness<T extends IterableDataSource> implement
 			log.warn("Failed to close data source: {}", dataSource, e);
 		}
 	}
-	
-	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);
+
+	protected abstract Result checkSubset(String[] newCandidates);
 	
 	@Override
 	public Result execForAllColumns() {

@@ -19,6 +19,7 @@ Library of tooling for various purposes.
   - [Open-addressing set](#open-addressing-set)
   - [Primitive int-keyed map](#primitive-int-keyed-map)
   - [Network kill-switch](#network-kill-switch)
+- [Architecture tests (ArchUnit)](#architecture-tests-archunit)
 - [Building](#building)
 - [Releasing](#releasing)
 - [License](#license)
@@ -664,6 +665,68 @@ any subsequent attempt to open an outbound connection fails fast. The method is:
   
 The switch can be used for example if there is a need to make sure no network connections
 are open while running unit tests.
+
+## Architecture tests (ArchUnit)
+
+Every production module guards its own package structure with
+[ArchUnit](https://www.archunit.org/) rules that run as ordinary JUnit 5 tests,
+so an accidental dependency or a broken naming convention **fails the build**
+instead of quietly eroding the design. Each module keeps its rules in a single
+`*ArchitectureTest` under an `architecture` package, annotated with
+`@AnalyzeClasses(..., importOptions = ImportOption.DoNotIncludeTests.class)` so
+that only production classes are analysed. The ArchUnit dependency
+(`com.tngtech.archunit:archunit-junit5`) is managed centrally in the root
+`pom.xml`, and the tests run as part of the normal `mvn install`.
+
+A set of conventions is shared across modules:
+
+- **No cycles between packages** — `slices().matching(...).should().beFreeOfCycles()`
+  keeps the package graph acyclic in each module.
+- **Loggers are constants** — every `org.apache.logging.log4j.Logger` field must
+  be `private static final` (the context module relaxes this to `private final`),
+  because a logger is a shared, immutable, class-scoped collaborator.
+- **`*Exception` types really are exceptions** — any class whose simple name ends
+  with `Exception` must be assignable to `java.lang.Exception`.
+- **`Abstract`-prefixed names** — a top-level abstract class must have a simple
+  name starting with `Abstract`, so that a type meant to be extended is obvious
+  at a glance.
+- **Logging goes through log4j2, not the console or the JDK** — ArchUnit's
+  `GeneralCodingRules` forbid access to `System.out`/`System.err`, throwing
+  generic exceptions, and using `java.util.logging`; libraries additionally must
+  never call `System.exit`.
+
+On top of that baseline, each module pins the boundaries specific to its own
+design:
+
+- **`data`** — data-source contracts (`source.interfaces`) must stay interfaces
+  and must not know their concrete `source.db`/`source.file` implementations;
+  `structure.internal` is accessible only from `structure`; the reusable
+  `structure` collections must not couple to data sources; every concrete
+  `*DataSource` must implement `IterableDataSource`; the uniqueness core must not
+  depend on its `mcp` adapter; and a `layeredArchitecture` pins the source layers
+  so file and DB sources depend only downwards on their contracts (files may also
+  use compression), never on each other.
+- **`code/context`** — the finder/tree core must not depend on the `mcp`
+  delivery package, and only that `mcp` package may build on the shared MCP
+  scaffolding; every concrete `*Serializer` must honour the
+  `ProjectTreeSerializer` contract.
+- **`code/protogen-maven-plugin`** — the reusable `format` package must not
+  depend on the `gen` code generator that builds on it, and every concrete
+  `*Mojo` must implement the Maven `Mojo` contract.
+- **`mcp-common`** — the `McpTool` SPI must stay an interface, every concrete
+  `*Tool` must implement it, and the shared scaffolding must never call
+  `System.exit`.
+- **`claude-code-enforcer`** — a `layeredArchitecture` pins the module's layers
+  (`text` is the foundation, `rule` builds on it, and the feature packages
+  `definition`/`doc`/`mcp`/`settings` build on `rule` without reaching sideways
+  into one another), and every concrete `*Rule` must extend the shared
+  `ClaudeCodeEnforcerRule` base.
+
+Run them for a single module with, for example:
+```
+mvn -pl data test
+```
+or across the whole repository as part of `mvn install`.
 
 # Building
 ```

@@ -7,10 +7,8 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class NoMemoryUniquenessCheck extends AbstractUniqueness<IterableDataSource> {
 
-	public NoMemoryUniquenessCheck() { }
-
 	public NoMemoryUniquenessCheck(IterableDataSource dataSource) {
-		this.dataSource = dataSource;
+		super(dataSource);
 	}
 
 	@Override

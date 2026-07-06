@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
+import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 import io.github.adamw7.tools.mcp.McpTool;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
@@ -56,9 +56,7 @@ public class UniquenessTool implements McpTool {
 		String columnName = String.valueOf(arguments.get("columns_name"));
 		int columnsRow = Integer.parseInt(String.valueOf(arguments.get("columns_row")));
 		try (InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow)) {
-			AbstractUniqueness check = new InMemoryUniquenessCheck();
-
-			check.setDataSource(source);
+			Uniqueness check = new InMemoryUniquenessCheck(source);
 			Result result = check.exec(columnName);
 			print(result, columnName);
 			return String.valueOf(result.isUnique());

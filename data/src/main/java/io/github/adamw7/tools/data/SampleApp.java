@@ -8,9 +8,9 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
-import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
+import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 
 public class SampleApp {
 	
@@ -27,12 +27,11 @@ public class SampleApp {
 	private static void executeUniquenessCheck(String fileName, String columnName) {
 		try {
 			InMemoryDataSource source = new InMemoryCSVDataSource(fileName, 1);
-			AbstractUniqueness check = new InMemoryUniquenessCheck();
-			
+			Uniqueness check = new InMemoryUniquenessCheck(source);
+
 			source.readAll();
-			
-			check.setDataSource(source);
-			print(check.exec(columnName), columnName);			
+
+			print(check.exec(columnName), columnName);
 		} catch (FileNotFoundException e) {
 			throw new UncheckedIOException(e);
 		}

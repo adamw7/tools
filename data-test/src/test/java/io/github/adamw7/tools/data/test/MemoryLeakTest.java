@@ -202,11 +202,9 @@ public class MemoryLeakTest {
 
 	@Test
 	public void seekMemoryLeakInUniquenessCheck() {
-		AbstractUniqueness uniqueness = new NoMemoryUniquenessCheck();
-
 		try {
 			IterableDataSource source = new CSVDataSource(FILE_NAME, 1);
-			uniqueness.setDataSource(source);
+			AbstractUniqueness uniqueness = new NoMemoryUniquenessCheck(source);
 
 			Result result = uniqueness.exec("Column 1");
 			source.close();

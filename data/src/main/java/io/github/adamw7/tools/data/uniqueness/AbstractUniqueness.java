@@ -11,15 +11,17 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public abstract class AbstractUniqueness<T extends IterableDataSource> implements Uniqueness<T> {
+public abstract class AbstractUniqueness<T extends IterableDataSource> implements Uniqueness {
 
 	private static final Logger log = LogManager.getLogger(AbstractUniqueness.class);
 
-	protected T dataSource;
+	protected final T dataSource;
 
-	@Override
-	public void setDataSource(T source) {
-		this.dataSource = source;
+	protected AbstractUniqueness(T dataSource) {
+		if (dataSource == null) {
+			throw new IllegalArgumentException("dataSource must not be null");
+		}
+		this.dataSource = dataSource;
 	}
 
 	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
@@ -99,7 +101,7 @@ public abstract class AbstractUniqueness<T extends IterableDataSource> implement
 	protected abstract Set<Result> findPotentiallySmallerSetOfCandidates(String[] keyCandidates);
 	
 	@Override
-	public Result exec() {
+	public Result execForAllColumns() {
 		dataSource.open();
 		return exec(dataSource.getColumnNames());
 	}

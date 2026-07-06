@@ -8,11 +8,8 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
 public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSource> {
 
-	public InMemoryUniquenessCheck() {
-	}
-
 	public InMemoryUniquenessCheck(InMemoryDataSource dataSource) {
-		setDataSource(dataSource);
+		super(dataSource);
 	}
 
 	@Override

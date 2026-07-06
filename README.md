@@ -698,7 +698,7 @@ A set of conventions is shared across modules:
 On top of that baseline, each module pins the boundaries specific to its own
 design:
 
-- **`data`** — data-source contracts (`source.interfaces`) must stay interfaces
+- **[`data`](data/src/test/java/io/github/adamw7/tools/data/architecture/DataArchitectureTest.java)** — data-source contracts (`source.interfaces`) must stay interfaces
   and must not know their concrete `source.db`/`source.file` implementations;
   `structure.internal` is accessible only from `structure`; the reusable
   `structure` collections must not couple to data sources; every concrete
@@ -706,17 +706,17 @@ design:
   depend on its `mcp` adapter; and a `layeredArchitecture` pins the source layers
   so file and DB sources depend only downwards on their contracts (files may also
   use compression), never on each other.
-- **`code/context`** — the finder/tree core must not depend on the `mcp`
+- **[`code/context`](code/context/src/test/java/io/github/adamw7/context/architecture/ContextArchitectureTest.java)** — the finder/tree core must not depend on the `mcp`
   delivery package, and only that `mcp` package may build on the shared MCP
   scaffolding; every concrete `*Serializer` must honour the
   `ProjectTreeSerializer` contract.
-- **`code/protogen-maven-plugin`** — the reusable `format` package must not
+- **[`code/protogen-maven-plugin`](code/protogen-maven-plugin/src/test/java/io/github/adamw7/tools/code/architecture/ProtogenArchitectureTest.java)** — the reusable `format` package must not
   depend on the `gen` code generator that builds on it, and every concrete
   `*Mojo` must implement the Maven `Mojo` contract.
-- **`mcp-common`** — the `McpTool` SPI must stay an interface, every concrete
+- **[`mcp-common`](mcp-common/src/test/java/io/github/adamw7/tools/mcp/architecture/McpCommonArchitectureTest.java)** — the `McpTool` SPI must stay an interface, every concrete
   `*Tool` must implement it, and the shared scaffolding must never call
   `System.exit`.
-- **`claude-code-enforcer`** — a `layeredArchitecture` pins the module's layers
+- **[`claude-code-enforcer`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/architecture/EnforcerArchitectureTest.java)** — a `layeredArchitecture` pins the module's layers
   (`text` is the foundation, `rule` builds on it, and the feature packages
   `definition`/`doc`/`mcp`/`settings` build on `rule` without reaching sideways
   into one another), and every concrete `*Rule` must extend the shared

@@ -22,8 +22,9 @@ Maven project. The notable capabilities are:
   project-tree and context-finder tools over stdio, streamable HTTP or HTTP+SSE.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC; in-memory and iterative
   loading), a uniqueness-checking tool (finds whether a subset of columns can
-  serve as a key, and searches for a smaller key), data structures (an
-  open-addressing `Map` implementation), and an **MCP server** exposing the
+  serve as a key, and searches for a smaller key), data structures
+  (`OpenAddressingMap`, an `OpenAddressingSet`, and the primitive `int`-keyed
+  `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
 
 See [README.md](README.md) for worked code examples of each capability, and
@@ -289,7 +290,7 @@ These are hard requirements for any code you add or modify:
 To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is currently
-   a `-SNAPSHOT`, e.g. `2.2.0-SNAPSHOT`).
+   a `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
 2. Commit and push.
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.

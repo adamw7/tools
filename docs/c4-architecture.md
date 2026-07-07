@@ -81,7 +81,7 @@ flowchart TB
         context["<b>code/context</b><br/><i>Library + MCP server</i><br/>Class-usage finder + ProjectTreeBuilder"]
         contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens"])
 
-        data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap"]
+        data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap · OpenAddressingSet · IntKeyOpenAddressingMap"]
         dataMcp(["🟪 Uniqueness MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>check uniqueness"])
 
         context --- contextMcp
@@ -148,7 +148,7 @@ flowchart TB
             fileSrc["<b>File sources</b><br/>CSV · JSON · YAML · TOON"]
             dbSrc["<b>SQL sources</b><br/><i>JDBC</i>"]
             compression["<b>ZipUtils</b><br/><i>GZip</i>"]
-            structure["<b>OpenAddressingMap</b>"]
+            structure["<b>OpenAddressingMap</b><br/>OpenAddressingSet · IntKeyOpenAddressingMap"]
         end
     end
 

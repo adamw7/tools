@@ -129,13 +129,13 @@ class is reported as an error result.
 ### stdio (default)
 
 ```bash
-java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar
+java -jar code/context/target/tools.code.context-{version}.jar
 ```
 
 ### streamable HTTP
 
 ```bash
-java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar --transport.mode=streamable-http
+java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=streamable-http
 ```
 
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
@@ -144,7 +144,7 @@ configurable through `server.port`).
 ### HTTP+SSE (legacy)
 
 ```bash
-java -jar code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar --transport.mode=sse
+java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=sse
 ```
 
 This is the legacy HTTP+SSE transport (MCP protocol revision 2024-11-05),
@@ -206,7 +206,7 @@ The tools read source files from disk, so access is constrained by design:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/code/context/target/tools.code.context-2.2.0-SNAPSHOT.jar"
+        "/absolute/path/to/tools/code/context/target/tools.code.context-{version}.jar"
       ]
     }
   }

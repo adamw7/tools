@@ -316,7 +316,9 @@ and CI builds (`mvn install`) never publish and never need GPG keys or Central
 credentials. The release job requires four repository secrets:
 `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal user
 token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing
-key). All modules in the reactor are published to Central.
+key). Every reactor module is published to Central except `assembly`,
+`grpc-example`, and `protogen-maven-plugin-test`, which are excluded as noted
+above.
 
 To publish from a workstation: `mvn -P release deploy` with the same `central`
 server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.

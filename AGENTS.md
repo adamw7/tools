@@ -302,8 +302,11 @@ Creating the GitHub release fires two separate workflows:
   published coordinates ship javadoc alongside the main jar; the default
   `mvn deploy` would otherwise publish the main jar only.
 - `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
-  Portal. It runs `mvn -P release deploy` (excluding the `assembly` and
-  `grpc-example` modules, which are not reusable libraries); the `release`
+  Portal. It runs `mvn -P release deploy` (excluding the `assembly`,
+  `grpc-example`, and `protogen-maven-plugin-test` modules, which are not
+  reusable libraries — the last is an integration-test harness with no main
+  sources, so it would also fail Central validation with an empty
+  `-sources.jar`); the `release`
   profile attaches the sources and javadoc jars, GPG-signs every artifact, and
   hands the bundle to the `central-publishing-maven-plugin` (`autoPublish=true`).
 

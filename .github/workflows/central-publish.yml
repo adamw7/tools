@@ -79,11 +79,15 @@ jobs:
         # (autoPublish=false, waitUntil=validated) so Central validates the
         # bundle but nothing is released.
         #
-        # The assembly module only builds a runnable SampleApp distribution and
-        # the grpc-example module is only a protobuf/gRPC example, not reusable
-        # libraries, so they are excluded from the reactor here
-        # ("-pl !assembly,!grpc-example") and never take part in the Central
-        # publish.
+        # The assembly module only builds a runnable SampleApp distribution, the
+        # grpc-example module is only a protobuf/gRPC example, and
+        # protogen-maven-plugin-test is an integration-test harness with no
+        # main sources (it only generates and compiles test builders to exercise
+        # the plugin). None are reusable libraries, and the test harness would
+        # additionally fail Central validation with an empty -sources.jar, so
+        # they are excluded from the reactor here
+        # ("-pl !assembly,!grpc-example,!code/protogen-maven-plugin-test") and
+        # never take part in the Central publish.
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             revision_arg=""
@@ -91,9 +95,9 @@ jobs:
               revision_arg="-Drevision=${{ github.event.inputs.revision }}"
             fi
             echo "Staged-only Central dry run: autoPublish=false, waitUntil=validated $revision_arg"
-            mvn -B -ntp -X -P release -pl '!assembly,!grpc-example' deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
+            mvn -B -ntp -X -P release -pl '!assembly,!grpc-example,!code/protogen-maven-plugin-test' deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
           else
-            mvn -B -ntp -X -P release -pl '!assembly,!grpc-example' deploy
+            mvn -B -ntp -X -P release -pl '!assembly,!grpc-example,!code/protogen-maven-plugin-test' deploy
           fi
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}

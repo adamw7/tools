@@ -118,6 +118,18 @@ public class MapTest {
 
 	@ParameterizedTest
 	@MethodSource("allImplementations")
+	public void reinsertRemovedKey(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.remove(1);
+		assertNull(map.put(1, "B"));
+		assertEquals(1, map.size());
+		assertFalse(map.isEmpty());
+		assertEquals("B", map.get(1));
+		assertTrue(map.containsKey(1));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
 	public void containsKey(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");

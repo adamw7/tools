@@ -96,8 +96,8 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			if (wrapper == null) {
 				return insert(hash, key, value);
 			} else if (wrapper.key.equals(key)) {
-				return overwrite(hash, key, value);
-			} // removed are skipped
+				return wrapper.removed ? insert(hash, key, value) : overwrite(hash, key, value);
+			} // removed entries with a different key are skipped
 		}
 		resize();
 		return put(key, value);

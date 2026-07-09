@@ -15,8 +15,11 @@ import org.springframework.context.annotation.Bean;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
+import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -24,9 +27,11 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
 /**
- * Wires an MCP server over one of three transports, selected with
+ * Wires an MCP server over one of four transports, selected with
  * {@code --transport.mode}: stdio (the default), a streamable HTTP transport
- * ({@code streamable-http}) registered at {@code /mcp}, or the legacy HTTP+SSE
+ * ({@code streamable-http}) registered at {@code /mcp}, a stateless HTTP transport
+ * ({@code stateless-http}) also registered at {@code /mcp} that answers each
+ * JSON-RPC request in isolation without keeping any session, or the legacy HTTP+SSE
  * transport ({@code sse}) registered at {@code /sse} (the event stream) and
  * {@code /mcp/message} (the JSON-RPC POST endpoint) for clients that predate
  * streamable HTTP. Concrete servers only supply their {@link #serverName() name}
@@ -39,6 +44,10 @@ public abstract class AbstractMcpConfiguration {
 	protected static final String SSE_ENDPOINT = "/sse";
 
 	protected static final String SSE_MESSAGE_ENDPOINT = "/mcp/message";
+
+	protected static final String MCP_ENDPOINT = "/mcp";
+
+	private static final String SERVER_VERSION = "0.0.1";
 
 	private static final Logger log = LogManager.getLogger(AbstractMcpConfiguration.class);
 
@@ -60,7 +69,7 @@ public abstract class AbstractMcpConfiguration {
 		log.info("Creating HttpServletStreamableServerTransport");
 		return HttpServletStreamableServerTransportProvider.builder()
 				.jsonMapper(new JacksonMcpJsonMapper(objectMapper()))
-				.mcpEndpoint("/mcp")
+				.mcpEndpoint(MCP_ENDPOINT)
 				.build();
 	}
 
@@ -69,7 +78,27 @@ public abstract class AbstractMcpConfiguration {
 	public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> streamableServletRegistration(
 			HttpServletStreamableServerTransportProvider transport) {
 		ServletRegistrationBean<HttpServletStreamableServerTransportProvider> registration =
-				new ServletRegistrationBean<>(transport, "/mcp");
+				new ServletRegistrationBean<>(transport, MCP_ENDPOINT);
+		registration.setAsyncSupported(true);
+		return registration;
+	}
+
+	@Bean
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	public HttpServletStatelessServerTransport statelessServerTransport() {
+		log.info("Creating HttpServletStatelessServerTransport");
+		return HttpServletStatelessServerTransport.builder()
+				.jsonMapper(new JacksonMcpJsonMapper(objectMapper()))
+				.messageEndpoint(MCP_ENDPOINT)
+				.build();
+	}
+
+	@Bean
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	public ServletRegistrationBean<HttpServletStatelessServerTransport> statelessServletRegistration(
+			HttpServletStatelessServerTransport transport) {
+		ServletRegistrationBean<HttpServletStatelessServerTransport> registration =
+				new ServletRegistrationBean<>(transport, MCP_ENDPOINT);
 		registration.setAsyncSupported(true);
 		return registration;
 	}
@@ -109,14 +138,30 @@ public abstract class AbstractMcpConfiguration {
 		return buildServer(McpServer.sync(transport));
 	}
 
+	@Bean(destroyMethod = "close")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	public McpStatelessSyncServer mcpStatelessSyncServer(HttpServletStatelessServerTransport transport) {
+		log.info("Initializing McpStatelessSyncServer with stateless transport: {}", transport);
+		McpStatelessSyncServer statelessServer = McpServer.sync(transport)
+				.serverInfo(serverName(), SERVER_VERSION)
+				.capabilities(serverCapabilities())
+				.build();
+		registerStatelessTools(statelessServer);
+		return statelessServer;
+	}
+
 	private McpSyncServer buildServer(McpServer.SyncSpecification<?> spec) {
 		McpSyncServer syncServer = spec
-				.serverInfo(serverName(), "0.0.1")
-				.capabilities(McpSchema.ServerCapabilities.builder()
-						.tools(true).resources(false, false).prompts(false).build())
+				.serverInfo(serverName(), SERVER_VERSION)
+				.capabilities(serverCapabilities())
 				.build();
 		registerTools(syncServer);
 		return syncServer;
+	}
+
+	private McpSchema.ServerCapabilities serverCapabilities() {
+		return McpSchema.ServerCapabilities.builder()
+				.tools(true).resources(false, false).prompts(false).build();
 	}
 
 	private void registerTools(McpSyncServer server) {
@@ -127,6 +172,17 @@ public abstract class AbstractMcpConfiguration {
 		return SyncToolSpecification.builder()
 				.tool(tool.getToolDefinition())
 				.callHandler((exchange, request) -> tool.apply(request.arguments()))
+				.build();
+	}
+
+	private void registerStatelessTools(McpStatelessSyncServer server) {
+		tools().forEach(tool -> server.addTool(statelessSpecificationFor(tool)));
+	}
+
+	private McpStatelessServerFeatures.SyncToolSpecification statelessSpecificationFor(McpTool tool) {
+		return McpStatelessServerFeatures.SyncToolSpecification.builder()
+				.tool(tool.getToolDefinition())
+				.callHandler((context, request) -> tool.apply(request.arguments()))
 				.build();
 	}
 

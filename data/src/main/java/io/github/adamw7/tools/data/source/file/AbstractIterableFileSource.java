@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;

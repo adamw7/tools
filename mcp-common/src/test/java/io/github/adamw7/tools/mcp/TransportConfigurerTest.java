@@ -90,6 +90,16 @@ public class TransportConfigurerTest {
 	}
 
 	@Test
+	public void configureKeepsWebApplicationForStatelessHttpMode() {
+		TransportConfigurer.configure(new String[] { "--transport.mode=stateless-http" });
+
+		// The stateless HTTP transport exposes the /mcp servlet, so it needs a web
+		// server and must not be forced to "none".
+		assertEquals("stateless-http", System.getProperty(TRANSPORT_MODE));
+		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
+	}
+
+	@Test
 	public void configureKeepsWebApplicationForSseMode() {
 		TransportConfigurer.configure(new String[] { "--transport.mode=sse" });
 

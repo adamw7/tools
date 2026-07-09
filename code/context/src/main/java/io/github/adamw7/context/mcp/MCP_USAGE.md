@@ -34,8 +34,10 @@ The server uses:
 
 - **Transport**: stdio (default), streamable HTTP
   (`--transport.mode=streamable-http`), which serves the MCP endpoint at `/mcp`,
-  or the legacy HTTP+SSE transport (`--transport.mode=sse`), which serves the
-  event stream at `/sse` and accepts JSON-RPC messages at `/mcp/message`.
+  stateless HTTP (`--transport.mode=stateless-http`), which serves the same
+  `/mcp` endpoint without keeping a session, or the legacy HTTP+SSE transport
+  (`--transport.mode=sse`), which serves the event stream at `/sse` and accepts
+  JSON-RPC messages at `/mcp/message`.
 - **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
@@ -141,6 +143,18 @@ java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
 configurable through `server.port`).
 
+### stateless HTTP
+
+```bash
+java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=stateless-http
+```
+
+The MCP endpoint is served at `http://localhost:8082/mcp`, the same as
+`streamable-http`, but the server keeps no session between requests: each
+JSON-RPC call is handled in isolation. This suits horizontally scaled or
+serverless deployments where requests may land on different instances. Clients
+connect with the same streamable HTTP configuration shown below.
+
 ### HTTP+SSE (legacy)
 
 ```bash
@@ -186,9 +200,9 @@ The tools read source files from disk, so access is constrained by design:
   context.allowed-roots=/home/me/projects:/srv/code
   ```
 
-- **Loopback binding.** The HTTP transports (streamable HTTP and HTTP+SSE) bind
-  to `127.0.0.1` by default (`server.address`). The `/mcp`, `/sse` and
-  `/mcp/message` endpoints have **no authentication**, so they must not be
+- **Loopback binding.** The HTTP transports (streamable HTTP, stateless HTTP and
+  HTTP+SSE) bind to `127.0.0.1` by default (`server.address`). The `/mcp`, `/sse`
+  and `/mcp/message` endpoints have **no authentication**, so they must not be
   exposed on a routable interface. Change `server.address` only after putting
   authentication in front of them.
 

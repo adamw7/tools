@@ -506,6 +506,7 @@ It contains:
   - Transports (select with `--transport.mode`):
     - `stdio` (default) — JSON-RPC over stdin/stdout (Spring Boot, no HTTP server started)
     - `streamable-http` — the modern HTTP transport served at `/mcp`
+    - `stateless-http` — the same HTTP transport served at `/mcp`, but session-less: each JSON-RPC request is answered in isolation, which suits load-balanced or serverless deployments
     - `sse` — the legacy HTTP+SSE transport for older clients: the event stream is served at `/sse` and JSON-RPC messages are POSTed to `/mcp/message`
   - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
   - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`

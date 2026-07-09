@@ -14,8 +14,10 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
+import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -84,6 +86,18 @@ public class AbstractMcpConfigurationTest {
 	}
 
 	@Test
+	public void statelessTransportIsNotNull() {
+		assertNotNull(new TestMcpConfiguration().statelessServerTransport());
+	}
+
+	@Test
+	public void statelessServletRegistrationServesTheMcpEndpoint() {
+		TestMcpConfiguration config = new TestMcpConfiguration();
+		HttpServletStatelessServerTransport transport = config.statelessServerTransport();
+		assertTrue(config.statelessServletRegistration(transport).getUrlMappings().contains("/mcp"));
+	}
+
+	@Test
 	public void sseTransportIsNotNull() {
 		assertNotNull(new TestMcpConfiguration().sseServerTransport());
 	}
@@ -126,6 +140,15 @@ public class AbstractMcpConfigurationTest {
 		HttpServletStreamableServerTransportProvider transport = config.streamableServerTransport();
 		McpSyncServer server = config.mcpSyncServerStreamable(transport);
 		assertNotNull(server.getServerCapabilities().tools());
+		server.close();
+	}
+
+	@Test
+	public void mcpStatelessSyncServerRegistersTools() {
+		TestMcpConfiguration config = new TestMcpConfiguration();
+		HttpServletStatelessServerTransport transport = config.statelessServerTransport();
+		McpStatelessSyncServer server = config.mcpStatelessSyncServer(transport);
+		assertTrue(server.listTools().stream().anyMatch(tool -> "test_tool".equals(tool.name())));
 		server.close();
 	}
 }

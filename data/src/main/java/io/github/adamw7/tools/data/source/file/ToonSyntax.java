@@ -135,11 +135,41 @@ final class ToonSyntax {
 	}
 
 	private static String processEscapeSequences(String value) {
-		return value
-				.replace("\\\"", "\"")
-				.replace("\\\\", "\\")
-				.replace("\\n", "\n")
-				.replace("\\r", "\r")
-				.replace("\\t", "\t");
+		StringBuilder result = new StringBuilder(value.length());
+		int i = 0;
+		while (i < value.length()) {
+			i = appendChar(result, value, i);
+		}
+		return result.toString();
+	}
+
+	private static int appendChar(StringBuilder result, String value, int i) {
+		char c = value.charAt(i);
+		if (c != '\\' || i + 1 >= value.length()) {
+			result.append(c);
+			return i + 1;
+		}
+		return appendEscaped(result, value.charAt(i + 1), i);
+	}
+
+	private static int appendEscaped(StringBuilder result, char escaped, int i) {
+		String replacement = replacementFor(escaped);
+		if (replacement == null) {
+			result.append('\\');
+			return i + 1;
+		}
+		result.append(replacement);
+		return i + 2;
+	}
+
+	private static String replacementFor(char escaped) {
+		return switch (escaped) {
+			case '"' -> "\"";
+			case '\\' -> "\\";
+			case 'n' -> "\n";
+			case 'r' -> "\r";
+			case 't' -> "\t";
+			default -> null;
+		};
 	}
 }

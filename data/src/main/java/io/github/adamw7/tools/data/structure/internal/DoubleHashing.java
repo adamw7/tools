@@ -43,10 +43,18 @@ public final class DoubleHashing {
 		return Math.max((int) (currentLength * MULTIPLIER), currentLength + 1);
 	}
 
-	/** The slot index probed on the given {@code iteration} of the sequence. */
+	/**
+	 * The slot index probed on the given {@code iteration} of the sequence.
+	 *
+	 * <p>The step {@code h2} is derived from {@code Math.abs(hashCode % (length - 1))}
+	 * rather than {@code Math.abs(hashCode) % (length - 1)}: the two agree for every
+	 * {@code hashCode} except {@link Integer#MIN_VALUE}, whose {@code Math.abs} stays
+	 * negative and would otherwise yield a non-positive step that folds the probe
+	 * sequence back onto a handful of slots.
+	 */
 	public static int probe(int hashCode, int prime, int length, int iteration) {
 		int h1 = prime - (hashCode % prime);
-		int h2 = 1 + (Math.abs(hashCode) % (length - 1));
+		int h2 = 1 + Math.abs(hashCode % (length - 1));
 		return Math.abs((h1 + (iteration * h2)) % length);
 	}
 }

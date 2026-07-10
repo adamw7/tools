@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
@@ -78,5 +81,25 @@ public class DoubleHashingTest {
 			assertTrue(index >= 0 && index < length,
 					"index " + index + " out of range for hashCode " + hashCode);
 		}
+	}
+
+	@Test
+	public void probeVisitsEverySlotForMinValueHashCode() {
+		// Integer.MIN_VALUE is the one hashCode whose Math.abs stays negative. A prior
+		// step derived from Math.abs(hashCode) went non-positive for it, folding the
+		// sequence back onto a subset of the slots (12 of 13 here). On a prime-sized
+		// table the sequence must be a full permutation of every slot.
+		int length = 13;
+		int prime = 11;
+		assertProbesAllDistinct(Integer.MIN_VALUE, prime, length);
+	}
+
+	private void assertProbesAllDistinct(int hashCode, int prime, int length) {
+		Set<Integer> visited = new HashSet<>();
+		for (int iteration = 0; iteration < length; iteration++) {
+			visited.add(DoubleHashing.probe(hashCode, prime, length, iteration));
+		}
+		assertEquals(length, visited.size(),
+				"probe should visit every slot exactly once for hashCode " + hashCode);
 	}
 }

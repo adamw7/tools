@@ -138,10 +138,12 @@ CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
 quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
 
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
-(`mvn -B -pl claude-code-enforcer -am install`) and then runs
+(`mvn -B -pl claude-code-enforcer -am install -DskipTests`) and then runs
 `mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
-pull requests targeting `main`. It is the only workflow that runs the CLAUDE.md
-check; the other workflows build normally and are unaffected.
+pull requests targeting `main`. The bootstrap step skips tests because it only
+needs to publish the enforcer JAR for the plugin to load; the module's own test
+suite still runs in the `package` step. It is the only workflow that runs the
+CLAUDE.md check; the other workflows build normally and are unaffected.
 
 ## Testing, coverage & mutation testing
 

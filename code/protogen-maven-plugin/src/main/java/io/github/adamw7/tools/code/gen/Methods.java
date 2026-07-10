@@ -3,6 +3,7 @@ package io.github.adamw7.tools.code.gen;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.OneofDescriptor;
 
 public class Methods {
 
@@ -65,10 +66,25 @@ public class Methods {
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
-		String fieldName = Utils.toUpperCamelCase(field.getName());
+		return clearByName(classOrBuilder, field.getName(), returnType);
+	}
+
+	private StringBuilder clearByName(String classOrBuilder, String rawName, String returnType) {
+		String name = Utils.toUpperCamelCase(rawName);
 		String impl = returnType.replace(Utils.IFC_SUFFIX, Utils.IMPL_SUFFIX);
 		return override("public %s clear%s() {%s.clear%s();return new %s(%s);}"
-				.formatted(returnType, fieldName, classOrBuilder, fieldName, impl, classOrBuilder));
+				.formatted(returnType, name, classOrBuilder, name, impl, classOrBuilder));
+	}
+
+	public StringBuilder oneofCaseGetter(String classOrBuilder, OneofDescriptor oneof) {
+		String name = Utils.toUpperCamelCase(oneof.getName());
+		String caseType = "%s.%sCase".formatted(className, name);
+		return override("public %s get%sCase() {return %s.get%sCase();}"
+				.formatted(caseType, name, classOrBuilder, name));
+	}
+
+	public StringBuilder oneofClear(String classOrBuilder, OneofDescriptor oneof, String returnType) {
+		return clearByName(classOrBuilder, oneof.getName(), returnType);
 	}
 
 	private StringBuilder override(String body) {
@@ -93,8 +109,22 @@ public class Methods {
 	}
 
 	public StringBuilder declareClear(FieldDescriptor field, String returnType) {
+		return declareClearByName(field.getName(), returnType);
+	}
+
+	private StringBuilder declareClearByName(String rawName, String returnType) {
 		return new StringBuilder(
-				"%s clear%s();".formatted(returnType, Utils.toUpperCamelCase(field.getName())));
+				"%s clear%s();".formatted(returnType, Utils.toUpperCamelCase(rawName)));
+	}
+
+	public StringBuilder declareOneofCaseGetter(OneofDescriptor oneof) {
+		String name = Utils.toUpperCamelCase(oneof.getName());
+		return new StringBuilder(
+				"%s.%sCase get%sCase();".formatted(className, name, name));
+	}
+
+	public StringBuilder declareOneofClear(OneofDescriptor oneof, String returnType) {
+		return declareClearByName(oneof.getName(), returnType);
 	}
 
 	private String generateSetter(FieldDescriptor field) {

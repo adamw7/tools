@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.OneofDescriptor;
 
 public class Implementations extends AbstractStatements {
 
@@ -76,7 +77,11 @@ public class Implementations extends AbstractStatements {
 		for (FieldDescriptor field : info.optional()) {
 			builder.append(methods.setter(field, optionalIfcName));
 			builder.append(methods.has("builder", field));
-			builder.append(methods.clear("builder", field, optionalIfcName));	
+			builder.append(methods.clear("builder", field, optionalIfcName));
+		}
+		for (OneofDescriptor oneof : info.realOneofs()) {
+			builder.append(methods.oneofCaseGetter("builder", oneof));
+			builder.append(methods.oneofClear("builder", oneof, optionalIfcName));
 		}
 		return builder;
 	}

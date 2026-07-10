@@ -7,6 +7,7 @@ import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.OneofDescriptor;
 
 public class ClassInfo {
 
@@ -128,6 +129,10 @@ public class ClassInfo {
 
 	public String fullName() {
 		return Utils.getClassName(descriptor.getFullName());
+	}
+
+	public List<OneofDescriptor> realOneofs() {
+		return descriptor.getRealOneofs();
 	}
 	
 	public List<FieldDescriptor> getPureComplexFields() {

@@ -55,6 +55,20 @@ public class ToonSyntaxTest {
 	}
 
 	@Test
+	public void escapedBackslashBeforeClosingQuoteDoesNotSwallowSeparator() {
+		// First field is the quoted value  "a\\"  (text ending in a backslash); the escaped
+		// backslash must not make the closing quote look escaped, so the comma still splits.
+		assertArrayEquals(new String[] { "\"a\\\\\"", "c" }, ToonSyntax.splitRow("\"a\\\\\",c"));
+	}
+
+	@Test
+	public void escapedBackslashKeepsCommaInsideQuotesProtected() {
+		// Value  "a\\,b"  contains an escaped backslash followed by a literal comma inside the
+		// quotes, so the whole thing is a single field.
+		assertArrayEquals(new String[] { "\"a\\\\,b\"", "c" }, ToonSyntax.splitRow("\"a\\\\,b\",c"));
+	}
+
+	@Test
 	public void leadingCommaProducesEmptyValue() {
 		assertArrayEquals(new String[] { "", "a" }, ToonSyntax.splitRow(",a"));
 	}

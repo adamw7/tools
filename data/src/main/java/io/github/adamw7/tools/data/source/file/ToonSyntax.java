@@ -92,20 +92,16 @@ final class ToonSyntax {
 	static String[] splitRow(String row) {
 		List<String> values = new ArrayList<>();
 		StringBuilder current = new StringBuilder();
-		boolean inQuotes = false;
+		QuoteTracker tracker = new QuoteTracker();
 
 		for (int i = 0; i < row.length(); i++) {
 			char c = row.charAt(i);
-			boolean isUnescapedQuote = c == '"' && (i == 0 || row.charAt(i - 1) != '\\');
-
-			if (isUnescapedQuote) {
-				inQuotes = !inQuotes;
-				current.append(c);
-			} else if (c == ',' && !inQuotes) {
+			if (c == ',' && tracker.outsideQuotes()) {
 				values.add(current.toString());
 				current = new StringBuilder();
 			} else {
 				current.append(c);
+				tracker.accept(c);
 			}
 		}
 
@@ -114,6 +110,32 @@ final class ToonSyntax {
 		}
 
 		return values.toArray(new String[0]);
+	}
+
+	/**
+	 * Tracks whether the scan is currently inside a quoted field. A {@code "} toggles the state
+	 * unless it is escaped by a preceding backslash; escapes are only honoured inside quotes and
+	 * a backslash escapes exactly the next character, so an escaped backslash ({@code \\}) does
+	 * not spill over onto the following {@code "}. This backslash-parity awareness is why field
+	 * separation stays correct for values whose text ends in a backslash.
+	 */
+	private static final class QuoteTracker {
+		private boolean inQuotes;
+		private boolean escaped;
+
+		boolean outsideQuotes() {
+			return !inQuotes;
+		}
+
+		void accept(char c) {
+			if (escaped) {
+				escaped = false;
+			} else if (inQuotes && c == '\\') {
+				escaped = true;
+			} else if (c == '"') {
+				inQuotes = !inQuotes;
+			}
+		}
 	}
 
 	static String unquote(String value) {

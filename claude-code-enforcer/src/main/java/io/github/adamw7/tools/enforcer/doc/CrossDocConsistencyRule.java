@@ -1,16 +1,13 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.enforcer.doc.DocumentConsistency.Document;
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -43,14 +40,15 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		verifyPatterns();
-		String first = MarkdownText.read(claudeMdFile, claudeMdFile.getName());
-		String second = MarkdownText.read(agentsMdFile, agentsMdFile.getName());
-		List<String> violations = new ArrayList<>();
-		for (String pattern : patterns()) {
-			collectPatternViolations(pattern, first, second, violations);
-		}
-		report("Documents are inconsistent:", violations);
+		DocumentConsistency consistency = new DocumentConsistency(consistentPatterns);
+		consistency.verifyPatterns();
+		Document first = document(claudeMdFile);
+		Document second = document(agentsMdFile);
+		report("Documents are inconsistent:", consistency.violations(first, second, true));
+	}
+
+	private Document document(File file) {
+		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
 	}
 
 	private void verifyConfigured() throws EnforcerRuleException {
@@ -65,52 +63,6 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 		if (!file.isFile()) {
 			throw new EnforcerRuleException(parameter + " does not exist at " + file);
 		}
-	}
-
-	/**
-	 * Each configured pattern must declare a capturing group, since the rule
-	 * compares {@code group(1)} from each document. A pattern without one is a
-	 * build-setup mistake, so it fails with a clear message instead of letting an
-	 * opaque {@link IndexOutOfBoundsException} escape at match time.
-	 */
-	private void verifyPatterns() throws EnforcerRuleException {
-		for (String pattern : patterns()) {
-			if (Pattern.compile(pattern).matcher("").groupCount() < 1) {
-				throw new EnforcerRuleException(
-						"consistentPattern '" + pattern + "' must declare a capturing group");
-			}
-		}
-	}
-
-	private void collectPatternViolations(String pattern, String first, String second, List<String> violations) {
-		Pattern compiled = Pattern.compile(pattern);
-		Optional<String> firstValue = capture(compiled, first);
-		Optional<String> secondValue = capture(compiled, second);
-		if (firstValue.isEmpty() && secondValue.isEmpty()) {
-			return;
-		}
-		addMismatchViolation(pattern, firstValue, secondValue, violations);
-	}
-
-	private void addMismatchViolation(String pattern, Optional<String> firstValue, Optional<String> secondValue,
-			List<String> violations) {
-		if (!firstValue.equals(secondValue)) {
-			violations.add("pattern '" + pattern + "' captured " + describe(claudeMdFile, firstValue) + " but "
-					+ describe(agentsMdFile, secondValue));
-		}
-	}
-
-	private String describe(File file, Optional<String> value) {
-		return file.getName() + "=" + value.map(captured -> "'" + captured + "'").orElse("<absent>");
-	}
-
-	private Optional<String> capture(Pattern pattern, String content) {
-		Matcher matcher = pattern.matcher(content);
-		return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
-	}
-
-	private List<String> patterns() {
-		return consistentPatterns != null ? consistentPatterns : List.of();
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {

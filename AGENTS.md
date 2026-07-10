@@ -237,6 +237,14 @@ profile:
   `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
   regex (one capturing group) must capture the same value in both files, e.g.
   `Java (\d+)` pins the Java version.
+- `ReadmeConsistencyRule` (`readmeConsistency`) keeps `README.md` from drifting
+  away from the agent docs (`AGENTS.md`): each configured `consistentPatterns`
+  regex (one capturing group) must capture the same value in both, e.g.
+  `proto(\d)` pins the supported protobuf major version. Unlike
+  `crossDocConsistency`, a fact the README simply does not repeat is ignored — the
+  README is allowed to document a curated subset — so only a value present in both
+  files that disagrees fails the build. Both rules share a `DocumentConsistency`
+  helper that owns the pattern validation and capture logic.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks, and

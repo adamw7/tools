@@ -124,6 +124,14 @@ consistent and in their expected shape:
   agree between the two files (or be absent from both). For example
   `Java (\d+)` fails the build if one file says `Java 25` and the other `Java
   24`.
+- **`readmeConsistency`** (`ReadmeConsistencyRule`) — keeps this `README.md` from
+  drifting away from the agent docs (`AGENTS.md`, the single source of truth).
+  Each configured `consistentPattern` (one capturing group) must capture the same
+  value in both files, so a documented capability or version cannot silently
+  disagree with the agent docs. Unlike `crossDocConsistency`, a fact the README
+  simply does not repeat is ignored — the README is a curated, example-heavy view
+  and may document a subset — so only a value present in both files that disagrees
+  fails the build.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks. It

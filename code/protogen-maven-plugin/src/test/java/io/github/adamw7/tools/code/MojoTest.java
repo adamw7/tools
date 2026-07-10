@@ -61,6 +61,22 @@ public class MojoTest {
 		compileSources(GENERATED_SOURCES + File.separator + mojo.outputpackage.replace(".", File.separator));
 	}
 
+	@Test
+	public void proto3GeneratesAndCompiles() {
+		CodeMojo mojo = new CodeMojo();
+		mojo.generatedSourcesDir = GENERATED_SOURCES;
+		mojo.pkgs = new String[] { "io.github.adamw7.tools.code.proto3" };
+		mojo.outputpackage = "com.sth.generated.proto3";
+		mojo.runtimeClasspathElements = List.of();
+
+		mojo.execute();
+		File dir = new File(GENERATED_SOURCES);
+		Set<String> dirSet = new HashSet<>(Arrays.asList(dir.list()));
+		assertTrue(dirSet.contains("com"));
+
+		compileSources(GENERATED_SOURCES + File.separator + mojo.outputpackage.replace(".", File.separator));
+	}
+
 	private void compileSources(String dir) {
 		List<String> generatedSources = getAllGeneratedSources(dir);
 		compileFiles(generatedSources);

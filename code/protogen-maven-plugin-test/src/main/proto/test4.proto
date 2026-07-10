@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package test4;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test4";
+
+message Profile {
+  string username = 1;
+  optional string nickname = 2;
+  int32 age = 3;
+}
+
+message Team {
+  Profile lead = 1;
+  repeated string members = 2;
+}

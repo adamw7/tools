@@ -17,7 +17,9 @@ import org.output.generated.GroupingBuilder;
 import org.output.generated.MeasurementBuilder;
 import org.output.generated.MyMessageBuilder;
 import org.output.generated.OneOptionalFieldOnlyBuilder;
+import org.output.generated.ProfileBuilder;
 import org.output.generated.ServerBuilder;
+import org.output.generated.TeamBuilder;
 import org.output.generated.UserBuilder;
 import org.output.generated.WheelBuilder;
 
@@ -33,6 +35,8 @@ import io.github.adamw7.tools.code.test.Measurement;
 import io.github.adamw7.tools.code.test.MyMessage;
 import io.github.adamw7.tools.code.test.Server;
 import io.github.adamw7.tools.code.test.Wheel;
+import io.github.adamw7.tools.code.test4.Profile;
+import io.github.adamw7.tools.code.test4.Team;
 
 public class GeneretedCodeTest {
 
@@ -164,6 +168,42 @@ public class GeneretedCodeTest {
 		builder.setEnabled(true);
 		assertTrue(builder.hasEnabled());
 		assertFalse(builder.clearEnabled().build().getEnabled());
+	}
+
+	@Test
+	public void proto3MessageWithoutRequiredFieldsBuilds() {
+		Profile profile = new ProfileBuilder().setUsername("neo").setNickname("the one").setAge(30).build();
+		assertNotNull(profile);
+		assertEquals("neo", profile.getUsername());
+		assertEquals("the one", profile.getNickname());
+		assertEquals(30, profile.getAge());
+	}
+
+	@Test
+	public void proto3ExplicitOptionalFieldTracksPresence() {
+		ProfileBuilder builder = new ProfileBuilder();
+		builder.setNickname("trinity");
+		assertTrue(builder.hasNickname());
+		assertFalse(builder.clearNickname().build().hasNickname());
+	}
+
+	@Test
+	public void proto3ImplicitFieldDefaultsToZeroValue() {
+		Profile profile = new ProfileBuilder().build();
+		assertNotNull(profile);
+		assertEquals("", profile.getUsername());
+		assertEquals(0, profile.getAge());
+		assertFalse(profile.hasNickname());
+	}
+
+	@Test
+	public void proto3MessageFieldAndRepeatedFieldBuild() {
+		Profile lead = new ProfileBuilder().setUsername("morpheus").build();
+		Team team = new TeamBuilder().setMembers(java.util.List.of("neo", "trinity")).setLead(lead).build();
+		assertNotNull(team);
+		assertEquals("morpheus", team.getLead().getUsername());
+		assertEquals(java.util.List.of("neo", "trinity"), team.getMembersList());
+		assertTrue(team.hasLead());
 	}
 
 }

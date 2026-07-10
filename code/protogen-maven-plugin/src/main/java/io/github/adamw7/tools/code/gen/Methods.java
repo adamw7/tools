@@ -61,7 +61,7 @@ public class Methods {
 	}
 
 	private boolean needsHas(FieldDescriptor field) {
-		return !field.isMapField() && !field.isRepeated();
+		return field.hasPresence();
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {

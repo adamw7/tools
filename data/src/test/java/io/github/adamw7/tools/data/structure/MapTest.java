@@ -359,4 +359,16 @@ public class MapTest {
 		map.put(1, "A");
 		assertFalse(map.isEmpty());
 	}
+
+	@Test
+	public void growsBeyondSmallInitialCapacity() {
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(3);
+		for (int i = 0; i < 100; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(100, map.size());
+		for (int i = 0; i < 100; ++i) {
+			assertEquals("v" + i, map.get(i));
+		}
+	}
 }

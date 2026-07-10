@@ -41,6 +41,16 @@ public class DoubleHashingTest {
 	}
 
 	@Test
+	public void grownSizeAlwaysGrowsForSmallTables() {
+		// (int) (3 * 1.2) == 3 and (int) (4 * 1.2) == 4, so the multiplier alone
+		// would never grow the smallest tables and put() would recurse forever.
+		assertEquals(4, DoubleHashing.grownSize(3));
+		assertEquals(5, DoubleHashing.grownSize(4));
+		assertTrue(DoubleHashing.grownSize(3) > 3);
+		assertTrue(DoubleHashing.grownSize(4) > 4);
+	}
+
+	@Test
 	public void probeFollowsTheDoubleHashingSequence() {
 		// h1 = 3 - (5 % 3) = 1, h2 = 1 + (5 % 6) = 6
 		assertEquals(1, DoubleHashing.probe(5, 3, 7, 0)); // (1 + 0*6) % 7

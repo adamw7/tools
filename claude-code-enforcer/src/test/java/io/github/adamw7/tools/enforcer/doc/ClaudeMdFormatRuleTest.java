@@ -272,6 +272,20 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void doesNotReportOutOfOrderWhenARequiredSectionAppearsTwice() {
+		String duplicated = VALID_CONTENT + """
+				## Testing
+				More notes on testing.
+				""";
+		ClaudeMdFormatRule rule = ruleFor(duplicated);
+		rule.setEnforceSectionOrder(true);
+
+		// The sections are in the configured order; a repeated "## Testing" must be
+		// counted once by its first occurrence, not flagged as out of order.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsWhenALineExceedsTheMaximumLength() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n" + "x".repeat(200) + "\n");
 		rule.setMaxLineLength(120);

@@ -104,6 +104,6 @@ final class DocumentConsistency {
 
 	private Optional<String> capture(Pattern pattern, String content) {
 		Matcher matcher = pattern.matcher(content);
-		return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
+		return matcher.find() ? Optional.ofNullable(matcher.group(1)) : Optional.empty();
 	}
 }

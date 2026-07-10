@@ -12,12 +12,8 @@
 name: "CodeQL"
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ "main" ]
   schedule:
+    # Run only on Saturday (day-of-week 6)
     - cron: '23 21 * * 6'
 
 jobs:

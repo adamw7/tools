@@ -69,6 +69,17 @@ class CrossDocConsistencyRuleTest {
 	}
 
 	@Test
+	void treatsANonParticipatingOptionalGroupAsAbsent() {
+		CrossDocConsistencyRule rule = ruleFor("Uses proto3 here.", "No proto mentioned.");
+		rule.setConsistentPatterns(List.of("proto(\\d)?"));
+
+		// The group is optional, so a bare "proto" match captures null. That must be
+		// treated as a mismatch against the concrete "3", not throw a NullPointerException.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("'3'"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenAFileIsMissing() {
 		CrossDocConsistencyRule rule = new CrossDocConsistencyRule();
 		rule.setClaudeMdFile(tempDir.resolve("absent-claude.md").toFile());

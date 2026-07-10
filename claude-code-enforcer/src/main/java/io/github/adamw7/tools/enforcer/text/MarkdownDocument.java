@@ -95,7 +95,13 @@ public final class MarkdownDocument {
 		return index >= 0 && hasBodyAt(index);
 	}
 
-	/** The headings from {@code wanted} that are present, in the order they appear in the document. */
+	/**
+	 * The headings from {@code wanted} that are present, in the order they first
+	 * appear in the document, each listed once. A required heading that appears
+	 * more than once is reported by its first occurrence, so the order comparison
+	 * matches the de-duplicated set of present sections rather than reporting a
+	 * spurious out-of-order failure.
+	 */
 	public List<String> headingsInOrder(List<String> wanted) {
 		Set<String> required = new LinkedHashSet<>(wanted);
 		List<String> ordered = new ArrayList<>();
@@ -106,7 +112,7 @@ public final class MarkdownDocument {
 	}
 
 	private void addIfRequiredHeading(String line, boolean lineInsideFence, Set<String> required, List<String> ordered) {
-		if (!lineInsideFence && required.contains(line)) {
+		if (!lineInsideFence && required.remove(line)) {
 			ordered.add(line);
 		}
 	}

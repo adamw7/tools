@@ -547,6 +547,13 @@
 												<consistentPattern>Java (\d+)</consistentPattern>
 											</consistentPatterns>
 										</crossDocConsistency>
+										<readmeConsistency>
+											<readmeFile>${project.basedir}/README.md</readmeFile>
+											<agentDocFile>${project.basedir}/AGENTS.md</agentDocFile>
+											<consistentPatterns>
+												<consistentPattern>proto(\d)</consistentPattern>
+											</consistentPatterns>
+										</readmeConsistency>
 									</rules>
 								</configuration>
 							</execution>

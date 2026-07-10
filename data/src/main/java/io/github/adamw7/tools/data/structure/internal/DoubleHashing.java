@@ -31,9 +31,16 @@ public final class DoubleHashing {
 		return Math.max(requestedSize, 3);
 	}
 
-	/** The backing-array size after one growth step. */
+	/**
+	 * The backing-array size after one growth step. The multiplier alone does not
+	 * guarantee progress for small arrays &mdash; {@code (int) (3 * 1.2) == 3} and
+	 * {@code (int) (4 * 1.2) == 4} &mdash; so growth is floored at
+	 * {@code currentLength + 1} to ensure the table always gets strictly larger.
+	 * Without this the open-addressing maps recurse forever in {@code put} once a
+	 * small table fills up.
+	 */
 	public static int grownSize(int currentLength) {
-		return (int) (currentLength * MULTIPLIER);
+		return Math.max((int) (currentLength * MULTIPLIER), currentLength + 1);
 	}
 
 	/** The slot index probed on the given {@code iteration} of the sequence. */

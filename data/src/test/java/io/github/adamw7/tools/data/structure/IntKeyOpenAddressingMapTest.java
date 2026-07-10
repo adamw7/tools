@@ -208,4 +208,16 @@ public class IntKeyOpenAddressingMapTest {
 		assertEquals(0, map.keys().length);
 		assertTrue(map.values().isEmpty());
 	}
+
+	@Test
+	public void growsBeyondSmallInitialCapacity() {
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>(3);
+		for (int i = 0; i < 100; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(100, map.size());
+		for (int i = 0; i < 100; ++i) {
+			assertEquals("v" + i, map.get(i));
+		}
+	}
 }

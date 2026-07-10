@@ -108,6 +108,19 @@ public class ToonSyntaxTest {
 	}
 
 	@Test
+	public void unquoteKeepsEscapedBackslashLiteralBeforeControlLetter() {
+		// The raw value is  a \ \ n b : an escaped backslash followed by a literal
+		// 'n', so it must decode to a backslash and an 'n', not to a newline.
+		assertEquals("a\\nb", ToonSyntax.unquote("\"a\\\\nb\""));
+		assertEquals("a\\tb", ToonSyntax.unquote("\"a\\\\tb\""));
+	}
+
+	@Test
+	public void unquoteLeavesUnknownEscapeUntouched() {
+		assertEquals("a\\xb", ToonSyntax.unquote("\"a\\xb\""));
+	}
+
+	@Test
 	public void keyValuePatternMatchesDottedKeys() {
 		Matcher matcher = ToonSyntax.KEY_VALUE_PATTERN.matcher("user.name: Alice");
 		assertTrue(matcher.matches());

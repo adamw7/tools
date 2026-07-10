@@ -17,6 +17,7 @@ import org.output.generated.GroupingBuilder;
 import org.output.generated.MeasurementBuilder;
 import org.output.generated.MyMessageBuilder;
 import org.output.generated.OneOptionalFieldOnlyBuilder;
+import org.output.generated.PaymentBuilder;
 import org.output.generated.ProfileBuilder;
 import org.output.generated.ServerBuilder;
 import org.output.generated.TeamBuilder;
@@ -35,6 +36,7 @@ import io.github.adamw7.tools.code.test.Measurement;
 import io.github.adamw7.tools.code.test.MyMessage;
 import io.github.adamw7.tools.code.test.Server;
 import io.github.adamw7.tools.code.test.Wheel;
+import io.github.adamw7.tools.code.test4.Payment;
 import io.github.adamw7.tools.code.test4.Profile;
 import io.github.adamw7.tools.code.test4.Team;
 
@@ -204,6 +206,34 @@ public class GeneretedCodeTest {
 		assertEquals("morpheus", team.getLead().getUsername());
 		assertEquals(java.util.List.of("neo", "trinity"), team.getMembersList());
 		assertTrue(team.hasLead());
+	}
+
+	@Test
+	public void proto3OneofCaseReflectsSelectedMember() {
+		PaymentBuilder builder = new PaymentBuilder();
+		assertEquals(Payment.MethodCase.METHOD_NOT_SET, builder.getMethodCase());
+
+		builder.setCard("4111");
+		assertEquals(Payment.MethodCase.CARD, builder.getMethodCase());
+		assertTrue(builder.hasCard());
+		assertFalse(builder.hasCash());
+
+		builder.setCash("20");
+		assertEquals(Payment.MethodCase.CASH, builder.getMethodCase());
+		assertTrue(builder.hasCash());
+		assertFalse(builder.hasCard());
+	}
+
+	@Test
+	public void proto3OneofClearResetsSelection() {
+		PaymentBuilder builder = new PaymentBuilder();
+		builder.setReference("order-1").setCard("4111");
+		assertEquals(Payment.MethodCase.CARD, builder.getMethodCase());
+
+		Payment payment = builder.clearMethod().build();
+		assertEquals(Payment.MethodCase.METHOD_NOT_SET, payment.getMethodCase());
+		assertEquals("order-1", payment.getReference());
+		assertFalse(payment.hasCard());
 	}
 
 }

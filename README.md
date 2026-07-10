@@ -316,6 +316,12 @@ presence — every singular field in proto2, but in proto3 only message fields a
 those declared with the explicit `optional` keyword (implicit-presence proto3
 scalars, which have no `hasXxx()`, are left alone).
 
+A `oneof` group additionally gets a `getXxxCase()` accessor returning protobuf's
+generated `XxxCase` enum, so you can tell which member is set, plus a
+`clearXxx()` that resets the whole group — both reachable through the fluent
+builder chain. The synthetic oneofs that back proto3 `optional` fields are not
+treated as groups, so no spurious case accessor is generated for them.
+
 ## gRPC example
 
 An end-to-end gRPC example combining standard protobuf/gRPC code generation with the compile-time-safe builder generation from this project.

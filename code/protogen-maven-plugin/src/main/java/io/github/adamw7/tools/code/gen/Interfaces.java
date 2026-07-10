@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.OneofDescriptor;
 
 public class Interfaces extends AbstractStatements {
 
@@ -26,11 +27,16 @@ public class Interfaces extends AbstractStatements {
 		
 		for (FieldDescriptor optionalField : info.optional()) {
 			builder.append(methods.declareSetter(optionalField, optionalIfcName));
-			builder.append(methods.declareHas(optionalField));	
+			builder.append(methods.declareHas(optionalField));
 			String clearReturnType = Utils.getNextIfc(info.name(), info.nonOptional(), optionalField);
 			builder.append(methods.declareClear(optionalField, clearReturnType));
 		}
-		
+
+		for (OneofDescriptor oneof : info.realOneofs()) {
+			builder.append(methods.declareOneofCaseGetter(oneof));
+			builder.append(methods.declareOneofClear(oneof, optionalIfcName));
+		}
+
 		builder.append(info.name()).append(" build();}");
 		
 		return new ClassContainer(optionalIfcName, builder);

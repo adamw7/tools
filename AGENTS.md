@@ -16,7 +16,9 @@ Maven project. The notable capabilities are:
   proto3: proto2 `required` fields are enforced by the builder chain, while
   proto3 (which has no required fields) generates all-optional builders with
   presence-aware `hasXxx()` accessors (only for message fields and explicit
-  `optional` fields).
+  `optional` fields). `oneof` groups get a `getXxxCase()` discriminator and a
+  `clearXxx()` for the whole group, so the selected member is inspectable and
+  resettable through the builder chain.
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
   builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
   that scans a whole Java project into a tree of folders, files and

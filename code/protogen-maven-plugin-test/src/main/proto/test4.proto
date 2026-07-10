@@ -15,3 +15,11 @@ message Team {
   Profile lead = 1;
   repeated string members = 2;
 }
+
+message Payment {
+  string reference = 1;
+  oneof method {
+    string card = 2;
+    string cash = 3;
+  }
+}

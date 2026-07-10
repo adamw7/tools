@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package tutorial3;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.proto3";
+
+message Proto3Sample {
+  string username = 1;
+  optional string nickname = 2;
+  int32 age = 3;
+  Proto3Nested nested = 4;
+  repeated string roles = 5;
+  map<string, int32> scores = 6;
+}
+
+message Proto3Nested {
+  string city = 1;
+  optional string zipcode = 2;
+}

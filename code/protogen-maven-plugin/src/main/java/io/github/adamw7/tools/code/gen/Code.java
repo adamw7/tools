@@ -116,8 +116,8 @@ public class Code {
 	private void checkSyntax(Descriptor descriptor) {
 		FileDescriptorProto proto = descriptor.getFile().toProto();
 		String syntax = proto.getSyntax();
-		if (!"proto2".equals(syntax) && !syntax.isEmpty()) {
-			throw new IllegalStateException("Only proto2 syntax supported. The input contains: " + syntax);
+		if (!"proto2".equals(syntax) && !"proto3".equals(syntax) && !syntax.isEmpty()) {
+			throw new IllegalStateException("Only proto2 and proto3 syntax are supported. The input contains: " + syntax);
 		}
 	}
 

@@ -299,7 +299,14 @@ public class ExampleTest {
 	}
 }
 ```
-Since in proto3 there is no concept of required fields - this solution supports only proto2. 
+Both proto2 and proto3 are supported. In proto2 the generated builder enforces
+that every `required` field is set before `build()` can be called. proto3 has no
+`required` fields, so there is nothing to enforce there; the builder simply
+exposes all fields as optional. Presence-tracking is handled correctly for each
+syntax: a `hasXxx()` accessor is generated only for fields that actually track
+presence — every singular field in proto2, but in proto3 only message fields and
+those declared with the explicit `optional` keyword (implicit-presence proto3
+scalars, which have no `hasXxx()`, are left alone).
 
 ## gRPC example
 

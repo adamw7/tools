@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -55,14 +54,6 @@ public class IterableYAMLDataSourceTest {
 			source.reset();
 			int second = drain(source);
 			assertEquals(first, second);
-		}
-	}
-
-	@Test
-	public void columnNamesAreUnknownWhileIterating() throws IOException {
-		try (IterableYAMLDataSource source = new IterableYAMLDataSource(Utils.getFileName("test.yaml"))) {
-			source.open();
-			assertNull(source.getColumnNames());
 		}
 	}
 

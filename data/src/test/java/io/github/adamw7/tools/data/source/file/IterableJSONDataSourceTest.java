@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -60,14 +59,6 @@ public class IterableJSONDataSourceTest {
 			source.reset();
 			int second = drain(source);
 			assertEquals(first, second);
-		}
-	}
-
-	@Test
-	public void columnNamesAreUnknownWhileIterating() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
-			source.open();
-			assertNull(source.getColumnNames());
 		}
 	}
 

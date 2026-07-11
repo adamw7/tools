@@ -72,15 +72,6 @@ public abstract class AbstractIterableFileSource implements IterableDataSource {
 		return lookahead != null;
 	}
 
-	/**
-	 * Iterable sources do not know the full set of columns up front, so this returns
-	 * {@code null}.
-	 */
-	@Override
-	public String[] getColumnNames() {
-		return null;
-	}
-
 	@Override
 	public void reset() {
 		if (fileName == null) {

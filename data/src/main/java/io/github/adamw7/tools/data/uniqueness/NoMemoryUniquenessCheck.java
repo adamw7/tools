@@ -1,10 +1,10 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
-public class NoMemoryUniquenessCheck extends AbstractUniqueness<IterableDataSource> {
+public class NoMemoryUniquenessCheck extends AbstractUniqueness<ColumnarDataSource> {
 
-	public NoMemoryUniquenessCheck(IterableDataSource dataSource) {
+	public NoMemoryUniquenessCheck(ColumnarDataSource dataSource) {
 		super(dataSource);
 	}
 

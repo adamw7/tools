@@ -9,9 +9,10 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public abstract class AbstractUniqueness<T extends IterableDataSource> implements Uniqueness {
+public abstract class AbstractUniqueness<T extends ColumnarDataSource> implements Uniqueness {
 
 	private static final Logger log = LogManager.getLogger(AbstractUniqueness.class);
 

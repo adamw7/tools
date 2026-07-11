@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.Utils;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 public class CSVDataSourceTest {
@@ -78,7 +79,7 @@ public class CSVDataSourceTest {
 
 	@ParameterizedTest
 	@MethodSource("happyPathWithQuotesAndColumnsArgs")
-	public void happyPathQuotesAndColumns(IterableDataSource source) {
+	public void happyPathQuotesAndColumns(ColumnarDataSource source) {
 		source.open();
 		assertEquals("SIC Code", source.getColumnNames()[0]);
 		assertEquals("Description",source.getColumnNames()[1]);

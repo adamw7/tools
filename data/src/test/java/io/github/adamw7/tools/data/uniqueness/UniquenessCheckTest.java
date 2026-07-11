@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.DBTest;
 import io.github.adamw7.tools.data.Utils;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
 public class UniquenessCheckTest extends DBTest {
 
@@ -121,12 +121,12 @@ public class UniquenessCheckTest extends DBTest {
 		assertTrue(source.isClosed(), "Data source must be closed when a duplicate is found");
 	}
 
-	private static final class ClosingSpyDataSource implements IterableDataSource {
+	private static final class ClosingSpyDataSource implements ColumnarDataSource {
 
-		private final IterableDataSource delegate;
+		private final ColumnarDataSource delegate;
 		private boolean closed = false;
 
-		ClosingSpyDataSource(IterableDataSource delegate) {
+		ClosingSpyDataSource(ColumnarDataSource delegate) {
 			this.delegate = delegate;
 		}
 

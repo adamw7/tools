@@ -6,8 +6,6 @@ import java.util.List;
 
 public interface IterableDataSource extends Closeable {
 
-	String[] getColumnNames();
-
 	void open();
 
 	String[] nextRow();

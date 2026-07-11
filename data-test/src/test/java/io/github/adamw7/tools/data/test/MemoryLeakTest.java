@@ -19,6 +19,7 @@ import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.file.IterableJSONDataSource;
 import io.github.adamw7.tools.data.source.file.IterableTOONDataSource;
 import io.github.adamw7.tools.data.source.file.IterableYAMLDataSource;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
@@ -203,7 +204,7 @@ public class MemoryLeakTest {
 	@Test
 	public void seekMemoryLeakInUniquenessCheck() {
 		try {
-			IterableDataSource source = new CSVDataSource(FILE_NAME, 1);
+			ColumnarDataSource source = new CSVDataSource(FILE_NAME, 1);
 			AbstractUniqueness uniqueness = new NoMemoryUniquenessCheck(source);
 
 			Result result = uniqueness.exec("Column 1");

@@ -12,9 +12,9 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
-public class IterableSQLDataSource implements IterableDataSource {
+public class IterableSQLDataSource implements ColumnarDataSource {
 
 	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
 
@@ -80,7 +80,7 @@ public class IterableSQLDataSource implements IterableDataSource {
 	@Override
 	public List<String[]> nextRows(int batchSize) {
 		applyFetchSize(batchSize);
-		return IterableDataSource.super.nextRows(batchSize);
+		return ColumnarDataSource.super.nextRows(batchSize);
 	}
 
 	private void applyFetchSize(int batchSize) {

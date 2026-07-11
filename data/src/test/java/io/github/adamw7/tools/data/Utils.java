@@ -14,7 +14,7 @@ import io.github.adamw7.tools.data.source.db.InMemorySQLDataSource;
 import io.github.adamw7.tools.data.source.db.IterableSQLDataSource;
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
 public class Utils {
 
@@ -39,7 +39,7 @@ public class Utils {
 		return getFileName("industry_sic.csv.gz");
 	}
 
-	public static IterableDataSource createDataSource(String file, int columnsRow) {
+	public static ColumnarDataSource createDataSource(String file, int columnsRow) {
 		try {
 			return new CSVDataSource(file, columnsRow);
 		} catch (FileNotFoundException e) {
@@ -47,7 +47,7 @@ public class Utils {
 		}
 	}
 
-	public static IterableDataSource createDataSource(String file) {
+	public static ColumnarDataSource createDataSource(String file) {
 		try {
 			return new CSVDataSource(file);
 		} catch (FileNotFoundException e) {

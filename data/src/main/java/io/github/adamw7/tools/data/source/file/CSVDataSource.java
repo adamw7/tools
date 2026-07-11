@@ -8,7 +8,9 @@ import java.io.UncheckedIOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class CSVDataSource extends AbstractFileSource {
+import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
+
+public class CSVDataSource extends AbstractFileSource implements ColumnarDataSource {
 
 	private static final String REGEX_SUFFIX = "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
 

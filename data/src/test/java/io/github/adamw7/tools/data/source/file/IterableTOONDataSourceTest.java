@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
@@ -92,14 +91,6 @@ public class IterableTOONDataSourceTest {
 			source.reset();
 			int second = drain(source);
 			assertEquals(first, second);
-		}
-	}
-
-	@Test
-	public void columnNamesAreUnknownWhileIterating() throws IOException {
-		try (IterableTOONDataSource source = new IterableTOONDataSource(Utils.getFileName("test.toon"))) {
-			source.open();
-			assertNull(source.getColumnNames());
 		}
 	}
 

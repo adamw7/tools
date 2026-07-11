@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -62,8 +63,8 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 
 	@Override
 	public void reset() {
-		checkIfOpen();
 		mapIterator = fieldsMap.keySet().iterator();
+		opened = true;
 	}
 
 	public Iterator<String[]> iterator() {
@@ -85,8 +86,19 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 		return fieldsMap.keySet().toArray(new String[] {});
 	}
 
+	/**
+	 * Returns every {@code {key, value}} pair, built straight from {@link #fieldsMap}.
+	 * The document is already fully parsed into the map, so this neither needs nor
+	 * calls {@link #open()} &mdash; which lets callers that have already opened the
+	 * source (such as the uniqueness checks) read it without tripping the
+	 * open-once guard, and makes {@code readAll} usable regardless of open state.
+	 */
 	@Override
 	public List<String[]> readAll() {
-		return super.readAll();
+		List<String[]> data = new ArrayList<>(fieldsMap.size());
+		for (Map.Entry<String, String> entry : fieldsMap.entrySet()) {
+			data.add(new String[] { entry.getKey(), entry.getValue() });
+		}
+		return data;
 	}
 }

@@ -28,12 +28,13 @@ public class ContextArchitectureTest {
 
 	static final String CONTEXT_PACKAGE = "io.github.adamw7.context";
 
+	private static final String CONTEXT_ANY_PACKAGE = "io.github.adamw7.context..";
 	private static final String MCP_PACKAGE = "..context.mcp..";
 	private static final String MCP_COMMON_PACKAGE = "io.github.adamw7.tools.mcp..";
 
 	@ArchTest
 	static final ArchRule coreDoesNotDependOnMcpAdapter = noClasses()
-			.that().resideInAPackage(CONTEXT_PACKAGE)
+			.that().resideInAPackage(CONTEXT_ANY_PACKAGE)
 			.and().resideOutsideOfPackage(MCP_PACKAGE)
 			.should().dependOnClassesThat().resideInAPackage(MCP_PACKAGE)
 			.because("the MCP adapter is a delivery mechanism on top of the context core, not a dependency of it");

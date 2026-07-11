@@ -6,6 +6,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
+
 import org.apache.logging.log4j.Logger;
 
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -80,6 +83,12 @@ public class DataArchitectureTest {
 			.because("loggers are shared, immutable, class-scoped collaborators");
 
 	@ArchTest
+	static final ArchRule publicFieldsAreImmutable = fields()
+			.that().arePublic()
+			.should().beFinal()
+			.because("a public field is part of the type's API surface and must not be reassignable");
+
+	@ArchTest
 	static final ArchRule productionCodeDoesNotUseStandardStreams = noClasses()
 			.should().accessField(System.class, "out")
 			.orShould().accessField(System.class, "err")
@@ -127,6 +136,13 @@ public class DataArchitectureTest {
 	@ArchTest
 	static final ArchRule noJodaTime =
 			GeneralCodingRules.NO_CLASSES_SHOULD_USE_JODATIME;
+
+	@ArchTest
+	static final ArchRule noPrintStackTrace = noClasses()
+			.should().callMethod(Throwable.class, "printStackTrace")
+			.orShould().callMethod(Throwable.class, "printStackTrace", PrintStream.class)
+			.orShould().callMethod(Throwable.class, "printStackTrace", PrintWriter.class)
+			.because("failures must be reported through log4j2, never printed as a raw stack trace");
 
 	@ArchTest
 	static final ArchRule productionCodeDoesNotHaltTheJvm = noClasses()

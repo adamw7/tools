@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises a proto2 oneof, complementing the proto3 oneof covered by Payment.
+// In proto2 the oneof members carry explicit presence, so the generated builder
+// must expose has-accessors for them alongside the case getter and group clear,
+// while the required field still drives the staged builder entry point.
+message Contact {
+  required string name = 1;
+  oneof channel {
+    string email = 2;
+    string phone = 3;
+  }
+}

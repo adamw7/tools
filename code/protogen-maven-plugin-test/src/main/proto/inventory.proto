@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises a map field as the staged builder entry point. Map fields are
+// non-optional for staging purposes, so the builder must start from the map
+// setter (which delegates to putAll) before exposing the optional field.
+message Inventory {
+  map<string, int32> stock = 1;
+  optional string warehouse = 2;
+}

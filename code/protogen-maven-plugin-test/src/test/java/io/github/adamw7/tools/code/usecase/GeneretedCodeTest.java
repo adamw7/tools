@@ -12,14 +12,18 @@ import org.output.generated.AccountOptionalIfc;
 import org.output.generated.CarBuilder;
 import org.output.generated.ComputerBuilder;
 import org.output.generated.ComputerOptionalIfc;
+import org.output.generated.ContactBuilder;
+import org.output.generated.ContactOptionalIfc;
 import org.output.generated.GroupBuilder;
 import org.output.generated.GroupingBuilder;
+import org.output.generated.InventoryBuilder;
 import org.output.generated.MeasurementBuilder;
 import org.output.generated.MyMessageBuilder;
 import org.output.generated.OneOptionalFieldOnlyBuilder;
 import org.output.generated.PaymentBuilder;
 import org.output.generated.ProfileBuilder;
 import org.output.generated.ServerBuilder;
+import org.output.generated.ShipmentBuilder;
 import org.output.generated.TeamBuilder;
 import org.output.generated.UserBuilder;
 import org.output.generated.WheelBuilder;
@@ -30,11 +34,14 @@ import io.github.adamw7.tools.code.foo.Foo;
 import io.github.adamw7.tools.code.test.Account;
 import io.github.adamw7.tools.code.test.Car;
 import io.github.adamw7.tools.code.test.Computer;
+import io.github.adamw7.tools.code.test.Contact;
 import io.github.adamw7.tools.code.test.Extension;
 import io.github.adamw7.tools.code.test.Grouping;
+import io.github.adamw7.tools.code.test.Inventory;
 import io.github.adamw7.tools.code.test.Measurement;
 import io.github.adamw7.tools.code.test.MyMessage;
 import io.github.adamw7.tools.code.test.Server;
+import io.github.adamw7.tools.code.test.Shipment;
 import io.github.adamw7.tools.code.test.Wheel;
 import io.github.adamw7.tools.code.test4.Payment;
 import io.github.adamw7.tools.code.test4.Profile;
@@ -234,6 +241,56 @@ public class GeneretedCodeTest {
 		assertEquals(Payment.MethodCase.METHOD_NOT_SET, payment.getMethodCase());
 		assertEquals("order-1", payment.getReference());
 		assertFalse(payment.hasCard());
+	}
+
+	@Test
+	public void proto2OneofTracksSelectedMemberWithPresence() {
+		ContactBuilder builder = new ContactBuilder();
+		ContactOptionalIfc optional = builder.setName("alice");
+		assertEquals(Contact.ChannelCase.CHANNEL_NOT_SET, optional.getChannelCase());
+
+		optional.setEmail("alice@example.com");
+		assertEquals(Contact.ChannelCase.EMAIL, optional.getChannelCase());
+		assertTrue(optional.hasEmail());
+		assertFalse(optional.hasPhone());
+
+		optional.setPhone("555-1234");
+		assertEquals(Contact.ChannelCase.PHONE, optional.getChannelCase());
+		assertTrue(optional.hasPhone());
+		assertFalse(optional.hasEmail());
+	}
+
+	@Test
+	public void proto2OneofClearResetsSelection() {
+		ContactBuilder builder = new ContactBuilder();
+		ContactOptionalIfc optional = builder.setName("bob");
+		optional.setEmail("bob@example.com");
+
+		Contact contact = optional.clearChannel().build();
+		assertEquals(Contact.ChannelCase.CHANNEL_NOT_SET, contact.getChannelCase());
+		assertEquals("bob", contact.getName());
+		assertFalse(contact.hasEmail());
+	}
+
+	@Test
+	public void requiredEnumEntryChainsThroughRepeatedField() {
+		ShipmentBuilder builder = new ShipmentBuilder();
+		Shipment shipment = builder.setPriority(Shipment.Priority.EXPRESS)
+				.setItems(java.util.List.of("book", "pen")).setTracking("TRK-1").build();
+		assertNotNull(shipment);
+		assertEquals(Shipment.Priority.EXPRESS, shipment.getPriority());
+		assertEquals(java.util.List.of("book", "pen"), shipment.getItemsList());
+		assertEquals("TRK-1", shipment.getTracking());
+		assertTrue(builder.hasPriority());
+	}
+
+	@Test
+	public void mapFieldDrivesStagedBuilderEntry() {
+		Inventory inventory = new InventoryBuilder().setStock(java.util.Map.of("widgets", 5))
+				.setWarehouse("east").build();
+		assertNotNull(inventory);
+		assertEquals(5, inventory.getStockOrDefault("widgets", 0));
+		assertEquals("east", inventory.getWarehouse());
 	}
 
 }

@@ -5,10 +5,10 @@ import java.util.Map.Entry;
 public class Wrapper<K, V> implements Entry<K, V>{
 
 
-	public final K key;
-	public V value;
-	public boolean removed = false;
-	
+	private final K key;
+	private V value;
+	private boolean removed = false;
+
 	public Wrapper(K key, V value) {
 		this.key = key;
 		this.value = value;
@@ -29,5 +29,13 @@ public class Wrapper<K, V> implements Entry<K, V>{
 		this.value = value;
 		return value;
 	}
-	
+
+	public boolean isRemoved() {
+		return removed;
+	}
+
+	public void markRemoved() {
+		this.removed = true;
+	}
+
 }

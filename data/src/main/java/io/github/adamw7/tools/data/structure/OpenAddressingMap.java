@@ -57,7 +57,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	@Override
 	public V get(Object key) {
 		Wrapper<K, V> wrapper = find(key);
-		return wrapper == null ? null : wrapper.value;
+		return wrapper == null ? null : wrapper.getValue();
 	}
 
 	/**
@@ -73,7 +73,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			if (wrapper == null) {
 				return null;
 			}
-			if (valid(wrapper) && wrapper.key.equals(key)) {
+			if (valid(wrapper) && wrapper.getKey().equals(key)) {
 				return wrapper;
 			}
 		}
@@ -95,8 +95,8 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			Wrapper<K, V> wrapper = array[hash];
 			if (wrapper == null) {
 				return insert(hash, key, value);
-			} else if (wrapper.key.equals(key)) {
-				return wrapper.removed ? insert(hash, key, value) : overwrite(hash, key, value);
+			} else if (wrapper.getKey().equals(key)) {
+				return wrapper.isRemoved() ? insert(hash, key, value) : overwrite(hash, key, value);
 			} // removed entries with a different key are skipped
 		}
 		resize();
@@ -110,7 +110,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private V overwrite(int hash, K key, V value) {
-		V previous = array[hash].value;
+		V previous = array[hash].getValue();
 		array[hash] = new Wrapper<>(key, value);
 		return previous;
 	}
@@ -127,7 +127,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		size = 0;
 		for (Wrapper<K, V> wrapper : old) {
 			if (valid(wrapper)) {
-				put(wrapper.key, wrapper.value);
+				put(wrapper.getKey(), wrapper.getValue());
 			}
 		}
 	}
@@ -138,9 +138,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		if (wrapper == null) {
 			return null;
 		}
-		wrapper.removed = true;
+		wrapper.markRemoved();
 		size--;
-		return wrapper.value;
+		return wrapper.getValue();
 	}
 
 	@Override
@@ -163,12 +163,12 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<K> keySet() {
-		return validWrappers().map(wrapper -> wrapper.key).collect(Collectors.toSet());
+		return validWrappers().map(wrapper -> wrapper.getKey()).collect(Collectors.toSet());
 	}
 
 	@Override
 	public Collection<V> values() {
-		return validWrappers().map(wrapper -> wrapper.value).collect(Collectors.toList());
+		return validWrappers().map(wrapper -> wrapper.getValue()).collect(Collectors.toList());
 	}
 
 	@Override
@@ -181,7 +181,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private boolean valid(Wrapper<K, V> wrapper) {
-		return wrapper != null && !wrapper.removed;
+		return wrapper != null && !wrapper.isRemoved();
 	}
 
 }

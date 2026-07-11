@@ -41,7 +41,7 @@ jobs:
       # main build can load it as a plugin dependency. The module's own test
       # suite is re-run as part of the "Build with Maven" package step below,
       # so running it here as well only duplicates work.
-      run: mvn -B -ntp -pl claude-code-enforcer -am install -DskipTests
+      run: mvn -B -ntp -pl claude-code-enforcer -am enforce -DskipTests
     - name: Build with Maven
       # -DenforceClaudeMd activates the claude-md-enforce profile so the root
       # build fails when CLAUDE.md is missing or malformed. This is the only

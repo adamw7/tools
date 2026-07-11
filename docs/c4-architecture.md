@@ -84,8 +84,12 @@ flowchart TB
         data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap · OpenAddressingSet · IntKeyOpenAddressingMap"]
         dataMcp(["🟪 Uniqueness MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>check uniqueness"])
 
+        mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · TransportConfigurer"]
+
         context --- contextMcp
         data --- dataMcp
+        contextMcp -.->|"builds on"| mcpCommon
+        dataMcp -.->|"builds on"| mcpCommon
     end
 
     projectSrc["🗂️ Java Project Sources"]
@@ -111,7 +115,7 @@ flowchart TB
     classDef mcp fill:#6b3fa0,stroke:#46296b,color:#fff
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
     class dev,agent person
-    class enforcer,protogen,grpc,assembly,context,data container
+    class enforcer,protogen,grpc,assembly,context,data,mcpCommon container
     class contextMcp,dataMcp mcp
     class projectSrc,db,files ext
     style tools fill:#f2f7fc,stroke:#438dd5,color:#08427b
@@ -126,6 +130,7 @@ Key components inside the `data` module and how they collaborate.
 ```mermaid
 flowchart TB
     agent["👤 AI Agent / Assistant"]
+    dev["👤 Java Developer"]
 
     subgraph data ["data module"]
         direction TB
@@ -143,11 +148,14 @@ flowchart TB
             result["<b>Key / Result</b><br/><i>value objects</i>"]
         end
 
-        subgraph srcs ["Data sources & structures"]
+        subgraph srcs ["Data sources"]
             srcIfc["<b>Iterable / InMemory<br/>DataSource</b><br/><i>interfaces</i>"]
             fileSrc["<b>File sources</b><br/>CSV · JSON · YAML · TOON"]
             dbSrc["<b>SQL sources</b><br/><i>JDBC</i>"]
             compression["<b>ZipUtils</b><br/><i>GZip</i>"]
+        end
+
+        subgraph struct ["Data structures — standalone public API"]
             structure["<b>OpenAddressingMap</b><br/>OpenAddressingSet · IntKeyOpenAddressingMap"]
         end
     end
@@ -169,17 +177,19 @@ flowchart TB
     fileSrc --> compression
     fileSrc --> files
     dbSrc -->|"JDBC"| db
+    dev -->|"Uses as collections<br/>(open-addressing)"| structure
 
     classDef person fill:#08427b,stroke:#052e56,color:#fff
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class agent person
+    class agent,dev person
     class mcpMain,uniqTool,uniqApi,inMem,noMem,keyFinder,result,srcIfc,fileSrc,dbSrc,compression,structure comp
     class db,files ext
     style data fill:#f2f7fc,stroke:#438dd5,color:#08427b
     style mcpLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
     style uniq fill:#fff7ec,stroke:#d59a43,color:#7a5418
     style srcs fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
+    style struct fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
 ```
 
 ---
@@ -247,16 +257,125 @@ flowchart TB
 
 ---
 
+## Level 3 — Components: `code/protogen-maven-plugin`
+
+How the code-generation pipeline turns compiled proto message classes into
+compile-time-safe builders, run in the `generate-sources` phase.
+
+```mermaid
+flowchart TB
+    dev["👤 Java Developer<br/><i>Configures the plugin in pom.xml</i>"]
+
+    subgraph protogen ["code/protogen-maven-plugin"]
+        direction TB
+
+        subgraph entry ["Mojo"]
+            mojo["<b>CodeMojo</b><br/><i>@Mojo · generate-sources</i><br/>pkgs · outputpackage · generatedSourcesDir<br/>extends the runtime classpath"]
+        end
+
+        subgraph gen ["Generation core"]
+            finder["<b>MessagesFinder</b><br/><i>scans pkgs for<br/>GeneratedMessage classes</i>"]
+            code["<b>Code</b><br/><i>orchestrates genBuilders</i><br/>proto2/proto3 syntax check"]
+            typeMap["<b>TypeMappings</b><br/><i>proto → Java types</i>"]
+            clazz["<b>Clazz / ClassInfo</b><br/><i>reads the Descriptor</i>"]
+            emit["<b>Interfaces · Methods ·<br/>Implementations · Statements</b><br/><i>emit required-field builder</i>"]
+            container["<b>ClassContainer</b><br/><i>generated compilation unit</i>"]
+        end
+
+        subgraph fmt ["Formatting"]
+            formatter["<b>Formatter /<br/>UnusedImportsRemover</b>"]
+        end
+    end
+
+    protoClasses["📦 Compiled proto classes<br/><i>com.google.protobuf.GeneratedMessage</i>"]
+    genSources["🗂️ Generated sources dir<br/><i>*.java builders (compiled next)</i>"]
+
+    dev -->|"mvn generate-sources"| mojo
+    mojo -->|"execute()"| finder
+    finder -->|"reflects"| protoClasses
+    mojo --> code
+    finder --> code
+    code --> typeMap
+    code --> clazz
+    clazz --> emit
+    emit --> container
+    container --> formatter
+    formatter -->|"writes .java"| genSources
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class dev person
+    class mojo,finder,code,typeMap,clazz,emit,container,formatter comp
+    class protoClasses,genSources ext
+    style protogen fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style entry fill:#eef4ec,stroke:#6b3fa0,color:#46296b
+    style gen fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style fmt fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
+```
+
+---
+
+## Deployment — `k8s/` (uniqueness check on Kubernetes)
+
+An optional C4 deployment view of the assets under `k8s/`, which run `SampleApp`
+(the CSV column-uniqueness checker) as a run-to-completion **Job** on a local
+minikube cluster.
+
+```mermaid
+flowchart TB
+    dev["👤 Java Developer<br/><i>./k8s/run-on-minikube.sh</i>"]
+
+    subgraph build ["Build host (docker + Maven)"]
+        maven["<b>mvn package</b><br/><i>assembly fat jar</i>"]
+        image["<b>tools-k8s image</b><br/><i>k8s/Dockerfile</i><br/>flat classpath + console log4j2"]
+    end
+
+    subgraph cluster ["minikube cluster"]
+        direction TB
+        subgraph job ["Job: tools-uniqueness-check"]
+            pod["<b>Pod</b><br/><i>SampleApp (batch, restartPolicy: Never)</i><br/>args: /data/people.csv · country"]
+        end
+        cm["🗂️ ConfigMap<br/><i>tools-sample-data</i><br/>people.csv → /data"]
+    end
+
+    logs["📄 kubectl logs<br/><i>uniqueness result → stdout</i>"]
+
+    dev -->|"build & load"| maven
+    maven --> image
+    image -->|"minikube image load"| pod
+    cm -->|"mounted read-only at /data"| pod
+    pod -->|"logs result"| logs
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class dev person
+    class maven,image,pod,cm comp
+    class logs ext
+    style build fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style cluster fill:#eef4ec,stroke:#326ce5,color:#08427b
+    style job fill:#fff7ec,stroke:#d59a43,color:#7a5418
+```
+
+---
+
 ## Notes
 
 - **Base package:** `io.github.adamw7` (`io.github.adamw7.context` for the
   context module, `io.github.adamw7.tools.*` elsewhere).
 - **MCP servers:** both are Spring Boot apps whose entry point is `Main.java`
-  and support stdio (default) or `--transport.mode=streamable-http`.
+  and support stdio (default) or `--transport.mode=streamable-http`. Both build
+  on the shared **`mcp-common`** module (`AbstractMcpConfiguration`, `McpTool`,
+  `TransportConfigurer`).
 - **Build:** Java 25 + Maven 3.9.x; `mvn clean install` from the root. CI runs
   `mvn -B package -DenforceClaudeMd`, which also runs the `claude-code-enforcer`
   rules.
 - The `data-test` module is built separately and is intentionally not in the
   root reactor `<modules>` list, so it is omitted from the container view.
+- **Deployment:** `k8s/` packages `SampleApp` into the `tools-k8s` image
+  (`k8s/Dockerfile`) and runs it as a Kubernetes **Job**
+  (`job-uniqueness-check.yaml`) reading a CSV from a ConfigMap — see the
+  Deployment diagram above and `k8s/README.md`.
 
 See [AGENTS.md](../AGENTS.md) and [README.md](../README.md) for full detail.

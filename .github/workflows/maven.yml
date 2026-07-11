@@ -36,7 +36,12 @@ jobs:
       # installed to the local repo first. The claude-md-enforce profile is
       # off here (no -DenforceClaudeMd), so the module is not asked to depend
       # on itself while it is being built.
-      run: mvn -B -ntp -pl claude-code-enforcer -am install
+      #
+      # -DskipTests: this step exists only to publish the enforcer JAR so the
+      # main build can load it as a plugin dependency. The module's own test
+      # suite is re-run as part of the "Build with Maven" package step below,
+      # so running it here as well only duplicates work.
+      run: mvn -B -ntp -pl claude-code-enforcer -am install -DskipTests
     - name: Build with Maven
       # -DenforceClaudeMd activates the claude-md-enforce profile so the root
       # build fails when CLAUDE.md is missing or malformed. This is the only

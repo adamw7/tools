@@ -27,7 +27,11 @@ Maven project. The notable capabilities are:
   project-tree and context-finder tools over stdio, streamable HTTP, stateless
   HTTP or HTTP+SSE.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC; in-memory and iterative
-  loading), a uniqueness-checking tool (finds whether a subset of columns can
+  loading). Schema-aware sources that know their columns up front implement
+  `ColumnarDataSource` (a narrower contract than `IterableDataSource`), so
+  callers that need the schema — such as the uniqueness check — cannot be handed
+  a forward-only source (JSON/YAML/TOON) that would only answer with `null`.
+  Also a uniqueness-checking tool (finds whether a subset of columns can
   serve as a key, and searches for a smaller key), data structures
   (`OpenAddressingMap`, an `OpenAddressingSet`, and the primitive `int`-keyed
   `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
@@ -150,6 +154,18 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
 - **Unit tests** run in the normal `test`/`package` lifecycle
   (`mvn -pl <module> test`). Write tests for all new logic — behavior, edge
   cases, and error paths.
+- **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
+  under an `...architecture` test package (e.g.
+  `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse
+  only production classes and pin the package layering and coding rules so they
+  cannot rot: data-source contracts in `source.interfaces` must not depend on
+  their `source.db`/`source.file` implementations; the uniqueness core must not
+  depend on its MCP adapter; the `structure` collections stay decoupled from data
+  sources; loggers are `private static final`; abstract types carry an `Abstract`
+  prefix; public fields are `final`; and production code logs through log4j2
+  (never `System.out`/`err`, `java.util.logging`, `printStackTrace`, or
+  `System.exit`), with packages kept free of cycles. New code must satisfy these
+  rules or the module's test suite fails.
 - **MCP integration tests** are gated behind the `integration-tests` profile
   (defined in `data` and `code/context`) and exercise the MCP servers over
   streamable HTTP: `mvn -P integration-tests verify`. Test classes ending in

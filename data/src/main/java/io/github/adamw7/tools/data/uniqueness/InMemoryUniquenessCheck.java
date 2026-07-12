@@ -16,11 +16,11 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
 
-		Integer[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
+		int[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
 		return findUnique(indices, keyCandidates);
 	}
 
-	private Result findUnique(Integer[] indices, String... keyCandidates) {
+	private Result findUnique(int[] indices, String... keyCandidates) {
 		dataSource.reset();
 		List<String[]> data = dataSource.readAll();
 		close(dataSource);
@@ -36,7 +36,7 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 
 	@Override
 	protected Result checkSubset(String[] newCandidates) {
-		Integer[] indices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
+		int[] indices = getIndiciesOf(newCandidates, dataSource.getColumnNames());
 		return findUnique(indices, newCandidates);
 	}
 }

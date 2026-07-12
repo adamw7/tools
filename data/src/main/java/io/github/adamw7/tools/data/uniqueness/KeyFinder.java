@@ -1,15 +1,14 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 public class KeyFinder {
 
-	private final Integer[] indices;
+	private final int[] indices;
 	private final Set<Key> set = new HashSet<>();
 
-	public KeyFinder(Integer[] indices) {
+	public KeyFinder(int[] indices) {
 		this.indices = indices;
 	}
 
@@ -20,8 +19,11 @@ public class KeyFinder {
 		return !set.add(key(row, indices));
 	}
 
-	protected Key key(String[] row, Integer[] indices) {
-		String[] values = Arrays.stream(indices).map(index -> row[index]).toArray(String[]::new);
+	protected Key key(String[] row, int[] indices) {
+		String[] values = new String[indices.length];
+		for (int i = 0; i < indices.length; ++i) {
+			values[i] = row[indices[i]];
+		}
 		return new Key(values);
 	}
 

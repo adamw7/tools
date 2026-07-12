@@ -22,7 +22,7 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 @Component
 public class UniquenessTool implements McpTool {
 	
-	private final static Logger log = LogManager.getLogger(UniquenessTool.class.getName());
+	private static final Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
     private final Tool toolDefinition = Tool.builder("uniqueness_check",
                     Map.of(
@@ -45,7 +45,7 @@ public class UniquenessTool implements McpTool {
 
 	@Override
 	public CallToolResult apply(Map<String, Object> arguments) {
-		log.info("Calling MCP unquieness tool for {}", arguments);
+		log.info("Calling MCP uniqueness tool for {}", arguments);
 		String result = runUniqueness(arguments);
 
 		return CallToolResult.builder().content(List.of(TextContent.builder(result).build())).isError(false).build();

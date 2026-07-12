@@ -16,7 +16,7 @@ import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
 public class IterableSQLDataSource implements ColumnarDataSource {
 
-	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
+	private static final Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
 
 	private ResultSet resultSet;
 	private Statement statement;

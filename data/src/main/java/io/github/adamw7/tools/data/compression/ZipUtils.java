@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 public class ZipUtils {
 
-	private final static Logger log = LogManager.getLogger(ZipUtils.class.getName());
+	private static final Logger log = LogManager.getLogger(ZipUtils.class.getName());
 
 	private ZipUtils() {}
 	

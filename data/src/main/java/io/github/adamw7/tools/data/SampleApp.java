@@ -15,7 +15,7 @@ import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 public class SampleApp {
 	
 
-	private final static Logger log = LogManager.getLogger(SampleApp.class.getName());
+	private static final Logger log = LogManager.getLogger(SampleApp.class.getName());
 
 	public static void main(String[] args) {
 		checkArgs(args);

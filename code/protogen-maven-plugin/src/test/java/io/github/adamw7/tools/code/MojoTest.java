@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class MojoTest {
 	
-	private final static Logger log = LogManager.getLogger(MojoTest.class.getName());
+	private static final Logger log = LogManager.getLogger(MojoTest.class.getName());
 
 	protected static String GENERATED_SOURCES;
 	protected static String TARGET;

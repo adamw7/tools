@@ -16,7 +16,7 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
 public class InMemorySQLDataSource extends IterableSQLDataSource implements InMemoryDataSource {
 	
-	private final static Logger log = LogManager.getLogger(InMemorySQLDataSource.class.getName());
+	private static final Logger log = LogManager.getLogger(InMemorySQLDataSource.class.getName());
 
 	
 	public InMemorySQLDataSource(Connection connection, String query) {
@@ -34,7 +34,7 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 			log.info("Loaded {} rows into memory", allData::size);
 			return allData;
 		} catch (SQLException e) {
-			log.error(e);
+			log.error("Failed to load query result into memory: {}", query, e);
 			throw new UncheckedIOException(new IOException(e));
 		}
 

@@ -20,7 +20,9 @@ test_jdk_already_installed() {
         return 1
     fi
     if java -version 2>&1 | grep -q '"25'; then
-        success "JDK 25 is already installed: $(java -version 2>&1 | head -1)"
+        local version_line
+        version_line=$(java -version 2>&1 | head -1)
+        success "JDK 25 is already installed: ${version_line}"
         return 0
     fi
     return 1
@@ -29,55 +31,55 @@ test_jdk_already_installed() {
 download_from_adoptium() {
     step "Resolving download URL from Adoptium API..."
     local resolved_url
-    resolved_url=$(curl -Ls -o /dev/null -w '%{url_effective}' "$ADOPTIUM_API")
-    echo "    URL: $resolved_url"
+    resolved_url=$(curl -Ls -o /dev/null -w '%{url_effective}' "${ADOPTIUM_API}")
+    echo "    URL: ${resolved_url}"
 
     step "Downloading JDK 25 archive..."
-    mkdir -p "$TEMP_DIR"
-    curl -L --progress-bar -o "$ARCHIVE_PATH" "$resolved_url"
+    mkdir -p "${TEMP_DIR}"
+    curl -L --progress-bar -o "${ARCHIVE_PATH}" "${resolved_url}"
 
     local size_mb
-    size_mb=$(du -m "$ARCHIVE_PATH" | cut -f1)
-    success "Downloaded ${size_mb} MB -> $ARCHIVE_PATH"
+    size_mb=$(du -m "${ARCHIVE_PATH}" | cut -f1)
+    success "Downloaded ${size_mb} MB -> ${ARCHIVE_PATH}"
 }
 
 install_jdk() {
     step "Installing JDK 25..."
-    mkdir -p "$INSTALL_DIR"
-    tar -xzf "$ARCHIVE_PATH" -C "$INSTALL_DIR" --strip-components=1
-    success "JDK 25 installed to: $INSTALL_DIR"
+    mkdir -p "${INSTALL_DIR}"
+    tar -xzf "${ARCHIVE_PATH}" -C "${INSTALL_DIR}" --strip-components=1
+    success "JDK 25 installed to: ${INSTALL_DIR}"
 }
 
 set_java_home() {
     step "Setting JAVA_HOME and updating PATH..."
     local profile_script="/etc/profile.d/jdk25.sh"
 
-    sudo tee "$profile_script" > /dev/null <<EOF
+    sudo tee "${profile_script}" > /dev/null <<EOF
 export JAVA_HOME="${INSTALL_DIR}"
 export PATH="\${JAVA_HOME}/bin:\${PATH}"
 EOF
 
-    export JAVA_HOME="$INSTALL_DIR"
+    export JAVA_HOME="${INSTALL_DIR}"
     export PATH="${JAVA_HOME}/bin:${PATH}"
 
-    success "JAVA_HOME = $INSTALL_DIR"
-    success "Profile script written to $profile_script"
+    success "JAVA_HOME = ${INSTALL_DIR}"
+    success "Profile script written to ${profile_script}"
 }
 
 test_installation() {
     step "Verifying installation..."
     local java_exe="${INSTALL_DIR}/bin/java"
-    if [ ! -x "$java_exe" ]; then
-        failure "java binary not found at: $java_exe"
+    if [[ ! -x "${java_exe}" ]]; then
+        failure "java binary not found at: ${java_exe}"
         exit 1
     fi
     success "java -version output:"
-    "$java_exe" -version 2>&1 | sed 's/^/    /'
+    "${java_exe}" -version 2>&1 | sed 's/^/    /'
 }
 
 remove_temp_files() {
-    if [ -d "$TEMP_DIR" ]; then
-        rm -rf "$TEMP_DIR"
+    if [[ -d "${TEMP_DIR}" ]]; then
+        rm -rf "${TEMP_DIR}"
         success "Cleaned up temporary files"
     fi
 }
@@ -87,6 +89,8 @@ remove_temp_files() {
 echo -e "\nJDK 25 Installer for Linux"
 printf "==========================\n\n"
 
+# test_jdk_already_installed is a predicate; it manages its own control flow.
+# shellcheck disable=SC2310
 if test_jdk_already_installed; then
     echo -e "\nJDK 25 is already present. Nothing to do."
     exit 0

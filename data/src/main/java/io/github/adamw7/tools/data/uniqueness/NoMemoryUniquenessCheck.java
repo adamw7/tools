@@ -13,7 +13,7 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness<ColumnarDataSour
 		check(keyCandidates);
 		dataSource.open();
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
-		Integer[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
+		int[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
 		KeyFinder finder = new KeyFinder(indices);
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();

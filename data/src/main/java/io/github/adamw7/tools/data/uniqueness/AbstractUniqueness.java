@@ -41,7 +41,7 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 				.toArray(String[]::new);
 	}
 
-	protected Integer[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
+	protected int[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
 		List<Integer> indicies = new ArrayList<>();
 
 		for (int i = 0; i < allColumns.length; ++i) {
@@ -52,7 +52,11 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 			}
 		}
 
-		return indicies.toArray(new Integer[keyCandidates.length]);
+		int[] result = new int[indicies.size()];
+		for (int i = 0; i < result.length; ++i) {
+			result[i] = indicies.get(i);
+		}
+		return result;
 	}
 	
 	protected void check(String[] keyCandidates) {

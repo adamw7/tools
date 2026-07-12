@@ -9,21 +9,21 @@ public class KeyFinderTest {
 
 	@Test
 	public void nullRowIsNeverFound() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 0 });
 
 		assertFalse(finder.found(null));
 	}
 
 	@Test
 	public void firstRowIsNotADuplicate() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 0 });
 
 		assertFalse(finder.found(new String[] { "a", "b" }));
 	}
 
 	@Test
 	public void repeatedRowIsADuplicate() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 0 });
 
 		finder.found(new String[] { "a", "b" });
 
@@ -32,7 +32,7 @@ public class KeyFinderTest {
 
 	@Test
 	public void onlyConfiguredColumnsFormTheKey() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 0 });
 
 		finder.found(new String[] { "a", "b" });
 
@@ -41,7 +41,7 @@ public class KeyFinderTest {
 
 	@Test
 	public void differenceInUncheckedColumnDoesNotCollideOnCheckedColumn() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 1 });
+		KeyFinder finder = new KeyFinder(new int[] { 1 });
 
 		finder.found(new String[] { "a", "b" });
 
@@ -50,7 +50,7 @@ public class KeyFinderTest {
 
 	@Test
 	public void multiColumnKeyMatchesOnAllConfiguredColumns() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0, 2 });
+		KeyFinder finder = new KeyFinder(new int[] { 0, 2 });
 
 		finder.found(new String[] { "a", "b", "c" });
 
@@ -59,7 +59,7 @@ public class KeyFinderTest {
 
 	@Test
 	public void multiColumnKeyDiffersWhenAnyConfiguredColumnDiffers() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0, 2 });
+		KeyFinder finder = new KeyFinder(new int[] { 0, 2 });
 
 		finder.found(new String[] { "a", "b", "c" });
 
@@ -68,7 +68,7 @@ public class KeyFinderTest {
 
 	@Test
 	public void distinctRowsAreNotDuplicates() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 0 });
 
 		assertFalse(finder.found(new String[] { "a" }));
 		assertFalse(finder.found(new String[] { "b" }));
@@ -77,9 +77,9 @@ public class KeyFinderTest {
 
 	@Test
 	public void keyProjectsConfiguredColumnsInOrder() {
-		KeyFinder finder = new KeyFinder(new Integer[] { 2, 0 });
+		KeyFinder finder = new KeyFinder(new int[] { 2, 0 });
 
-		Key key = finder.key(new String[] { "x", "y", "z" }, new Integer[] { 2, 0 });
+		Key key = finder.key(new String[] { "x", "y", "z" }, new int[] { 2, 0 });
 
 		assertTrue(key.equals(new Key(new String[] { "z", "x" })));
 	}

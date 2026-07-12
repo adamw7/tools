@@ -7,12 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.io.UncheckedIOException;
+import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -140,6 +142,46 @@ public class ParquetDataSourceTest {
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(IterableParquetDataSource.class));
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(InMemoryParquetDataSource.class));
 		assertFalse(IterableParquetDataSource.class.isInterface());
+	}
+
+	@Test
+	public void repeatedOpenDoesNotLeakPreviousStatement() throws Exception {
+		List<Statement> created = new ArrayList<>();
+		try (Connection real = DriverManager.getConnection("jdbc:duckdb:")) {
+			Connection recording = recordingConnection(real, created);
+			IterableSQLDataSource source = new IterableSQLDataSource(recording,
+					DuckDbParquet.readQuery(parquetFile.toString()));
+			source.open();
+			source.open();
+			// The second open() must release the first statement instead of leaking it on the
+			// (owned) connection until it is disposed.
+			assertEquals(2, created.size());
+			assertTrue(created.get(0).isClosed(), "first statement leaked on repeated open()");
+			source.close();
+			assertTrue(created.get(1).isClosed(), "second statement leaked on close()");
+		}
+	}
+
+	@Test
+	public void repeatedOpenReReadsFromStart() {
+		IterableParquetDataSource source = new IterableParquetDataSource(parquetFile.toString());
+		source.open();
+		assertEquals("1", source.nextRow()[0]);
+		source.open();
+		// Re-opening starts a fresh read rather than continuing the exhausted one.
+		assertEquals("1", source.nextRow()[0]);
+		Utils.close(source);
+	}
+
+	private static Connection recordingConnection(Connection real, List<Statement> created) {
+		return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(),
+				new Class<?>[] { Connection.class }, (proxy, method, args) -> {
+					Object result = method.invoke(real, args);
+					if (method.getName().equals("createStatement")) {
+						created.add((Statement) result);
+					}
+					return result;
+				});
 	}
 
 	private static int drain(IterableParquetDataSource source) {

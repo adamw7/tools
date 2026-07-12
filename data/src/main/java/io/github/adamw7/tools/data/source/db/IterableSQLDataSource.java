@@ -19,6 +19,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 	private final static Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
 
 	private ResultSet resultSet;
+	private Statement statement;
 	protected boolean hasMoreData = true;
 	protected final String query;
 	protected final Connection connection;
@@ -30,15 +31,22 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	@Override
 	public void close() {
-		if (resultSet != null) {
-			try {
-				if (!resultSet.isClosed()) {
-					resultSet.getStatement().close();
-					resultSet.close();					
-				}
-			} catch (SQLException e) {
-				throw new UncheckedIOException(new IOException(e));
+		closeQueryResources();
+	}
+
+	private void closeQueryResources() {
+		try {
+			if (resultSet != null) {
+				resultSet.close();
 			}
+			if (statement != null) {
+				statement.close();
+			}
+		} catch (SQLException e) {
+			throw new UncheckedIOException(new IOException(e));
+		} finally {
+			resultSet = null;
+			statement = null;
 		}
 	}
 
@@ -53,8 +61,9 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	@Override
 	public void open() {
+		closeQueryResources();
 		try {
-			Statement statement = connection.createStatement();
+			statement = connection.createStatement();
 			log.info("Executing query: {}", query);
 			resultSet = statement.executeQuery(query);
 		} catch (SQLException e) {

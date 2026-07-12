@@ -10,13 +10,13 @@ The MCP server exposes a `uniqueness_check` tool that allows AI assistants to an
 
 The implementation consists of three main components:
 
-1. **Main.java** - Spring Boot application entry point that configures stdio transport
+1. **Main.java** - Spring Boot application entry point that selects the transport (stdio by default)
 2. **McpConfiguration.java** - Spring configuration that sets up the MCP server and registers tools
 3. **UniquenessTool.java** - Implements the uniqueness checking tool
 
 The server uses:
 - **Transport**: stdio (default), streamable-http (`--transport.mode=streamable-http`, served at `/mcp`), stateless-http (`--transport.mode=stateless-http`, session-less, also served at `/mcp`), or the legacy HTTP+SSE transport (`--transport.mode=sse`, event stream at `/sse`, JSON-RPC messages POSTed to `/mcp/message`)
-- **MCP SDK**: io.modelcontextprotocol.sdk v2.0.0-RC1
+- **MCP SDK**: io.modelcontextprotocol.sdk v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
 
@@ -281,8 +281,9 @@ syncServer.addTool(toolSpec.build());
 
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/)
 - [MCP Java SDK Documentation](https://github.com/modelcontextprotocol/java-sdk)
-- [Main Project README](../../../../../../../../../README.md)
-- [Data Module Documentation](../../../../../../../../../README.md#data)
+- [Main Project README](../../../../../../../../../../../README.md)
+- [Data Module Documentation](../../../../../../../../../../../README.md#data)
+- [Context module MCP server](../../../../../../../../../../../code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md)
 
 ## License
 

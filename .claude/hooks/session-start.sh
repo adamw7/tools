@@ -1,7 +1,9 @@
 #!/bin/bash
+# CLAUDE_ENV_FILE and CLAUDE_PROJECT_DIR are provided by the Claude Code runtime.
+# shellcheck disable=SC2154
 set -euo pipefail
 
-if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+if [[ "${CLAUDE_CODE_REMOTE:-}" != "true" ]]; then
   exit 0
 fi
 
@@ -13,11 +15,11 @@ fi
 
 JAVA_HOME_25=$(find /usr/lib/jvm -maxdepth 1 -name "java-25-openjdk*" -type d | head -1)
 
-echo "export JAVA_HOME=${JAVA_HOME_25}" >> "$CLAUDE_ENV_FILE"
-echo "export PATH=${JAVA_HOME_25}/bin:\$PATH" >> "$CLAUDE_ENV_FILE"
+echo "export JAVA_HOME=${JAVA_HOME_25}" >> "${CLAUDE_ENV_FILE}"
+echo "export PATH=${JAVA_HOME_25}/bin:\$PATH" >> "${CLAUDE_ENV_FILE}"
 
 export JAVA_HOME="${JAVA_HOME_25}"
-export PATH="${JAVA_HOME_25}/bin:$PATH"
+export PATH="${JAVA_HOME_25}/bin:${PATH}"
 
 # Pre-download all Maven dependencies to local repo for faster builds
 cd "${CLAUDE_PROJECT_DIR}"

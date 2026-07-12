@@ -13,30 +13,30 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-K8S_DIR="$ROOT_DIR/k8s"
+K8S_DIR="${ROOT_DIR}/k8s"
 IMAGE="${IMAGE:-tools-k8s:local}"
 COLUMN="${COLUMN:-country}"
 
 echo "==> Building the application (mvn -DskipTests package)"
-(cd "$ROOT_DIR" && mvn -B -ntp -DskipTests package)
+(cd "${ROOT_DIR}" && mvn -B -ntp -DskipTests package)
 
-echo "==> Building the Docker image: $IMAGE"
-docker build -f "$K8S_DIR/Dockerfile" -t "$IMAGE" "$ROOT_DIR"
+echo "==> Building the Docker image: ${IMAGE}"
+docker build -f "${K8S_DIR}/Dockerfile" -t "${IMAGE}" "${ROOT_DIR}"
 
 echo "==> Ensuring minikube is running"
 if ! minikube status >/dev/null 2>&1; then
   minikube start --driver=docker
 fi
 
-echo "==> Loading $IMAGE into minikube"
-minikube image load "$IMAGE"
+echo "==> Loading ${IMAGE} into minikube"
+minikube image load "${IMAGE}"
 
 echo "==> Applying manifests"
-kubectl apply -f "$K8S_DIR/configmap-sample-data.yaml"
+kubectl apply -f "${K8S_DIR}/configmap-sample-data.yaml"
 # Recreate the Job so repeated runs pick up new data/image.
 kubectl delete job tools-uniqueness-check --ignore-not-found
 # Substitute the target column (default 'country') into the manifest on the fly.
-sed "s|\"country\"|\"$COLUMN\"|" "$K8S_DIR/job-uniqueness-check.yaml" | kubectl apply -f -
+sed "s|\"country\"|\"${COLUMN}\"|" "${K8S_DIR}/job-uniqueness-check.yaml" | kubectl apply -f -
 
 echo "==> Waiting for the Job to complete"
 kubectl wait --for=condition=complete --timeout=120s job/tools-uniqueness-check \

@@ -30,6 +30,21 @@
 		     larger value because the JaCoCo agent's bytecode instrumentation roughly
 		     doubles first-use class-loading time. -->
 		<unit.test.method.timeout>900 ms</unit.test.method.timeout>
+		<!-- Companion limit for lifecycle methods (@BeforeAll/@BeforeEach/@AfterEach/
+		     @AfterAll). Deliberately far looser than the per-test method timeout:
+		     lifecycle methods legitimately do shared, one-time setup that a test
+		     method must not (e.g. DBTest boots an embedded Derby database and loads
+		     fixtures, ~2s on a cold fork). This still fails a fixture that is truly
+		     stuck (deadlock, infinite retry) rather than merely heavy; a total hang
+		     that never returns is caught by forkedProcessTimeoutInSeconds. The
+		     coverage profile raises it because JaCoCo instrumentation slows setup. -->
+		<unit.test.lifecycle.timeout>10 s</unit.test.lifecycle.timeout>
+		<!-- Whole-fork wall-clock cap (seconds). JUnit's per-method timeout only
+		     reports after a method returns; it cannot unwedge a thread that never
+		     yields (deadlock, non-daemon thread that never dies). Surefire kills the
+		     forked JVM after this many seconds, so a genuinely hung test still fails
+		     the build. Sized far above a full module's fast unit run. -->
+		<unit.test.fork.timeout>300</unit.test.fork.timeout>
 		<!-- Maven Central publishing behavior for the release profile. Defaults
 		     publish on release; overridable so the maven-publish.yml
 		     workflow_dispatch dry run can upload and validate without
@@ -270,9 +285,11 @@
 						     byte-buddy self-attach is not billed to the first timed
 						     method. The coverage profile raises the limit because
 						     JaCoCo instrumentation slows the timed methods. -->
+						<forkedProcessTimeoutInSeconds>${unit.test.fork.timeout}</forkedProcessTimeoutInSeconds>
 						<properties>
 							<configurationParameters>
 								junit.jupiter.execution.timeout.testable.method.default = ${unit.test.method.timeout}
+								junit.jupiter.execution.timeout.lifecycle.method.default = ${unit.test.lifecycle.timeout}
 							</configurationParameters>
 						</properties>
 					</configuration>
@@ -598,8 +615,9 @@
 			<properties>
 				<!-- JaCoCo's bytecode instrumentation roughly doubles the time a
 				     timed test method spends loading classes on first use, so give
-				     the per-test timeout extra headroom under coverage. -->
+				     the per-test timeouts extra headroom under coverage. -->
 				<unit.test.method.timeout>2 s</unit.test.method.timeout>
+				<unit.test.lifecycle.timeout>15 s</unit.test.lifecycle.timeout>
 			</properties>
 			<build>
 				<plugins>

@@ -169,7 +169,15 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   that shells out to `protoc` or streams a large data set) opts out with an
   explicit class- or method-level `@Timeout` carrying a comment that says why.
   Failsafe integration tests (`*IT`) do not inherit this limit, and ArchUnit
-  tests run on a separate engine that the JUnit timeout does not apply to.
+  tests run on a separate engine that the JUnit timeout does not apply to. Two
+  companion limits guard the rest of the fork: a looser
+  `junit.jupiter.execution.timeout.lifecycle.method.default` (**10 s**, **15 s**
+  under coverage) caps lifecycle methods (`@BeforeAll`/`@BeforeEach`/`@AfterEach`/
+  `@AfterAll`), whose shared one-time setup — e.g. `DBTest` booting an embedded
+  Derby database — is legitimately heavier than a test method but must still not
+  hang; and surefire's `forkedProcessTimeoutInSeconds` (**300 s**) kills a fork
+  that wedges outright (a deadlock or a non-daemon thread that never dies), which
+  a per-method JUnit timeout only reports after the fact and cannot interrupt.
 - **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
   under an `...architecture` test package (e.g.
   `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse
@@ -181,7 +189,13 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   prefix; public fields are `final`; and production code logs through log4j2
   (never `System.out`/`err`, `java.util.logging`, `printStackTrace`, or
   `System.exit`), with packages kept free of cycles. New code must satisfy these
-  rules or the module's test suite fails.
+  rules or the module's test suite fails. A companion
+  `TestConventionsArchitectureTest` in the same `...architecture` package
+  analyses only the *test* classes (via `ImportOption.OnlyIncludeTests`) and pins
+  conventions on the tests themselves: every `@Testable` method must live in a
+  `*Test` or `*IT` class so surefire/failsafe actually runs it, no test is
+  `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), and no test
+  calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition).
 - **MCP integration tests** are gated behind the `integration-tests` profile
   (defined in `data` and `code/context`) and exercise the MCP servers over
   streamable HTTP: `mvn -P integration-tests verify`. Test classes ending in

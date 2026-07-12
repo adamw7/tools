@@ -3,7 +3,9 @@ package io.github.adamw7.tools.data.architecture;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import java.io.PrintStream;
@@ -37,6 +39,8 @@ public class DataArchitectureTest {
 	private static final String DB_PACKAGE = "..source.db..";
 	private static final String MCP_PACKAGE = "..uniqueness.mcp..";
 	private static final String UNIQUENESS_PACKAGE = "..uniqueness..";
+	private static final String NETWORK_PACKAGE = "..network..";
+	private static final String CONCURRENT_PACKAGE = "java.util.concurrent..";
 
 	@ArchTest
 	static final ArchRule interfacesDoNotDependOnImplementations = noClasses()
@@ -107,6 +111,36 @@ public class DataArchitectureTest {
 			.that().resideInAPackage(STRUCTURE_PACKAGE)
 			.should().dependOnClassesThat().resideInAnyPackage("..source..", "..network..", "..compression..")
 			.because("the structure package is a reusable collections library and must not couple to data sources");
+
+	@ArchTest
+	static final ArchRule dataStructuresDeclareNoSynchronizedMethods = noMethods()
+			.that().areDeclaredInClassesThat().resideInAPackage(STRUCTURE_PACKAGE)
+			.should().haveModifier(JavaModifier.SYNCHRONIZED)
+			.because("the open-addressing structures are documented as not thread-safe; a synchronized "
+					+ "method would silently contradict that contract");
+
+	@ArchTest
+	static final ArchRule dataStructuresUseNoConcurrencyUtilities = noClasses()
+			.that().resideInAPackage(STRUCTURE_PACKAGE)
+			.should().dependOnClassesThat().resideInAPackage(CONCURRENT_PACKAGE)
+			.because("the structures make no thread-safety provisions, so a java.util.concurrent "
+					+ "dependency would misleadingly suggest they are safe to share across threads");
+
+	@ArchTest
+	static final ArchRule networkSwitchGuardsWithSynchronization = methods()
+			.that().haveName("off")
+			.and().areDeclaredInClassesThat().resideInAPackage(NETWORK_PACKAGE)
+			.should().haveModifier(JavaModifier.SYNCHRONIZED)
+			.because("Switch.off() is documented as synchronized so concurrent callers cannot race "
+					+ "while installing the blocking proxy selector");
+
+	@ArchTest
+	static final ArchRule networkSwitchFlagIsVolatile = fields()
+			.that().haveName("isOff")
+			.and().areDeclaredInClassesThat().resideInAPackage(NETWORK_PACKAGE)
+			.should().haveModifier(JavaModifier.VOLATILE)
+			.because("Switch is documented as guarded by a volatile flag so its off state publishes "
+					+ "across threads without further locking");
 
 	@ArchTest
 	static final ArchRule uniquenessCoreDoesNotDependOnMcpAdapter = noClasses()

@@ -26,8 +26,10 @@ Maven project. The notable capabilities are:
   **MCP server** (in the `io.github.adamw7.context.mcp` package) exposes the
   project-tree and context-finder tools over stdio, streamable HTTP, stateless
   HTTP or HTTP+SSE.
-- **Data** (`data`) — data sources (CSV, GZip, JDBC; in-memory and iterative
-  loading). Schema-aware sources that know their columns up front implement
+- **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet; in-memory and
+  iterative loading). Parquet files are read through an in-process DuckDB engine,
+  so they expose their columns and rows like any other JDBC-backed source.
+  Schema-aware sources that know their columns up front implement
   `ColumnarDataSource` (a narrower contract than `IterableDataSource`), so
   callers that need the schema — such as the uniqueness check — cannot be handed
   a forward-only source (JSON/YAML/TOON) that would only answer with `null`.

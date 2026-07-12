@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.adamw7.tools.data.source.db.InMemoryParquetDataSource;
 import io.github.adamw7.tools.data.source.db.InMemorySQLDataSource;
+import io.github.adamw7.tools.data.source.db.IterableParquetDataSource;
 import io.github.adamw7.tools.data.source.db.IterableSQLDataSource;
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
@@ -36,6 +38,8 @@ class DataSourceSegregationTest {
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(InMemoryJSONDataSource.class));
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(IterableSQLDataSource.class));
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(InMemorySQLDataSource.class));
+		assertTrue(ColumnarDataSource.class.isAssignableFrom(IterableParquetDataSource.class));
+		assertTrue(ColumnarDataSource.class.isAssignableFrom(InMemoryParquetDataSource.class));
 	}
 
 	@Test

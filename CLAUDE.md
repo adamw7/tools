@@ -19,7 +19,7 @@ run `mvn install` from the repository root. The main capabilities are:
 - **Context engineering** (`code/context`) — a regex-based class-usage finder and
   project-tree builder that assembles context for gen-AI agents, plus an MCP
   server exposing `project_tree`, `find_context`, and `estimate_tokens`.
-- **Data** (`data`) — CSV/GZip/JDBC data sources (in-memory and iterative), a
+- **Data** (`data`) — CSV/GZip/JDBC/Parquet data sources (in-memory and iterative), a
   column-uniqueness/key finder, open-addressing map/set data structures, and an
   MCP server exposing the uniqueness checker.
 

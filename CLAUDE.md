@@ -83,10 +83,10 @@ Write unit tests for all new logic. Focus on behavior, edge cases, and error
 paths.
 
 - **Unit tests** run in the normal `test`/`package` lifecycle. Surefire enforces
-  a **1-second per-test timeout** (configured on the surefire plugin in the root
-  `pom.xml`) — above the one-time cold-JVM warmup but low enough to catch a test
-  doing real work — so keep unit tests fast; a genuinely heavier test opts out
-  with an explicit `@Timeout` and a comment explaining why.
+  a **900-millisecond per-test timeout** (configured on the surefire plugin in the
+  root `pom.xml`) — above the one-time cold-JVM warmup but low enough to catch a
+  test doing real work — so keep unit tests fast; a genuinely heavier test opts
+  out with an explicit `@Timeout` and a comment explaining why.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend

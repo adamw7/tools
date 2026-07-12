@@ -25,6 +25,11 @@
 		<protobuf.version>4.33.4</protobuf.version>
 		<grpc.version>1.82.1</grpc.version>
 		<argLine/>
+		<!-- Per-test timeout for unit tests (see the surefire plugin config). The
+		     plain build uses a tight limit; the coverage profile overrides it to a
+		     larger value because the JaCoCo agent's bytecode instrumentation roughly
+		     doubles first-use class-loading time. -->
+		<unit.test.method.timeout>900 ms</unit.test.method.timeout>
 		<!-- Maven Central publishing behavior for the release profile. Defaults
 		     publish on release; overridable so the maven-publish.yml
 		     workflow_dispatch dry run can upload and validate without
@@ -251,18 +256,23 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.5.6</version>
 					<configuration>
-						<!-- Fail any unit test whose testable method runs 1 second
-						     or longer, so a test doing real work (rather than the
-						     unavoidable one-time JVM/class-loading warmup a cold
-						     fork pays, ~0.7s at most) is caught. Applies to @Test,
-						     @ParameterizedTest, @RepeatedTest, @TestFactory and
-						     @TestTemplate methods (not lifecycle setup/teardown).
-						     Only surefire (unit tests) inherits this; failsafe
-						     integration tests are unaffected. A genuinely heavier
-						     test opts out with an explicit @Timeout. -->
+						<!-- Fail any unit test whose testable method runs
+						     ${unit.test.method.timeout} or longer, so a test doing
+						     real work (rather than the unavoidable one-time
+						     JVM/class-loading warmup a cold fork pays, ~0.7s at most)
+						     is caught. Applies to @Test, @ParameterizedTest,
+						     @RepeatedTest, @TestFactory and @TestTemplate methods (not
+						     lifecycle setup/teardown). Only surefire (unit tests)
+						     inherits this; failsafe integration tests are unaffected.
+						     A genuinely heavier test opts out with an explicit
+						     @Timeout. The one module using Mockito pre-loads it as a
+						     -javaagent (see protogen-maven-plugin/pom.xml) so its
+						     byte-buddy self-attach is not billed to the first timed
+						     method. The coverage profile raises the limit because
+						     JaCoCo instrumentation slows the timed methods. -->
 						<properties>
 							<configurationParameters>
-								junit.jupiter.execution.timeout.testable.method.default = 1 s
+								junit.jupiter.execution.timeout.testable.method.default = ${unit.test.method.timeout}
 							</configurationParameters>
 						</properties>
 					</configuration>
@@ -585,6 +595,12 @@
 		</profile>
 		<profile>
 			<id>coverage</id>
+			<properties>
+				<!-- JaCoCo's bytecode instrumentation roughly doubles the time a
+				     timed test method spends loading classes on first use, so give
+				     the per-test timeout extra headroom under coverage. -->
+				<unit.test.method.timeout>2 s</unit.test.method.timeout>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>

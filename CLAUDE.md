@@ -86,13 +86,19 @@ paths.
   a **900-millisecond per-test timeout** (configured on the surefire plugin in the
   root `pom.xml`) — above the one-time cold-JVM warmup but low enough to catch a
   test doing real work — so keep unit tests fast; a genuinely heavier test opts
-  out with an explicit `@Timeout` and a comment explaining why.
+  out with an explicit `@Timeout` and a comment explaining why. A looser
+  **10-second lifecycle-method timeout** (15 s under coverage) covers heavier
+  shared setup like `@BeforeAll`, and surefire's **300-second
+  `forkedProcessTimeoutInSeconds`** kills a fork that hangs outright.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend
   on its MCP adapter, loggers are `private static final`, production code logs
   through log4j2 (no `System.out`/`err`, `printStackTrace`, or `System.exit`),
-  and packages stay free of cycles. Keep new code within these rules.
+  and packages stay free of cycles. A companion `TestConventionsArchitectureTest`
+  pins conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
+  classes, no `@Disabled`, JUnit 5 only, and no `Thread.sleep`. Keep new code
+  within these rules.
 - **MCP integration tests** (`*IT`) are gated behind the `integration-tests`
   profile.
 

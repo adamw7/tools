@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 public class Switch {
 
-	private final static Logger log = LogManager.getLogger(Switch.class.getName());
+	private static final Logger log = LogManager.getLogger(Switch.class.getName());
 
 	private static volatile boolean isOff = false;
 

@@ -14,7 +14,7 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 
 	private static final String REGEX_SUFFIX = "(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
 
-	private final static Logger log = LogManager.getLogger(CSVDataSource.class.getName());
+	private static final Logger log = LogManager.getLogger(CSVDataSource.class.getName());
 
 	public final static String DEFAULT_DELIMITER = ",";
 

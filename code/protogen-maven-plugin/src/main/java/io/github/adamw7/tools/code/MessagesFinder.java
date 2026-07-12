@@ -13,7 +13,7 @@ import com.google.protobuf.GeneratedMessage;
 
 public class MessagesFinder {
 
-	private final static Logger log = LogManager.getLogger(MessagesFinder.class.getName());
+	private static final Logger log = LogManager.getLogger(MessagesFinder.class.getName());
 	private final String[] pkg;
 
 	public MessagesFinder(String... pkg) {
@@ -24,10 +24,7 @@ public class MessagesFinder {
 		Reflections reflections = new Reflections(new ConfigurationBuilder().forPackages(pkg));
 		Set<Class<? extends GeneratedMessage>> classes = reflections.getSubTypesOf(GeneratedMessage.class);
 		Set<Class<? extends GeneratedMessage>> messages = onlyConcreteMessages(classes);
-		log.info("Found these proto classes:");
-		for (Class<? extends GeneratedMessage> cl : messages) {
-			log.info(cl);
-		}
+		log.info("Found {} concrete proto class(es): {}", messages::size, () -> messages);
 		return messages;
 	}
 

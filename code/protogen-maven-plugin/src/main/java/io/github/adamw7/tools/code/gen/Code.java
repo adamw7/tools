@@ -25,7 +25,7 @@ import io.github.adamw7.tools.code.MojoException;
 
 public class Code {
 
-	private final static Logger log = LogManager.getLogger(Code.class.getName());
+	private static final Logger log = LogManager.getLogger(Code.class.getName());
 	
 	private final String generatedSourcesDir;
 	private TypeMappings typeMappings;

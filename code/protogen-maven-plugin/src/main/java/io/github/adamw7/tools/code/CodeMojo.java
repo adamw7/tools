@@ -23,7 +23,7 @@ import io.github.adamw7.tools.code.gen.Code;
 @Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = false, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class CodeMojo extends AbstractMojo {
 
-	private final static Logger log = LogManager.getLogger(CodeMojo.class.getName());
+	private static final Logger log = LogManager.getLogger(CodeMojo.class.getName());
 
 	@Parameter(property = "generatedsourcesdir", required = true)
 	protected String generatedSourcesDir;

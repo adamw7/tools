@@ -32,7 +32,7 @@ import io.github.adamw7.tools.data.uniqueness.Result;
 // generous bound that still catches a genuine hang while iterating a source.
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 public class MemoryLeakTest {
-	private final static Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
+	private static final Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
 
 	private static final String PARENT = new File(getSourceLocation()).getParent();
 

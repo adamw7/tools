@@ -686,8 +686,13 @@ any subsequent attempt to open an outbound connection fails fast. The method is:
   `volatile` flag; calling it again is a no-op that logs a warning and returns
   `false`.
   
-The switch can be used for example if there is a need to make sure no network connections
-are open while running unit tests.
+The switch is wired into the `data` module's unit-test run for exactly this
+reason: a `NetworkOffExtension` (a JUnit `BeforeAllCallback` discovered through
+`META-INF/services` and JUnit's extension auto-detection) calls `Switch.off()`
+before any unit test runs, so a unit test can never open an outbound connection.
+Auto-detection and the `tools.test.network.off` guard property are set only on
+surefire, so the failsafe integration tests (`*IT`), which need real network, keep
+it. See *Testing* in [AGENTS.md](AGENTS.md) for the details.
 
 ## Architecture tests (ArchUnit)
 

@@ -90,6 +90,10 @@ paths.
   **10-second lifecycle-method timeout** (15 s under coverage) covers heavier
   shared setup like `@BeforeAll`, and surefire's **300-second
   `forkedProcessTimeoutInSeconds`** kills a fork that hangs outright.
+- **Unit tests run with the network off.** The `data` module's
+  `NetworkOffExtension` engages the `Switch` kill-switch before any test runs, so
+  a unit test can never open an outbound connection; the failsafe `*IT` tests are
+  unaffected. See *Testing* in AGENTS.md.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend

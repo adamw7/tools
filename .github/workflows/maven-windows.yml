@@ -1,0 +1,38 @@
+name: Java CI with Maven (Windows)
+
+# Weekly build on Windows to catch platform-specific regressions that the
+# Linux-based "Java CI with Maven" workflow would miss. Runs mvn install on a
+# windows-latest runner every Sunday.
+on:
+  schedule:
+    # Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up JDK 25
+      uses: actions/setup-java@v5
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Bootstrap CLAUDE.md enforcer rule
+      # The custom enforcer rule (tools.claude-code-enforcer) is consumed as a
+      # maven-enforcer-plugin dependency by the root build, so it must be
+      # installed to the local repo first. The claude-md-enforce profile is
+      # off here (no -DenforceClaudeMd), so the module is not asked to depend
+      # on itself while it is being built.
+      #
+      # -DskipTests: this step exists only to publish the enforcer JAR so the
+      # main build can load it as a plugin dependency. The module's own test
+      # suite is re-run as part of the "Build with Maven" install step below,
+      # so running it here as well only duplicates work.
+      run: mvn -B -ntp -pl claude-code-enforcer -am install -DskipTests
+    - name: Build with Maven
+      run: mvn -B -ntp install --file pom.xml

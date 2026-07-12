@@ -8,12 +8,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import io.github.adamw7.tools.data.source.file.CSVDataSource;
 import io.github.adamw7.tools.data.source.file.IterableJSONDataSource;
@@ -25,6 +27,10 @@ import io.github.adamw7.tools.data.uniqueness.AbstractUniqueness;
 import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
 
+// Every test streams tens of thousands of rows repeatedly to expose leaks, so
+// it legitimately runs well past the global 1-second per-test timeout. Grant a
+// generous bound that still catches a genuine hang while iterating a source.
+@Timeout(value = 60, unit = TimeUnit.SECONDS)
 public class MemoryLeakTest {
 	private final static Logger log = LogManager.getLogger(MemoryLeakTest.class.getName());
 

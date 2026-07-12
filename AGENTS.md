@@ -178,6 +178,20 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   hang; and surefire's `forkedProcessTimeoutInSeconds` (**300 s**) kills a fork
   that wedges outright (a deadlock or a non-daemon thread that never dies), which
   a per-method JUnit timeout only reports after the fact and cannot interrupt.
+- **Unit tests run with the network off.** So that a unit test can never open an
+  outbound connection (deliberately or by accident), the `data` module registers
+  a `NetworkOffExtension` — a JUnit `BeforeAllCallback` discovered through
+  `META-INF/services` and JUnit's extension auto-detection — that calls
+  `Switch.off()` before any test runs, engaging the network kill-switch described
+  under *Network kill-switch* in the README. Both the auto-detection
+  (`junit.jupiter.extensions.autodetection.enabled`) and the
+  `tools.test.network.off` guard property are set only on the surefire plugin in
+  the root `pom.xml`, so the `data` failsafe integration tests (`*IT`), which need
+  real network, are unaffected. Because `ServiceLoader` ignores `META-INF/services`
+  for a named JPMS module, the `data` module runs its unit tests from the
+  classpath (`<useModulePath>false</useModulePath>` on surefire); the published
+  `data` artifact stays a proper module. A `NetworkOffDuringUnitTestsTest`
+  verifies the switch is already engaged by the time a unit test executes.
 - **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
   under an `...architecture` test package (e.g.
   `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse

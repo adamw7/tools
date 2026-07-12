@@ -286,10 +286,21 @@
 						     method. The coverage profile raises the limit because
 						     JaCoCo instrumentation slows the timed methods. -->
 						<forkedProcessTimeoutInSeconds>${unit.test.fork.timeout}</forkedProcessTimeoutInSeconds>
+						<!-- Engage the network kill-switch for every unit test: the
+						     data module registers a NetworkOffExtension via
+						     META-INF/services that turns the network off before any
+						     test runs, so a unit test can never open an outbound
+						     connection. Auto-detection and the guard property are set
+						     only here on surefire, so failsafe integration tests (*IT),
+						     which need real network, keep it. -->
+						<systemPropertyVariables>
+							<tools.test.network.off>true</tools.test.network.off>
+						</systemPropertyVariables>
 						<properties>
 							<configurationParameters>
 								junit.jupiter.execution.timeout.testable.method.default = ${unit.test.method.timeout}
 								junit.jupiter.execution.timeout.lifecycle.method.default = ${unit.test.lifecycle.timeout}
+								junit.jupiter.extensions.autodetection.enabled = true
 							</configurationParameters>
 						</properties>
 					</configuration>

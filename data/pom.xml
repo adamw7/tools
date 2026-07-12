@@ -28,7 +28,13 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<argLine>@{argLine} --add-reads datamodule=ALL-UNNAMED</argLine>
+					<!-- Run unit tests from the classpath, not the module path, so the
+					     NetworkOffExtension registered through META-INF/services is
+					     discovered by JUnit's extension auto-detection. ServiceLoader
+					     ignores META-INF/services for a named module, and surefire
+					     otherwise patches the test classes into the datamodule module. -->
+					<argLine>@{argLine}</argLine>
+					<useModulePath>false</useModulePath>
 				</configuration>
 			</plugin>
 			<plugin>

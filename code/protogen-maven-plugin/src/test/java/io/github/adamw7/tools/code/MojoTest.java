@@ -24,12 +24,20 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+// Every test here runs the Mojo end to end: it generates builders and compiles
+// the result with the JDK compiler, which can exceed the global 1-second
+// per-test timeout on a cold or loaded CI runner. Grant a generous bound that
+// still catches a genuine hang in code generation or compilation.
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class MojoTest {
 	
 	private final static Logger log = LogManager.getLogger(MojoTest.class.getName());

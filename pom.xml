@@ -250,6 +250,22 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.5.6</version>
+					<configuration>
+						<!-- Fail any unit test whose testable method runs 1 second
+						     or longer, so a test doing real work (rather than the
+						     unavoidable one-time JVM/class-loading warmup a cold
+						     fork pays, ~0.7s at most) is caught. Applies to @Test,
+						     @ParameterizedTest, @RepeatedTest, @TestFactory and
+						     @TestTemplate methods (not lifecycle setup/teardown).
+						     Only surefire (unit tests) inherits this; failsafe
+						     integration tests are unaffected. A genuinely heavier
+						     test opts out with an explicit @Timeout. -->
+						<properties>
+							<configurationParameters>
+								junit.jupiter.execution.timeout.testable.method.default = 1 s
+							</configurationParameters>
+						</properties>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>

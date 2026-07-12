@@ -510,6 +510,7 @@ It contains:
   - support relational data loading
   - in memory and iterative loading
   - CSV, JDBC support
+  - Parquet (`InMemoryParquetDataSource`, `IterableParquetDataSource`) — read through an in-process DuckDB engine, exposing the file's columns and rows like any other JDBC-backed source
   - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`)
   - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; no document-size limit
   - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects

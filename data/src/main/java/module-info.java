@@ -1,6 +1,7 @@
 open module datamodule {
 	requires org.apache.logging.log4j;
 	requires java.sql;
+	requires duckdb.jdbc;
 	requires com.fasterxml.jackson.core;
 	requires com.fasterxml.jackson.databind;
 	requires com.fasterxml.jackson.dataformat.yaml;

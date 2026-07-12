@@ -155,18 +155,21 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
 
 - **Unit tests** run in the normal `test`/`package` lifecycle
   (`mvn -pl <module> test`). Write tests for all new logic — behavior, edge
-  cases, and error paths. Surefire enforces a **1-second per-test timeout** (the
-  `junit.jupiter.execution.timeout.testable.method.default` JUnit config
-  parameter set on the surefire plugin in the root `pom.xml`), so a unit test
-  that runs 1 second or longer fails the build. The limit sits above the
+  cases, and error paths. Surefire enforces a **900-millisecond per-test
+  timeout** (the `junit.jupiter.execution.timeout.testable.method.default` JUnit
+  config parameter set on the surefire plugin in the root `pom.xml`), so a unit
+  test that runs 900 ms or longer fails the build. The limit sits above the
   one-time JVM/class-loading warmup a cold fork pays (~0.7s at most, and only
   for the first test to touch a heavy dependency) so it stays green when a
   single class is run in isolation, while still catching a test that does real
-  work. Keep unit tests fast; a genuinely heavier test (e.g. one that shells out
-  to `protoc` or streams a large data set) opts out with an explicit class- or
-  method-level `@Timeout` carrying a comment that says why. Failsafe integration
-  tests (`*IT`) do not inherit this limit, and ArchUnit tests run on a separate
-  engine that the JUnit timeout does not apply to.
+  work. To keep that warmup below the limit, the one module that uses Mockito
+  (`protogen-maven-plugin`) pre-loads it as a `-javaagent` in surefire, so the
+  byte-buddy self-attach happens at JVM startup rather than inside the first
+  timed test method. Keep unit tests fast; a genuinely heavier test (e.g. one
+  that shells out to `protoc` or streams a large data set) opts out with an
+  explicit class- or method-level `@Timeout` carrying a comment that says why.
+  Failsafe integration tests (`*IT`) do not inherit this limit, and ArchUnit
+  tests run on a separate engine that the JUnit timeout does not apply to.
 - **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
   under an `...architecture` test package (e.g.
   `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse

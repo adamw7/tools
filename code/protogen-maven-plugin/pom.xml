@@ -14,6 +14,34 @@
 	<url>https://github.com/adamw7/tools</url>
 	<build>
 		<plugins>
+			<!-- Expose the mockito-core jar path so it can be pre-loaded as a Java
+			     agent below, avoiding Mockito's slow runtime self-attach. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>resolve-mockito-agent</id>
+						<goals>
+							<goal>properties</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Pre-load Mockito as a Java agent at JVM startup. This module is the
+			     only one that uses Mockito; loading the agent up front (instead of
+			     letting Mockito self-attach on first mock creation) both silences the
+			     "Mockito is currently self-attaching" deprecation warning and moves
+			     the ~0.8s byte-buddy attach cost out of the timed test method, so the
+			     surefire per-test timeout can stay tight. @{argLine} keeps the JaCoCo
+			     agent (coverage profile) composed in. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>io.github.ascopes</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>

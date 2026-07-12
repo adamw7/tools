@@ -208,7 +208,7 @@ Solution:
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
 	<!-- Use the latest release: https://github.com/adamw7/tools/releases/latest -->
-	<version>2.1.0</version>
+	<version>2.4.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
 		<pkgs>

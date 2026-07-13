@@ -125,10 +125,21 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	}
 
 	protected abstract Result checkSubset(String[] newCandidates);
-	
+
+	/**
+	 * Runs the uniqueness check over the already-open {@link #dataSource}. The public
+	 * {@link #exec} opens the source before calling this; {@link #execForAllColumns}
+	 * opens the source to read its column names and then reuses that same open source,
+	 * so neither entry point opens the source twice &mdash; which the open-once
+	 * map-backed in-memory sources reject with {@code DataSource is already open}.
+	 */
+	protected abstract Result execOnOpenSource(String[] keyCandidates);
+
 	@Override
 	public Result execForAllColumns() {
 		dataSource.open();
-		return exec(dataSource.getColumnNames());
+		String[] keyCandidates = dataSource.getColumnNames();
+		check(keyCandidates);
+		return execOnOpenSource(keyCandidates);
 	}
 }

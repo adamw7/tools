@@ -46,15 +46,53 @@ public final class DoubleHashing {
 	/**
 	 * The slot index probed on the given {@code iteration} of the sequence.
 	 *
-	 * <p>The step {@code h2} is derived from {@code Math.abs(hashCode % (length - 1))}
-	 * rather than {@code Math.abs(hashCode) % (length - 1)}: the two agree for every
-	 * {@code hashCode} except {@link Integer#MIN_VALUE}, whose {@code Math.abs} stays
-	 * negative and would otherwise yield a non-positive step that folds the probe
-	 * sequence back onto a handful of slots.
+	 * <p>Equivalent to {@code sequence(hashCode, prime, length).slot(iteration)};
+	 * kept as a convenience for callers that need a single, isolated index. Callers
+	 * that walk a whole probe chain should build one {@link Probe} and reuse it, so
+	 * the iteration-independent components are derived only once.
 	 */
 	public static int probe(int hashCode, int prime, int length, int iteration) {
-		int h1 = prime - (hashCode % prime);
-		int h2 = 1 + Math.abs(hashCode % (length - 1));
-		return Math.abs((h1 + (iteration * h2)) % length);
+		return sequence(hashCode, prime, length).slot(iteration);
+	}
+
+	/**
+	 * A reusable probe sequence for a single key. The two components that do not
+	 * depend on the iteration &mdash; the starting offset {@code h1} and the step
+	 * {@code h2} &mdash; are derived once here rather than on every probe, so a
+	 * lookup or insert that walks several slots pays for the key's {@code hashCode}
+	 * and the modulo arithmetic exactly once instead of once per probe.
+	 */
+	public static Probe sequence(int hashCode, int prime, int length) {
+		return new Probe(hashCode, prime, length);
+	}
+
+	/**
+	 * The iteration-independent state of a double-hashing probe sequence for one
+	 * key. Immutable and cheap to allocate; it does not escape the lookup or insert
+	 * that builds it, so the JIT can keep it on the stack.
+	 */
+	public static final class Probe {
+
+		private final int h1;
+		private final int h2;
+		private final int length;
+
+		/**
+		 * The step {@code h2} is derived from {@code Math.abs(hashCode % (length - 1))}
+		 * rather than {@code Math.abs(hashCode) % (length - 1)}: the two agree for every
+		 * {@code hashCode} except {@link Integer#MIN_VALUE}, whose {@code Math.abs} stays
+		 * negative and would otherwise yield a non-positive step that folds the probe
+		 * sequence back onto a handful of slots.
+		 */
+		private Probe(int hashCode, int prime, int length) {
+			this.h1 = prime - (hashCode % prime);
+			this.h2 = 1 + Math.abs(hashCode % (length - 1));
+			this.length = length;
+		}
+
+		/** The slot index probed on the given {@code iteration} of the sequence. */
+		public int slot(int iteration) {
+			return Math.abs((h1 + (iteration * h2)) % length);
+		}
 	}
 }

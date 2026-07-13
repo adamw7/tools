@@ -67,6 +67,20 @@ public class DoubleHashingTest {
 	}
 
 	@Test
+	public void reusedSequenceMatchesTheStandaloneProbe() {
+		// The hot paths build one Probe per key and reuse it across the chain; each
+		// reused slot must equal the standalone probe for the same iteration.
+		int hashCode = 42;
+		int prime = 5;
+		int length = 11;
+		DoubleHashing.Probe probe = DoubleHashing.sequence(hashCode, prime, length);
+		for (int iteration = 0; iteration < length; iteration++) {
+			assertEquals(DoubleHashing.probe(hashCode, prime, length, iteration),
+					probe.slot(iteration));
+		}
+	}
+
+	@Test
 	public void probeStaysWithinTheTableForAnyHashCode() {
 		int length = 17;
 		int prime = 13;

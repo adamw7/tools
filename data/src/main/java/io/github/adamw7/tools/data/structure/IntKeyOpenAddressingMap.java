@@ -87,8 +87,9 @@ public class IntKeyOpenAddressingMap<V> {
 	 * may sit past them in the probe chain.
 	 */
 	private int indexOf(int key) {
+		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < keys.length; ++i) {
-			int index = hash(key, i);
+			int index = probe.slot(i);
 			if (state[index] == EMPTY) {
 				return -1;
 			}
@@ -99,14 +100,15 @@ public class IntKeyOpenAddressingMap<V> {
 		return -1;
 	}
 
-	private int hash(int key, int iteration) {
-		return DoubleHashing.probe(Integer.hashCode(key), prime, keys.length, iteration);
+	private DoubleHashing.Probe probe(int key) {
+		return DoubleHashing.sequence(Integer.hashCode(key), prime, keys.length);
 	}
 
 	public V put(int key, V value) {
 		checkIfResizeNeeded();
+		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < keys.length; ++i) {
-			int index = hash(key, i);
+			int index = probe.slot(i);
 			if (state[index] == EMPTY) {
 				return insert(index, key, value);
 			} else if (state[index] == LIVE && keys[index] == key) {

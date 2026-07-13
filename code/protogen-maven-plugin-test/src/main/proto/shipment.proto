@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package test;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.code.test";
+
+// Exercises a required enum-typed field as the staged builder entry point
+// followed by a repeated field. The entry point chains from the enum setter to
+// the repeated setter (which delegates to addAll) before collapsing to the
+// optional interface, covering both mappings in a single staged sequence.
+message Shipment {
+  required Priority priority = 1;
+  repeated string items = 2;
+  optional string tracking = 3;
+
+  enum Priority {
+    STANDARD = 0;
+    EXPRESS = 1;
+  }
+}

@@ -68,8 +68,9 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	 * treated as terminal, because live entries may sit past them.
 	 */
 	private Wrapper<K, V> find(Object key) {
+		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < array.length; ++i) {
-			Wrapper<K, V> wrapper = array[hash(key, i)];
+			Wrapper<K, V> wrapper = array[probe.slot(i)];
 			if (wrapper == null) {
 				return null;
 			}
@@ -80,18 +81,19 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		return null;
 	}
 
-	private int hash(Object key, int iteration) {
+	private DoubleHashing.Probe probe(Object key) {
 		if (key == null) {
 			throw new IllegalArgumentException("Key is null");
 		}
-		return DoubleHashing.probe(key.hashCode(), prime, array.length, iteration);
+		return DoubleHashing.sequence(key.hashCode(), prime, array.length);
 	}
 
 	@Override
 	public V put(K key, V value) {
 		checkIfResizeNeeded();
+		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < array.length; ++i) {
-			int hash = hash(key, i);
+			int hash = probe.slot(i);
 			Wrapper<K, V> wrapper = array[hash];
 			if (wrapper == null) {
 				return insert(hash, key, value);

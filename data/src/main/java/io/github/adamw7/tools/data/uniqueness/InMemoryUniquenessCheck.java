@@ -14,6 +14,11 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 	public Result exec(String... keyCandidates) {
 		check(keyCandidates);
 		dataSource.open();
+		return execOnOpenSource(keyCandidates);
+	}
+
+	@Override
+	protected Result execOnOpenSource(String[] keyCandidates) {
 		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
 
 		int[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());

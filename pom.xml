@@ -23,7 +23,7 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<protobuf.version>4.33.4</protobuf.version>
-		<grpc.version>1.82.1</grpc.version>
+		<grpc.version>1.82.2</grpc.version>
 		<argLine/>
 		<!-- Per-test timeout for unit tests (see the surefire plugin config). The
 		     plain build uses a tight limit; the coverage profile overrides it to a

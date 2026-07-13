@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.enforcer.doc.BoundedCharSequence.BacktrackLimitExceededException;
+
 /**
  * Compares two named documents against a list of single-group regular
  * expressions and reports where a captured value differs. Shared by
@@ -23,6 +25,15 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * {@code requireInBoth} flag passed to {@link #violations}.
  */
 final class DocumentConsistency {
+
+	/**
+	 * Per-character budget granted to a single {@code find} relative to the
+	 * document length, plus a flat floor so short documents still get room. A
+	 * linear pattern reads each character a small constant number of times and
+	 * stays well within this; only exponential backtracking blows past it.
+	 */
+	private static final long STEPS_PER_CHARACTER = 10_000L;
+	private static final long MINIMUM_STEPS = 1_000_000L;
 
 	/** A document to compare: its content, and the name shown in violation messages. */
 	record Document(String name, String content) {
@@ -67,6 +78,16 @@ final class DocumentConsistency {
 	private void collect(String pattern, Document first, Document second, boolean requireInBoth,
 			List<String> violations) {
 		Pattern compiled = Pattern.compile(pattern);
+		try {
+			collectCapturedMismatch(pattern, compiled, first, second, requireInBoth, violations);
+		} catch (BacktrackLimitExceededException e) {
+			violations.add("pattern '" + pattern
+					+ "' could not be evaluated within its backtracking budget (possible catastrophic backtracking)");
+		}
+	}
+
+	private void collectCapturedMismatch(String pattern, Pattern compiled, Document first, Document second,
+			boolean requireInBoth, List<String> violations) {
 		Optional<String> firstValue = capture(compiled, first.content());
 		Optional<String> secondValue = capture(compiled, second.content());
 		if (isIgnored(firstValue, secondValue, requireInBoth)) {
@@ -103,7 +124,11 @@ final class DocumentConsistency {
 	}
 
 	private Optional<String> capture(Pattern pattern, String content) {
-		Matcher matcher = pattern.matcher(content);
+		Matcher matcher = pattern.matcher(new BoundedCharSequence(content, stepBudget(content)));
 		return matcher.find() ? Optional.ofNullable(matcher.group(1)) : Optional.empty();
+	}
+
+	private long stepBudget(String content) {
+		return Math.max(MINIMUM_STEPS, (long) content.length() * STEPS_PER_CHARACTER);
 	}
 }

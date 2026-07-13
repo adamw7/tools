@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -80,6 +81,28 @@ class MarkdownTextTest {
 	}
 
 	@Test
+	void writePersistsContentToARegularFile() {
+		Path file = tempDir.resolve("out.md");
+
+		MarkdownText.write(file.toFile(), "# Title\nbody", "out.md");
+
+		assertEquals("# Title\nbody", readString(file));
+	}
+
+	@Test
+	void writeRefusesToFollowASymbolicLink() {
+		Path target = tempDir.resolve("target.md");
+		writeString(target, "original");
+		Path link = tempDir.resolve("link.md");
+		assumeSymlink(link, target);
+
+		UncheckedIOException exception = assertThrows(UncheckedIOException.class,
+				() -> MarkdownText.write(link.toFile(), "overwritten", "link.md"));
+		assertTrue(exception.getMessage().contains("link.md"), exception.getMessage());
+		assertEquals("original", readString(target));
+	}
+
+	@Test
 	void readWrapsAReadFailureWithTheDescription() {
 		Path missing = tempDir.resolve("absent.md");
 
@@ -93,6 +116,22 @@ class MarkdownTextTest {
 			Files.writeString(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static String readString(Path file) {
+		try {
+			return Files.readString(file);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not read " + file, e);
+		}
+	}
+
+	private static void assumeSymlink(Path link, Path target) {
+		try {
+			Files.createSymbolicLink(link, target);
+		} catch (IOException | UnsupportedOperationException e) {
+			assumeTrue(false, "filesystem does not support symbolic links");
 		}
 	}
 }

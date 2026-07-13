@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 /**
@@ -33,13 +34,19 @@ public final class MarkdownText {
 
 	/**
 	 * Writes {@code content} to {@code file} as UTF-8, overwriting any existing
-	 * content. An {@link IOException} is wrapped in an {@link UncheckedIOException}
-	 * describing the document, mirroring {@link #read} so a write failure surfaces
-	 * the same way.
+	 * content. A path that is a symbolic link is refused rather than followed, so
+	 * an auto-fix cannot be redirected through a planted link to rewrite a file
+	 * outside the definitions it is repairing. An {@link IOException} is wrapped in
+	 * an {@link UncheckedIOException} describing the document, mirroring
+	 * {@link #read} so a write failure surfaces the same way.
 	 */
 	public static void write(File file, String content, String description) {
 		try {
-			Files.writeString(file.toPath(), content);
+			Path path = file.toPath();
+			if (Files.isSymbolicLink(path)) {
+				throw new IOException("refusing to write through a symbolic link");
+			}
+			Files.writeString(path, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + description + " at " + file, e);
 		}

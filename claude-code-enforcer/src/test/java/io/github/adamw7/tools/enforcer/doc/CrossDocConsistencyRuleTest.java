@@ -89,6 +89,18 @@ class CrossDocConsistencyRuleTest {
 		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
 	}
 
+	@Test
+	void failsInsteadOfHangingOnABacktrackingPattern() {
+		// A super-linear pattern over a crafted document that never matches: without
+		// the step budget the match blows up on the document length instead of failing.
+		String craftedContent = "x".repeat(800) + "z";
+		CrossDocConsistencyRule rule = ruleFor(craftedContent, craftedContent);
+		rule.setConsistentPatterns(List.of("(x+x+)+y"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("catastrophic backtracking"), exception.getMessage());
+	}
+
 	private CrossDocConsistencyRule ruleFor(String claudeContent, String agentsContent) {
 		Path claude = tempDir.resolve("CLAUDE.md");
 		Path agents = tempDir.resolve("AGENTS.md");

@@ -126,6 +126,22 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void doesNotTreatASymlinkedScriptPointingOutsideAsInsideTheHooksDirectory() {
+		Path outside = tempDir.resolve("outside.sh");
+		writeString(outside, "#!/bin/sh\n");
+		setExecutable(outside.toFile(), true);
+		Path insideLink = hooksDir().resolve("session-start.sh");
+		assumeSymlink(insideLink, outside);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not referenced"), exception.getMessage());
+	}
+
+	@Test
 	void warnSeverityLogsInsteadOfFailing() {
 		writeScript("session-start.sh", "echo hi\n", true);
 		HooksFormatRule rule = ruleFor();
@@ -175,6 +191,14 @@ class HooksFormatRuleTest {
 
 	private boolean supportsExecutableBit() {
 		return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
+	}
+
+	private void assumeSymlink(Path link, Path target) {
+		try {
+			Files.createSymbolicLink(link, target);
+		} catch (IOException | UnsupportedOperationException e) {
+			assumeTrue(false, "filesystem does not support symbolic links");
+		}
 	}
 
 	private void writeString(Path file, String content) {

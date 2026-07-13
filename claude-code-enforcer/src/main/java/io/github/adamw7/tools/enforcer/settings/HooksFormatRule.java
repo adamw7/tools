@@ -1,6 +1,9 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -152,7 +155,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		if (script == null) {
 			return;
 		}
-		referenced.add(script.normalize());
+		referenced.add(script);
 		if (!script.toFile().exists()) {
 			violations.add("settings.json references a missing hook script: " + script);
 		}
@@ -168,14 +171,14 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void addUnreferencedViolation(File script, Set<Path> referenced, List<String> violations) {
-		if (!referenced.contains(script.getAbsoluteFile().toPath().normalize())) {
+		if (!referenced.contains(canonical(script.toPath()))) {
 			violations.add("hook script is not referenced by any settings.json hook: " + script);
 		}
 	}
 
 	/** The absolute path a command's {@code $CLAUDE_PROJECT_DIR} token resolves to when it lands in the hooks directory, else null. */
 	private Path scriptInHooksDir(String command) {
-		Path hooks = hooksDir.getAbsoluteFile().toPath().normalize();
+		Path hooks = canonical(hooksDir.toPath());
 		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
 		for (String token : command.split("\\s+")) {
 			Path resolved = resolveInHooks(projectDirs, token, hooks);
@@ -191,12 +194,35 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		if (expanded == null) {
 			return null;
 		}
-		Path resolved = absolute(expanded);
+		Path resolved = canonical(new File(expanded).toPath());
 		return resolved.startsWith(hooks) ? resolved : null;
 	}
 
-	private Path absolute(String path) {
-		return new File(path).getAbsoluteFile().toPath().normalize();
+	/**
+	 * The real, symlink-resolved path of {@code path}. Symlinks are resolved on the
+	 * portion that exists on disk and the remaining names are appended, so a hook
+	 * script that is a symlink pointing outside the hooks directory no longer
+	 * satisfies the containment check by its lexical location alone, while a missing
+	 * script is still resolved beneath the real hooks directory so it is reported.
+	 */
+	private Path canonical(Path path) {
+		Path absolute = path.toAbsolutePath().normalize();
+		Path existing = absolute;
+		while (existing != null && !Files.exists(existing, LinkOption.NOFOLLOW_LINKS)) {
+			existing = existing.getParent();
+		}
+		if (existing == null) {
+			return absolute;
+		}
+		return realPath(existing).resolve(existing.relativize(absolute));
+	}
+
+	private Path realPath(Path path) {
+		try {
+			return path.toRealPath();
+		} catch (IOException e) {
+			return path.toAbsolutePath().normalize();
+		}
 	}
 
 	void setHooksDir(File hooksDir) {

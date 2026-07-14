@@ -449,9 +449,14 @@ The repository ships two Dockerfiles with different purposes:
 The `k8s/` directory runs `SampleApp` (the CSV column-uniqueness checker) on a
 local minikube cluster as a run-to-completion **Job** (not a Deployment):
 `configmap-sample-data.yaml` mounts a sample CSV, `job-uniqueness-check.yaml`
-runs the check, and `run-on-minikube.sh` / `run-on-minikube.ps1` drive the whole
-flow (build → image → minikube → load → apply → logs). Pick the column to check
-with the `COLUMN` env var (Linux/macOS) or `-Column` parameter (Windows). See
+runs the check, `kustomization.yaml` bundles both for `kubectl apply -k k8s/`,
+and `run-on-minikube.sh` / `run-on-minikube.ps1` drive the whole flow (build →
+image → minikube → load → apply → logs). The Job meets the **restricted** Pod
+Security Standard (non-root numeric UID `10001`, read-only root filesystem, all
+capabilities dropped, `RuntimeDefault` seccomp, no service-account token, an
+`emptyDir` `/tmp`, and an `activeDeadlineSeconds` runtime bound), so the
+`k8s/Dockerfile` declares a numeric `USER`. Pick the column to check with the
+`COLUMN` env var (Linux/macOS) or `-Column` parameter (Windows). See
 [k8s/README.md](k8s/README.md) for quick-start, manual steps, and the sandbox
 limitations that prevent running a minikube control plane in this repo's
 automated environment.

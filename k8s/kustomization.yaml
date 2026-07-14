@@ -1,0 +1,9 @@
+# Bundles the ConfigMap and Job so the whole workload applies in one command:
+#   kubectl apply -k k8s/
+# (the run-on-minikube scripts apply the files individually so they can swap the
+# target column on the fly, which kustomize does not do).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - configmap-sample-data.yaml
+  - job-uniqueness-check.yaml

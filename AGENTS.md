@@ -143,6 +143,19 @@ removed anything, plain `mvn install` is fine and faster.
 CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
 quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
 
+**Shellcheck in restricted networks.** The root pom runs the
+`shellcheck-maven-plugin` (`check` goal) to lint `scripts/**/*.sh`. On first use
+the plugin downloads the `shellcheck` binary from GitHub releases
+(`github.com/koalaman/shellcheck`). In sandboxes where outbound access to that
+host is blocked — including Claude Code web/remote sessions, whose proxy scopes
+GitHub to this repo only — the download returns a non-archive error body and the
+build fails on the root pom with `Input is not in the XZ format`, before any
+Java module is reached. Skip the goal with `mvn install -Dskip.shellcheck=true`
+(property `skip.shellcheck`), or point the plugin at a pre-installed binary via
+`binaryResolutionMethod=external` and `externalBinaryPath`. CI runs on GitHub
+runners with unrestricted access, so the download succeeds there and the lint
+still gates every push.
+
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
 (`mvn -B -pl claude-code-enforcer -am install -DskipTests`) and then runs
 `mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for

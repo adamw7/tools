@@ -70,6 +70,13 @@ mvn -Ppitest test                 # PIT mutation testing
 Use `clean` after removing a code-generation source, so stale generated builders
 in `target/` cannot mask the change.
 
+The root pom's `shellcheck-maven-plugin` downloads the `shellcheck` binary from
+GitHub releases on first use. In sandboxes where that host is blocked (e.g.
+Claude Code web/remote sessions), the build fails on the root pom with `Input is
+not in the XZ format` before any module builds; run `mvn install
+-Dskip.shellcheck=true` to skip the lint. See *Build, test, and run* in
+AGENTS.md.
+
 ## Principles for Java Development
 
 - **SOLID principles** for all code.

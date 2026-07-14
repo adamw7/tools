@@ -93,4 +93,27 @@
 			<artifactId>protobuf-java</artifactId>
 		</dependency>
 	</dependencies>
+	<profiles>
+		<profile>
+			<!-- This module is an integration-test harness for the
+			     protogen-maven-plugin, not a reusable library: it has no main
+			     Java sources (only src/main/proto), so its -sources.jar is empty
+			     and Central validation rejects it. Keep it out of the Maven
+			     Central bundle that the release profile publishes. skipPublishing
+			     is honoured per module by the central-publishing-maven-plugin, so
+			     the exclusion holds even without the reactor -pl filter. -->
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<configuration>
+							<skipPublishing>true</skipPublishing>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

@@ -16,6 +16,10 @@
 		<!-- This module only exercises generated protobuf/gRPC classes, so the
 		     instruction-coverage gate is not meaningful here. -->
 		<jacoco.skip>true</jacoco.skip>
+		<!-- Default main class for exec:java. Declared as a property (rather than
+		     hard-coded in the plugin <configuration>) so that -Dexec.mainClass on
+		     the command line can override it to run GreeterClient. -->
+		<exec.mainClass>io.github.adamw7.tools.grpc.GreeterServer</exec.mainClass>
 	</properties>
 	<build>
 		<plugins>
@@ -70,7 +74,7 @@
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
 				<configuration>
-					<mainClass>io.github.adamw7.tools.grpc.GreeterServer</mainClass>
+					<mainClass>${exec.mainClass}</mainClass>
 					<classpathScope>test</classpathScope>
 				</configuration>
 			</plugin>

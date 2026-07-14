@@ -51,8 +51,16 @@ mvn -pl grpc-example -am test-compile
 mvn -pl grpc-example exec:java
 ```
 
-In another terminal, drive it with the client, overriding the main class:
+In another terminal, drive it with the client, overriding the main class. The
+client takes `name [title [city [country]]]` and builds the request bottom-up
+through the generated `Address` → `Person` → `HelloRequest` chain, so supplying
+a city and country exercises the full nested composition:
 
 ```bash
-mvn -pl grpc-example exec:java -Dexec.mainClass=io.github.adamw7.tools.grpc.GreeterClient -Dexec.args=Smith
+mvn -pl grpc-example exec:java -Dexec.mainClass=io.github.adamw7.tools.grpc.GreeterClient \
+  -Dexec.args="Smith Dr. London UK"
 ```
+
+That prints `Greeting: Hello, Dr. Smith from London, UK!`. Passing just a name
+(`-Dexec.args=Smith`) sends the minimal request with only the required fields
+set. The server is stopped cleanly on Ctrl+C via a JVM shutdown hook.

@@ -16,8 +16,15 @@ for a run-to-completion workload is a **Job**, not a Deployment.
 | `log4j2.properties`          | Console log config baked into the image so results reach stdout.    |
 | `configmap-sample-data.yaml` | Sample CSV (`people.csv`) mounted at `/data`.                       |
 | `job-uniqueness-check.yaml`  | Job that runs `SampleApp` against the CSV and prints the result.    |
+| `kustomization.yaml`         | Bundles the ConfigMap + Job for `kubectl apply -k k8s/`.            |
 | `run-on-minikube.sh`         | One-shot (Linux/macOS): build → image → minikube → load → apply → logs. |
 | `run-on-minikube.ps1`        | One-shot (Windows): installs minikube/kubectl if missing, then the same. |
+
+The Job runs under the **restricted** [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/):
+non-root numeric UID, read-only root filesystem, all Linux capabilities dropped,
+no privilege escalation, the `RuntimeDefault` seccomp profile, and no mounted
+service-account token. It writes only to an `emptyDir` `/tmp` and is bounded by
+`activeDeadlineSeconds`.
 
 ## Quick start
 
@@ -66,7 +73,7 @@ docker build -f k8s/Dockerfile -t tools-k8s:local .
 minikube start --driver=docker
 minikube image load tools-k8s:local
 
-# 3. Deploy and run
+# 3. Deploy and run (or: kubectl apply -k k8s/ to apply both at once)
 kubectl apply -f k8s/configmap-sample-data.yaml
 kubectl apply -f k8s/job-uniqueness-check.yaml
 

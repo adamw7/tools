@@ -16,6 +16,9 @@ metadata:
 spec:
   backoffLimit: 1
   ttlSecondsAfterFinished: 600
+  # Bound total runtime so a wedged run can never linger; the check finishes in
+  # well under a second, 300s is a generous ceiling that also covers image pull.
+  activeDeadlineSeconds: 300
   template:
     metadata:
       labels:
@@ -23,6 +26,16 @@ spec:
         app.kubernetes.io/component: uniqueness-check
     spec:
       restartPolicy: Never
+      # The batch check never talks to the Kubernetes API, so drop its token.
+      automountServiceAccountToken: false
+      # Pod-level context satisfies the "restricted" Pod Security Standard:
+      # run as the image's non-root UID with the default seccomp profile.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: uniqueness-check
           image: tools-k8s:local
@@ -32,6 +45,9 @@ spec:
             - name: sample-data
               mountPath: /data
               readOnly: true
+            # Writable scratch for the JVM (java.io.tmpdir) under a read-only root.
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 100m
@@ -43,7 +59,11 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
       volumes:
         - name: sample-data
           configMap:
             name: tools-sample-data
+        - name: tmp
+          emptyDir: {}

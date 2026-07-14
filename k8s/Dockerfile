@@ -29,9 +29,12 @@ COPY --from=build /build/BOOT-INF/lib ./lib
 # Console log4j config, first on the classpath so it overrides the bundled one.
 COPY k8s/log4j2.properties ./config/log4j2.properties
 
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+# Fixed numeric UID/GID: Kubernetes' runAsNonRoot admission check can only
+# verify a non-root image user when USER is numeric, so declare it explicitly.
+RUN groupadd --system --gid 10001 appuser \
+    && useradd --system --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin appuser \
+    && chown -R 10001:10001 /app
+USER 10001:10001
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
 

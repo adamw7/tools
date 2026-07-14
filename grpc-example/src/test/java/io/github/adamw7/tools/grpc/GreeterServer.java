@@ -29,6 +29,12 @@ public class GreeterServer {
 	public void start() throws IOException {
 		server.start();
 		log.info("Greeter server listening on port {}", server.getPort());
+		Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+	}
+
+	public void stop() {
+		log.info("Shutting down Greeter server");
+		server.shutdown();
 	}
 
 	public void awaitTermination() throws InterruptedException {

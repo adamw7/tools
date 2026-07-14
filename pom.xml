@@ -66,6 +66,10 @@
 		<url>https://github.com/adamw7/tools</url>
 		<tag>${revision}</tag>
 	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/adamw7/tools/issues</url>
+	</issueManagement>
 	<developers>
 		<developer>
 			<id>adamw7</id>

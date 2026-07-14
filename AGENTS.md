@@ -143,18 +143,22 @@ removed anything, plain `mvn install` is fine and faster.
 CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
 quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
 
-**Shellcheck in restricted networks.** The root pom runs the
-`shellcheck-maven-plugin` (`check` goal) to lint `scripts/**/*.sh`. On first use
-the plugin downloads the `shellcheck` binary from GitHub releases
-(`github.com/koalaman/shellcheck`). In sandboxes where outbound access to that
-host is blocked — including Claude Code web/remote sessions, whose proxy scopes
-GitHub to this repo only — the download returns a non-archive error body and the
-build fails on the root pom with `Input is not in the XZ format`, before any
-Java module is reached. Skip the goal with `mvn install -Dskip.shellcheck=true`
-(property `skip.shellcheck`), or point the plugin at a pre-installed binary via
-`binaryResolutionMethod=external` and `externalBinaryPath`. CI runs on GitHub
-runners with unrestricted access, so the download succeeds there and the lint
-still gates every push.
+**Shellcheck.** The root pom lints `scripts/**/*.sh` with
+`dev.dimlight:shellcheck-maven-plugin` (`check` goal). It is configured with
+`<binaryResolutionMethod>embedded</binaryResolutionMethod>`, so the `shellcheck`
+binary bundled inside the plugin jar (currently 0.9.0) is unpacked to
+`target/shellcheck-plugin/shellcheck` and run from there. The binary rides in as
+an ordinary Maven artifact from Maven Central, so nothing is fetched from
+GitHub and no `shellcheck` needs to be installed on the machine — the lint works
+offline and in networks that cannot reach GitHub (including Claude Code
+web/remote sessions, whose proxy scopes GitHub to this repo only). Skip the lint
+with `mvn install -Dskip.shellcheck=true` (property `skip.shellcheck`).
+
+The plugin's default `binaryResolutionMethod` instead downloads the binary from
+GitHub releases (`github.com/koalaman/shellcheck`) on first use; where that host
+is blocked the download returns a non-archive error body and the build fails on
+the root pom with `Input is not in the XZ format`, before any Java module is
+reached. The `embedded` method above avoids that entirely.
 
 CI (`.github/workflows/maven.yml`) installs the enforcer rule
 (`mvn -B -pl claude-code-enforcer -am install -DskipTests`) and then runs

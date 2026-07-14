@@ -439,6 +439,15 @@
 		</pluginManagement>
 		<plugins>
 			<plugin>
+				<!-- Lint scripts/**/*.sh with shellcheck. binaryResolutionMethod
+				     "embedded" runs the shellcheck binary bundled inside the plugin
+				     jar (pulled from Maven Central like any other artifact), so the
+				     build needs no shellcheck on the PATH and downloads nothing at
+				     execution time. The previous default fetched the binary from
+				     GitHub releases on first use, which fails in networks that
+				     cannot reach that host (offline builds, Claude Code web/remote
+				     sessions whose proxy scopes GitHub to this repo only), breaking
+				     the root pom with "Input is not in the XZ format". -->
 				<groupId>dev.dimlight</groupId>
 				<artifactId>shellcheck-maven-plugin</artifactId>
 				<inherited>false</inherited>
@@ -449,6 +458,7 @@
 							<goal>check</goal>
 						</goals>
 						<configuration>
+							<binaryResolutionMethod>embedded</binaryResolutionMethod>
 							<sourceDirs>
 								<sourceDir>
 									<directory>${project.basedir}/scripts</directory>

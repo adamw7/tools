@@ -89,10 +89,10 @@ jobs:
         # ("-pl !assembly,!grpc-example,!code/protogen-maven-plugin-test") and
         # never take part in the Central publish.
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
             revision_arg=""
-            if [ -n "${{ github.event.inputs.revision }}" ]; then
-              revision_arg="-Drevision=${{ github.event.inputs.revision }}"
+            if [ -n "${REVISION}" ]; then
+              revision_arg="-Drevision=${REVISION}"
             fi
             echo "Staged-only Central dry run: autoPublish=false, waitUntil=validated $revision_arg"
             mvn -B -ntp -X -P release -pl '!assembly,!grpc-example,!code/protogen-maven-plugin-test' deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated $revision_arg
@@ -100,5 +100,11 @@ jobs:
             mvn -B -ntp -X -P release -pl '!assembly,!grpc-example,!code/protogen-maven-plugin-test' deploy
           fi
         env:
+          # Interpolating ${{ github.event.inputs.revision }} straight into the
+          # run script would be a shell-injection sink (a crafted dispatch input
+          # runs as shell). Pass it through the environment and reference it as a
+          # quoted variable instead.
+          EVENT_NAME: ${{ github.event_name }}
+          REVISION: ${{ github.event.inputs.revision }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

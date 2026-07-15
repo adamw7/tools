@@ -5,18 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
+import java.security.KeyStore;
 import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -74,7 +74,7 @@ public class McpStreamableHttpsIT {
 		Files.writeString(projectRoot.resolve("B.java"), "public class B { A a; }");
 		HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport
 				.builder("https://localhost:" + port)
-				.customizeClient(builder -> builder.sslContext(trustAllContext()))
+				.customizeClient(builder -> builder.sslContext(testTrustContext()))
 				.build();
 		client = McpClient.sync(transport)
 				.clientInfo(McpSchema.Implementation.builder("integration-test-https-client", "1.0").build())
@@ -89,7 +89,7 @@ public class McpStreamableHttpsIT {
 
 	@Test
 	void negotiatesTls13OnTheMcpEndpoint() throws IOException {
-		SSLSocketFactory factory = trustAllContext().getSocketFactory();
+		SSLSocketFactory factory = testTrustContext().getSocketFactory();
 		try (SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port)) {
 			socket.startHandshake();
 			assertEquals(TlsConfiguration.TLS_1_3, socket.getSession().getProtocol());
@@ -98,7 +98,7 @@ public class McpStreamableHttpsIT {
 
 	@Test
 	void refusesTls12Handshakes() throws IOException {
-		SSLSocketFactory factory = trustAllContext().getSocketFactory();
+		SSLSocketFactory factory = testTrustContext().getSocketFactory();
 		try (SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port)) {
 			socket.setEnabledProtocols(new String[] { "TLSv1.2" });
 			assertThrows(IOException.class, socket::startHandshake);
@@ -161,33 +161,24 @@ public class McpStreamableHttpsIT {
 		}
 	}
 
-	private static SSLContext trustAllContext() {
+	private static SSLContext testTrustContext() {
 		try {
 			SSLContext context = SSLContext.getInstance("TLS");
-			context.init(null, new TrustManager[] { trustEverything() }, new SecureRandom());
+			context.init(null, trustManagersForTestKeystore(), null);
 			return context;
-		} catch (GeneralSecurityException e) {
-			throw new IllegalStateException("Could not build the trust-all SSL context", e);
+		} catch (GeneralSecurityException | IOException e) {
+			throw new IllegalStateException("Could not build the test SSL context", e);
 		}
 	}
 
-	private static X509TrustManager trustEverything() {
-		return new X509TrustManager() {
-
-			@Override
-			public void checkClientTrusted(X509Certificate[] chain, String authType) {
-				// Self-signed test certificate: client identity is not verified.
-			}
-
-			@Override
-			public void checkServerTrusted(X509Certificate[] chain, String authType) {
-				// Self-signed test certificate: trust is intentionally unconditional.
-			}
-
-			@Override
-			public X509Certificate[] getAcceptedIssuers() {
-				return new X509Certificate[0];
-			}
-		};
+	private static TrustManager[] trustManagersForTestKeystore() throws GeneralSecurityException, IOException {
+		KeyStore keyStore = KeyStore.getInstance("PKCS12");
+		Path keystore = Path.of(System.getProperty("mcp.test.keystore"));
+		try (InputStream in = Files.newInputStream(keystore)) {
+			keyStore.load(in, "changeit".toCharArray());
+		}
+		TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		factory.init(keyStore);
+		return factory.getTrustManagers();
 	}
 }

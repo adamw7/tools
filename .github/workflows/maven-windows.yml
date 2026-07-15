@@ -22,17 +22,12 @@ jobs:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
-    - name: Bootstrap CLAUDE.md enforcer rule
-      # The custom enforcer rule (tools.claude-code-enforcer) is consumed as a
-      # maven-enforcer-plugin dependency by the root build, so it must be
-      # installed to the local repo first. The claude-md-enforce profile is
-      # off here (no -DenforceClaudeMd), so the module is not asked to depend
-      # on itself while it is being built.
-      #
-      # -DskipTests: this step exists only to publish the enforcer JAR so the
-      # main build can load it as a plugin dependency. The module's own test
-      # suite is re-run as part of the "Build with Maven" install step below,
-      # so running it here as well only duplicates work.
-      run: mvn -B -ntp -pl claude-code-enforcer -am install -DskipTests
     - name: Build with Maven
+      # No enforcer bootstrap is needed here: this build does not pass
+      # -DenforceClaudeMd, so the claude-md-enforce profile stays off and the
+      # tools.claude-code-enforcer plugin dependency is never consumed. The
+      # enforcer module is still built as an ordinary reactor module by
+      # `install`. CLAUDE.md-format enforcement is platform-independent and is
+      # already covered by the Linux "Java CI with Maven" workflow; this Windows
+      # job exists to catch platform-specific regressions.
       run: mvn -B -ntp install --file pom.xml

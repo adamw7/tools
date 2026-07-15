@@ -12,6 +12,7 @@ import io.github.adamw7.context.tree.ProjectTreeBuilder;
 import io.github.adamw7.context.tree.ProjectTreeDotSerializer;
 import io.github.adamw7.context.tree.ProjectTreeJsonSerializer;
 import io.github.adamw7.context.tree.ProjectTreeMarkdownSerializer;
+import io.github.adamw7.context.tree.ProjectTreeMermaidSerializer;
 import io.github.adamw7.context.tree.ProjectTreeNode;
 import io.github.adamw7.context.tree.ProjectTreePrinter;
 import io.github.adamw7.context.tree.ProjectTreeSerializer;
@@ -23,9 +24,9 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
  * MCP tool that scans a Java, Kotlin or Scala project into a tree of folders,
  * files and the classes each file depends on, then serialises it for a gen-AI
  * agent. The
- * output format ({@code json}, {@code markdown} or {@code text}) is chosen by the
- * caller; JSON is the default as it is the most convenient for programmatic
- * consumers.
+ * output format ({@code json}, {@code markdown}, {@code text}, {@code dot} or
+ * {@code mermaid}) is chosen by the caller; JSON is the default as it is the most
+ * convenient for programmatic consumers.
  */
 public class ProjectTreeTool implements ContextTool {
 
@@ -52,7 +53,7 @@ public class ProjectTreeTool implements ContextTool {
 							"depth", Map.of("type", "integer",
 									"description", "how many levels of transitive dependencies to resolve (default 1)"),
 							"format", Map.of("type", "string",
-									"description", "output format: json (default), markdown, text or dot")),
+									"description", "output format: json (default), markdown, text, dot or mermaid")),
 					"required", List.of("path")))
 			.description("Scan a Java, Kotlin or Scala project into a tree of folders, files and class dependencies")
 			.build();
@@ -82,6 +83,7 @@ public class ProjectTreeTool implements ContextTool {
 			case "markdown" -> new ProjectTreeMarkdownSerializer();
 			case "text" -> new ProjectTreePrinter();
 			case "dot" -> new ProjectTreeDotSerializer();
+			case "mermaid" -> new ProjectTreeMermaidSerializer();
 			default -> new ProjectTreeJsonSerializer();
 		};
 	}

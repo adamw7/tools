@@ -11,7 +11,7 @@ The server exposes three tools:
 
 - **`project_tree`** — scans a Java, Kotlin or Scala project into a tree of
   folders, files and the classes each file depends on, then serialises it as JSON
-  (default), Markdown, plain text or Graphviz DOT.
+  (default), Markdown, plain text, Graphviz DOT or a Mermaid flowchart.
 - **`find_context`** — resolves the classes a single source file depends on,
   bounded by a configurable depth, and returns them as a JSON array.
 - **`estimate_tokens`** — estimates the LLM token cost of the context assembled
@@ -63,7 +63,7 @@ Scans a project into a tree of folders, files and class dependencies.
 - `path` (string, required): absolute path to the project root directory
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
 - `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
-- `format` (string, optional): `json` (default), `markdown`, `text` or `dot`
+- `format` (string, optional): `json` (default), `markdown`, `text`, `dot` or `mermaid`
 
 **Example:**
 

@@ -483,6 +483,13 @@ String rendered = serializer.serialize(root);
 - **`ProjectTreeJsonSerializer`** — structured JSON (`name`, `type`,
   `dependencies`, `children`) for programmatic consumers; `serializePretty`
   produces indented JSON.
+- **`ProjectTreeDotSerializer`** — a Graphviz [DOT](https://graphviz.org/doc/info/lang.html)
+  digraph of the dependency edges (file → depended-on class); directories add
+  structure but are not drawn. Render it with Graphviz tooling.
+- **`ProjectTreeMermaidSerializer`** — the same dependency edges as a
+  [Mermaid](https://mermaid.js.org/syntax/flowchart.html) `flowchart`, which
+  renders inline on GitHub, in Markdown viewers and in many gen-AI agent surfaces
+  without any external tooling.
 
 ### Token-budget-aware context
 

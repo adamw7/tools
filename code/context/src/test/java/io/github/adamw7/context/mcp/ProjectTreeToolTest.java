@@ -85,6 +85,20 @@ public class ProjectTreeToolTest {
 	}
 
 	@Test
+	void honoursTheMermaidFormat() throws IOException {
+		writeJava("A", "public class A {}");
+		writeJava("B", "public class B { A a; }");
+
+		Map<String, Object> arguments = arguments();
+		arguments.put("format", "mermaid");
+
+		String rendered = text(tool.apply(arguments));
+		assertTrue(rendered.startsWith("flowchart LR"));
+		assertTrue(rendered.contains("[\"B.java\"] --> "));
+		assertTrue(rendered.contains("[\"A.java\"]"));
+	}
+
+	@Test
 	void resolvesTransitiveDependenciesAtTheRequestedDepth() throws IOException {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");

@@ -173,7 +173,10 @@ Generated builder java code for protobuffers detects missing required fields in 
 
 Solution:
 
-Move detection to compile time (shift-left).
+Move detection to compile time (shift-left). For a visual walkthrough of *how*
+the generated interface chain guarantees every required field is set before
+`build()` can be called, see
+[docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md).
 
 Example of the problem:
 ```proto

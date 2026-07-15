@@ -39,10 +39,13 @@ Maven project. The notable capabilities are:
   `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
 
-See [README.md](README.md) for worked code examples of each capability, and
+See [README.md](README.md) for worked code examples of each capability,
 [docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model
 (System Context → Containers → Components, as Mermaid diagrams) of how the
-modules and MCP servers fit together.
+modules and MCP servers fit together, and
+[docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) for a
+visual walkthrough of how the generated builder chain shifts required-field
+validation from runtime to compile time.
 
 ## Module layout
 

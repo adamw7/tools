@@ -7,6 +7,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * In-memory JSON data source that flattens a document into {@link #fieldsMap} as
+ * {@code key -> value} pairs keyed by dotted path, using {@code .} for nested
+ * object fields and {@code [index]} for array elements (for example
+ * {@code people[0].address.city}). This mirrors {@link InMemoryYAMLDataSource}
+ * and the streaming {@link IterableJSONDataSource}, so the same document read as
+ * JSON, YAML or through either access mode yields the same rows.
+ */
 public class InMemoryJSONDataSource extends AbstractInMemoryMapDataSource {
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -25,13 +33,7 @@ public class InMemoryJSONDataSource extends AbstractInMemoryMapDataSource {
 		while (scanner.hasNextLine()) {
 			jsonContent.append(scanner.nextLine());
 		}
-		parseJSON(jsonContent.toString());
-	}
-
-	private void parseJSON(String jsonString) {
-		JsonNode root = read(jsonString);
-		extractFieldNames(root);
-		flatten(root);
+		flattenValue("", read(jsonContent.toString()));
 	}
 
 	private JsonNode read(String jsonString) {
@@ -42,42 +44,26 @@ public class InMemoryJSONDataSource extends AbstractInMemoryMapDataSource {
 		}
 	}
 
-	private void extractFieldNames(JsonNode node) {
-		for (Map.Entry<String, JsonNode> field : node.properties()) {
-			JsonNode value = field.getValue();
-			fieldsMap.put(field.getKey(), asText(value));
-			if (value.isObject()) {
-				extractFieldNames(value);
-			}
+	private void flattenValue(String key, JsonNode value) {
+		if (value.isObject()) {
+			flattenObject(key, value);
+		} else if (value.isArray()) {
+			flattenArray(key, value);
+		} else {
+			fieldsMap.put(key, value.asText());
 		}
 	}
 
-	private void flatten(JsonNode node) {
-		if (node.isArray()) {
-			flattenArray(node);
-		} else if (node.isObject()) {
-			flattenObject(node);
-		}
-	}
-
-	private void flattenArray(JsonNode array) {
-		for (JsonNode element : array) {
-			flatten(element);
-		}
-	}
-
-	private void flattenObject(JsonNode object) {
+	private void flattenObject(String prefix, JsonNode object) {
 		for (Map.Entry<String, JsonNode> field : object.properties()) {
-			JsonNode value = field.getValue();
-			if (value.isContainerNode()) {
-				flatten(value);
-			} else {
-				fieldsMap.put(field.getKey(), value.asText());
-			}
+			String key = prefix.isEmpty() ? field.getKey() : prefix + "." + field.getKey();
+			flattenValue(key, field.getValue());
 		}
 	}
 
-	private String asText(JsonNode value) {
-		return value.isContainerNode() ? value.toString() : value.asText();
+	private void flattenArray(String prefix, JsonNode array) {
+		for (int index = 0; index < array.size(); index++) {
+			flattenValue(prefix + "[" + index + "]", array.get(index));
+		}
 	}
 }

@@ -2,12 +2,18 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** security, supply-chain
+- **Supersedes:** —
+- **Superseded by:** —
 
 ## Context
 
 `tools` is published to Maven Central and pulls a large tree of third-party
 dependencies (Spring Boot, protobuf, DuckDB, log4j2, and the MCP SDK, among
-others). As a library consumed by other projects, a vulnerability in `tools` or
+others) under the foundational architecture recorded in
+[ADR 0001](0001-foundational-architecture.md). As a library consumed by other
+projects, a vulnerability in `tools` or
 in one of its transitive dependencies propagates downstream. The project needs a
 stated, repeatable security posture rather than ad-hoc responses: a way for
 people to report issues, a defined set of supported versions, automated detection
@@ -43,9 +49,12 @@ routine version bumps, Dependabot owns security-alert remediation. This split is
 deliberate — running both for all updates would produce redundant, noisy pull
 requests. See the individual ADRs for the rationale.
 
-All of the above is enforced through the existing CI and repository
-configuration; the security posture is a property of the build and repo settings,
-not a manual checklist.
+Pillars 1 and 2 are in force today (SECURITY.md and the CodeQL workflow are
+committed). Pillars 3 and 4 are **decided but not yet implemented** — ADRs 0005
+and 0006 carry `Proposed` status until their bot configuration lands and the
+repository settings are enabled. The posture is a property of the build and repo
+settings, not a manual checklist; where a pillar is not yet wired up, its ADR
+records that explicitly.
 
 ## Consequences
 

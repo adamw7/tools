@@ -1,7 +1,16 @@
 # 5. Renovate for routine dependency version updates
 
-- **Status:** Accepted
+- **Status:** Proposed (decided; pending implementation)
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** dependencies, automation, ci
+- **Supersedes:** —
+- **Superseded by:** —
+
+Refines the "keep dependencies current" pillar of
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md). This record stays
+`Proposed` until the Renovate configuration lands and the app is enabled (see
+*Implementation status* below); it flips to `Accepted` at that point.
 
 ## Context
 
@@ -37,7 +46,8 @@ This ADR records the decision. The Renovate configuration itself
 (`renovate.json` / `.github/renovate.json`, e.g. extending `config:recommended`
 with a schedule and grouping) is **not yet committed** and is a follow-up. Enabling
 the Renovate GitHub App on the repository is a prerequisite. Until that config
-lands, this decision is accepted but not yet in force.
+lands, this ADR stays `Proposed`: the decision is made but not yet in force. The
+status flips to `Accepted` when the config is committed and the app is enabled.
 
 ## Consequences
 

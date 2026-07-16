@@ -2,6 +2,23 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** foundational, build, architecture
+- **Supersedes:** —
+- **Superseded by:** —
+
+> **Scope note — intentional exception to "one decision per file."** The repo
+> convention (see [README](README.md)) is one decision per record. This
+> foundational ADR is a deliberate exception: it captures the cross-cutting
+> decisions that shape the whole repository as a single baseline. Each numbered
+> section below is individually revisable — a later ADR supersedes just that
+> section and links back here. Capability-specific decisions that expand on the
+> rationale sketched here live in their own records (e.g.
+> [ADR 0007](0007-duckdb-parquet-data-source.md),
+> [ADR 0008](0008-log4j2-logging.md),
+> [ADR 0009](0009-mcp-servers-on-spring-boot.md),
+> [ADR 0010](0010-documentation-as-enforced-contract.md)), and the security
+> posture is recorded under [ADR 0002](0002-security-policy-and-supply-chain-posture.md).
 
 ## Context
 
@@ -62,7 +79,8 @@ Capabilities that are useful to AI assistants are exposed through **MCP servers*
 Shared server scaffolding — transport wiring and the tool SPI — is factored into
 `mcp-common`, and each server supports stdio, streamable HTTP, stateless HTTP, and
 HTTP+SSE transports. This keeps the tool logic decoupled from transport concerns
-and consistent across servers.
+and consistent across servers. The choice of Spring Boot as the server runtime is
+recorded and justified in [ADR 0009](0009-mcp-servers-on-spring-boot.md).
 
 ### 5. Documentation as an enforced contract
 
@@ -73,7 +91,9 @@ fails the build when these documents drift — format rules pin required heading
 `crossDocConsistency` keeps mirrored facts (e.g. the Java version) aligned between
 CLAUDE.md and AGENTS.md, and a README-consistency rule catches capabilities
 described in one place but missing from another. Treating the docs as a
-build-checked contract keeps agent guidance trustworthy.
+build-checked contract keeps agent guidance trustworthy. The rationale for this
+unusual "documentation as a build-failing contract" mechanism, and the rules it
+enforces, are recorded in [ADR 0010](0010-documentation-as-enforced-contract.md).
 
 ### 6. Layering and convention enforcement via ArchUnit
 

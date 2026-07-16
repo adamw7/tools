@@ -2,6 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** security, transport, tls
+- **Supersedes:** —
+- **Superseded by:** —
+
+Refines the transport-security pillar of
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md).
 
 ## Context
 
@@ -47,5 +54,17 @@ customiser, not by re-allowing 1.2.
   — such clients should use a modern TLS stack — but it is a hard cutoff.
 - The enforcement currently lives with the context MCP server. If another
   HTTPS-serving surface is added, it must apply the same customiser (or a shared
-  one) to inherit the guarantee; this is a known follow-up should a second HTTPS
-  endpoint appear.
+  one) to inherit the guarantee.
+
+## Follow-up
+
+**Extract the customiser to `mcp-common` before a second HTTPS surface ships.**
+`enforceTls13()` lives in the context module today, so the TLS 1.3 guarantee is
+not automatically inherited by any future HTTPS-serving MCP server (the data
+server, for example). The tracked follow-up is to move the
+`WebServerFactoryCustomizer` into `mcp-common`'s shared server scaffolding (see
+[ADR 0009](0009-mcp-servers-on-spring-boot.md)) so every server that enables SSL
+gets the pinned protocol set for free, and to add an ArchUnit/enforcer check that
+no MCP server enables SSL without the shared customiser on the classpath. Until
+then, any new HTTPS endpoint must apply the customiser explicitly and this ADR is
+the record of that obligation.

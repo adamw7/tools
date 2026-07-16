@@ -2,6 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** security, static-analysis, ci
+- **Supersedes:** —
+- **Superseded by:** —
+
+Refines the "find vulnerable code early" pillar of
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md).
 
 ## Context
 

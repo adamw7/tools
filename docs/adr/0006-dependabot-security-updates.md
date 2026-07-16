@@ -1,7 +1,16 @@
 # 6. Dependabot for security-alert updates
 
-- **Status:** Accepted
+- **Status:** Proposed (decided; pending implementation)
 - **Date:** 2026-07-16
+- **Deciders:** Project maintainers
+- **Tags:** security, dependencies, automation
+- **Supersedes:** —
+- **Superseded by:** —
+
+Refines the "remediate known vulnerabilities fast" pillar of
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md). This record stays
+`Proposed` until Dependabot security updates are enabled in repository settings
+(see *Implementation status* below); it flips to `Accepted` at that point.
 
 ## Context
 
@@ -43,7 +52,9 @@ This ADR records the decision. Enabling it requires:
    repo setting, not the file).
 
 The config file is **not yet committed** and is a follow-up. Until the settings are
-enabled, this decision is accepted but not yet in force.
+enabled, this ADR stays `Proposed`: the decision is made but not yet in force. The
+status flips to `Accepted` when Dependabot security updates are switched on in the
+repository's security settings.
 
 ## Consequences
 

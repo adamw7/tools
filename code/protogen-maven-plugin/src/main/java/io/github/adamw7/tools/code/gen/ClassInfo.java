@@ -29,12 +29,12 @@ public class ClassInfo {
 		requiredFields = getRequiredFields(descriptor);
 		groupFields = getGroupFields(descriptor);
 		this.descriptor = descriptor;
-		this.nonOptionalFields = union(required(), map(), repeated());
+		this.nonOptionalFields = union(List.of(required(), map(), repeated()));
 		this.inputPkg = inputPkg;
 		this.outputPkg = outputPkg;
 	}
 
-	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
+	private static List<FieldDescriptor> union(List<List<FieldDescriptor>> fieldsLists) {
 		List<FieldDescriptor> all = new ArrayList<>();
 		for (List<FieldDescriptor> fieldsList : fieldsLists) {
 			all.addAll(fieldsList);

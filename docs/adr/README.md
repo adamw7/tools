@@ -25,6 +25,11 @@ add a new ADR that supersedes it and cross-link the two.
 | ADR | Title | Status |
 | --- | --- | --- |
 | [0001](0001-foundational-architecture.md) | Foundational architecture of the `tools` project | Accepted |
+| [0002](0002-security-policy-and-supply-chain-posture.md) | Security policy and supply-chain posture | Accepted |
+| [0003](0003-require-tls-1.3.md) | Require TLS 1.3+ for HTTPS transports | Accepted |
+| [0004](0004-codeql-code-scanning.md) | CodeQL static analysis for code scanning | Accepted |
+| [0005](0005-renovate-dependency-updates.md) | Renovate for routine dependency version updates | Accepted |
+| [0006](0006-dependabot-security-updates.md) | Dependabot for security-alert updates | Accepted |
 
 ## Related documents
 

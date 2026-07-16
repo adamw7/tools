@@ -1,6 +1,6 @@
 # 6. Dependabot for security-alert updates
 
-- **Status:** Proposed (decided; pending implementation)
+- **Status:** Proposed (config committed; pending repo security-settings enablement)
 - **Date:** 2026-07-16
 - **Deciders:** Project maintainers
 - **Tags:** security, dependencies, automation
@@ -8,9 +8,11 @@
 - **Superseded by:** —
 
 Refines the "remediate known vulnerabilities fast" pillar of
-[ADR 0002](0002-security-policy-and-supply-chain-posture.md). This record stays
-`Proposed` until Dependabot security updates are enabled in repository settings
-(see *Implementation status* below); it flips to `Accepted` at that point.
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md). The
+`.github/dependabot.yml` configuration has now landed (see *Implementation
+status* below); this record stays `Proposed` only until Dependabot alerts and
+security updates are switched on in the repository's security settings, at which
+point it flips to `Accepted`.
 
 ## Context
 
@@ -43,18 +45,22 @@ overall rationale.
 
 ### Implementation status
 
-This ADR records the decision. Enabling it requires:
+Step 2 below — the config file — is now done;
+[`.github/dependabot.yml`](../../.github/dependabot.yml) declares the `maven`
+ecosystem with `open-pull-requests-limit: 0`, which disables Dependabot's
+version-update stream (Renovate's job, [ADR 0005](0005-renovate-dependency-updates.md))
+while leaving the ecosystem configuration — schedule and labels — to apply to the
+security updates governed by the repository setting. What remains is step 1, a
+settings action that cannot be committed:
 
 1. Turning on **Dependabot alerts** and **Dependabot security updates** in the
-   repository's security settings (GitHub UI), and
-2. Optionally committing `.github/dependabot.yml` with the `maven` ecosystem
-   configured and version-updates left off (security updates are governed by the
-   repo setting, not the file).
+   repository's security settings (GitHub UI) — **still pending**, and
+2. Committing `.github/dependabot.yml` with the `maven` ecosystem configured and
+   version-updates left off — **done**.
 
-The config file is **not yet committed** and is a follow-up. Until the settings are
-enabled, this ADR stays `Proposed`: the decision is made but not yet in force. The
-status flips to `Accepted` when Dependabot security updates are switched on in the
-repository's security settings.
+Until the settings are enabled, security updates do not run, so this ADR stays
+`Proposed`. The status flips to `Accepted` when Dependabot security updates are
+switched on in the repository's security settings.
 
 ## Consequences
 

@@ -1,0 +1,19 @@
+# Dependabot configuration (ADR 0006).
+#
+# Dependabot owns SECURITY remediation only; routine version bumps are
+# Renovate's job (ADR 0005). Dependabot security updates are governed by the
+# repository's security settings, not by this file, and they honour the
+# ecosystem configuration below (schedule, labels). Version updates are kept
+# OFF — open-pull-requests-limit: 0 disables Dependabot's version-update stream
+# so it cannot open duplicate PRs alongside Renovate.
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # 0 disables version updates; security updates (repo setting) still apply.
+    open-pull-requests-limit: 0
+    labels:
+      - "security"
+      - "dependencies"

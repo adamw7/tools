@@ -1,0 +1,27 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Routine dependency and Maven-plugin version currency (ADR 0005). Security remediation is Dependabot's job (ADR 0006), so Renovate's own vulnerability alerts are disabled here to keep the two bots from opening duplicate PRs for the same security-driven bump.",
+  "extends": [
+    "config:recommended",
+    "schedule:weekly"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "Batch non-major Maven dependency and plugin bumps into one weekly PR; every version lives in the root pom, so a grouped PR touches one file.",
+      "matchManagers": [
+        "maven"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "maven non-major updates"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": false
+  }
+}

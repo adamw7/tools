@@ -1,6 +1,6 @@
 # 5. Renovate for routine dependency version updates
 
-- **Status:** Proposed (decided; pending implementation)
+- **Status:** Proposed (config committed; pending Renovate App enablement)
 - **Date:** 2026-07-16
 - **Deciders:** Project maintainers
 - **Tags:** dependencies, automation, ci
@@ -8,9 +8,10 @@
 - **Superseded by:** —
 
 Refines the "keep dependencies current" pillar of
-[ADR 0002](0002-security-policy-and-supply-chain-posture.md). This record stays
-`Proposed` until the Renovate configuration lands and the app is enabled (see
-*Implementation status* below); it flips to `Accepted` at that point.
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md). The Renovate
+configuration has now landed (see *Implementation status* below); this record
+stays `Proposed` only until the Renovate GitHub App is enabled on the
+repository, at which point it flips to `Accepted`.
 
 ## Context
 
@@ -42,12 +43,16 @@ own security remediation — that is Dependabot's role
 
 ### Implementation status
 
-This ADR records the decision. The Renovate configuration itself
-(`renovate.json` / `.github/renovate.json`, e.g. extending `config:recommended`
-with a schedule and grouping) is **not yet committed** and is a follow-up. Enabling
-the Renovate GitHub App on the repository is a prerequisite. Until that config
-lands, this ADR stays `Proposed`: the decision is made but not yet in force. The
-status flips to `Accepted` when the config is committed and the app is enabled.
+The Renovate configuration is now committed at
+[`renovate.json`](../../renovate.json): it extends `config:recommended`, runs on
+a weekly schedule, groups non-major Maven bumps into a single PR (every version
+lives in the root pom, so a grouped PR touches one file), and disables Renovate's
+own vulnerability alerts so security remediation stays solely with Dependabot
+([ADR 0006](0006-dependabot-security-updates.md)). The one remaining step is
+enabling the Renovate GitHub App on the repository — a settings action that
+cannot be committed. Until the app is enabled the config is inert, so this ADR
+stays `Proposed`; it flips to `Accepted` once the app is installed and opening
+PRs.
 
 ## Consequences
 

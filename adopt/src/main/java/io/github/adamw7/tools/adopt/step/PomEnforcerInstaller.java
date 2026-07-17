@@ -42,6 +42,7 @@ public class PomEnforcerInstaller {
 
 	static final String ENFORCER_GROUP_ID = "org.apache.maven.plugins";
 	static final String ENFORCER_ARTIFACT_ID = "maven-enforcer-plugin";
+	static final String ENFORCER_VERSION = "3.6.3";
 	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	static final String RULE_GROUP_ID = "io.github.adamw7";
 	static final String DEFAULT_RULE_VERSION = "2.5.0";
@@ -126,6 +127,7 @@ public class PomEnforcerInstaller {
 		Element plugin = create(document, "plugin");
 		appendText(document, plugin, "groupId", ENFORCER_GROUP_ID);
 		appendText(document, plugin, "artifactId", ENFORCER_ARTIFACT_ID);
+		appendText(document, plugin, "version", ENFORCER_VERSION);
 		plugins.appendChild(plugin);
 		return plugin;
 	}
@@ -142,6 +144,7 @@ public class PomEnforcerInstaller {
 		Element execution = create(document, "execution");
 		appendText(document, execution, "id", "enforce-claude-md");
 		appendText(document, execution, "phase", "validate");
+		appendText(document, execution, "inherited", "false");
 		Element goals = create(document, "goals");
 		appendText(document, goals, "goal", "enforce");
 		execution.appendChild(goals);

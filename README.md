@@ -19,6 +19,7 @@ Library of tooling for various purposes.
   - [Open-addressing set](#open-addressing-set)
   - [Primitive int-keyed map](#primitive-int-keyed-map)
   - [Network kill-switch](#network-kill-switch)
+- [Claude Code adoption](#claude-code-adoption)
 - [Architecture tests (ArchUnit)](#architecture-tests-archunit)
 - [Building](#building)
 - [Releasing](#releasing)
@@ -703,6 +704,65 @@ before any unit test runs, so a unit test can never open an outbound connection.
 Auto-detection and the `tools.test.network.off` guard property are set only on
 surefire, so the failsafe integration tests (`*IT`), which need real network, keep
 it. See *Testing* in [AGENTS.md](AGENTS.md) for the details.
+
+## Claude Code adoption
+
+The `adopt` module (`tools.adopt`) is an ordered pipeline that **adopts Claude
+Code into a GitHub repository**. Given a repository URL it clones the repo, runs
+the Claude Code CLI (`claude -p /init`) to generate a `CLAUDE.md`, commits and
+pushes that, then wires the [`claude-code-enforcer`](#claude-code-files-maven-enforcer)
+into the project's `pom.xml` and commits and pushes again — so the freshly
+generated `CLAUDE.md` keeps being validated on every build.
+
+Run it from the command line with a GitHub repository URL and an optional
+workspace directory to clone into (a temporary directory is created when it is
+omitted):
+
+```bash
+java -cp adopt/target/classes io.github.adamw7.tools.adopt.Main \
+    https://github.com/owner/repo.git [workspace-directory]
+```
+
+The pipeline is a list of ordered, independent `AdoptionStep`s, each acting on a
+shared immutable `AdoptionContext` (the repository URL, the workspace, and the
+derived checkout directory):
+
+```java
+CommandRunner runner = new ProcessCommandRunner();
+GitHubRepoAdopter.withDefaultPipeline(runner)
+    .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace));
+```
+
+The default pipeline runs these steps in order:
+
+1. **`CloneStep`** — clones the target repository into the workspace with
+   `git clone`, giving the remaining steps a working checkout.
+2. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
+   (`claude -p /init` by default; the invocation is configurable because the
+   flags differ between environments) so it generates a `CLAUDE.md`, warning if
+   the file did not appear.
+3. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
+   CLAUDE.md`).
+4. **`PushStep`** — pushes the commit.
+5. **`EnforcerStep`** — wires the `claude-code-enforcer` into the checkout's root
+   `pom.xml` via `PomEnforcerInstaller`. The edit is done on the JDK's DOM (no
+   third-party XML library), is namespace-aware, and is idempotent: a POM that
+   already declares the rule is left unchanged, and a repository that is not a
+   Maven project (no `pom.xml`) is skipped with a warning rather than failing the
+   adoption.
+6. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
+   build`).
+7. **`PushStep`** — pushes the commit.
+
+External `git`/`claude` invocations go through a `CommandRunner` abstraction, so
+the steps are unit-tested without spawning real processes. The default
+`ProcessCommandRunner` merges standard error into standard output for a single
+ordered transcript, and **bounds every command with a configurable timeout**
+(10 minutes by default) so a stalled clone or a stuck `claude` run cannot hang
+the adoption — on expiry the child process is destroyed and the failure is
+reported with whatever output was captured so far. A step whose command exits
+non-zero aborts the pipeline with an `AdoptionException` carrying the command
+transcript.
 
 ## Architecture tests (ArchUnit)
 

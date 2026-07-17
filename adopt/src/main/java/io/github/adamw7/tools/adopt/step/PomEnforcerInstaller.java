@@ -34,8 +34,9 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  *
  * <p>The edit is performed on the JDK's DOM so no third-party XML library is
  * needed, is namespace-aware so the new elements join the POM's default
- * namespace, and is idempotent: a POM that already declares the enforcer plugin
- * is left untouched.
+ * namespace, and is idempotent: a POM that already wires the rule is left
+ * untouched. A POM that already uses the {@code maven-enforcer-plugin} for other
+ * rules is augmented in place rather than skipped, so the rule is still wired in.
  */
 public class PomEnforcerInstaller {
 
@@ -44,6 +45,7 @@ public class PomEnforcerInstaller {
 	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	static final String RULE_GROUP_ID = "io.github.adamw7";
 	static final String DEFAULT_RULE_VERSION = "2.5.0";
+	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
 
 	private final String ruleVersion;
 
@@ -56,17 +58,18 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * @return {@code true} when the plugin was added, {@code false} when the POM
-	 *         already declared it and was left unchanged.
+	 * @return {@code true} when the rule was wired in, {@code false} when the POM
+	 *         already declared the {@code claude-code-enforcer} rule and was left
+	 *         unchanged.
 	 */
 	public boolean install(Path pomFile) {
 		Document document = read(pomFile);
 		Element project = document.getDocumentElement();
 		Element plugins = pluginsElement(document, project);
-		if (findEnforcerPlugin(plugins).isPresent()) {
+		if (declaresClaudeRule(plugins)) {
 			return false;
 		}
-		plugins.appendChild(enforcerPlugin(document));
+		wireEnforcer(document, plugins);
 		write(document, pomFile);
 		return true;
 	}
@@ -74,6 +77,35 @@ public class PomEnforcerInstaller {
 	private Element pluginsElement(Document document, Element project) {
 		Element build = childOrCreate(document, project, "build");
 		return childOrCreate(document, build, "plugins");
+	}
+
+	private boolean declaresClaudeRule(Element plugins) {
+		return children(plugins, "plugin").stream().anyMatch(this::declaresRuleDependency);
+	}
+
+	private boolean declaresRuleDependency(Element plugin) {
+		return child(plugin, "dependencies").stream()
+				.flatMap(dependencies -> children(dependencies, "dependency").stream())
+				.anyMatch(this::isRuleDependency);
+	}
+
+	private boolean isRuleDependency(Element dependency) {
+		return child(dependency, "artifactId")
+				.map(Element::getTextContent)
+				.map(String::strip)
+				.filter(RULE_ARTIFACT_ID::equals)
+				.isPresent();
+	}
+
+	/**
+	 * Adds the rule dependency and its {@code enforce} execution to the POM's
+	 * {@code maven-enforcer-plugin}, reusing an existing plugin declaration when
+	 * one is present so the project keeps a single enforcer plugin entry.
+	 */
+	private void wireEnforcer(Document document, Element plugins) {
+		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(document, plugins));
+		childOrCreate(document, plugin, "dependencies").appendChild(ruleDependency(document));
+		childOrCreate(document, plugin, "executions").appendChild(enforceExecution(document));
 	}
 
 	private Optional<Element> findEnforcerPlugin(Element plugins) {
@@ -90,27 +122,23 @@ public class PomEnforcerInstaller {
 				.isPresent();
 	}
 
-	private Element enforcerPlugin(Document document) {
+	private Element createEnforcerPlugin(Document document, Element plugins) {
 		Element plugin = create(document, "plugin");
 		appendText(document, plugin, "groupId", ENFORCER_GROUP_ID);
 		appendText(document, plugin, "artifactId", ENFORCER_ARTIFACT_ID);
-		plugin.appendChild(ruleDependencies(document));
-		plugin.appendChild(enforceExecutions(document));
+		plugins.appendChild(plugin);
 		return plugin;
 	}
 
-	private Element ruleDependencies(Document document) {
-		Element dependencies = create(document, "dependencies");
+	private Element ruleDependency(Document document) {
 		Element dependency = create(document, "dependency");
 		appendText(document, dependency, "groupId", RULE_GROUP_ID);
 		appendText(document, dependency, "artifactId", RULE_ARTIFACT_ID);
 		appendText(document, dependency, "version", ruleVersion);
-		dependencies.appendChild(dependency);
-		return dependencies;
+		return dependency;
 	}
 
-	private Element enforceExecutions(Document document) {
-		Element executions = create(document, "executions");
+	private Element enforceExecution(Document document) {
 		Element execution = create(document, "execution");
 		appendText(document, execution, "id", "enforce-claude-md");
 		appendText(document, execution, "phase", "validate");
@@ -118,14 +146,15 @@ public class PomEnforcerInstaller {
 		appendText(document, goals, "goal", "enforce");
 		execution.appendChild(goals);
 		execution.appendChild(claudeMdConfiguration(document));
-		executions.appendChild(execution);
-		return executions;
+		return execution;
 	}
 
 	private Element claudeMdConfiguration(Document document) {
 		Element configuration = create(document, "configuration");
 		Element rules = create(document, "rules");
-		rules.appendChild(create(document, "claudeMdFormat"));
+		Element claudeMdFormat = create(document, "claudeMdFormat");
+		appendText(document, claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
+		rules.appendChild(claudeMdFormat);
 		configuration.appendChild(rules);
 		return configuration;
 	}

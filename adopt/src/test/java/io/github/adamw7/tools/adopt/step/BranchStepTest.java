@@ -13,24 +13,29 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
-class PushStepTest {
+class BranchStepTest {
 
 	private final AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git",
 			Path.of("/tmp/workspace"), "claude/adopt-claude-code");
-	private final PushStep step = new PushStep();
+	private final BranchStep step = new BranchStep();
 
 	@Test
-	void pushesFeatureBranchWithUpstreamInCheckout() {
+	void createsFeatureBranchInCheckout() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		step.execute(context, runner);
-		assertEquals(List.of("git", "push", "-u", "origin", "claude/adopt-claude-code"), runner.commandAt(0));
+		assertEquals(List.of("git", "checkout", "-b", "claude/adopt-claude-code"), runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
 	}
 
 	@Test
-	void rejectedPushAborts() {
+	void failedCheckoutAbortsAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "rejected"));
+				command -> new CommandResult(command, 128, "fatal: a branch named ... already exists"));
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
+	@Test
+	void isNamedBranch() {
+		assertEquals("branch", step.name());
 	}
 }

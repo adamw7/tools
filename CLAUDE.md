@@ -23,8 +23,10 @@ run `mvn install` from the repository root. The main capabilities are:
   column-uniqueness/key finder, open-addressing map/set data structures, and an
   MCP server exposing the uniqueness checker.
 - **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
-  GitHub repo: clone, `claude init` to generate `CLAUDE.md`, commit and push,
-  then wire the `claude-code-enforcer` into the repo's `pom.xml` and push again.
+  GitHub repo: clone, create a feature branch, `claude init` to generate
+  `CLAUDE.md` and commit it, wire the `claude-code-enforcer` into the repo's
+  `pom.xml` and commit that, then push the branch and open a pull request
+  (`gh pr create`); the default branch is never written to directly.
 
 Module map (root reactor: `claude-code-enforcer`, `mcp-common`, `data`, `code`,
 `adopt`, `grpc-example`, `assembly`; `data-test` is built separately):
@@ -38,7 +40,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # compile-time-safe protobuf builder generator
 │   ├── protogen-maven-plugin-test  # integration tests for the plugin
 │   └── context                     # class-usage context finder + MCP server
-├── adopt                  # adopts Claude Code into a GitHub repo (clone, trust, init, commit/push, enforcer)
+├── adopt                  # adopts Claude Code into a GitHub repo (clone, branch, trust, init, enforcer, push, PR)
 ├── grpc-example           # end-to-end gRPC example
 ├── assembly               # executable jar-with-dependencies (SampleApp)
 └── data-test              # standalone test module (not in root <modules>)

@@ -9,8 +9,9 @@ import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
- * Pushes the committed adoption changes back to the repository's origin with
- * {@code git push}.
+ * Pushes the adoption feature branch to the repository's origin with
+ * {@code git push -u origin <branch>}, setting the upstream so the freshly
+ * created branch is published and can be the head of a pull request.
  */
 public class PushStep extends AbstractCommandStep {
 
@@ -23,7 +24,8 @@ public class PushStep extends AbstractCommandStep {
 
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
-		log.info("Pushing changes from {}", context.repositoryDirectory());
-		runOrFail(runner, context.repositoryDirectory(), List.of("git", "push"));
+		log.info("Pushing branch {} from {}", context.branchName(), context.repositoryDirectory());
+		List<String> command = List.of("git", "push", "-u", "origin", context.branchName());
+		runOrFail(runner, context.repositoryDirectory(), command);
 	}
 }

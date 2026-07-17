@@ -38,7 +38,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # compile-time-safe protobuf builder generator
 │   ├── protogen-maven-plugin-test  # integration tests for the plugin
 │   └── context                     # class-usage context finder + MCP server
-├── adopt                  # adopts Claude Code into a GitHub repo (clone, init, commit/push, enforcer)
+├── adopt                  # adopts Claude Code into a GitHub repo (clone, trust, init, commit/push, enforcer)
 ├── grpc-example           # end-to-end gRPC example
 ├── assembly               # executable jar-with-dependencies (SampleApp)
 └── data-test              # standalone test module (not in root <modules>)

@@ -11,7 +11,9 @@ import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 /**
  * Command-line entry point: given a GitHub repository URL (and an optional
  * workspace directory to clone into), runs the default adoption pipeline
- * against a real {@code git}/{@code claude} toolchain.
+ * against a real {@code git}/{@code claude} toolchain. A supplied workspace
+ * directory is created when it does not yet exist, so the clone step always has
+ * a directory to run in; when omitted, a temporary one is created instead.
  */
 public class Main {
 
@@ -29,11 +31,19 @@ public class Main {
 		return args[0];
 	}
 
-	private static Path workspace(String[] args) {
+	static Path workspace(String[] args) {
 		if (args.length >= 2 && !args[1].isBlank()) {
-			return Path.of(args[1]);
+			return createIfMissing(Path.of(args[1]));
 		}
 		return createTemporaryWorkspace();
+	}
+
+	private static Path createIfMissing(Path workspace) {
+		try {
+			return Files.createDirectories(workspace);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private static Path createTemporaryWorkspace() {

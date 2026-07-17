@@ -71,8 +71,8 @@ class GitHubRepoAdopterTest {
 	}
 
 	@Test
-	void defaultPipelineIsCloneInitCommitPushEnforceCommitPush() {
+	void defaultPipelineIsCloneTrustInitCommitPushEnforceCommitPush() {
 		List<String> names = GitHubRepoAdopter.defaultSteps().stream().map(AdoptionStep::name).toList();
-		assertEquals(List.of("clone", "claude-init", "commit", "push", "enforcer", "commit", "push"), names);
+		assertEquals(List.of("clone", "trust", "claude-init", "commit", "push", "enforcer", "commit", "push"), names);
 	}
 }

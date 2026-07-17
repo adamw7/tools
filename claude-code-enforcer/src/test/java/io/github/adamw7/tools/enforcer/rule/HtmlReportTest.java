@@ -33,15 +33,27 @@ class HtmlReportTest {
 	}
 
 	@Test
-	void rendersViolationsAndHowToFixAsHtmlTables() {
+	void rendersViolationsAndHowToFixAsColumnsOfOneTable() {
 		String html = new HtmlReport("CLAUDE.md is not well formed:",
 				List.of("missing section: ## Build"),
 				List.of("Add the ## Build section.")).render();
 
-		assertTrue(html.contains("<table class=\"violations\">"), html);
+		assertTrue(html.contains("<table class=\"report\">"), html);
+		assertFalse(html.contains("<table class=\"how-to-fix\">"), html);
 		assertTrue(html.contains("<th>What failed and why</th>"), html);
-		assertTrue(html.contains("<table class=\"how-to-fix\">"), html);
-		assertTrue(html.contains("<td>missing section: ## Build</td>"), html);
+		assertTrue(html.contains("<th>How to fix</th>"), html);
+		assertTrue(html.contains("<td class=\"failure\">missing section: ## Build</td>"), html);
+		assertTrue(html.contains("<td class=\"fix\">Add the ## Build section.</td>"), html);
+	}
+
+	@Test
+	void padsTheShorterColumnWhenViolationsAndFixesDiffer() {
+		String html = new HtmlReport("CLAUDE.md is not well formed:",
+				List.of("missing section: ## Build", "missing section: ## Test"),
+				List.of("Add the missing sections.")).render();
+
+		assertTrue(html.contains("<td class=\"failure\">missing section: ## Test</td>"), html);
+		assertTrue(html.contains("<td class=\"fix\"></td>"), html);
 	}
 
 	@Test

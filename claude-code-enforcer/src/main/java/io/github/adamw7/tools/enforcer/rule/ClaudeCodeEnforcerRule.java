@@ -22,10 +22,10 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * than a document-quality problem.
  * <p>
  * When {@code <reportFile>} is configured the same outcome is also written as a
- * self-contained HTML report — what failed and why, plus the {@link #howToFix()}
- * steps — so a build can surface the violations in a browser or CI artifact
- * regardless of severity. The report is written whether the check passes or
- * fails, so it always reflects the latest run.
+ * self-contained HTML report — a single table pairing what failed and why with
+ * the {@link #howToFix()} steps in a "How to fix" column — so a build can surface
+ * the violations in a browser or CI artifact regardless of severity. The report is
+ * written whether the check passes or fails, so it always reflects the latest run.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -72,6 +73,22 @@ class PomEnforcerInstallerTest {
 			""";
 
 	private final PomEnforcerInstaller installer = new PomEnforcerInstaller("9.9.9");
+
+	/**
+	 * The JDK's JAXP factories ({@code DocumentBuilderFactory} and
+	 * {@code TransformerFactory}) pay a one-time, classpath-scanning
+	 * initialization cost the first time they are used. Charging that cold start
+	 * to whichever {@code @Test} happens to run first makes it flake against
+	 * surefire's 900ms per-test timeout, so pay it once here — a full parse and
+	 * write through the real install path — under the looser lifecycle-method
+	 * timeout instead.
+	 */
+	@BeforeAll
+	static void warmUpXmlToolchain(@TempDir Path dir) throws IOException {
+		Path pom = dir.resolve("pom.xml");
+		Files.writeString(pom, POM_WITH_BUILD);
+		new PomEnforcerInstaller("0.0.0").install(pom);
+	}
 
 	private Path write(Path dir, String content) throws IOException {
 		Path pom = dir.resolve("pom.xml");

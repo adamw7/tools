@@ -12,13 +12,14 @@ import io.github.adamw7.tools.adopt.step.CloneStep;
 import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
 import io.github.adamw7.tools.adopt.step.PushStep;
+import io.github.adamw7.tools.adopt.step.TrustStep;
 
 /**
  * Runs the ordered pipeline that adopts Claude Code into a GitHub repository:
- * clone, generate {@code CLAUDE.md} with {@code claude init}, commit and push
- * that, then wire in the {@code claude-code-enforcer} and commit and push
- * again. Steps and the command runner are injected so the pipeline is easy to
- * reconfigure and to test.
+ * clone, mark the checkout trusted for Claude Code, generate {@code CLAUDE.md}
+ * with {@code claude init}, commit and push that, then wire in the
+ * {@code claude-code-enforcer} and commit and push again. Steps and the command
+ * runner are injected so the pipeline is easy to reconfigure and to test.
  */
 public class GitHubRepoAdopter {
 
@@ -39,6 +40,7 @@ public class GitHubRepoAdopter {
 	public static List<AdoptionStep> defaultSteps() {
 		return List.of(
 				new CloneStep(),
+				new TrustStep(),
 				new ClaudeInitStep(),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
 				new PushStep(),

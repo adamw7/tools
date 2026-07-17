@@ -51,4 +51,19 @@ class MainTest {
 		Path resolved = Main.workspace(new String[] { REPO_URL });
 		assertTrue(Files.isDirectory(resolved));
 	}
+
+	@Test
+	void defaultsBranchNameWhenNoneSupplied() {
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, Main.branchName(new String[] { REPO_URL, "/tmp/ws" }));
+	}
+
+	@Test
+	void usesSuppliedBranchName() {
+		assertEquals("feature/x", Main.branchName(new String[] { REPO_URL, "/tmp/ws", "feature/x" }));
+	}
+
+	@Test
+	void defaultsBranchNameWhenSuppliedBlank() {
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, Main.branchName(new String[] { REPO_URL, "/tmp/ws", "  " }));
+	}
 }

@@ -4,20 +4,31 @@ import java.nio.file.Path;
 
 /**
  * Immutable inputs shared by every adoption step: the GitHub repository URL to
- * adopt, the workspace directory the clone is created under, and the resulting
- * checkout directory. The repository name is derived from the URL up front so
- * the clone target is known before the first step runs.
+ * adopt, the workspace directory the clone is created under, the resulting
+ * checkout directory, and the feature branch the adoption commits are made on.
+ * The repository name is derived from the URL up front so the clone target is
+ * known before the first step runs. The adoption never pushes to the default
+ * branch: it works on {@code branchName} and opens a pull request from it.
  */
 public final class AdoptionContext {
+
+	/** Feature branch the adoption commits, pushes, and raises a pull request from. */
+	public static final String DEFAULT_BRANCH = "claude/adopt-claude-code";
 
 	private final String repositoryUrl;
 	private final Path workspace;
 	private final Path repositoryDirectory;
+	private final String branchName;
 
 	public AdoptionContext(String repositoryUrl, Path workspace) {
+		this(repositoryUrl, workspace, DEFAULT_BRANCH);
+	}
+
+	public AdoptionContext(String repositoryUrl, Path workspace, String branchName) {
 		this.repositoryUrl = requireUrl(repositoryUrl);
 		this.workspace = requireWorkspace(workspace);
 		this.repositoryDirectory = workspace.resolve(repositoryName(this.repositoryUrl));
+		this.branchName = requireBranch(branchName);
 	}
 
 	public String repositoryUrl() {
@@ -32,6 +43,10 @@ public final class AdoptionContext {
 		return repositoryDirectory;
 	}
 
+	public String branchName() {
+		return branchName;
+	}
+
 	private static String requireUrl(String repositoryUrl) {
 		if (repositoryUrl == null || repositoryUrl.isBlank()) {
 			throw new IllegalArgumentException("repositoryUrl must not be blank");
@@ -44,6 +59,13 @@ public final class AdoptionContext {
 			throw new IllegalArgumentException("workspace must not be null");
 		}
 		return workspace;
+	}
+
+	private static String requireBranch(String branchName) {
+		if (branchName == null || branchName.isBlank()) {
+			throw new IllegalArgumentException("branchName must not be blank");
+		}
+		return branchName.strip();
 	}
 
 	private static String repositoryName(String repositoryUrl) {

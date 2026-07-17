@@ -719,27 +719,32 @@ it. See *Testing* in [AGENTS.md](AGENTS.md) for the details.
 ## Claude Code adoption
 
 The `adopt` module (`tools.adopt`) is an ordered pipeline that **adopts Claude
-Code into a GitHub repository**. Given a repository URL it clones the repo, runs
-the Claude Code CLI (`claude -p /init`) to generate a `CLAUDE.md`, commits and
-pushes that, then wires the [`claude-code-enforcer`](#claude-code-files-maven-enforcer)
-into the project's `pom.xml` and commits and pushes again — so the freshly
-generated `CLAUDE.md` keeps being validated on every build.
+Code into a GitHub repository**. Given a repository URL it clones the repo,
+creates a feature branch, runs the Claude Code CLI (`claude -p /init`) to
+generate a `CLAUDE.md` and commits it, then wires the
+[`claude-code-enforcer`](#claude-code-files-maven-enforcer) into the project's
+`pom.xml` and commits that too — so the freshly generated `CLAUDE.md` keeps
+being validated on every build. Finally it pushes the branch and opens a pull
+request with the GitHub CLI, so the change is reviewed rather than landing
+straight on the default branch, which is never written to.
 
-Run it from the command line with a GitHub repository URL and an optional
-workspace directory to clone into (a temporary directory is created when it is
-omitted). Launch it through `exec:java` so Maven puts the full runtime classpath
-(log4j2 and the rest) on the command — a bare `java -cp adopt/target/classes`
-omits the dependency jars and fails at start-up with a `NoClassDefFoundError` for
-the log4j `LogManager`:
+Run it from the command line with a GitHub repository URL, an optional workspace
+directory to clone into (a temporary directory is created when it is omitted),
+and an optional feature-branch name (defaults to `claude/adopt-claude-code`).
+Because it opens the pull request through the GitHub CLI, an authenticated `gh`
+must be on the `PATH` alongside `git` and `claude`. Launch it through `exec:java`
+so Maven puts the full runtime classpath (log4j2 and the rest) on the command — a
+bare `java -cp adopt/target/classes` omits the dependency jars and fails at
+start-up with a `NoClassDefFoundError` for the log4j `LogManager`:
 
 ```bash
 mvn -pl adopt exec:java \
-    -Dexec.args="https://github.com/owner/repo.git [workspace-directory]"
+    -Dexec.args="https://github.com/owner/repo.git [workspace-directory] [branch-name]"
 ```
 
 The pipeline is a list of ordered, independent `AdoptionStep`s, each acting on a
-shared immutable `AdoptionContext` (the repository URL, the workspace, and the
-derived checkout directory):
+shared immutable `AdoptionContext` (the repository URL, the workspace, the
+derived checkout directory, and the feature-branch name):
 
 ```java
 CommandRunner runner = new ProcessCommandRunner();
@@ -751,13 +756,15 @@ The default pipeline runs these steps in order:
 
 1. **`CloneStep`** — clones the target repository into the workspace with
    `git clone`, giving the remaining steps a working checkout.
-2. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
+2. **`BranchStep`** — creates and checks out the adoption feature branch with
+   `git checkout -b`, so every later commit lands on that branch instead of the
+   default branch.
+3. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
    (`claude -p /init` by default; the invocation is configurable because the
    flags differ between environments) so it generates a `CLAUDE.md`, warning if
    the file did not appear.
-3. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
+4. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
    CLAUDE.md`).
-4. **`PushStep`** — pushes the commit.
 5. **`EnforcerStep`** — wires the `claude-code-enforcer` into the checkout's root
    `pom.xml` via `PomEnforcerInstaller`. The edit is done on the JDK's DOM (no
    third-party XML library), is namespace-aware, and is idempotent: a POM that
@@ -766,10 +773,16 @@ The default pipeline runs these steps in order:
    adoption.
 6. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
-7. **`PushStep`** — pushes the commit.
+7. **`PushStep`** — pushes the feature branch to origin and sets its upstream
+   (`git push -u origin <branch>`).
+8. **`PullRequestStep`** — opens a pull request from the branch with
+   `gh pr create`, targeting the repository's default branch as the base. Like
+   `CommitStep` it stays idempotent: a `gh` failure that only reports an
+   already-open pull request for the branch, or no commits between base and head,
+   is treated as a no-op rather than aborting the adoption.
 
-External `git`/`claude` invocations go through a `CommandRunner` abstraction, so
-the steps are unit-tested without spawning real processes. The default
+External `git`/`claude`/`gh` invocations go through a `CommandRunner` abstraction,
+so the steps are unit-tested without spawning real processes. The default
 `ProcessCommandRunner` merges standard error into standard output for a single
 ordered transcript, and **bounds every command with a configurable timeout**
 (10 minutes by default) so a stalled clone or a stuck `claude` run cannot hang

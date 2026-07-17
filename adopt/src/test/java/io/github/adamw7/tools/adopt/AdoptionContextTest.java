@@ -42,6 +42,25 @@ class AdoptionContextTest {
 	}
 
 	@Test
+	void defaultsToTheAdoptionFeatureBranch() {
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace);
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, context.branchName());
+	}
+
+	@Test
+	void keepsAndTrimsSuppliedBranchName() {
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace,
+				"  feature/x  ");
+		assertEquals("feature/x", context.branchName());
+	}
+
+	@Test
+	void rejectsBlankBranchName() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new AdoptionContext("https://github.com/adamw7/tools.git", workspace, "  "));
+	}
+
+	@Test
 	void rejectsBlankUrl() {
 		assertThrows(IllegalArgumentException.class, () -> new AdoptionContext("  ", workspace));
 	}

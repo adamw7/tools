@@ -18,20 +18,20 @@ class ProcessCommandRunnerTest {
 
 	@Test
 	void capturesExitCodeAndOutput() {
-		CommandResult result = runner.run(Path.of("."), List.of("echo", "hello"));
+		CommandResult result = runner.run(Path.of("."), PlatformCommands.printing("hello"));
 		assertEquals(0, result.exitCode());
 		assertEquals("hello", result.output());
 	}
 
 	@Test
 	void reportsNonZeroExitCode() {
-		CommandResult result = runner.run(Path.of("."), List.of("sh", "-c", "exit 3"));
+		CommandResult result = runner.run(Path.of("."), PlatformCommands.exitingWith(3));
 		assertEquals(3, result.exitCode());
 	}
 
 	@Test
 	void mergesStandardErrorIntoOutput() {
-		CommandResult result = runner.run(Path.of("."), List.of("sh", "-c", "echo oops 1>&2"));
+		CommandResult result = runner.run(Path.of("."), PlatformCommands.printingToStandardError("oops"));
 		assertTrue(result.output().contains("oops"));
 	}
 
@@ -45,14 +45,14 @@ class ProcessCommandRunnerTest {
 	void killsAndReportsACommandThatOutlivesTheTimeout() {
 		ProcessCommandRunner impatient = new ProcessCommandRunner(Duration.ofMillis(100));
 		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> impatient.run(Path.of("."), List.of("sleep", "30")));
+				() -> impatient.run(Path.of("."), PlatformCommands.sleepingFor(30)));
 		assertTrue(thrown.getMessage().contains("Timed out"), thrown.getMessage());
 	}
 
 	@Test
 	void capturesOutputWhenTheCommandFinishesWithinTheTimeout() {
 		ProcessCommandRunner patient = new ProcessCommandRunner(Duration.ofSeconds(30));
-		CommandResult result = patient.run(Path.of("."), List.of("echo", "quick"));
+		CommandResult result = patient.run(Path.of("."), PlatformCommands.printing("quick"));
 		assertEquals(0, result.exitCode());
 		assertEquals("quick", result.output());
 	}

@@ -43,7 +43,9 @@ Maven project. The notable capabilities are:
   (`claude init`) to generate a `CLAUDE.md`, commits and pushes that, then wires
   the `claude-code-enforcer` into the project's `pom.xml` and commits and pushes
   again. External `git`/`claude` invocations go through a `CommandRunner`
-  abstraction so the steps are unit-tested without spawning real processes.
+  abstraction so the steps are unit-tested without spawning real processes; the
+  `ProcessCommandRunner` bounds every command with a configurable timeout so a
+  stalled clone or a stuck `claude` run cannot hang the adoption.
 
 See [README.md](README.md) for worked code examples of each capability,
 [docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model

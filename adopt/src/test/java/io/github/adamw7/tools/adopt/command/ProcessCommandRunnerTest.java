@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -38,5 +39,26 @@ class ProcessCommandRunnerTest {
 	void wrapsMissingExecutableInAdoptionException() {
 		assertThrows(AdoptionException.class,
 				() -> runner.run(Path.of("."), List.of("definitely-not-a-real-binary-xyz")));
+	}
+
+	@Test
+	void killsAndReportsACommandThatOutlivesTheTimeout() {
+		ProcessCommandRunner impatient = new ProcessCommandRunner(Duration.ofMillis(100));
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> impatient.run(Path.of("."), List.of("sleep", "30")));
+		assertTrue(thrown.getMessage().contains("Timed out"), thrown.getMessage());
+	}
+
+	@Test
+	void capturesOutputWhenTheCommandFinishesWithinTheTimeout() {
+		ProcessCommandRunner patient = new ProcessCommandRunner(Duration.ofSeconds(30));
+		CommandResult result = patient.run(Path.of("."), List.of("echo", "quick"));
+		assertEquals(0, result.exitCode());
+		assertEquals("quick", result.output());
+	}
+
+	@Test
+	void rejectsANonPositiveTimeout() {
+		assertThrows(IllegalArgumentException.class, () -> new ProcessCommandRunner(Duration.ZERO));
 	}
 }

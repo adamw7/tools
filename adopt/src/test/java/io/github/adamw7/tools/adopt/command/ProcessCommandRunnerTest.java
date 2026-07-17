@@ -1,0 +1,42 @@
+package io.github.adamw7.tools.adopt.command;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Path;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.adamw7.tools.adopt.AdoptionException;
+
+class ProcessCommandRunnerTest {
+
+	private final ProcessCommandRunner runner = new ProcessCommandRunner();
+
+	@Test
+	void capturesExitCodeAndOutput() {
+		CommandResult result = runner.run(Path.of("."), List.of("echo", "hello"));
+		assertEquals(0, result.exitCode());
+		assertEquals("hello", result.output());
+	}
+
+	@Test
+	void reportsNonZeroExitCode() {
+		CommandResult result = runner.run(Path.of("."), List.of("sh", "-c", "exit 3"));
+		assertEquals(3, result.exitCode());
+	}
+
+	@Test
+	void mergesStandardErrorIntoOutput() {
+		CommandResult result = runner.run(Path.of("."), List.of("sh", "-c", "echo oops 1>&2"));
+		assertTrue(result.output().contains("oops"));
+	}
+
+	@Test
+	void wrapsMissingExecutableInAdoptionException() {
+		assertThrows(AdoptionException.class,
+				() -> runner.run(Path.of("."), List.of("definitely-not-a-real-binary-xyz")));
+	}
+}

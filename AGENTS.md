@@ -38,6 +38,12 @@ Maven project. The notable capabilities are:
   (`OpenAddressingMap`, an `OpenAddressingSet`, and the primitive `int`-keyed
   `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
+- **Claude Code adoption** (`adopt`) — an ordered pipeline that adopts Claude
+  Code into a GitHub repository: it clones the repo, runs the Claude Code CLI
+  (`claude init`) to generate a `CLAUDE.md`, commits and pushes that, then wires
+  the `claude-code-enforcer` into the project's `pom.xml` and commits and pushes
+  again. External `git`/`claude` invocations go through a `CommandRunner`
+  abstraction so the steps are unit-tested without spawning real processes.
 
 See [README.md](README.md) for worked code examples of each capability,
 [docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model
@@ -58,6 +64,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
 │   └── context                     # regex-based class-usage context finder
+├── adopt                       # adopts Claude Code into a GitHub repo (clone, init, commit/push, enforcer)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # builds an executable jar-with-dependencies
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)
@@ -65,7 +72,7 @@ tools (root pom, packaging=pom)
 ```
 
 Root reactor modules are `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-and `assembly`.
+`adopt`, and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 

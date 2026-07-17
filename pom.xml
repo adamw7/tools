@@ -83,6 +83,7 @@
 		<module>mcp-common</module>
 		<module>data</module>
 		<module>code</module>
+		<module>adopt</module>
 		<module>grpc-example</module>
 		<module>assembly</module>
 	</modules>

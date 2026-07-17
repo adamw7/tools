@@ -8,8 +8,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
-
 /**
  * Base for enforcer rules that validate a single JSON configuration file. It
  * owns the scaffolding every such rule repeats: the file parameter must be
@@ -30,15 +28,13 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public final void execute() throws EnforcerRuleException {
 		File file = jsonFile();
-		if (file == null) {
-			throw new EnforcerRuleException("The " + fileParameter() + " parameter is not configured");
-		}
+		requireConfigured(file, fileParameter());
 		if (!file.isFile()) {
 			handleMissingFile(file);
 			return;
 		}
 		List<String> violations = new ArrayList<>();
-		JsonNode root = JsonNodes.parseObject(readContent(file), description(), violations);
+		JsonNode root = JsonNodes.parseObject(requireContent(file, description()), description(), violations);
 		if (root != null) {
 			collectViolations(root, violations);
 		}
@@ -66,14 +62,6 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	 * overrides this to return without reporting.
 	 */
 	protected void handleMissingFile(File file) throws EnforcerRuleException {
-		throw new EnforcerRuleException(description() + " does not exist at " + file);
-	}
-
-	private String readContent(File file) throws EnforcerRuleException {
-		String content = MarkdownText.read(file, description());
-		if (content.isBlank()) {
-			throw new EnforcerRuleException(description() + " is empty: " + file);
-		}
-		return content;
+		requireExists(file, description());
 	}
 }

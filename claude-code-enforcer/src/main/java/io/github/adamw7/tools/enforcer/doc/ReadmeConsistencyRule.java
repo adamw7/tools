@@ -5,12 +5,6 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.doc.DocumentConsistency.Document;
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
-
 /**
  * Enforcer rule that keeps the README from drifting away from the agent docs.
  * {@code README.md} is a curated, example-heavy view of the same project that
@@ -28,7 +22,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * reported together.
  */
 @Named("readmeConsistency")
-public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
+public class ReadmeConsistencyRule extends AbstractDocumentConsistencyRule {
 
 	/** The README under review. Injected from the rule configuration. */
 	private File readmeFile;
@@ -40,31 +34,38 @@ public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
 	private List<String> consistentPatterns;
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
-		DocumentConsistency consistency = new DocumentConsistency(consistentPatterns);
-		consistency.verifyPatterns();
-		Document readme = document(readmeFile);
-		Document agentDoc = document(agentDocFile);
-		report("README has drifted from the agent docs:", consistency.violations(readme, agentDoc, false));
+	protected File firstFile() {
+		return readmeFile;
 	}
 
-	private Document document(File file) {
-		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
+	@Override
+	protected String firstParameterName() {
+		return "readmeFile";
 	}
 
-	private void verifyConfigured() throws EnforcerRuleException {
-		verifyConfigured(readmeFile, "readmeFile");
-		verifyConfigured(agentDocFile, "agentDocFile");
+	@Override
+	protected File secondFile() {
+		return agentDocFile;
 	}
 
-	private void verifyConfigured(File file, String parameter) throws EnforcerRuleException {
-		if (file == null) {
-			throw new EnforcerRuleException("The " + parameter + " parameter is not configured");
-		}
-		if (!file.isFile()) {
-			throw new EnforcerRuleException(parameter + " does not exist at " + file);
-		}
+	@Override
+	protected String secondParameterName() {
+		return "agentDocFile";
+	}
+
+	@Override
+	protected List<String> consistentPatterns() {
+		return consistentPatterns;
+	}
+
+	@Override
+	protected boolean requireInBoth() {
+		return false;
+	}
+
+	@Override
+	protected String reportHeader() {
+		return "README has drifted from the agent docs:";
 	}
 
 	void setReadmeFile(File readmeFile) {

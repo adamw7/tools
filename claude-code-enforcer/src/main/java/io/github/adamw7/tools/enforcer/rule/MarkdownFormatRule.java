@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Base for enforcer rules that validate a Markdown document follows an expected
@@ -131,17 +130,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
-		if (file == null) {
-			throw new EnforcerRuleException("The " + documentName() + " file parameter is not configured");
-		}
-		if (!file.isFile()) {
-			throw new EnforcerRuleException(documentName() + " does not exist at " + file);
-		}
-		String content = MarkdownText.read(file, documentName());
-		if (content.isBlank()) {
-			throw new EnforcerRuleException(documentName() + " is empty: " + file);
-		}
-		return MarkdownDocument.parse(content);
+		requireConfigured(file, documentName());
+		requireExists(file, documentName());
+		return MarkdownDocument.parse(requireContent(file, documentName()));
 	}
 
 	private void collectTitleViolation(MarkdownDocument document, List<String> violations) {

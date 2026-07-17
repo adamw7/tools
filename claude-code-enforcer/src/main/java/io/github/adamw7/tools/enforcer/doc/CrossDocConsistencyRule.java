@@ -5,12 +5,6 @@ import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.doc.DocumentConsistency.Document;
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
-
 /**
  * Enforcer rule that keeps two documents from contradicting each other. Because
  * {@code CLAUDE.md} defers to {@code AGENTS.md} as the single source of truth,
@@ -26,7 +20,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * together.
  */
 @Named("crossDocConsistency")
-public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
+public class CrossDocConsistencyRule extends AbstractDocumentConsistencyRule {
 
 	/** The first document to compare. Injected from the rule configuration. */
 	private File claudeMdFile;
@@ -38,31 +32,38 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	private List<String> consistentPatterns;
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		verifyConfigured();
-		DocumentConsistency consistency = new DocumentConsistency(consistentPatterns);
-		consistency.verifyPatterns();
-		Document first = document(claudeMdFile);
-		Document second = document(agentsMdFile);
-		report("Documents are inconsistent:", consistency.violations(first, second, true));
+	protected File firstFile() {
+		return claudeMdFile;
 	}
 
-	private Document document(File file) {
-		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
+	@Override
+	protected String firstParameterName() {
+		return "claudeMdFile";
 	}
 
-	private void verifyConfigured() throws EnforcerRuleException {
-		verifyConfigured(claudeMdFile, "claudeMdFile");
-		verifyConfigured(agentsMdFile, "agentsMdFile");
+	@Override
+	protected File secondFile() {
+		return agentsMdFile;
 	}
 
-	private void verifyConfigured(File file, String parameter) throws EnforcerRuleException {
-		if (file == null) {
-			throw new EnforcerRuleException("The " + parameter + " parameter is not configured");
-		}
-		if (!file.isFile()) {
-			throw new EnforcerRuleException(parameter + " does not exist at " + file);
-		}
+	@Override
+	protected String secondParameterName() {
+		return "agentsMdFile";
+	}
+
+	@Override
+	protected List<String> consistentPatterns() {
+		return consistentPatterns;
+	}
+
+	@Override
+	protected boolean requireInBoth() {
+		return true;
+	}
+
+	@Override
+	protected String reportHeader() {
+		return "Documents are inconsistent:";
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {

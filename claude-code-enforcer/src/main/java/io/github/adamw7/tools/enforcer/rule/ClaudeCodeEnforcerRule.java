@@ -1,9 +1,12 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import java.io.File;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Base for every Claude Code enforcer rule. It owns the one behaviour they all
@@ -60,6 +63,33 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 		if (parameter == null) {
 			throw new EnforcerRuleException("The " + name + " parameter is not configured");
 		}
+	}
+
+	/**
+	 * Fails when a required input file does not exist on disk. Like a missing
+	 * parameter this is a build-setup mistake, so it always fails regardless of
+	 * {@link #severity}. The {@code description} names the file in the message,
+	 * e.g. {@code CLAUDE.md} or {@code settings.json}.
+	 */
+	protected final void requireExists(File file, String description) throws EnforcerRuleException {
+		if (!file.isFile()) {
+			throw new EnforcerRuleException(description + " does not exist at " + file);
+		}
+	}
+
+	/**
+	 * Reads a required input file and fails when it is blank. An empty file is a
+	 * build-setup mistake, so this always fails regardless of {@link #severity}.
+	 * Returns the file content (with any leading byte-order mark stripped) so the
+	 * caller can validate it further. The {@code description} names the file in
+	 * the message.
+	 */
+	protected final String requireContent(File file, String description) throws EnforcerRuleException {
+		String content = MarkdownText.read(file, description);
+		if (content.isBlank()) {
+			throw new EnforcerRuleException(description + " is empty: " + file);
+		}
+		return content;
 	}
 
 	public void setSeverity(String severity) {

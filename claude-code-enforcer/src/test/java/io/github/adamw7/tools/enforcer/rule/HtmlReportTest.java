@@ -33,6 +33,18 @@ class HtmlReportTest {
 	}
 
 	@Test
+	void rendersViolationsAndHowToFixAsHtmlTables() {
+		String html = new HtmlReport("CLAUDE.md is not well formed:",
+				List.of("missing section: ## Build"),
+				List.of("Add the ## Build section.")).render();
+
+		assertTrue(html.contains("<table class=\"violations\">"), html);
+		assertTrue(html.contains("<th>What failed and why</th>"), html);
+		assertTrue(html.contains("<table class=\"how-to-fix\">"), html);
+		assertTrue(html.contains("<td>missing section: ## Build</td>"), html);
+	}
+
+	@Test
 	void rendersAPassedPageWithNoHowToFixWhenThereAreNoViolations() {
 		String html = new HtmlReport("CLAUDE.md is not well formed:",
 				List.of(),

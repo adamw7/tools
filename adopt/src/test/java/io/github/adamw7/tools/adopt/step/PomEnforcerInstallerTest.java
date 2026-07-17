@@ -91,6 +91,24 @@ class PomEnforcerInstallerTest {
 	}
 
 	@Test
+	void pinsEnforcerPluginVersionWhenCreatingIt(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<version>" + PomEnforcerInstaller.ENFORCER_VERSION + "</version>"),
+				"a freshly created maven-enforcer-plugin must declare a version so the adopted build validates");
+	}
+
+	@Test
+	void bindsExecutionToTheRootModuleOnly(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<inherited>false</inherited>"),
+				"CLAUDE.md lives only at the repository root, so child modules must not inherit the execution");
+	}
+
+	@Test
 	void configuresClaudeMdFileForTheRule(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);
 		installer.install(pom);

@@ -1,0 +1,35 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.github.adamw7</groupId>
+		<artifactId>tools</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>tools.adopt</artifactId>
+	<packaging>jar</packaging>
+	<name>Claude Code repository adoption</name>
+	<description>Adopts Claude Code into a GitHub repository: clones it, runs claude init to generate CLAUDE.md, commits and pushes, then wires the claude-code-enforcer into the project build.</description>
+	<url>https://github.com/adamw7/tools</url>
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

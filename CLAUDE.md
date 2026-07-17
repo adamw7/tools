@@ -22,9 +22,12 @@ run `mvn install` from the repository root. The main capabilities are:
 - **Data** (`data`) — CSV/GZip/JDBC/Parquet data sources (in-memory and iterative), a
   column-uniqueness/key finder, open-addressing map/set data structures, and an
   MCP server exposing the uniqueness checker.
+- **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
+  GitHub repo: clone, `claude init` to generate `CLAUDE.md`, commit and push,
+  then wire the `claude-code-enforcer` into the repo's `pom.xml` and push again.
 
 Module map (root reactor: `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-`grpc-example`, `assembly`; `data-test` is built separately):
+`adopt`, `grpc-example`, `assembly`; `data-test` is built separately):
 
 ```
 tools (root pom, packaging=pom)
@@ -35,6 +38,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # compile-time-safe protobuf builder generator
 │   ├── protogen-maven-plugin-test  # integration tests for the plugin
 │   └── context                     # class-usage context finder + MCP server
+├── adopt                  # adopts Claude Code into a GitHub repo (clone, init, commit/push, enforcer)
 ├── grpc-example           # end-to-end gRPC example
 ├── assembly               # executable jar-with-dependencies (SampleApp)
 └── data-test              # standalone test module (not in root <modules>)

@@ -727,11 +727,14 @@ generated `CLAUDE.md` keeps being validated on every build.
 
 Run it from the command line with a GitHub repository URL and an optional
 workspace directory to clone into (a temporary directory is created when it is
-omitted):
+omitted). Launch it through `exec:java` so Maven puts the full runtime classpath
+(log4j2 and the rest) on the command — a bare `java -cp adopt/target/classes`
+omits the dependency jars and fails at start-up with a `NoClassDefFoundError` for
+the log4j `LogManager`:
 
 ```bash
-java -cp adopt/target/classes io.github.adamw7.tools.adopt.Main \
-    https://github.com/owner/repo.git [workspace-directory]
+mvn -pl adopt exec:java \
+    -Dexec.args="https://github.com/owner/repo.git [workspace-directory]"
 ```
 
 The pipeline is a list of ordered, independent `AdoptionStep`s, each acting on a

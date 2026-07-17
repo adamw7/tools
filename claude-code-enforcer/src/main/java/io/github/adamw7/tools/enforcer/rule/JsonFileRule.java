@@ -56,6 +56,14 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	/** Document-specific checks against the parsed JSON. */
 	protected abstract void collectViolations(JsonNode root, List<String> violations);
 
+	@Override
+	protected List<String> howToFix() {
+		return List.of(
+				"Open " + description() + " and confirm it parses as valid JSON.",
+				"Correct every structural item listed above so it matches what the rule expects.",
+				"Re-run the build to confirm " + description() + " is well formed.");
+	}
+
 	/**
 	 * How to react when the file is absent. The default fails the build, because a
 	 * missing required file is a build-setup mistake. A rule whose file is optional

@@ -98,6 +98,31 @@ class JsonFileRuleTest {
 		assertTrue(logger.warnings().get(0).contains("something is wrong"), logger.warnings().get(0));
 	}
 
+	@Test
+	void writesAnHtmlReportOfTheViolationsWhenAReportFileIsConfigured() throws IOException {
+		TestJsonRule rule = ruleFor("{ }");
+		rule.addViolation("something is wrong");
+		File report = tempDir.resolve("report.html").toFile();
+		rule.setReportFile(report);
+
+		assertThrows(EnforcerRuleException.class, rule::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check failed"), html);
+		assertTrue(html.contains("something is wrong"), html);
+		assertTrue(html.contains("How to fix"), html);
+	}
+
+	@Test
+	void writesAPassedHtmlReportWhenThereAreNoViolations() throws IOException {
+		TestJsonRule rule = ruleFor("{ \"name\": \"value\" }");
+		File report = tempDir.resolve("report.html").toFile();
+		rule.setReportFile(report);
+
+		assertDoesNotThrow(rule::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check passed"), html);
+	}
+
 	private TestJsonRule ruleFor(String content) {
 		Path file = tempDir.resolve("test.json");
 		writeString(file, content);

@@ -147,6 +147,17 @@ violations together and honours a `severity` option: the default `error` fails
 the build, while `<severity>warn</severity>` downgrades the same violations to a
 logged warning so a team can adopt a rule gradually.
 
+An optional `<reportFile>` writes the same outcome as a self-contained HTML
+report — a single table pairing what failed and why (the header plus one entry
+per violation) with the per-rule "How to fix" steps — so a build can surface the
+violations in a browser or as a CI artifact. The page is inlined (styles
+included, no external assets) so it opens anywhere, and it is written on pass and
+fail alike, so a configured report file always reflects the latest run rather
+than leaving a stale failure behind:
+```xml
+<reportFile>${project.build.directory}/claude-code-enforcer.html</reportFile>
+```
+
 The front matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
 also accept an `autoFix` option. When it is enabled and a definition's front
 matter is malformed in a way that is safe to repair — a delimiter written with

@@ -47,8 +47,8 @@ final class HtmlReport {
 		StringBuilder html = new StringBuilder();
 		html.append("<!DOCTYPE html>\n");
 		html.append("<html lang=\"en\">\n<head>\n");
-		html.append("<meta charset=\"utf-8\"/>\n");
-		html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>\n");
+		html.append("<meta charset=\"utf-8\">\n");
+		html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
 		html.append("<title>Claude Code Enforcer report</title>\n");
 		html.append("<style>").append(css()).append("</style>\n");
 		html.append("</head>\n<body>\n");

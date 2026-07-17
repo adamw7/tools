@@ -20,6 +20,12 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * governs collected structural violations; a misconfigured rule (missing file or
  * directory parameter) always fails, because that is a build-setup mistake rather
  * than a document-quality problem.
+ * <p>
+ * When {@code <reportFile>} is configured the same outcome is also written as a
+ * self-contained HTML report — what failed and why, plus the {@link #howToFix()}
+ * steps — so a build can surface the violations in a browser or CI artifact
+ * regardless of severity. The report is written whether the check passes or
+ * fails, so it always reflects the latest run.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
@@ -28,12 +34,17 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	/** Optional override: {@code error} (default) fails the build, {@code warn} only logs. */
 	private String severity;
 
+	/** Optional path for an HTML report of the outcome. When null, no report is written. */
+	private File reportFile;
+
 	/**
-	 * Reports the violations as a single grouped message. Throws when severity is
-	 * {@code error} and there is at least one violation; logs a warning when
-	 * severity is {@code warn}; does nothing when there are no violations.
+	 * Reports the violations as a single grouped message. Writes the HTML report
+	 * first when {@link #reportFile} is configured, then throws when severity is
+	 * {@code error} and there is at least one violation, logs a warning when
+	 * severity is {@code warn}, or does nothing when there are no violations.
 	 */
 	protected final void report(String header, List<String> violations) throws EnforcerRuleException {
+		writeReport(header, violations);
 		if (violations.isEmpty()) {
 			return;
 		}
@@ -43,6 +54,24 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 		} else {
 			throw new EnforcerRuleException(message);
 		}
+	}
+
+	private void writeReport(String header, List<String> violations) throws EnforcerRuleException {
+		if (reportFile == null) {
+			return;
+		}
+		new HtmlReport(header, violations, howToFix()).writeTo(reportFile);
+	}
+
+	/**
+	 * The ordered remediation steps shown under "How to fix" in the HTML report.
+	 * The default is generic advice; a rule with a more specific fix overrides it.
+	 */
+	protected List<String> howToFix() {
+		return List.of(
+				"Open the file named in each message above.",
+				"Correct every listed item so it matches what the rule expects.",
+				"Re-run the build to confirm the rule passes.");
 	}
 
 	private String format(String header, List<String> violations) {
@@ -94,5 +123,9 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	public void setSeverity(String severity) {
 		this.severity = severity;
+	}
+
+	public void setReportFile(File reportFile) {
+		this.reportFile = reportFile;
 	}
 }

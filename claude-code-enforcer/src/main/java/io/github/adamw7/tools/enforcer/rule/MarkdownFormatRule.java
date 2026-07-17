@@ -92,6 +92,15 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
 	}
 
+	@Override
+	protected List<String> howToFix() {
+		return List.of(
+				"Open " + documentName() + " and make its first non-blank line the '" + titleHeading() + "' title heading.",
+				"Add every missing section heading listed above, each with non-empty content beneath it.",
+				"Resolve any remaining item — section order, forbidden tokens, line length, or broken file links.",
+				"Re-run the build to confirm " + documentName() + " is well formed.");
+	}
+
 	final String titleHeading() {
 		return titleHeading != null ? titleHeading : defaultTitleHeading();
 	}

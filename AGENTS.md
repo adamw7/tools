@@ -374,7 +374,11 @@ offer optional checks switched on from configuration: `forbiddenTokens`,
 links to local files must resolve on disk). Every rule extends a common
 `ClaudeCodeEnforcerRule` base that reports all violations together and supports a
 `severity` of `error` (default, fails the build) or `warn` (logs the same
-violations), so a new rule can be adopted gradually.
+violations), so a new rule can be adopted gradually. An optional `reportFile`
+writes the same outcome as a self-contained HTML report — what failed and why
+(the header and one entry per violation) plus per-rule "How to fix" steps — for a
+browser or CI artifact; it is written on pass and fail alike, so it always
+reflects the latest run.
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
 also accept an `autoFix` option (off by default). When enabled and a definition's

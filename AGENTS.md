@@ -315,6 +315,17 @@ profile:
   script command is resolved against `projectDir` and must exist on disk. An
   optional `allowedEvents` list rejects mistyped events and
   `validateScriptReferences` toggles the script-existence check.
+- `HooksFormatRule` (`hooksFormat`) validates the hook scripts under a configured
+  `hooksDir` (e.g. `.claude/hooks`): every regular file must be non-empty, start
+  with a `#!` shebang (`requireShebang`), and carry the executable bit
+  (`requireExecutable`), and an optional `allowedExtensions` list rejects a stray
+  file. Where `hookCommandsValid` validates the JSON shape of the `hooks` section,
+  this rule validates the scripts themselves; when a `settingsFile` is configured
+  it also cross-checks the wiring, so a command hook whose `$CLAUDE_PROJECT_DIR`
+  path lands in the hooks directory must point at a script that exists there (with
+  symlinks resolved so a script cannot escape the directory), and
+  `reportUnreferencedScripts` flags a script no hook references. An absent
+  `hooksDir` is a pass because hooks are optional.
 - `McpServersValidRule` (`mcpServersValid`) validates the project's `.mcp.json`.
   The file is optional, so an absent one passes; when present it must be
   non-empty valid JSON, and every entry under `mcpServers` must be a JSON object
@@ -322,6 +333,13 @@ profile:
   `http` server needs a `url`). An explicit `type` outside `allowedTypes`
   (`stdio`, `sse`, `http` by default) is rejected, and `requiredServers` /
   `forbiddenServers` assert which servers must or must not be declared.
+- `McpConfigFormatRule` (`mcpConfigFormat`) validates the details of each
+  `.mcp.json` server entry that `mcpServersValid` leaves unchecked: `args` must be
+  an array of strings, `env` and `headers` must be objects whose values are all
+  strings, a `url` must be a syntactically valid `http`/`https` URL (and `https`
+  only when `requireHttps` is set), and a server must not mix transports by
+  declaring both a `command` and a `url`. Like `mcpServersValid` it treats an
+  absent file as a pass.
 - `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
   sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
   `skillsDir` (file name for commands and sub-agents, directory name for skills)
@@ -329,6 +347,13 @@ profile:
   At least one directory must be configured, any configured directory must
   exist, and uniqueness is checked across all of them at once, so a command that
   clashes with a skill is caught just like two clashing commands.
+- `UniqueDescriptionsRule` (`uniqueDescriptions`) reads the `description` from the
+  front matter of every sub-agent (`*.md`), command (`*.md`), and skill
+  (`SKILL.md`) in the same configured directories and fails when one description
+  is used by more than one definition, naming every file that uses it — because
+  Claude routes by matching intent against these descriptions, two identical ones
+  are ambiguous and one shadows the other. Comparison ignores case and runs of
+  whitespace; missing or blank descriptions are left to the format rules.
 - `CrossDocConsistencyRule` (`crossDocConsistency`) keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
   regex (one capturing group) must capture the same value in both files, e.g.
@@ -346,9 +371,19 @@ The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks, and
 offer optional checks switched on from configuration: `forbiddenTokens`,
 `enforceSectionOrder`, `maxLineLength`, and `validateFileReferences` (Markdown
-links to local files must resolve on disk). Every rule supports a `severity` of
-`error` (default, fails the build) or `warn` (logs the same violations), so a new
-rule can be adopted gradually.
+links to local files must resolve on disk). Every rule extends a common
+`ClaudeCodeEnforcerRule` base that reports all violations together and supports a
+`severity` of `error` (default, fails the build) or `warn` (logs the same
+violations), so a new rule can be adopted gradually.
+
+The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
+also accept an `autoFix` option (off by default). When enabled and a definition's
+front matter is malformed in a way that is safe to repair — a delimiter written
+with too many dashes such as `----`, or an opening `---` with no closing
+delimiter — the rule rewrites the file in place and continues against the
+corrected content instead of failing. The repair is conservative: it only acts
+when the document opens with a dashes line enclosing real `key: value` entries, so
+a lone `---` thematic break is never mistaken for front matter.
 
 The check is **opt-in**: the `claude-md-enforce` profile activates only when the
 `enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other

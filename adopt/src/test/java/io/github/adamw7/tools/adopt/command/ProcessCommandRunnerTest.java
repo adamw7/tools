@@ -61,4 +61,11 @@ class ProcessCommandRunnerTest {
 	void rejectsANonPositiveTimeout() {
 		assertThrows(IllegalArgumentException.class, () -> new ProcessCommandRunner(Duration.ZERO));
 	}
+
+	@Test
+	void closesStandardInputSoAStdinReaderFinishesInsteadOfHanging() {
+		ProcessCommandRunner patient = new ProcessCommandRunner(Duration.ofSeconds(30));
+		CommandResult result = patient.run(Path.of("."), PlatformCommands.readingStandardInput());
+		assertEquals(0, result.exitCode());
+	}
 }

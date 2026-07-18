@@ -44,11 +44,17 @@ Maven project. The notable capabilities are:
   repo, creates a feature branch,
   marks the checkout trusted in `~/.claude.json` so the headless CLI is not
   blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
-  generate a `CLAUDE.md` and commits it, then wires the `claude-code-enforcer`
-  into the project's `pom.xml` and commits that, verifies the enforcer passes on
-  the generated file with a non-recursive `mvn -N validate`, and finally pushes
-  the branch and opens a pull request with the GitHub CLI (`gh pr create`) — the default
-  branch is never written to directly. External `git`/`claude`/`gh` invocations
+  generate a `CLAUDE.md` and commits it, then wires a `CLAUDE.md` guard into the
+  project's build and commits that, verifies the guard passes on the generated
+  file, and finally pushes the branch and opens a pull request with the GitHub
+  CLI (`gh pr create`) — the default branch is never written to directly. The
+  guard is build-tool aware behind a `BuildSystem` abstraction: a Maven project
+  gets the full `claude-code-enforcer` rule wired into its `pom.xml` and verified
+  with a non-recursive `mvn -N validate`; a Gradle project (Groovy or Kotlin DSL)
+  gets an `enforceClaudeMd` presence guard task appended to its build script and
+  verified by running that task. The pull request metadata — title, body,
+  reviewers, labels, assignees, and draft flag — is supplied through
+  `PullRequestOptions`. External `git`/`claude`/`gh` invocations
   go through a `CommandRunner`
   abstraction so the steps are unit-tested without spawning real processes; the
   `ProcessCommandRunner` bounds every command with a configurable timeout so a

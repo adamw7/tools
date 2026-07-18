@@ -721,12 +721,15 @@ it. See *Testing* in [AGENTS.md](AGENTS.md) for the details.
 The `adopt` module (`tools.adopt`) is an ordered pipeline that **adopts Claude
 Code into a GitHub repository**. Given a repository URL it clones the repo,
 creates a feature branch, runs the Claude Code CLI (`claude -p /init`) to
-generate a `CLAUDE.md` and commits it, then wires the
-[`claude-code-enforcer`](#claude-code-files-maven-enforcer) into the project's
-`pom.xml` and commits that too — so the freshly generated `CLAUDE.md` keeps
-being validated on every build. Finally it pushes the branch and opens a pull
-request with the GitHub CLI, so the change is reviewed rather than landing
-straight on the default branch, which is never written to.
+generate a `CLAUDE.md` and commits it, then wires a `CLAUDE.md` guard into the
+project's build and commits that too — so the freshly generated `CLAUDE.md` keeps
+being validated on every build. The guard is build-tool aware: a Maven project
+gets the full [`claude-code-enforcer`](#claude-code-files-maven-enforcer) rule in
+its `pom.xml`, while a Gradle project (Groovy `build.gradle` or Kotlin
+`build.gradle.kts`) gets a presence-and-non-empty guard task appended to the
+build script — Gradle has no enforcer-rule equivalent. Finally it pushes the
+branch and opens a pull request with the GitHub CLI, so the change is reviewed
+rather than landing straight on the default branch, which is never written to.
 
 Run it from the command line with a GitHub repository URL, an optional workspace
 directory to clone into (a temporary directory is created when it is omitted),
@@ -772,25 +775,33 @@ The default pipeline runs these steps in order:
    the file did not appear.
 6. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
    CLAUDE.md`).
-7. **`EnforcerStep`** — wires the `claude-code-enforcer` into the checkout's root
-   `pom.xml` via `PomEnforcerInstaller`. The edit is done on the JDK's DOM (no
-   third-party XML library), is namespace-aware, and is idempotent: a POM that
-   already declares the rule is left unchanged, and a repository that is not a
-   Maven project (no `pom.xml`) is skipped with a warning rather than failing the
-   adoption.
+7. **`EnforcerStep`** — detects the checkout's build system and wires the
+   `CLAUDE.md` guard into it. A Maven project has the `claude-code-enforcer` added
+   to its root `pom.xml` via `PomEnforcerInstaller` (the edit is done on the JDK's
+   DOM — no third-party XML library — is namespace-aware, and is idempotent); a
+   Gradle project has a `enforceClaudeMd` guard task appended to its
+   `build.gradle`/`build.gradle.kts` via `GradleGuardInstaller`, wired into
+   `check`. Both installs are idempotent, and a repository with no supported build
+   file is skipped with a warning rather than failing the adoption. Supporting a
+   new build tool is a matter of adding a `BuildSystem` implementation rather than
+   branching inside the step.
 8. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
-9. **`VerifyStep`** — runs a non-recursive `mvn -N validate` so the freshly wired
-   enforcer actually executes against the generated `CLAUDE.md`, failing the
-   adoption locally if the file is missing or malformed rather than after the
-   pull request lands.
+9. **`VerifyStep`** — runs the detected build system's verification (a
+   non-recursive `mvn -N validate` for Maven, the `enforceClaudeMd` task for
+   Gradle) so the freshly wired guard actually executes against the generated
+   `CLAUDE.md`, failing the adoption locally if the file is missing or malformed
+   rather than after the pull request lands.
 10. **`PushStep`** — pushes the feature branch to origin and sets its upstream
     (`git push -u origin <branch>`).
 11. **`PullRequestStep`** — opens a pull request from the branch with
-   `gh pr create`, targeting the repository's default branch as the base. Like
-   `CommitStep` it stays idempotent: a `gh` failure that only reports an
-   already-open pull request for the branch, or no commits between base and head,
-   is treated as a no-op rather than aborting the adoption.
+   `gh pr create`, targeting the repository's default branch as the base. The
+   pull request metadata is supplied through `PullRequestOptions` — title, body,
+   and optional reviewers, labels, and assignees to request, plus whether to open
+   the pull request as a `--draft` — so the defaults can be overridden per
+   project. Like `CommitStep` it stays idempotent: a `gh` failure that only
+   reports an already-open pull request for the branch, or no commits between base
+   and head, is treated as a no-op rather than aborting the adoption.
 
 External `git`/`claude`/`gh` invocations go through a `CommandRunner` abstraction,
 so the steps are unit-tested without spawning real processes. The default

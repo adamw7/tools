@@ -42,7 +42,25 @@ class EnforcerStepTest {
 	}
 
 	@Test
-	void skipsWhenNotAMavenProject(@TempDir Path workspace) throws IOException {
+	void wiresGuardIntoAGroovyGradleBuild(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		Path buildFile = context.repositoryDirectory().resolve("build.gradle");
+		Files.writeString(buildFile, "plugins { id 'java' }\n");
+		new EnforcerStep().execute(context, new RecordingCommandRunner());
+		assertTrue(Files.readString(buildFile).contains("enforceClaudeMd"));
+	}
+
+	@Test
+	void wiresGuardIntoAKotlinGradleBuild(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		Path buildFile = context.repositoryDirectory().resolve("build.gradle.kts");
+		Files.writeString(buildFile, "plugins { java }\n");
+		new EnforcerStep().execute(context, new RecordingCommandRunner());
+		assertTrue(Files.readString(buildFile).contains("enforceClaudeMd"));
+	}
+
+	@Test
+	void skipsWhenNoSupportedBuildFileIsPresent(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		assertDoesNotThrow(() -> new EnforcerStep().execute(context, new RecordingCommandRunner()));
 		assertFalse(Files.exists(context.repositoryDirectory().resolve("pom.xml")));

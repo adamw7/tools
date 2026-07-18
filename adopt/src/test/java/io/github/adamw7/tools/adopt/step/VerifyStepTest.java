@@ -34,17 +34,27 @@ class VerifyStepTest {
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
-		assertEquals(VerifyStep.DEFAULT_COMMAND, runner.commandAt(0));
+		assertEquals(MavenBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
 	}
 
 	@Test
-	void runsConfiguredMavenCommand(@TempDir Path workspace) throws IOException {
+	void runsGradleGuardTaskForAGradleCheckout(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		Files.writeString(context.repositoryDirectory().resolve("build.gradle"), "plugins { id 'java' }\n");
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new VerifyStep().execute(context, runner);
+		assertEquals(GradleBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
+	}
+
+	@Test
+	void runsTheDetectedBuildSystemsVerifyCommand(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
-		new VerifyStep(List.of("mvn", "verify")).execute(context, runner);
-		assertEquals(List.of("mvn", "verify"), runner.commandAt(0));
+		BuildSystem custom = new FakeBuildSystem(List.of("just", "verify"));
+		new VerifyStep(List.of(custom)).execute(context, runner);
+		assertEquals(List.of("just", "verify"), runner.commandAt(0));
 	}
 
 	@Test
@@ -57,7 +67,7 @@ class VerifyStepTest {
 	}
 
 	@Test
-	void skipsWhenNotAMavenProject(@TempDir Path workspace) throws IOException {
+	void skipsWhenNoSupportedBuildFileIsPresent(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
@@ -67,5 +77,34 @@ class VerifyStepTest {
 	@Test
 	void isNamedVerify() {
 		assertEquals("verify", new VerifyStep().name());
+	}
+
+	private static final class FakeBuildSystem implements BuildSystem {
+
+		private final List<String> verifyCommand;
+
+		private FakeBuildSystem(List<String> verifyCommand) {
+			this.verifyCommand = verifyCommand;
+		}
+
+		@Override
+		public String name() {
+			return "fake";
+		}
+
+		@Override
+		public boolean matches(Path repositoryDirectory) {
+			return true;
+		}
+
+		@Override
+		public boolean install(Path repositoryDirectory) {
+			return true;
+		}
+
+		@Override
+		public List<String> verifyCommand() {
+			return verifyCommand;
+		}
 	}
 }

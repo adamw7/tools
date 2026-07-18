@@ -27,6 +27,7 @@ public class ProcessCommandRunner implements CommandRunner {
 	static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
 
 	private final Duration timeout;
+	private final ExecutableResolver resolver;
 
 	public ProcessCommandRunner() {
 		this(DEFAULT_TIMEOUT);
@@ -34,6 +35,7 @@ public class ProcessCommandRunner implements CommandRunner {
 
 	public ProcessCommandRunner(Duration timeout) {
 		this.timeout = requirePositive(timeout);
+		this.resolver = new ExecutableResolver();
 	}
 
 	private static Duration requirePositive(Duration timeout) {
@@ -45,7 +47,7 @@ public class ProcessCommandRunner implements CommandRunner {
 
 	@Override
 	public CommandResult run(Path workingDirectory, List<String> command) {
-		ProcessBuilder builder = new ProcessBuilder(command)
+		ProcessBuilder builder = new ProcessBuilder(resolver.resolve(command))
 				.directory(workingDirectory.toFile())
 				.redirectErrorStream(true);
 		return execute(builder, command);

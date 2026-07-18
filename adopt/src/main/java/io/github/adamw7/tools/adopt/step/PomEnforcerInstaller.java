@@ -1,11 +1,13 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -45,17 +47,49 @@ public class PomEnforcerInstaller {
 	static final String ENFORCER_VERSION = "3.6.3";
 	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	static final String RULE_GROUP_ID = "io.github.adamw7";
-	static final String DEFAULT_RULE_VERSION = "2.5.0";
 	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
+	static final String BUILD_PROPERTIES = "/adopt-build.properties";
+	static final String RULE_VERSION_KEY = "enforcer.rule.version";
 
 	private final String ruleVersion;
 
 	public PomEnforcerInstaller() {
-		this(DEFAULT_RULE_VERSION);
+		this(buildRuleVersion());
 	}
 
 	public PomEnforcerInstaller(String ruleVersion) {
 		this.ruleVersion = ruleVersion;
+	}
+
+	/**
+	 * Reads the enforcer rule version wired into adopted POMs from the build
+	 * metadata that Maven filters into {@value #BUILD_PROPERTIES} at build time, so
+	 * the dependency is pinned to the exact {@code tools} release running the
+	 * adoption — and is therefore resolvable from the same repository that
+	 * published it — rather than to a hardcoded literal that silently drifts as the
+	 * project is versioned.
+	 */
+	private static String buildRuleVersion() {
+		try (InputStream stream = PomEnforcerInstaller.class.getResourceAsStream(BUILD_PROPERTIES)) {
+			return readRuleVersion(stream);
+		} catch (IOException e) {
+			throw new AdoptionException("Could not read build metadata: " + BUILD_PROPERTIES, e);
+		}
+	}
+
+	private static String readRuleVersion(InputStream stream) throws IOException {
+		if (stream == null) {
+			throw new AdoptionException("Build metadata not on the classpath: " + BUILD_PROPERTIES
+					+ " (build the module so its resources are filtered)");
+		}
+		Properties properties = new Properties();
+		properties.load(stream);
+		String version = properties.getProperty(RULE_VERSION_KEY, "").strip();
+		if (version.isEmpty() || version.startsWith("${")) {
+			throw new AdoptionException(
+					RULE_VERSION_KEY + " was not filtered into " + BUILD_PROPERTIES + " (found: '" + version + "')");
+		}
+		return version;
 	}
 
 	/**

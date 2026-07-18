@@ -2,11 +2,14 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -196,5 +199,33 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_BUILD);
 		installer.install(pom);
 		assertTrue(Files.readString(pom).contains("http://maven.apache.org/POM/4.0.0"));
+	}
+
+	/**
+	 * The default installer must pin the rule to the version Maven filtered into
+	 * {@code adopt-build.properties} — the release actually running the adoption —
+	 * rather than a hardcoded literal that drifts as the project is versioned.
+	 */
+	@Test
+	void defaultInstallerPinsTheRuleToTheFilteredBuildVersion(@TempDir Path dir) throws IOException {
+		String buildVersion = filteredRuleVersion();
+		Path pom = write(dir, POM_WITH_BUILD);
+		assertTrue(new PomEnforcerInstaller().install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains("tools.claude-code-enforcer"));
+		assertTrue(result.contains("<version>" + buildVersion + "</version>"),
+				"the rule dependency must be pinned to the filtered build version " + buildVersion);
+	}
+
+	private String filteredRuleVersion() throws IOException {
+		try (InputStream stream = getClass().getResourceAsStream(PomEnforcerInstaller.BUILD_PROPERTIES)) {
+			assertNotNull(stream, PomEnforcerInstaller.BUILD_PROPERTIES + " must be filtered onto the test classpath");
+			Properties properties = new Properties();
+			properties.load(stream);
+			String version = properties.getProperty(PomEnforcerInstaller.RULE_VERSION_KEY, "").strip();
+			assertFalse(version.isEmpty() || version.startsWith("${"),
+					"enforcer.rule.version must be filtered to a concrete version, was: " + version);
+			return version;
+		}
 	}
 }

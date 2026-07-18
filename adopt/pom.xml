@@ -13,6 +13,23 @@
 	<description>Adopts Claude Code into a GitHub repository: clones it, runs claude init to generate CLAUDE.md, commits and pushes, then wires the claude-code-enforcer into the project build.</description>
 	<url>https://github.com/adamw7/tools</url>
 	<build>
+		<resources>
+			<!-- Default resources copied verbatim: log4j2.properties carries ${...}
+			     tokens that are log4j's own and must survive unfiltered. -->
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<!-- A dedicated directory that IS filtered, so the project version is
+			     baked into adopt-build.properties (see PomEnforcerInstaller). The
+			     spring-boot-starter parent filters with the @...@ delimiter, which
+			     that file uses. Kept separate from src/main/resources because
+			     overlapping filtered and unfiltered entries on one directory are
+			     unreliable, and because log4j2.properties must stay unfiltered. -->
+			<resource>
+				<directory>src/main/filtered-resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
 		<plugins>
 			<!-- Lets the pipeline be launched with `mvn -pl adopt exec:java`, which
 			     resolves the full runtime classpath (log4j2 and the rest) from the

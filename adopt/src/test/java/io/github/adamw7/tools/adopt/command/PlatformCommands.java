@@ -44,6 +44,16 @@ final class PlatformCommands {
 	}
 
 	/**
+	 * A command that reads standard input to end-of-stream and then exits. With
+	 * the child's standard input closed it sees EOF at once and finishes; left
+	 * open it would block until killed, which is what the stdin-closing test
+	 * guards against. {@code cat} and {@code sort} both echo stdin and exit 0.
+	 */
+	static List<String> readingStandardInput() {
+		return WINDOWS ? cmd("sort") : List.of("cat");
+	}
+
+	/**
 	 * Windows has no {@code sleep} executable, and {@code timeout} refuses to run
 	 * with redirected input, which is exactly how a child of
 	 * {@link ProcessBuilder} is started. Pinging the loopback address once a

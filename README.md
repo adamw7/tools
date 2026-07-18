@@ -754,28 +754,39 @@ GitHubRepoAdopter.withDefaultPipeline(runner)
 
 The default pipeline runs these steps in order:
 
-1. **`CloneStep`** — clones the target repository into the workspace with
+1. **`ToolchainStep`** — probes the external tools the pipeline shells out to
+   (`git`, `claude`, `gh`) with a `--version` check before any real work, so a
+   missing tool aborts the adoption immediately with a message naming every
+   absent one instead of failing minutes later after a clone, a `claude init`,
+   and a Maven build have already run.
+2. **`CloneStep`** — clones the target repository into the workspace with
    `git clone`, giving the remaining steps a working checkout.
-2. **`BranchStep`** — creates and checks out the adoption feature branch with
-   `git checkout -b`, so every later commit lands on that branch instead of the
+3. **`BranchStep`** — creates and checks out the adoption feature branch with
+   `git checkout -B`, so every later commit lands on that branch instead of the
    default branch.
-3. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
+4. **`TrustStep`** — marks the checkout trusted in `~/.claude.json` so the
+   headless `claude` run is not blocked by the interactive folder-trust prompt.
+5. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
    (`claude -p /init` by default; the invocation is configurable because the
-   flags differ between environments) so it generates a `CLAUDE.md`, warning if
+   flags differ between environments) so it generates a `CLAUDE.md`, aborting if
    the file did not appear.
-4. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
+6. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
    CLAUDE.md`).
-5. **`EnforcerStep`** — wires the `claude-code-enforcer` into the checkout's root
+7. **`EnforcerStep`** — wires the `claude-code-enforcer` into the checkout's root
    `pom.xml` via `PomEnforcerInstaller`. The edit is done on the JDK's DOM (no
    third-party XML library), is namespace-aware, and is idempotent: a POM that
    already declares the rule is left unchanged, and a repository that is not a
    Maven project (no `pom.xml`) is skipped with a warning rather than failing the
    adoption.
-6. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
+8. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
-7. **`PushStep`** — pushes the feature branch to origin and sets its upstream
-   (`git push -u origin <branch>`).
-8. **`PullRequestStep`** — opens a pull request from the branch with
+9. **`VerifyStep`** — runs a non-recursive `mvn -N validate` so the freshly wired
+   enforcer actually executes against the generated `CLAUDE.md`, failing the
+   adoption locally if the file is missing or malformed rather than after the
+   pull request lands.
+10. **`PushStep`** — pushes the feature branch to origin and sets its upstream
+    (`git push -u origin <branch>`).
+11. **`PullRequestStep`** — opens a pull request from the branch with
    `gh pr create`, targeting the repository's default branch as the base. Like
    `CommitStep` it stays idempotent: a `gh` failure that only reports an
    already-open pull request for the branch, or no commits between base and head,

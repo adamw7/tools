@@ -36,6 +36,24 @@ class AdoptionContextTest {
 	}
 
 	@Test
+	void derivesCheckoutDirectoryFromNestedGroupUrl() {
+		AdoptionContext context = new AdoptionContext("https://gitlab.com/group/subgroup/tools.git", workspace);
+		assertEquals(workspace.resolve("tools"), context.repositoryDirectory());
+	}
+
+	@Test
+	void keepsDotsInRepositoryNameThatAreNotTheGitSuffix() {
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/my.tool.git", workspace);
+		assertEquals(workspace.resolve("my.tool"), context.repositoryDirectory());
+	}
+
+	@Test
+	void exposesTheWorkspaceDirectory() {
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace);
+		assertEquals(workspace, context.workspace());
+	}
+
+	@Test
 	void trimsAndKeepsUrl() {
 		AdoptionContext context = new AdoptionContext("  https://github.com/adamw7/tools.git  ", workspace);
 		assertEquals("https://github.com/adamw7/tools.git", context.repositoryUrl());
@@ -63,6 +81,17 @@ class AdoptionContextTest {
 	@Test
 	void rejectsBlankUrl() {
 		assertThrows(IllegalArgumentException.class, () -> new AdoptionContext("  ", workspace));
+	}
+
+	@Test
+	void rejectsNullUrl() {
+		assertThrows(IllegalArgumentException.class, () -> new AdoptionContext(null, workspace));
+	}
+
+	@Test
+	void rejectsNullBranchName() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new AdoptionContext("https://github.com/adamw7/tools.git", workspace, null));
 	}
 
 	@Test

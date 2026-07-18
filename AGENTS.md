@@ -39,7 +39,9 @@ Maven project. The notable capabilities are:
   `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
   uniqueness checker as a tool for AI assistants.
 - **Claude Code adoption** (`adopt`) — an ordered pipeline that adopts Claude
-  Code into a GitHub repository: it clones the repo, creates a feature branch,
+  Code into a GitHub repository: it first checks the required tools (`git`,
+  `claude`, `gh`) are on the `PATH` so a missing one fails fast, then clones the
+  repo, creates a feature branch,
   marks the checkout trusted in `~/.claude.json` so the headless CLI is not
   blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
   generate a `CLAUDE.md` and commits it, then wires the `claude-code-enforcer`

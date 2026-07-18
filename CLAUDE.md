@@ -23,7 +23,8 @@ run `mvn install` from the repository root. The main capabilities are:
   column-uniqueness/key finder, open-addressing map/set data structures, and an
   MCP server exposing the uniqueness checker.
 - **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
-  GitHub repo: clone, create a feature branch, `claude init` to generate
+  GitHub repo: check the required tools (`git`, `claude`, `gh`) are installed,
+  clone, create a feature branch, `claude init` to generate
   `CLAUDE.md` and commit it, wire the `claude-code-enforcer` into the repo's
   `pom.xml` and commit that, verify the enforcer passes on the generated file,
   then push the branch and open a pull request (`gh pr create`); the default

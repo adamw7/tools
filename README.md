@@ -829,7 +829,15 @@ A set of conventions is shared across modules:
 - **Logging goes through log4j2, not the console or the JDK** — ArchUnit's
   `GeneralCodingRules` forbid access to `System.out`/`System.err`, throwing
   generic exceptions, and using `java.util.logging`; libraries additionally must
-  never call `System.exit`.
+  never call `System.exit`. The `data` module tightens this further, also
+  rejecting the JDK's own `System.Logger` so all logging stays on log4j2.
+- **No raw stack traces** — no class may call any `Throwable.printStackTrace`
+  overload, because a failure must be reported through log4j2 rather than dumped
+  to the console.
+- **Public fields are immutable** — every `public` field must be `final`, so a
+  field that is part of a type's API surface cannot be reassigned from outside.
+- **No legacy date library** — `GeneralCodingRules` forbid a dependency on
+  Joda-Time, keeping date/time handling on the `java.time` API.
 
 On top of that baseline, each module pins the boundaries specific to its own
 design:
@@ -841,7 +849,12 @@ design:
   `*DataSource` must implement `IterableDataSource`; the uniqueness core must not
   depend on its `mcp` adapter; and a `layeredArchitecture` pins the source layers
   so file and DB sources depend only downwards on their contracts (files may also
-  use compression), never on each other.
+  use compression), never on each other. Two rules keep the open-addressing
+  structures honest about their documented lack of thread-safety: no method in
+  `structure` may be `synchronized`, and `structure` may not depend on
+  `java.util.concurrent`, so neither can silently suggest the collections are safe
+  to share. Two more pin the `network` kill-switch to its documented shape:
+  `Switch.off()` must be `synchronized` and its `isOff` flag must be `volatile`.
 - **[`code/context`](code/context/src/test/java/io/github/adamw7/context/architecture/ContextArchitectureTest.java)** — the finder/tree core must not depend on the `mcp`
   delivery package, and only that `mcp` package may build on the shared MCP
   scaffolding; every concrete `*Serializer` must honour the
@@ -857,6 +870,18 @@ design:
   `definition`/`doc`/`mcp`/`settings` build on `rule` without reaching sideways
   into one another), and every concrete `*Rule` must extend the shared
   `ClaudeCodeEnforcerRule` base.
+- **[`adopt`](adopt/src/test/java/io/github/adamw7/tools/adopt/architecture/AdoptArchitectureTest.java)** — the `command` runner layer must not depend on the
+  `step` package, so the reusable command abstraction stays unaware of the
+  adoption steps that build on it; and every concrete `*Step` in `step` must
+  implement the `AdoptionStep` contract.
+
+Alongside the production rules, each module carries a companion
+`TestConventionsArchitectureTest` that analyses only the *test* classes (via
+`ImportOption.OnlyIncludeTests`) and pins conventions on the tests themselves:
+every `@Testable` method must live in a `*Test` or `*IT` class so surefire or
+failsafe actually runs it, no test is `@Disabled`, tests use JUnit 5 only (no
+JUnit 4 `org.junit` API), and no test calls `Thread.sleep` (sleeping is slow and
+flaky — wait on a condition instead).
 
 Run them for a single module with, for example:
 ```

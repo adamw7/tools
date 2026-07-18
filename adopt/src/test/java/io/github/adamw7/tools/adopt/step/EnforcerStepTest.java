@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,5 +46,22 @@ class EnforcerStepTest {
 		AdoptionContext context = context(workspace);
 		assertDoesNotThrow(() -> new EnforcerStep().execute(context, new RecordingCommandRunner()));
 		assertFalse(Files.exists(context.repositoryDirectory().resolve("pom.xml")));
+	}
+
+	@Test
+	void leavesAnAlreadyWiredPomByteForByteUnchanged(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		Path pom = context.repositoryDirectory().resolve("pom.xml");
+		Files.writeString(pom, POM);
+		EnforcerStep step = new EnforcerStep();
+		step.execute(context, new RecordingCommandRunner());
+		String afterFirstWiring = Files.readString(pom);
+		step.execute(context, new RecordingCommandRunner());
+		assertEquals(afterFirstWiring, Files.readString(pom));
+	}
+
+	@Test
+	void isNamedEnforcer() {
+		assertEquals("enforcer", new EnforcerStep().name());
 	}
 }

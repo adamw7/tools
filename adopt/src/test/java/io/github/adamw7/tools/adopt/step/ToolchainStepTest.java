@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +65,22 @@ class ToolchainStepTest {
 				() -> new ToolchainStep().execute(context, runner));
 		assertTrue(thrown.getMessage().contains("claude"), thrown.getMessage());
 		assertTrue(thrown.getMessage().contains("gh"), thrown.getMessage());
+	}
+
+	@Test
+	void reportsMissingToolsInDeclarationOrder() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 1, "missing"));
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ToolchainStep(List.of("git", "gh")).execute(context, runner));
+		assertTrue(thrown.getMessage().contains("git, gh"), thrown.getMessage());
+	}
+
+	@Test
+	void anEmptyToolListIsANoOpThatPasses() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		assertDoesNotThrow(() -> new ToolchainStep(List.of()).execute(context, runner));
+		assertEquals(0, runner.count());
 	}
 
 	@Test

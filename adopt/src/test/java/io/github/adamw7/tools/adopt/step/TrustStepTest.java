@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -37,6 +38,17 @@ class TrustStepTest {
 		String key = context.repositoryDirectory().toAbsolutePath().normalize().toString();
 		assertTrue(MAPPER.readTree(config.toFile()).path("projects").path(key)
 				.path("hasTrustDialogAccepted").asBoolean());
+	}
+
+	@Test
+	void leavesConfigUnchangedWhenTheCheckoutIsAlreadyTrusted(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", dir);
+		TrustStep step = new TrustStep(new ClaudeTrustStore(config));
+		step.execute(context, new RecordingCommandRunner());
+		String afterFirstTrust = Files.readString(config);
+		step.execute(context, new RecordingCommandRunner());
+		assertEquals(afterFirstTrust, Files.readString(config));
 	}
 
 	@Test

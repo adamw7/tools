@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -12,8 +13,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 /**
  * Opens a pull request for the adoption feature branch with the GitHub CLI
  * ({@code gh pr create}), targeting the repository's default branch as the base.
- * The title and body are configurable because they differ between projects; the
- * defaults describe the Claude Code adoption.
+ * The pull request metadata — title, body, reviewers, labels, assignees, and
+ * whether it is a draft — is supplied through {@link PullRequestOptions} because
+ * it differs between projects; the defaults describe the Claude Code adoption
+ * and request nobody.
  *
  * <p>The step stays idempotent when re-run: it asks {@code gh pr view} whether a
  * pull request already exists for the branch and skips creation when one does,
@@ -24,20 +27,18 @@ public class PullRequestStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(PullRequestStep.class);
 
-	static final String DEFAULT_TITLE = "Adopt Claude Code";
-	static final String DEFAULT_BODY = "Adds a generated CLAUDE.md and wires the claude-code-enforcer "
-			+ "into the build so the file keeps being validated.";
-
-	private final String title;
-	private final String body;
+	private final PullRequestOptions options;
 
 	public PullRequestStep() {
-		this(DEFAULT_TITLE, DEFAULT_BODY);
+		this(PullRequestOptions.defaults());
 	}
 
 	public PullRequestStep(String title, String body) {
-		this.title = title;
-		this.body = body;
+		this(PullRequestOptions.builder().title(title).body(body).build());
+	}
+
+	public PullRequestStep(PullRequestOptions options) {
+		this.options = options;
 	}
 
 	@Override
@@ -52,10 +53,27 @@ public class PullRequestStep extends AbstractCommandStep {
 			return;
 		}
 		log.info("Opening pull request for branch {}", context.branchName());
-		List<String> command = List.of("gh", "pr", "create", "--title", title, "--body", body,
-				"--head", context.branchName());
-		CommandResult result = runOrFail(runner, context.repositoryDirectory(), command);
+		CommandResult result = runOrFail(runner, context.repositoryDirectory(), createCommand(context));
 		log.info("Opened pull request: {}", result.output().strip());
+	}
+
+	private List<String> createCommand(AdoptionContext context) {
+		List<String> command = new ArrayList<>(List.of("gh", "pr", "create", "--title", options.title(), "--body",
+				options.body(), "--head", context.branchName()));
+		if (options.draft()) {
+			command.add("--draft");
+		}
+		addRepeated(command, "--reviewer", options.reviewers());
+		addRepeated(command, "--label", options.labels());
+		addRepeated(command, "--assignee", options.assignees());
+		return List.copyOf(command);
+	}
+
+	private void addRepeated(List<String> command, String flag, List<String> values) {
+		for (String value : values) {
+			command.add(flag);
+			command.add(value);
+		}
 	}
 
 	private boolean pullRequestExists(AdoptionContext context, CommandRunner runner) {

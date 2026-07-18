@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -22,40 +21,50 @@ class PullRequestStepTest {
 
 	@Test
 	void opensPullRequestForFeatureBranch() {
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::noExistingPullRequest);
 		step.execute(context, runner);
+		assertEquals(List.of("gh", "pr", "view", "claude/adopt-claude-code", "--json", "url"),
+				runner.commandAt(0));
 		assertEquals(List.of("gh", "pr", "create", "--title", PullRequestStep.DEFAULT_TITLE, "--body",
-				PullRequestStep.DEFAULT_BODY, "--head", "claude/adopt-claude-code"), runner.commandAt(0));
-		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
+				PullRequestStep.DEFAULT_BODY, "--head", "claude/adopt-claude-code"), runner.commandAt(1));
+		assertEquals(context.repositoryDirectory(), runner.invocations().get(1).workingDirectory());
 	}
 
 	@Test
 	void usesConfiguredTitleAndBody() {
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::noExistingPullRequest);
 		new PullRequestStep("My title", "My body").execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
-				"claude/adopt-claude-code"), runner.commandAt(0));
+				"claude/adopt-claude-code"), runner.commandAt(1));
 	}
 
 	@Test
-	void toleratesAnAlreadyOpenPullRequest() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(command -> new CommandResult(command, 1,
-				"a pull request for branch \"claude/adopt-claude-code\" already exists"));
-		assertDoesNotThrow(() -> step.execute(context, runner));
+	void skipsCreationWhenAPullRequestAlreadyExists() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		step.execute(context, runner);
+		assertEquals(1, runner.count());
+		assertEquals(List.of("gh", "pr", "view", "claude/adopt-claude-code", "--json", "url"),
+				runner.commandAt(0));
 	}
 
 	@Test
-	void toleratesNoCommitsBetweenBaseAndHead() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "No commits between main and claude/adopt-claude-code"));
-		assertDoesNotThrow(() -> step.execute(context, runner));
-	}
-
-	@Test
-	void otherFailureAbortsAdoption() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "gh: could not authenticate"));
+	void failedCreationAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::createFails);
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
+	private CommandResult noExistingPullRequest(List<String> command) {
+		if (command.contains("view")) {
+			return new CommandResult(command, 1, "no pull requests found");
+		}
+		return new CommandResult(command, 0, "https://github.com/adamw7/tools/pull/1");
+	}
+
+	private CommandResult createFails(List<String> command) {
+		if (command.contains("view")) {
+			return new CommandResult(command, 1, "no pull requests found");
+		}
+		return new CommandResult(command, 1, "gh: could not authenticate");
 	}
 
 	@Test

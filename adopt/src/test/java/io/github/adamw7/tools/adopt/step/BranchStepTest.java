@@ -23,7 +23,7 @@ class BranchStepTest {
 	void createsFeatureBranchInCheckout() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		step.execute(context, runner);
-		assertEquals(List.of("git", "checkout", "-b", "claude/adopt-claude-code"), runner.commandAt(0));
+		assertEquals(List.of("git", "checkout", "-B", "claude/adopt-claude-code"), runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
 	}
 

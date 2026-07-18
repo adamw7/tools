@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -20,33 +19,39 @@ class CommitStepTest {
 			Path.of("/tmp/workspace"));
 
 	@Test
-	void stagesThenCommitsWithMessage() {
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+	void stagesChecksThenCommitsWithMessage() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::stagedChanges);
 		new CommitStep("my message").execute(context, runner);
 		assertEquals(List.of("git", "add", "-A"), runner.commandAt(0));
-		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(1));
+		assertEquals(List.of("git", "diff", "--cached", "--quiet"), runner.commandAt(1));
+		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(2));
 	}
 
 	@Test
-	void emptyCommitIsTreatedAsNoOp() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(this::nothingToCommitOnCommit);
-		assertDoesNotThrow(() -> new CommitStep("msg").execute(context, runner));
+	void skipsCommitWhenNothingIsStaged() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new CommitStep("msg").execute(context, runner);
+		assertEquals(2, runner.count());
+		assertEquals(List.of("git", "diff", "--cached", "--quiet"), runner.commandAt(1));
 	}
 
 	@Test
-	void otherCommitFailureAborts() {
+	void commitFailureAborts() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::genuineCommitFailure);
 		assertThrows(AdoptionException.class, () -> new CommitStep("msg").execute(context, runner));
 	}
 
-	private CommandResult nothingToCommitOnCommit(List<String> command) {
-		if (command.contains("commit")) {
-			return new CommandResult(command, 1, "nothing to commit, working tree clean");
+	private CommandResult stagedChanges(List<String> command) {
+		if (command.contains("diff")) {
+			return new CommandResult(command, 1, "");
 		}
 		return new CommandResult(command, 0, "");
 	}
 
 	private CommandResult genuineCommitFailure(List<String> command) {
+		if (command.contains("diff")) {
+			return new CommandResult(command, 1, "");
+		}
 		if (command.contains("commit")) {
 			return new CommandResult(command, 128, "fatal: unable to write commit object");
 		}

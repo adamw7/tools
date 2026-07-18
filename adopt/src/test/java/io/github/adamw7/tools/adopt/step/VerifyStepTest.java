@@ -16,49 +16,56 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
-class ClaudeInitStepTest {
+class VerifyStepTest {
 
 	private AdoptionContext context(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace);
+		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/demo.git", workspace);
 		Files.createDirectories(context.repositoryDirectory());
 		return context;
 	}
 
-	private void generateClaudeMd(AdoptionContext context) throws IOException {
-		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md");
+	private void writePom(AdoptionContext context) throws IOException {
+		Files.writeString(context.repositoryDirectory().resolve("pom.xml"), "<project/>");
 	}
 
 	@Test
-	void runsConfiguredClaudeCommandInCheckout(@TempDir Path workspace) throws IOException {
+	void runsMavenValidateInCheckout(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		generateClaudeMd(context);
+		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
-		new ClaudeInitStep(List.of("claude", "init")).execute(context, runner);
-		assertEquals(List.of("claude", "init"), runner.commandAt(0));
+		new VerifyStep().execute(context, runner);
+		assertEquals(VerifyStep.DEFAULT_COMMAND, runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
 	}
 
 	@Test
-	void defaultsToHeadlessInitCommand(@TempDir Path workspace) throws IOException {
+	void runsConfiguredMavenCommand(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		generateClaudeMd(context);
+		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
-		new ClaudeInitStep().execute(context, runner);
-		assertEquals(ClaudeInitStep.DEFAULT_COMMAND, runner.commandAt(0));
+		new VerifyStep(List.of("mvn", "verify")).execute(context, runner);
+		assertEquals(List.of("mvn", "verify"), runner.commandAt(0));
 	}
 
 	@Test
-	void failedInitAbortsAdoption(@TempDir Path workspace) throws IOException {
+	void failedVerificationAbortsAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
+		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "boom"));
-		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
+				command -> new CommandResult(command, 1, "CLAUDE.md is malformed"));
+		assertThrows(AdoptionException.class, () -> new VerifyStep().execute(context, runner));
 	}
 
 	@Test
-	void missingClaudeMdAbortsAdoption(@TempDir Path workspace) throws IOException {
+	void skipsWhenNotAMavenProject(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
-		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
+		new VerifyStep().execute(context, runner);
+		assertEquals(0, runner.count());
+	}
+
+	@Test
+	void isNamedVerify() {
+		assertEquals("verify", new VerifyStep().name());
 	}
 }

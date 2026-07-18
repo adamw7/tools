@@ -43,8 +43,9 @@ Maven project. The notable capabilities are:
   marks the checkout trusted in `~/.claude.json` so the headless CLI is not
   blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
   generate a `CLAUDE.md` and commits it, then wires the `claude-code-enforcer`
-  into the project's `pom.xml` and commits that, and finally pushes the branch
-  and opens a pull request with the GitHub CLI (`gh pr create`) — the default
+  into the project's `pom.xml` and commits that, verifies the enforcer passes on
+  the generated file with a non-recursive `mvn -N validate`, and finally pushes
+  the branch and opens a pull request with the GitHub CLI (`gh pr create`) — the default
   branch is never written to directly. External `git`/`claude`/`gh` invocations
   go through a `CommandRunner`
   abstraction so the steps are unit-tested without spawning real processes; the
@@ -70,7 +71,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
 │   └── context                     # regex-based class-usage context finder
-├── adopt                       # adopts Claude Code into a GitHub repo (clone, branch, trust, init, enforcer, push, PR)
+├── adopt                       # adopts Claude Code into a GitHub repo (clone, branch, trust, init, enforcer, verify, push, PR)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # builds an executable jar-with-dependencies
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)

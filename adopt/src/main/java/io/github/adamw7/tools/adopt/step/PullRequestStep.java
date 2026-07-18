@@ -6,7 +6,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
-import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -16,10 +15,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * The title and body are configurable because they differ between projects; the
  * defaults describe the Claude Code adoption.
  *
- * <p>Like {@link CommitStep}, the step stays idempotent when re-run: a
- * {@code gh} failure that only reports an already-open pull request for the
- * branch, or that there are no commits between base and head, is treated as a
- * harmless no-op rather than aborting the adoption.
+ * <p>The step stays idempotent when re-run: it asks {@code gh pr view} whether a
+ * pull request already exists for the branch and skips creation when one does,
+ * rather than creating unconditionally and then matching the wording of a
+ * failure. That keeps the decision robust across {@code gh} versions and locales.
  */
 public class PullRequestStep extends AbstractCommandStep {
 
@@ -28,9 +27,6 @@ public class PullRequestStep extends AbstractCommandStep {
 	static final String DEFAULT_TITLE = "Adopt Claude Code";
 	static final String DEFAULT_BODY = "Adds a generated CLAUDE.md and wires the claude-code-enforcer "
 			+ "into the build so the file keeps being validated.";
-
-	private static final String ALREADY_EXISTS = "already exists";
-	private static final String NO_COMMITS = "No commits between";
 
 	private final String title;
 	private final String body;
@@ -51,24 +47,19 @@ public class PullRequestStep extends AbstractCommandStep {
 
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
+		if (pullRequestExists(context, runner)) {
+			log.info("Pull request already open for branch {}; left unchanged", context.branchName());
+			return;
+		}
 		log.info("Opening pull request for branch {}", context.branchName());
 		List<String> command = List.of("gh", "pr", "create", "--title", title, "--body", body,
 				"--head", context.branchName());
-		reportPullRequest(runner.run(context.repositoryDirectory(), command));
+		CommandResult result = runOrFail(runner, context.repositoryDirectory(), command);
+		log.info("Opened pull request: {}", result.output().strip());
 	}
 
-	private void reportPullRequest(CommandResult result) {
-		if (result.succeeded()) {
-			log.info("Opened pull request: {}", result.output().strip());
-		} else if (alreadyHandled(result)) {
-			log.info("No pull request opened: {}", result.output().strip());
-		} else {
-			throw new AdoptionException(name() + " failed (exit " + result.exitCode() + ") running: "
-					+ result.describe() + System.lineSeparator() + result.output());
-		}
-	}
-
-	private boolean alreadyHandled(CommandResult result) {
-		return result.output().contains(ALREADY_EXISTS) || result.output().contains(NO_COMMITS);
+	private boolean pullRequestExists(AdoptionContext context, CommandRunner runner) {
+		List<String> command = List.of("gh", "pr", "view", context.branchName(), "--json", "url");
+		return runner.run(context.repositoryDirectory(), command).succeeded();
 	}
 }

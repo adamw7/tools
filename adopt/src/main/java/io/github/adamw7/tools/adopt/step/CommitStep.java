@@ -6,20 +6,19 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
-import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
  * Stages every change in the checkout and commits it with the configured
- * message. A commit that finds nothing to record is treated as a harmless
- * no-op rather than a failure, so the pipeline stays idempotent when re-run.
+ * message. Whether there is anything to commit is decided by asking git
+ * ({@code git diff --cached --quiet}) rather than by matching the wording of a
+ * failed commit's output, so an empty commit is a harmless no-op regardless of
+ * git's locale or version and the pipeline stays idempotent when re-run.
  */
 public class CommitStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(CommitStep.class);
-
-	private static final String NOTHING_TO_COMMIT = "nothing to commit";
 
 	private final String message;
 
@@ -35,23 +34,21 @@ public class CommitStep extends AbstractCommandStep {
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		runOrFail(runner, context.repositoryDirectory(), List.of("git", "add", "-A"));
-		commit(context, runner);
+		if (hasStagedChanges(context, runner)) {
+			commit(context, runner);
+		} else {
+			log.info("No changes to commit for: {}", message);
+		}
+	}
+
+	private boolean hasStagedChanges(AdoptionContext context, CommandRunner runner) {
+		CommandResult result = runner.run(context.repositoryDirectory(),
+				List.of("git", "diff", "--cached", "--quiet"));
+		return !result.succeeded();
 	}
 
 	private void commit(AdoptionContext context, CommandRunner runner) {
-		List<String> command = List.of("git", "commit", "-m", message);
-		CommandResult result = runner.run(context.repositoryDirectory(), command);
-		reportCommit(result);
-	}
-
-	private void reportCommit(CommandResult result) {
-		if (result.succeeded()) {
-			log.info("Committed: {}", message);
-		} else if (result.output().contains(NOTHING_TO_COMMIT)) {
-			log.info("No changes to commit for: {}", message);
-		} else {
-			throw new AdoptionException(name() + " failed (exit " + result.exitCode() + ") running: "
-					+ result.describe() + System.lineSeparator() + result.output());
-		}
+		runOrFail(runner, context.repositoryDirectory(), List.of("git", "commit", "-m", message));
+		log.info("Committed: {}", message);
 	}
 }

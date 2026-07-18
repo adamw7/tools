@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -14,6 +15,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * generates a {@code CLAUDE.md} for the project. The exact CLI invocation is
  * configurable because the flags differ between environments; the default runs
  * the {@code /init} command non-interactively.
+ *
+ * <p>The generated {@code CLAUDE.md} is the whole point of the adoption, so a run
+ * that exits cleanly but leaves no {@code CLAUDE.md} behind aborts the adoption
+ * rather than letting the pipeline push a branch and open a pull request with
+ * nothing in it.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 
@@ -42,13 +48,13 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		log.info("Running claude init in {}", context.repositoryDirectory());
 		runOrFail(runner, context.repositoryDirectory(), claudeCommand);
-		warnIfNotGenerated(context);
+		requireGenerated(context);
 	}
 
-	private void warnIfNotGenerated(AdoptionContext context) {
+	private void requireGenerated(AdoptionContext context) {
 		if (!Files.isRegularFile(context.repositoryDirectory().resolve(CLAUDE_MD))) {
-			log.warn("claude init completed but {} was not found in {}", CLAUDE_MD,
-					context.repositoryDirectory());
+			throw new AdoptionException(name() + " completed but " + CLAUDE_MD + " was not found in "
+					+ context.repositoryDirectory());
 		}
 	}
 }

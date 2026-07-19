@@ -108,6 +108,33 @@ public class IntKeyOpenAddressingMapTest {
 	}
 
 	@Test
+	public void reAddingRemovedKeyRevivesItsSlotInPlace() {
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
+		map.put(7, "first");
+		assertEquals("first", map.remove(7));
+		assertNull(map.put(7, "second")); // reviving a tombstone reports no previous value
+		assertEquals("second", map.get(7));
+		assertEquals(1, map.size());
+	}
+
+	@Test
+	public void repeatedRemoveAndReAddOfSameKeyDoesNotGrowTheTable() {
+		// Removing and re-adding the same key must revive its tombstone rather than
+		// probe past it, otherwise every cycle leaks a tombstone onto the key's probe
+		// chain until the table is forced to resize even though one live entry exists.
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
+		int initialCapacity = map.capacity();
+		for (int i = 0; i < 10_000; ++i) {
+			map.put(7, "v" + i);
+			map.remove(7);
+		}
+		map.put(7, "final");
+		assertEquals("final", map.get(7));
+		assertEquals(1, map.size());
+		assertEquals(initialCapacity, map.capacity());
+	}
+
+	@Test
 	public void negativeKeysAreSupported() {
 		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
 		map.put(-1, "minus one");

@@ -2,12 +2,16 @@ package io.github.adamw7.context.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -65,9 +69,8 @@ public class McpStreamableHttpIT {
 	void listsAllContextTools() {
 		McpSchema.ListToolsResult tools = client.listTools();
 
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("project_tree")));
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("find_context")));
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("estimate_tokens")));
+		Set<String> names = tools.tools().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
+		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens"), names);
 	}
 
 	@Test
@@ -78,10 +81,13 @@ public class McpStreamableHttpIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		String tree = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertTrue(tree.contains("A.java"));
-		assertTrue(tree.contains("B.java"));
+		JsonNode tree = parse(singleTextResult(result));
+		assertEquals("directory", tree.get("type").asText());
+		JsonNode children = tree.get("children");
+		JsonNode dependent = childNamed(children, "B.java");
+		assertEquals("file", dependent.get("type").asText());
+		assertEquals(List.of("A.java"), textValues(dependent.get("dependencies")));
+		assertTrue(childNamed(children, "A.java").get("dependencies").isEmpty());
 	}
 
 	@Test
@@ -92,9 +98,8 @@ public class McpStreamableHttpIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertEquals("A.java", parse(dependencies).get(0).asText());
+		JsonNode dependencies = parse(singleTextResult(result));
+		assertEquals(List.of("A.java"), textValues(dependencies));
 	}
 
 	@Test
@@ -105,12 +110,14 @@ public class McpStreamableHttpIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		JsonNode report = parse(((McpSchema.TextContent) result.content().getFirst()).text());
-		assertTrue(report.get("total").asInt() > 0);
+		JsonNode report = parse(singleTextResult(result));
 		JsonNode classes = report.get("classes");
-		assertTrue(containsClass(classes, "B.java"));
-		assertTrue(containsClass(classes, "A.java"));
+		assertEquals(2, classes.size());
+		int targetTokens = tokensForClass(classes, "B.java");
+		int dependencyTokens = tokensForClass(classes, "A.java");
+		assertTrue(targetTokens > 0);
+		assertTrue(dependencyTokens > 0);
+		assertEquals(targetTokens + dependencyTokens, report.get("total").asInt());
 	}
 
 	@Test
@@ -121,11 +128,10 @@ public class McpStreamableHttpIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		String tree = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertTrue(tree.contains("- "));
-		assertTrue(tree.contains("depends on:"));
-		assertTrue(tree.contains("A.java"));
+		String tree = singleTextResult(result);
+		assertTrue(tree.contains("- `A.java`"));
+		assertTrue(tree.contains("- `B.java`"));
+		assertTrue(tree.contains("- depends on: `A.java`"));
 	}
 
 	@Test
@@ -137,17 +143,43 @@ public class McpStreamableHttpIT {
 		McpSchema.CallToolResult result = client.callTool(request);
 
 		assertTrue(result.isError());
+		assertEquals(1, result.content().size());
 		String message = ((McpSchema.TextContent) result.content().getFirst()).text();
 		assertTrue(message.contains("Class not found: Missing"));
 	}
 
-	private boolean containsClass(JsonNode classes, String className) {
-		for (int index = 0; index < classes.size(); index++) {
-			if (className.equals(classes.get(index).get("class").asText())) {
-				return true;
+	private JsonNode childNamed(JsonNode children, String name) {
+		for (int index = 0; index < children.size(); index++) {
+			JsonNode child = children.get(index);
+			if (name.equals(child.get("name").asText())) {
+				return child;
 			}
 		}
-		return false;
+		throw new AssertionError("No child named " + name + " in " + children);
+	}
+
+	private int tokensForClass(JsonNode classes, String className) {
+		for (int index = 0; index < classes.size(); index++) {
+			JsonNode entry = classes.get(index);
+			if (className.equals(entry.get("class").asText())) {
+				return entry.get("tokens").asInt();
+			}
+		}
+		throw new AssertionError("No entry for class " + className + " in " + classes);
+	}
+
+	private List<String> textValues(JsonNode array) {
+		List<String> values = new java.util.ArrayList<>();
+		array.forEach(node -> values.add(node.asText()));
+		return values;
+	}
+
+	private String singleTextResult(McpSchema.CallToolResult result) {
+		assertFalse(result.isError(), () -> "unexpected error result: " + result.content());
+		assertEquals(1, result.content().size(), "expected exactly one content element");
+		McpSchema.Content content = result.content().getFirst();
+		assertInstanceOf(McpSchema.TextContent.class, content);
+		return ((McpSchema.TextContent) content).text();
 	}
 
 	private JsonNode parse(String json) {

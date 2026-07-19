@@ -2,6 +2,7 @@ package io.github.adamw7.context.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -10,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.SSLContext;
@@ -157,9 +160,22 @@ public class McpStreamableHttpsIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertEquals("A.java", parse(dependencies).get(0).asText());
+		JsonNode dependencies = parse(singleTextResult(result));
+		assertEquals(List.of("A.java"), textValues(dependencies));
+	}
+
+	private List<String> textValues(JsonNode array) {
+		List<String> values = new ArrayList<>();
+		array.forEach(node -> values.add(node.asText()));
+		return values;
+	}
+
+	private String singleTextResult(McpSchema.CallToolResult result) {
+		assertFalse(result.isError(), () -> "unexpected error result: " + result.content());
+		assertEquals(1, result.content().size(), "expected exactly one content element");
+		McpSchema.Content content = result.content().getFirst();
+		assertInstanceOf(McpSchema.TextContent.class, content);
+		return ((McpSchema.TextContent) content).text();
 	}
 
 	private JsonNode parse(String json) {

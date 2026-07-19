@@ -4,6 +4,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -50,5 +54,22 @@ public class TestConventionsArchitectureTest {
 	static final ArchRule testsDoNotSleep = noClasses()
 			.should().callMethod(Thread.class, "sleep", long.class)
 			.orShould().callMethod(Thread.class, "sleep", long.class, int.class)
+			.orShould().callMethod(TimeUnit.class, "sleep", long.class)
 			.because("a test that sleeps is slow and flaky; wait on a condition instead");
+
+	@ArchTest
+	static final ArchRule beforeAllAndAfterAllMethodsAreStatic = methods()
+			.that().areAnnotatedWith(BeforeAll.class)
+			.or().areAnnotatedWith(AfterAll.class)
+			.should().beStatic()
+			.because("JUnit 5 runs @BeforeAll/@AfterAll once per class only when they are static; "
+					+ "a non-static one fails at runtime unless the class opts into the PER_CLASS lifecycle")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule testMethodsAreRunnableByJunit = methods()
+			.that().areMetaAnnotatedWith(TESTABLE_ANNOTATION)
+			.should().notBePrivate()
+			.andShould().notBeStatic()
+			.because("JUnit 5 silently ignores a private or static test method, so it never runs");
 }

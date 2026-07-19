@@ -893,8 +893,12 @@ Alongside the production rules, each module carries a companion
 `ImportOption.OnlyIncludeTests`) and pins conventions on the tests themselves:
 every `@Testable` method must live in a `*Test` or `*IT` class so surefire or
 failsafe actually runs it, no test is `@Disabled`, tests use JUnit 5 only (no
-JUnit 4 `org.junit` API), and no test calls `Thread.sleep` (sleeping is slow and
-flaky — wait on a condition instead).
+JUnit 4 `org.junit` API), and no test calls `Thread.sleep` or `TimeUnit.sleep`
+(sleeping is slow and flaky — wait on a condition instead). A few rules guard
+against tests that silently never run: a `@Testable` method must not be
+`private` or `static` (JUnit 5 quietly ignores both), and a `@BeforeAll`/
+`@AfterAll` method must be `static` (JUnit 5 requires it unless the class opts
+into the `PER_CLASS` lifecycle).
 
 Run them for a single module with, for example:
 ```

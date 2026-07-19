@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -11,6 +12,8 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import io.github.adamw7.tools.adopt.AdoptionException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -94,5 +97,25 @@ class ClaudeTrustStoreTest {
 		JsonNode saved = read(config).path("projects").path(key);
 		assertTrue(saved.path("hasTrustDialogAccepted").asBoolean());
 		assertEquals(3, saved.path("projectOnboardingSeenCount").asInt());
+	}
+
+	@Test
+	void refusesToOverwriteAConfigThatIsValidJsonButNotAnObject(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		String original = "[\"do not lose me\"]";
+		Files.writeString(config, original);
+
+		assertThrows(AdoptionException.class, () -> new ClaudeTrustStore(config).trust(dir.resolve("repo")));
+		assertEquals(original, Files.readString(config));
+	}
+
+	@Test
+	void treatsAnEmptyConfigFileAsAFreshObject(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		Files.writeString(config, "");
+		Path repo = dir.resolve("repo");
+
+		assertTrue(new ClaudeTrustStore(config).trust(repo));
+		assertTrue(trusted(read(config), repo));
 	}
 }

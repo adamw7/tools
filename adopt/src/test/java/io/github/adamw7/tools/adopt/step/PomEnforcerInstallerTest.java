@@ -43,6 +43,13 @@ class PomEnforcerInstallerTest {
 			</project>
 			""";
 
+	private static final String POM_FOUR_SPACE_INDENT = "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n"
+			+ "    <modelVersion>4.0.0</modelVersion>\n"
+			+ "    <groupId>com.example</groupId>\n"
+			+ "    <artifactId>demo</artifactId>\n"
+			+ "    <version>1.0.0</version>\n"
+			+ "</project>\n";
+
 	private static final String POM_WITH_ENFORCER = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
 			  <modelVersion>4.0.0</modelVersion>
@@ -199,6 +206,50 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_BUILD);
 		installer.install(pom);
 		assertTrue(Files.readString(pom).contains("http://maven.apache.org/POM/4.0.0"));
+	}
+
+	@Test
+	void leavesExistingFormattingUntouchedAndOnlyIndentsTheNewBlock(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains(
+				"      <plugin>\n"
+						+ "        <groupId>org.apache.maven.plugins</groupId>\n"
+						+ "        <artifactId>maven-compiler-plugin</artifactId>\n"
+						+ "      </plugin>"),
+				"the existing plugin must be preserved verbatim, not reformatted");
+		assertTrue(result.contains("\n          <dependency>\n"),
+				"the added dependency must be indented to the POM's own two-space unit, not jammed onto one line");
+		assertTrue(result.contains("\n            <artifactId>tools.claude-code-enforcer</artifactId>\n"),
+				"nested added elements must keep indenting by the same unit");
+		assertFalse(result.contains("<?xml"),
+				"no XML declaration should be invented for a POM that had none");
+		assertTrue(result.startsWith("<project "), "the first line must be preserved unchanged");
+		assertTrue(result.endsWith("</project>\n"), "the original trailing newline must be preserved");
+	}
+
+	@Test
+	void preservesAnExistingXmlDeclarationOnItsOwnLine(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project "),
+				"the original declaration must be kept verbatim on its own line, not rewritten");
+		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
+	}
+
+	@Test
+	void indentsTheAddedBlockToTheDocumentsOwnIndentationUnit(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_FOUR_SPACE_INDENT);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("\n    <modelVersion>4.0.0</modelVersion>\n"),
+				"the four-space original lines must be preserved");
+		assertTrue(result.contains("\n    <build>\n"),
+				"a created element must use the file's four-space unit, not the default two");
+		assertTrue(result.contains("\n        <plugins>\n"),
+				"nesting must scale by the detected four-space unit");
 	}
 
 	/**

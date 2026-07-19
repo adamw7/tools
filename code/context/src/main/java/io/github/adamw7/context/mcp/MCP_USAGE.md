@@ -184,6 +184,18 @@ server.ssl.key-store-type=PKCS12
 negotiated even if they are requested. The endpoint is then served at
 `https://localhost:8082/mcp`.
 
+It also **prefers the post-quantum `X25519MLKEM768` hybrid key exchange** for the
+TLS 1.3 handshake: it sets `jdk.tls.namedGroups` to
+`X25519MLKEM768,x25519,secp256r1,secp384r1`, listing the hybrid group first so it
+is chosen when both peers support it, with the classical groups kept as a
+fallback. `X25519MLKEM768` pairs classical X25519 with NIST ML-KEM-768, so the
+session key resists a future quantum attacker while remaining secure if either
+primitive is broken. The SunJSSE provider in JDK 25 does not yet ship this group,
+so the handshake falls back to X25519 today; because the fallback groups are
+listed too, the exchange upgrades to the hybrid automatically once the TLS
+provider supports it, with no code change. See
+[ADR 0011](../../../../../../../../../../docs/adr/0011-hybrid-post-quantum-key-exchange.md).
+
 ## Security
 
 The tools read source files from disk, so access is constrained by design:

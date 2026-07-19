@@ -9,6 +9,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Optional;
+import java.util.Properties;
 
 import org.apache.logging.log4j.Logger;
 
@@ -134,6 +135,17 @@ public class ContextArchitectureTest {
 	static final ArchRule contextCoreDoesNotHaltTheJvm = noClasses()
 			.should().callMethod(System.class, "exit", int.class)
 			.because("the context core is a reusable library and must never terminate the host JVM; it should throw instead");
+
+	@ArchTest
+	static final ArchRule onlyTlsConfigurationMutatesJvmWideProperties = noClasses()
+			.that().doNotHaveSimpleName("TlsConfiguration")
+			.should().callMethod(System.class, "setProperty", String.class, String.class)
+			.orShould().callMethod(System.class, "clearProperty", String.class)
+			.orShould().callMethod(System.class, "setProperties", Properties.class)
+			.because("JVM-wide system properties are global mutable state; the TLS hardening customiser is "
+					+ "the one sanctioned place to set them, so a stray setProperty elsewhere cannot clobber "
+					+ "the pinned TLS protocol and key-exchange configuration")
+			.allowEmptyShould(true);
 
 	@ArchTest
 	static final ArchRule noAccessToStandardStreams =

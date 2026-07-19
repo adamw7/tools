@@ -97,6 +97,12 @@ public class McpStreamableHttpsIT {
 	}
 
 	@Test
+	void prefersHybridKeyExchangeGroup() {
+		assertEquals(TlsConfiguration.PREFERRED_NAMED_GROUPS,
+				System.getProperty(TlsConfiguration.NAMED_GROUPS_PROPERTY));
+	}
+
+	@Test
 	void refusesTls12Handshakes() throws IOException {
 		SSLSocketFactory factory = testTrustContext().getSocketFactory();
 		try (SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port)) {

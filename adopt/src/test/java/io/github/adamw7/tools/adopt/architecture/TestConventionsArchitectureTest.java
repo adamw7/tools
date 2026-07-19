@@ -58,6 +58,13 @@ public class TestConventionsArchitectureTest {
 			.because("a test that sleeps is slow and flaky; wait on a condition instead");
 
 	@ArchTest
+	static final ArchRule testsDoNotAccessStandardStreams = noClasses()
+			.should().accessField(System.class, "out")
+			.orShould().accessField(System.class, "err")
+			.because("a test that prints to the console adds noise instead of asserting; assert on the value instead")
+			.allowEmptyShould(true);
+
+	@ArchTest
 	static final ArchRule beforeAllAndAfterAllMethodsAreStatic = methods()
 			.that().areAnnotatedWith(BeforeAll.class)
 			.or().areAnnotatedWith(AfterAll.class)

@@ -3,10 +3,12 @@ package io.github.adamw7.context.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.Optional;
 
 import org.apache.logging.log4j.Logger;
 
@@ -73,6 +75,38 @@ public class ContextArchitectureTest {
 			.should().beFinal()
 			.because("a public field is part of the type's API surface and must not be reassignable")
 			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule mutableStaticStateIsVolatile = fields()
+			.that().areStatic()
+			.and().areNotFinal()
+			.should().haveModifier(JavaModifier.VOLATILE)
+			.because("a mutable static field is shared across every thread, so it must be volatile "
+					+ "for its updates to publish safely")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule optionalFieldsAreForbidden = noFields()
+			.should().haveRawType(Optional.class)
+			.because("Optional models a possibly-absent return value, not a field; a field should hold "
+					+ "the value itself and be null-checked, never wrapped in an Optional")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule noLegacyDateTimeApi = noClasses()
+			.should().dependOnClassesThat().haveFullyQualifiedName("java.util.Date")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.util.Calendar")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.util.GregorianCalendar")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.text.DateFormat")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.text.SimpleDateFormat")
+			.because("date and time handling must use java.time, not the legacy Date/Calendar API")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule productionCodeLogsThroughLog4j = noClasses()
+			.should().dependOnClassesThat().resideInAPackage("java.util.logging..")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.lang.System$Logger")
+			.because("logging must go through log4j2 so configuration stays in one place");
 
 	@ArchTest
 	static final ArchRule abstractClassesAreNamedWithAbstractPrefix = classes()

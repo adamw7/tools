@@ -116,12 +116,15 @@ paths.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend
-  on its MCP adapter, loggers are `private static final`, production code logs
-  through log4j2 (no `System.out`/`err`, `printStackTrace`, or `System.exit`),
-  and packages stay free of cycles. A companion `TestConventionsArchitectureTest`
-  pins conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
-  classes, no `@Disabled`, JUnit 5 only, and no `Thread.sleep`. Keep new code
-  within these rules.
+  on its MCP adapter, JDBC stays confined to the `source.db` package, loggers are
+  `private static final`, mutable static state is `volatile`, fields are never
+  `Optional`, date/time uses `java.time` (not the legacy `Date`/`Calendar` API),
+  production code logs through log4j2 (no `System.out`/`err`,
+  `java.lang.System.Logger`, `printStackTrace`, or `System.exit`), and packages
+  stay free of cycles. A companion `TestConventionsArchitectureTest` pins
+  conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
+  classes, no `@Disabled`, JUnit 5 only, no `System.out`/`err`, and no
+  `Thread.sleep`. Keep new code within these rules.
 - **MCP integration tests** (`*IT`) are gated behind the `integration-tests`
   profile.
 

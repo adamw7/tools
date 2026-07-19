@@ -72,11 +72,27 @@ public class ClaudeTrustStore {
 
 	private ObjectNode parse() {
 		try {
-			JsonNode root = mapper.readTree(configFile.toFile());
-			return root instanceof ObjectNode object ? object : mapper.createObjectNode();
+			return asObjectOrFresh(mapper.readTree(configFile.toFile()));
 		} catch (IOException e) {
 			throw new AdoptionException("Could not read Claude config: " + configFile, e);
 		}
+	}
+
+	/**
+	 * An empty file (a {@code null} or missing tree) starts fresh, and an object is
+	 * used as-is. Any other valid JSON — a top-level array or scalar — is refused
+	 * rather than silently replaced, because overwriting it would discard whatever
+	 * the file already held.
+	 */
+	private ObjectNode asObjectOrFresh(JsonNode root) {
+		if (root == null || root.isMissingNode()) {
+			return mapper.createObjectNode();
+		}
+		if (root instanceof ObjectNode object) {
+			return object;
+		}
+		throw new AdoptionException("Refusing to overwrite Claude config; expected a JSON object but found "
+				+ root.getNodeType() + ": " + configFile);
 	}
 
 	private void write(ObjectNode root) {

@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.uniqueness.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import java.util.Map;
 
@@ -53,9 +54,7 @@ public class McpSseIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		McpSchema.TextContent content = (McpSchema.TextContent) result.content().getFirst();
-		assertEquals("false", content.text());
+		assertEquals("false", singleTextResult(result));
 	}
 
 	@Test
@@ -66,8 +65,14 @@ public class McpSseIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		McpSchema.TextContent content = (McpSchema.TextContent) result.content().getFirst();
-		assertEquals("true", content.text());
+		assertEquals("true", singleTextResult(result));
+	}
+
+	private String singleTextResult(McpSchema.CallToolResult result) {
+		assertFalse(result.isError(), () -> "unexpected error result: " + result.content());
+		assertEquals(1, result.content().size(), "expected exactly one content element");
+		McpSchema.Content content = result.content().getFirst();
+		assertInstanceOf(McpSchema.TextContent.class, content);
+		return ((McpSchema.TextContent) content).text();
 	}
 }

@@ -2,12 +2,16 @@ package io.github.adamw7.context.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -72,9 +76,8 @@ public class McpStatelessHttpIT {
 	void listsAllContextTools() {
 		McpSchema.ListToolsResult tools = client.listTools();
 
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("project_tree")));
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("find_context")));
-		assertTrue(tools.tools().stream().anyMatch(tool -> tool.name().equals("estimate_tokens")));
+		Set<String> names = tools.tools().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
+		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens"), names);
 	}
 
 	@Test
@@ -85,9 +88,22 @@ public class McpStatelessHttpIT {
 
 		McpSchema.CallToolResult result = client.callTool(request);
 
-		assertFalse(result.isError());
-		String dependencies = ((McpSchema.TextContent) result.content().getFirst()).text();
-		assertEquals("A.java", parse(dependencies).get(0).asText());
+		JsonNode dependencies = parse(singleTextResult(result));
+		assertEquals(List.of("A.java"), textValues(dependencies));
+	}
+
+	private List<String> textValues(JsonNode array) {
+		List<String> values = new ArrayList<>();
+		array.forEach(node -> values.add(node.asText()));
+		return values;
+	}
+
+	private String singleTextResult(McpSchema.CallToolResult result) {
+		assertFalse(result.isError(), () -> "unexpected error result: " + result.content());
+		assertEquals(1, result.content().size(), "expected exactly one content element");
+		McpSchema.Content content = result.content().getFirst();
+		assertInstanceOf(McpSchema.TextContent.class, content);
+		return ((McpSchema.TextContent) content).text();
 	}
 
 	private JsonNode parse(String json) {

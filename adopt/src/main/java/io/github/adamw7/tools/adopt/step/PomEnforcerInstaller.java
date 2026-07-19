@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -39,6 +40,11 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * namespace, and is idempotent: a POM that already wires the rule is left
  * untouched. A POM that already uses the {@code maven-enforcer-plugin} for other
  * rules is augmented in place rather than skipped, so the rule is still wired in.
+ *
+ * <p>The existing document is preserved verbatim — every original whitespace and
+ * line is left untouched — and only the newly added elements are indented, to the
+ * style the POM already uses. The adoption commit therefore shows just the
+ * enforcer block being added rather than a reformat of the whole file.
  */
 public class PomEnforcerInstaller {
 
@@ -98,20 +104,16 @@ public class PomEnforcerInstaller {
 	 *         unchanged.
 	 */
 	public boolean install(Path pomFile) {
-		Document document = read(pomFile);
-		Element project = document.getDocumentElement();
-		Element plugins = pluginsElement(document, project);
+		String original = readText(pomFile);
+		Document document = parse(pomFile);
+		PomEditor editor = new PomEditor(document);
+		Element plugins = editor.pluginsElement();
 		if (declaresClaudeRule(plugins)) {
 			return false;
 		}
-		wireEnforcer(document, plugins);
-		write(document, pomFile);
+		wireEnforcer(editor, plugins);
+		write(document, pomFile, original);
 		return true;
-	}
-
-	private Element pluginsElement(Document document, Element project) {
-		Element build = childOrCreate(document, project, "build");
-		return childOrCreate(document, build, "plugins");
 	}
 
 	private boolean declaresClaudeRule(Element plugins) {
@@ -137,10 +139,10 @@ public class PomEnforcerInstaller {
 	 * {@code maven-enforcer-plugin}, reusing an existing plugin declaration when
 	 * one is present so the project keeps a single enforcer plugin entry.
 	 */
-	private void wireEnforcer(Document document, Element plugins) {
-		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(document, plugins));
-		childOrCreate(document, plugin, "dependencies").appendChild(ruleDependency(document));
-		childOrCreate(document, plugin, "executions").appendChild(enforceExecution(document));
+	private void wireEnforcer(PomEditor editor, Element plugins) {
+		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(editor, plugins));
+		ruleDependency(editor, editor.childOrCreate(plugin, "dependencies"));
+		enforceExecution(editor, editor.childOrCreate(plugin, "executions"));
 	}
 
 	private Optional<Element> findEnforcerPlugin(Element plugins) {
@@ -157,71 +159,43 @@ public class PomEnforcerInstaller {
 				.isPresent();
 	}
 
-	private Element createEnforcerPlugin(Document document, Element plugins) {
-		Element plugin = create(document, "plugin");
-		appendText(document, plugin, "groupId", ENFORCER_GROUP_ID);
-		appendText(document, plugin, "artifactId", ENFORCER_ARTIFACT_ID);
-		appendText(document, plugin, "version", ENFORCER_VERSION);
-		plugins.appendChild(plugin);
+	private Element createEnforcerPlugin(PomEditor editor, Element plugins) {
+		Element plugin = editor.appendElement(plugins, "plugin");
+		editor.appendText(plugin, "groupId", ENFORCER_GROUP_ID);
+		editor.appendText(plugin, "artifactId", ENFORCER_ARTIFACT_ID);
+		editor.appendText(plugin, "version", ENFORCER_VERSION);
 		return plugin;
 	}
 
-	private Element ruleDependency(Document document) {
-		Element dependency = create(document, "dependency");
-		appendText(document, dependency, "groupId", RULE_GROUP_ID);
-		appendText(document, dependency, "artifactId", RULE_ARTIFACT_ID);
-		appendText(document, dependency, "version", ruleVersion);
-		return dependency;
+	private void ruleDependency(PomEditor editor, Element dependencies) {
+		Element dependency = editor.appendElement(dependencies, "dependency");
+		editor.appendText(dependency, "groupId", RULE_GROUP_ID);
+		editor.appendText(dependency, "artifactId", RULE_ARTIFACT_ID);
+		editor.appendText(dependency, "version", ruleVersion);
 	}
 
-	private Element enforceExecution(Document document) {
-		Element execution = create(document, "execution");
-		appendText(document, execution, "id", "enforce-claude-md");
-		appendText(document, execution, "phase", "validate");
-		appendText(document, execution, "inherited", "false");
-		Element goals = create(document, "goals");
-		appendText(document, goals, "goal", "enforce");
-		execution.appendChild(goals);
-		execution.appendChild(claudeMdConfiguration(document));
-		return execution;
+	private void enforceExecution(PomEditor editor, Element executions) {
+		Element execution = editor.appendElement(executions, "execution");
+		editor.appendText(execution, "id", "enforce-claude-md");
+		editor.appendText(execution, "phase", "validate");
+		editor.appendText(execution, "inherited", "false");
+		Element goals = editor.appendElement(execution, "goals");
+		editor.appendText(goals, "goal", "enforce");
+		claudeMdConfiguration(editor, execution);
 	}
 
-	private Element claudeMdConfiguration(Document document) {
-		Element configuration = create(document, "configuration");
-		Element rules = create(document, "rules");
-		Element claudeMdFormat = create(document, "claudeMdFormat");
-		appendText(document, claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
-		rules.appendChild(claudeMdFormat);
-		configuration.appendChild(rules);
-		return configuration;
-	}
-
-	private Element childOrCreate(Document document, Element parent, String name) {
-		return child(parent, name).orElseGet(() -> appendChild(document, parent, name));
-	}
-
-	private Element appendChild(Document document, Element parent, String name) {
-		Element element = create(document, name);
-		parent.appendChild(element);
-		return element;
-	}
-
-	private void appendText(Document document, Element parent, String name, String text) {
-		Element element = create(document, name);
-		element.setTextContent(text);
-		parent.appendChild(element);
-	}
-
-	private Element create(Document document, String name) {
-		String namespace = document.getDocumentElement().getNamespaceURI();
-		return namespace == null ? document.createElement(name) : document.createElementNS(namespace, name);
+	private void claudeMdConfiguration(PomEditor editor, Element execution) {
+		Element configuration = editor.appendElement(execution, "configuration");
+		Element rules = editor.appendElement(configuration, "rules");
+		Element claudeMdFormat = editor.appendElement(rules, "claudeMdFormat");
+		editor.appendText(claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
 	}
 
 	private Optional<Element> child(Element parent, String name) {
 		return children(parent, name).stream().findFirst();
 	}
 
-	private List<Element> children(Element parent, String name) {
+	private static List<Element> children(Element parent, String name) {
 		List<Element> matches = new ArrayList<>();
 		NodeList nodes = parent.getChildNodes();
 		for (int index = 0; index < nodes.getLength(); index++) {
@@ -230,13 +204,21 @@ public class PomEnforcerInstaller {
 		return matches;
 	}
 
-	private void addIfMatch(List<Element> matches, Node node, String name) {
+	private static void addIfMatch(List<Element> matches, Node node, String name) {
 		if (node instanceof Element element && name.equals(element.getLocalName())) {
 			matches.add(element);
 		}
 	}
 
-	private Document read(Path pomFile) {
+	private String readText(Path pomFile) {
+		try {
+			return Files.readString(pomFile);
+		} catch (IOException e) {
+			throw new AdoptionException("Could not read POM: " + pomFile, e);
+		}
+	}
+
+	private Document parse(Path pomFile) {
 		try {
 			return builder().parse(pomFile.toFile());
 		} catch (IOException | SAXException e) {
@@ -257,44 +239,187 @@ public class PomEnforcerInstaller {
 		}
 	}
 
-	private void write(Document document, Path pomFile) {
+	/**
+	 * Writes the document back verbatim. The transformer's own indentation is left
+	 * off and the parsed whitespace nodes are kept, so only the elements the edit
+	 * added — already indented by {@link PomEditor} — differ from the original. The
+	 * original's XML declaration and trailing newline are carried over exactly so
+	 * the first and last lines are not disturbed either.
+	 */
+	private void write(Document document, Path pomFile, String original) {
 		try {
-			stripWhitespace(document.getDocumentElement());
+			String content = declarationPrefix(original) + transformBody(document);
 			Files.createDirectories(pomFile.toAbsolutePath().getParent());
-			transformer().transform(new DOMSource(document), new StreamResult(pomFile.toFile()));
+			Files.writeString(pomFile, matchTrailingNewline(content, original));
 		} catch (IOException | TransformerException e) {
 			throw new AdoptionException("Could not write POM: " + pomFile, e);
 		}
 	}
 
-	/**
-	 * Removes whitespace-only text nodes so the transformer can re-indent the
-	 * document cleanly instead of interleaving the original whitespace with
-	 * fresh indentation. Safe for a POM because it carries no mixed content.
-	 */
-	private void stripWhitespace(Node node) {
-		NodeList children = node.getChildNodes();
-		List<Node> blankTextNodes = new ArrayList<>();
-		for (int index = 0; index < children.getLength(); index++) {
-			collectBlankText(children.item(index), blankTextNodes);
-		}
-		blankTextNodes.forEach(node::removeChild);
+	private String transformBody(Document document) throws TransformerException {
+		StringWriter writer = new StringWriter();
+		transformer().transform(new DOMSource(document), new StreamResult(writer));
+		return writer.toString();
 	}
 
-	private void collectBlankText(Node child, List<Node> blankTextNodes) {
-		if (child.getNodeType() == Node.TEXT_NODE && child.getTextContent().isBlank()) {
-			blankTextNodes.add(child);
-		} else if (child.getNodeType() == Node.ELEMENT_NODE) {
-			stripWhitespace(child);
+	/**
+	 * The XML declaration the original file opened with, up to and including its
+	 * line terminator, or empty when it had none. Carrying it over verbatim keeps
+	 * the transformer from inventing one (and adding a spurious first-line change)
+	 * on a POM that started straight with {@code <project>}.
+	 */
+	private String declarationPrefix(String original) {
+		if (!original.stripLeading().startsWith("<?xml")) {
+			return "";
 		}
+		int end = original.indexOf("?>");
+		if (end < 0) {
+			return "";
+		}
+		int afterTerminator = lineTerminatorEnd(original, end + 2);
+		return original.substring(0, afterTerminator) + (afterTerminator == end + 2 ? "\n" : "");
+	}
+
+	private int lineTerminatorEnd(String text, int from) {
+		int index = from;
+		if (index < text.length() && text.charAt(index) == '\r') {
+			index++;
+		}
+		if (index < text.length() && text.charAt(index) == '\n') {
+			index++;
+		}
+		return index;
+	}
+
+	private String matchTrailingNewline(String content, String original) {
+		boolean originalEnds = original.endsWith("\n") || original.endsWith("\r");
+		boolean contentEnds = content.endsWith("\n") || content.endsWith("\r");
+		return originalEnds && !contentEnds ? content + "\n" : content;
 	}
 
 	private Transformer transformer() throws TransformerException {
 		TransformerFactory factory = TransformerFactory.newInstance();
 		factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 		Transformer transformer = factory.newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		transformer.setOutputProperty(OutputKeys.INDENT, "no");
+		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 		return transformer;
+	}
+
+	/**
+	 * Appends new elements to a parsed POM without disturbing its existing layout.
+	 * Each appended element is preceded by a newline and an indentation matching
+	 * the document's own unit (detected from the file, defaulting to two spaces),
+	 * and is inserted before the parent's own closing indentation so that closing
+	 * tag stays put. Every container is attached to its parent before its children
+	 * are added, so an element's depth — and therefore its indentation — is known
+	 * as soon as it is appended.
+	 */
+	private static final class PomEditor {
+
+		private static final String DEFAULT_INDENT_UNIT = "  ";
+
+		private final Document document;
+		private final String namespace;
+		private final String indentUnit;
+
+		private PomEditor(Document document) {
+			this.document = document;
+			this.namespace = document.getDocumentElement().getNamespaceURI();
+			this.indentUnit = detectIndentUnit(document.getDocumentElement());
+		}
+
+		private Element pluginsElement() {
+			Element project = document.getDocumentElement();
+			Element build = childOrCreate(project, "build");
+			return childOrCreate(build, "plugins");
+		}
+
+		private Element childOrCreate(Element parent, String name) {
+			return firstChild(parent, name).orElseGet(() -> appendElement(parent, name));
+		}
+
+		private Element appendElement(Element parent, String name) {
+			return appendChild(parent, create(name));
+		}
+
+		private void appendText(Element parent, String name, String text) {
+			Element element = create(name);
+			element.setTextContent(text);
+			appendChild(parent, element);
+		}
+
+		private Element appendChild(Element parent, Element child) {
+			Node closingIndent = trailingWhitespace(parent);
+			Node childIndent = document.createTextNode(newlineIndent(depthOf(parent) + 1));
+			if (closingIndent == null) {
+				parent.appendChild(childIndent);
+				parent.appendChild(child);
+				parent.appendChild(document.createTextNode(newlineIndent(depthOf(parent))));
+			} else {
+				parent.insertBefore(childIndent, closingIndent);
+				parent.insertBefore(child, closingIndent);
+			}
+			return child;
+		}
+
+		private String newlineIndent(int depth) {
+			return "\n" + indentUnit.repeat(depth);
+		}
+
+		private Element create(String name) {
+			return namespace == null ? document.createElement(name) : document.createElementNS(namespace, name);
+		}
+
+		private Optional<Element> firstChild(Element parent, String name) {
+			return children(parent, name).stream().findFirst();
+		}
+
+		private static Node trailingWhitespace(Element parent) {
+			Node last = parent.getLastChild();
+			return isWhitespaceText(last) ? last : null;
+		}
+
+		private static int depthOf(Node node) {
+			int depth = 0;
+			Node parent = node.getParentNode();
+			while (parent != null && parent.getNodeType() == Node.ELEMENT_NODE) {
+				depth++;
+				parent = parent.getParentNode();
+			}
+			return depth;
+		}
+
+		/**
+		 * The indentation of a single nesting level, read from the first top-level
+		 * element's leading whitespace, or two spaces when the POM carries none.
+		 */
+		private static String detectIndentUnit(Element root) {
+			NodeList children = root.getChildNodes();
+			for (int index = 0; index < children.getLength(); index++) {
+				String unit = leadingIndentOf(children.item(index));
+				if (!unit.isEmpty()) {
+					return unit;
+				}
+			}
+			return DEFAULT_INDENT_UNIT;
+		}
+
+		private static String leadingIndentOf(Node node) {
+			if (node.getNodeType() != Node.ELEMENT_NODE) {
+				return "";
+			}
+			Node previous = node.getPreviousSibling();
+			if (!isWhitespaceText(previous)) {
+				return "";
+			}
+			String text = previous.getTextContent();
+			int newline = text.lastIndexOf('\n');
+			return newline < 0 ? "" : text.substring(newline + 1);
+		}
+
+		private static boolean isWhitespaceText(Node node) {
+			return node != null && node.getNodeType() == Node.TEXT_NODE && node.getTextContent().isBlank();
+		}
 	}
 }

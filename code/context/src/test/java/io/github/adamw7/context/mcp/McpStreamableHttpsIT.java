@@ -13,6 +13,7 @@ import java.security.KeyStore;
 import java.util.Map;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
@@ -35,12 +36,14 @@ import io.modelcontextprotocol.spec.McpSchema;
 
 /**
  * Integration test that serves the context-engineering MCP server over HTTPS so
- * the {@link TlsConfiguration} TLS 1.3 pinning can be asserted end-to-end against
- * a live server: a real MCP tool call must succeed over the secure channel, the
- * negotiated protocol on the MCP endpoint must be {@code TLSv1.3}, and a client
- * that only offers {@code TLSv1.2} must be refused. A throwaway self-signed
- * keystore is generated before the Spring context starts and referenced through
- * the {@code mcp.test.keystore} system property.
+ * the {@link TlsConfiguration} hardening can be asserted end-to-end against a live
+ * server: a real MCP tool call must succeed over the secure channel, the
+ * negotiated protocol on the MCP endpoint must be {@code TLSv1.3}, a client that
+ * only offers {@code TLSv1.2} must be refused, and the pinned key-exchange groups
+ * must actually govern the handshake — a client offering only a group inside the
+ * pinned list connects while one offering only a valid group outside it is
+ * refused. A throwaway self-signed keystore is generated before the Spring context
+ * starts and referenced through the {@code mcp.test.keystore} system property.
  */
 @SpringBootTest(
 		classes = Main.class,
@@ -96,10 +99,45 @@ public class McpStreamableHttpsIT {
 		}
 	}
 
+	/**
+	 * A named group inside {@link TlsConfiguration#PREFERRED_NAMED_GROUPS}. A client that offers
+	 * only this group must complete the TLS 1.3 handshake, so it stands in for the whole pinned
+	 * list: the hybrid group is not chosen here because SunJSSE on JDK 25 does not yet ship it,
+	 * which is exactly why the classical fallback groups are pinned alongside it.
+	 */
+	private static final String GROUP_IN_PINNED_LIST = "x25519";
+
+	/**
+	 * A valid key-exchange group that SunJSSE supports by default but that is deliberately absent
+	 * from {@link TlsConfiguration#PREFERRED_NAMED_GROUPS}. Without the hardening a client offering
+	 * only this group would negotiate it fine; the fact that the live server refuses it is what
+	 * proves {@code jdk.tls.namedGroups} actually took effect on the server's TLS stack rather than
+	 * merely being written to a system property.
+	 */
+	private static final String GROUP_OUTSIDE_PINNED_LIST = "secp521r1";
+
 	@Test
-	void prefersHybridKeyExchangeGroup() {
-		assertEquals(TlsConfiguration.PREFERRED_NAMED_GROUPS,
-				System.getProperty(TlsConfiguration.NAMED_GROUPS_PROPERTY));
+	void acceptsAKeyExchangeGroupFromThePinnedList() throws IOException {
+		try (SSLSocket socket = clientOfferingOnly(GROUP_IN_PINNED_LIST)) {
+			socket.startHandshake();
+			assertEquals(TlsConfiguration.TLS_1_3, socket.getSession().getProtocol());
+		}
+	}
+
+	@Test
+	void refusesAKeyExchangeGroupOutsideThePinnedList() throws IOException {
+		try (SSLSocket socket = clientOfferingOnly(GROUP_OUTSIDE_PINNED_LIST)) {
+			assertThrows(IOException.class, socket::startHandshake);
+		}
+	}
+
+	private SSLSocket clientOfferingOnly(String namedGroup) throws IOException {
+		SSLSocketFactory factory = testTrustContext().getSocketFactory();
+		SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port);
+		SSLParameters parameters = socket.getSSLParameters();
+		parameters.setNamedGroups(new String[] { namedGroup });
+		socket.setSSLParameters(parameters);
+		return socket;
 	}
 
 	@Test

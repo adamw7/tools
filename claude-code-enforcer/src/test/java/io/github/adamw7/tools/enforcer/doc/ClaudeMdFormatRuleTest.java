@@ -101,6 +101,49 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void passesGenericFileWhenSectionsAndAgentsReferenceDisabled() {
+		String generic = """
+				# CLAUDE.md
+
+				This file guides Claude Code when working in this repository.
+
+				## Build
+				Run the project's build to compile and test.
+				""";
+		ClaudeMdFormatRule rule = ruleFor(generic);
+		rule.setEnforceRequiredSections(false);
+		rule.setRequireAgentsReference(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillEnforcesTitleWhenSectionsAndAgentsReferenceDisabled() {
+		ClaudeMdFormatRule rule = ruleFor("# Not the title\n\nSome content.\n");
+		rule.setEnforceRequiredSections(false);
+		rule.setRequireAgentsReference(false);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+	}
+
+	@Test
+	void skipsAgentsReferenceCheckWhenDisabled() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("AGENTS.md", "OTHER.md"));
+		rule.setRequireAgentsReference(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void skipsMissingSectionWhenRequiredSectionsDisabled() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Quality"));
+		rule.setEnforceRequiredSections(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsWhenARequiredSectionIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Quality"));
 

@@ -31,8 +31,11 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
  * wiring the {@code maven-enforcer-plugin} with the {@code claudeMdFormat} rule,
- * so the adopted repository fails its build if the freshly generated
- * {@code CLAUDE.md} is missing or malformed.
+ * so the adopted repository fails its build if the generated {@code CLAUDE.md}
+ * is missing, empty, or loses its {@code # CLAUDE.md} title. The rule is
+ * configured generically — its project-specific section and {@code AGENTS.md}
+ * checks are switched off (see {@link #claudeMdConfiguration}) — so the guard
+ * fits any adopted repository rather than only one shaped like this project.
  *
  * <p>The edit is performed on the JDK's DOM so no third-party XML library is
  * needed, is namespace-aware so the new elements join the POM's default
@@ -186,11 +189,23 @@ public class PomEnforcerInstaller {
 		return execution;
 	}
 
+	/**
+	 * Wires the rule to guard only the structure that is predictable for a
+	 * {@code CLAUDE.md} generated afresh in an arbitrary repository: it exists, is
+	 * non-empty, and starts with the {@code # CLAUDE.md} title. The rule's
+	 * project-specific defaults — this project's required section headings and its
+	 * {@code AGENTS.md} reference — are switched off, because the file
+	 * {@code claude init} produces for the adopted repository will not carry them,
+	 * so leaving them on would fail the verification the adoption runs before it
+	 * ever pushes a branch.
+	 */
 	private Element claudeMdConfiguration(Document document) {
 		Element configuration = create(document, "configuration");
 		Element rules = create(document, "rules");
 		Element claudeMdFormat = create(document, "claudeMdFormat");
 		appendText(document, claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
+		appendText(document, claudeMdFormat, "enforceRequiredSections", "false");
+		appendText(document, claudeMdFormat, "requireAgentsReference", "false");
 		rules.appendChild(claudeMdFormat);
 		configuration.appendChild(rules);
 		return configuration;

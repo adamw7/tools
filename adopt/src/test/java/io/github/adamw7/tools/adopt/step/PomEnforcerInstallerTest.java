@@ -138,6 +138,17 @@ class PomEnforcerInstallerTest {
 	}
 
 	@Test
+	void configuresTheRuleGenericallyForAnArbitraryRepository(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<enforceRequiredSections>false</enforceRequiredSections>"),
+				"the adopted repo's CLAUDE.md will not carry this project's section headings");
+		assertTrue(result.contains("<requireAgentsReference>false</requireAgentsReference>"),
+				"the adopted repo's CLAUDE.md will not reference AGENTS.md");
+	}
+
+	@Test
 	void augmentsExistingEnforcerPluginInsteadOfSkipping(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_ENFORCER);
 		assertTrue(installer.install(pom));

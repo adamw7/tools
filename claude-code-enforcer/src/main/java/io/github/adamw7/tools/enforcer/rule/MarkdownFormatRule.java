@@ -31,6 +31,12 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
  * resolve to something on disk. Each is disabled by default, so existing
  * configurations are unaffected.
  * <p>
+ * The required-section check can also be switched off entirely with
+ * {@code enforceRequiredSections}, leaving only the mandatory structure (exists,
+ * non-empty, title heading). That lets the rule guard a document whose section
+ * layout is not fixed — for example a {@code CLAUDE.md} generated afresh for an
+ * arbitrary adopted repository, where only the title is predictable.
+ * <p>
  * The title and required sections default to the subclass-provided values but
  * can be overridden from the rule configuration, so the rule is reusable across
  * projects without a recompile. Subclasses contribute the file, its name, the
@@ -46,6 +52,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/** Optional override for the required sections. Falls back to the subclass default. */
 	private List<String> requiredSections;
+
+	/** When false, the required-section check is skipped and only the title structure is enforced. */
+	private boolean enforceRequiredSections = true;
 
 	/** Optional tokens that must not appear outside fenced code blocks. */
 	private List<String> forbiddenTokens;
@@ -117,6 +126,10 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		this.requiredSections = requiredSections;
 	}
 
+	public void setEnforceRequiredSections(boolean enforceRequiredSections) {
+		this.enforceRequiredSections = enforceRequiredSections;
+	}
+
 	public void setForbiddenTokens(List<String> forbiddenTokens) {
 		this.forbiddenTokens = forbiddenTokens;
 	}
@@ -151,6 +164,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectSectionViolations(MarkdownDocument document, List<String> violations) {
+		if (!enforceRequiredSections) {
+			return;
+		}
 		for (String section : requiredSections()) {
 			addSectionViolation(document, section, violations);
 		}
@@ -170,7 +186,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	 * reported by the section check, so only the present ones are compared here.
 	 */
 	private void collectOrderViolations(MarkdownDocument document, List<String> violations) {
-		if (!enforceSectionOrder) {
+		if (!enforceSectionOrder || !enforceRequiredSections) {
 			return;
 		}
 		List<String> expected = presentRequiredSections(document);

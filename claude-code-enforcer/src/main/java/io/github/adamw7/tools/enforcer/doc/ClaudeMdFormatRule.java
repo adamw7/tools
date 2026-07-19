@@ -13,6 +13,14 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
  * not follow the expected structure: it must start with the {@code # CLAUDE.md}
  * title, reference {@code AGENTS.md}, and contain every required section
  * heading.
+ *
+ * <p>The {@code AGENTS.md} reference requirement is on by default but can be
+ * switched off with {@code requireAgentsReference}, and the required-section
+ * check can be switched off with the inherited {@code enforceRequiredSections}
+ * (see {@link io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule}). With
+ * both off the rule guards only the mandatory structure — exists, non-empty,
+ * {@code # CLAUDE.md} title — which is all that is predictable for a
+ * {@code CLAUDE.md} generated afresh for an arbitrary adopted repository.
  */
 @Named("claudeMdFormat")
 public class ClaudeMdFormatRule extends MarkdownFormatRule {
@@ -30,6 +38,9 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
 	/** The {@code CLAUDE.md} file to validate. Injected from the rule configuration. */
 	private File claudeMdFile;
+
+	/** When false, the {@code AGENTS.md} reference requirement is skipped. */
+	private boolean requireAgentsReference = true;
 
 	@Override
 	protected File documentFile() {
@@ -53,13 +64,17 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
 	@Override
 	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
-		if (!document.containsOutsideFences(AGENTS_REFERENCE)) {
+		if (requireAgentsReference && !document.containsOutsideFences(AGENTS_REFERENCE)) {
 			violations.add("CLAUDE.md must reference " + AGENTS_REFERENCE + " as the source of truth");
 		}
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {
 		this.claudeMdFile = claudeMdFile;
+	}
+
+	public void setRequireAgentsReference(boolean requireAgentsReference) {
+		this.requireAgentsReference = requireAgentsReference;
 	}
 
 	@Override

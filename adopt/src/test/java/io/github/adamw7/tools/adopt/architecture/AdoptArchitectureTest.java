@@ -5,6 +5,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
+
 import org.apache.logging.log4j.Logger;
 
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -62,6 +65,32 @@ public class AdoptArchitectureTest {
 			.because("loggers are private static final by convention");
 
 	@ArchTest
+	static final ArchRule exceptionsAreNamedConsistently = classes()
+			.that().haveSimpleNameEndingWith("Exception")
+			.should().beAssignableTo(Exception.class)
+			.because("types named *Exception must actually be exceptions")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule publicFieldsAreImmutable = fields()
+			.that().arePublic()
+			.should().beFinal()
+			.because("a public field is part of the type's API surface and must not be reassignable")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule noPrintStackTrace = noClasses()
+			.should().callMethod(Throwable.class, "printStackTrace")
+			.orShould().callMethod(Throwable.class, "printStackTrace", PrintStream.class)
+			.orShould().callMethod(Throwable.class, "printStackTrace", PrintWriter.class)
+			.because("failures must be reported through log4j2, never printed as a raw stack trace");
+
+	@ArchTest
+	static final ArchRule adoptionDoesNotHaltTheJvm = noClasses()
+			.should().callMethod(System.class, "exit", int.class)
+			.because("the adoption pipeline reports failure by throwing AdoptionException, never by terminating the JVM");
+
+	@ArchTest
 	static final ArchRule noStandardStreams = GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
 
 	@ArchTest
@@ -69,4 +98,7 @@ public class AdoptArchitectureTest {
 
 	@ArchTest
 	static final ArchRule noGenericExceptionsThrown = GeneralCodingRules.NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS;
+
+	@ArchTest
+	static final ArchRule noJodaTime = GeneralCodingRules.NO_CLASSES_SHOULD_USE_JODATIME;
 }

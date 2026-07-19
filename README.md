@@ -884,7 +884,9 @@ design:
 - **[`adopt`](adopt/src/test/java/io/github/adamw7/tools/adopt/architecture/AdoptArchitectureTest.java)** — the `command` runner layer must not depend on the
   `step` package, so the reusable command abstraction stays unaware of the
   adoption steps that build on it; and every concrete `*Step` in `step` must
-  implement the `AdoptionStep` contract.
+  implement the `AdoptionStep` contract. The pipeline also carries the shared
+  baseline in full, including that it reports failure by throwing
+  `AdoptionException` and never calls `System.exit`.
 
 Alongside the production rules, each module carries a companion
 `TestConventionsArchitectureTest` that analyses only the *test* classes (via

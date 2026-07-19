@@ -62,6 +62,11 @@ public class IntKeyOpenAddressingMap<V> {
 		return size == 0;
 	}
 
+	/** The current backing-array length; exposed for tests that assert growth behaviour. */
+	int capacity() {
+		return keys.length;
+	}
+
 	public boolean containsKey(int key) {
 		return indexOf(key) >= 0;
 	}
@@ -104,6 +109,16 @@ public class IntKeyOpenAddressingMap<V> {
 		return DoubleHashing.sequence(Integer.hashCode(key), prime, keys.length);
 	}
 
+	/**
+	 * Probes the double-hashing sequence for {@code key} and stores {@code value}.
+	 * An {@link #EMPTY} slot ends the search and receives a fresh entry. A slot
+	 * already holding {@code key} is reused in place: a {@link #LIVE} one is
+	 * overwritten, a {@link #TOMBSTONE} one is revived. Reviving the key's own
+	 * tombstone rather than probing past it keeps a remove/re-add cycle of the same
+	 * key from leaking a tombstone on every pass, which would otherwise fill the
+	 * probe chain and force needless resizes. Tombstones for a <em>different</em>
+	 * key are skipped, because the sought key may still sit further along the chain.
+	 */
 	public V put(int key, V value) {
 		checkIfResizeNeeded();
 		DoubleHashing.Probe probe = probe(key);
@@ -111,9 +126,9 @@ public class IntKeyOpenAddressingMap<V> {
 			int index = probe.slot(i);
 			if (state[index] == EMPTY) {
 				return insert(index, key, value);
-			} else if (state[index] == LIVE && keys[index] == key) {
-				return overwrite(index, value);
-			} // tombstones are skipped
+			} else if (keys[index] == key) {
+				return state[index] == TOMBSTONE ? insert(index, key, value) : overwrite(index, value);
+			} // slots holding a different key, live or tombstoned, are skipped
 		}
 		resize();
 		return put(key, value);

@@ -241,16 +241,21 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   cannot rot: data-source contracts in `source.interfaces` must not depend on
   their `source.db`/`source.file` implementations; the uniqueness core must not
   depend on its MCP adapter; the `structure` collections stay decoupled from data
-  sources; loggers are `private static final`; abstract types carry an `Abstract`
-  prefix; public fields are `final`; and production code logs through log4j2
-  (never `System.out`/`err`, `java.util.logging`, `printStackTrace`, or
-  `System.exit`), with packages kept free of cycles. New code must satisfy these
-  rules or the module's test suite fails. A companion
+  sources; JDBC (`java.sql`) stays confined to the `source.db` package; loggers
+  are `private static final`; abstract types carry an `Abstract` prefix; public
+  fields are `final`; mutable static state is `volatile` (so its updates publish
+  across threads); fields are never `Optional` (Optional models a return value,
+  not a field); date and time handling uses `java.time` (never the legacy
+  `Date`/`Calendar` API); and production code logs through log4j2 (never
+  `System.out`/`err`, `java.util.logging`, `java.lang.System.Logger`,
+  `printStackTrace`, or `System.exit`), with packages kept free of cycles. New
+  code must satisfy these rules or the module's test suite fails. A companion
   `TestConventionsArchitectureTest` in the same `...architecture` package
   analyses only the *test* classes (via `ImportOption.OnlyIncludeTests`) and pins
   conventions on the tests themselves: every `@Testable` method must live in a
   `*Test` or `*IT` class so surefire/failsafe actually runs it, no test is
-  `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), and no test
+  `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), no test
+  writes to `System.out`/`err` (assert on the value instead), and no test
   calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition).
 - **MCP integration tests** are gated behind the `integration-tests` profile
   (defined in `data` and `code/context`) and exercise the MCP servers over

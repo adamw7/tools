@@ -1,20 +1,22 @@
 ---
 name: git-commit
-description: Generate conventional commit messages for Java projects. Use when user says "commit", "create commit", "commit changes", or after completing code changes that need to be committed.
+description: Generate conventional commit messages for the tools repo, using its real module scopes. Use when the user says "commit", "create commit", "commit changes", or after completing code changes that need to be committed.
 ---
 
 # Git Commit Message Skill
 
-Generate conventional, informative commit messages for Java projects.
+Generate conventional, informative commit messages for the `tools` multi-module
+Maven reactor.
 
 ## When to Use
 - After making code changes
 - User says "commit this" / "commit changes" / "create commit"
-- Before creating PRs
+- Before creating a PR
 
-## Format Standard
+## Format
 
-Use Conventional Commits format:
+[Conventional Commits](https://www.conventionalcommits.org/):
+
 ```
 <type>(<scope>): <subject>
 
@@ -23,215 +25,83 @@ Use Conventional Commits format:
 <footer>
 ```
 
-### Types (Java context)
-- **feat**: New feature (new API, new functionality)
-- **fix**: Bug fix
-- **refactor**: Code refactoring (no functional change)
-- **test**: Add/update tests
-- **docs**: Documentation only
-- **perf**: Performance improvement
-- **build**: Maven/Gradle changes
-- **chore**: Maintenance (dependency updates, etc)
+### Types
+| Type | Use for |
+|---|---|
+| `feat` | New API / functionality |
+| `fix` | Bug fix |
+| `refactor` | Restructure, no behavior change |
+| `test` | Add/update tests |
+| `docs` | Docs only (README, AGENTS.md, javadoc) |
+| `perf` | Performance improvement |
+| `build` | Maven / pom / CI changes |
+| `chore` | Maintenance (tooling, dependency bumps) |
 
-### Scope Examples (Java specific)
-- Module name: `core`, `api`, `plugin-loader`
-- Component: `PluginManager`, `ExtensionFactory`
-- Area: `lifecycle`, `dependencies`, `security`
+### Scope — use this repo's real modules/components
+`data`, `code`, `context`, `protogen-maven-plugin`, `adopt`, `mcp-common`,
+`claude-code-enforcer`, `assembly`, `grpc-example`, `data-test`. Narrow to a
+component when it's clearer (e.g. `source.db`, `uniqueness`, `mcp`, `builder`).
 
-### Subject Rules
-- Imperative mood: "Add support" not "Added support"
-- No period at end
-- Max 50 chars
-- Lowercase after type
+### Subject rules
+- Imperative mood: "Add support", not "Added support"
+- Lowercase after the type, no trailing period, ≤ ~50 chars
 
-### Body (optional but recommended)
-- Explain WHAT and WHY, not HOW
-- Wrap at 72 chars
-- Reference issues: "Fixes #123" / "Relates to #456"
+### Body (optional, recommended for non-trivial changes)
+- Explain **what** and **why**, not how; wrap at ~72 chars, 2–3 lines is plenty
+- Reference issues: `Fixes #123` / `Relates to #456`
+- Breaking change: add a `BREAKING CHANGE:` footer (and `!` after the scope)
 
 ## Examples
 
-### Simple fix
 ```
-fix(plugin-loader): prevent NPE when plugin directory is missing
+feat(protogen-maven-plugin): enforce proto3 oneof discriminators at compile time
 
-Check for null before accessing plugin directory to avoid
-NullPointerException during initialization.
-
-Fixes #234
-```
-
-### Feature with breaking change
-```
-feat(api): add support for plugin dependencies versioning
-
-BREAKING CHANGE: PluginDescriptor now requires semantic versioning
-format (x.y.z) instead of free-form version strings.
-
-Closes #567
-```
-
-### Refactoring
-```
-refactor(core): extract plugin validation logic
-
-Move validation logic from PluginManager to separate
-PluginValidator class for better testability and separation
-of concerns.
-```
-
-### Test addition
-```
-test(plugin-loader): add integration tests for plugin loading
-
-Add comprehensive integration tests covering:
-- Loading from directory
-- Loading from JAR
-- Error handling for invalid plugins
-```
-
-### Build/dependency update
-```
-build(deps): upgrade Spring Boot to 3.2.1
-
-Update Spring Boot from 3.1.0 to 3.2.1 for security patches
-and performance improvements.
-```
-
-## Workflow
-
-1. **Analyze changes** using `git diff --staged`
-2. **Identify scope** from modified files
-3. **Determine type** based on change nature
-4. **Generate message** following format
-5. **Execute commit**: `git commit -m "message"`
-
-## Token Optimization
-
-- Read staged changes ONCE: `git diff --staged --stat` + targeted file diffs
-- Don't read entire files unless necessary
-- Use concise body - aim for 2-3 lines max
-- Batch multiple small changes into logical commits
-
-## Anti-patterns
-
-❌ Avoid:
-- "fix stuff" / "update code" / "changes"
-- "WIP" commits (unless explicitly requested)
-- Mixing unrelated changes (use separate commits)
-- Over-detailed technical implementation in message
-
-✅ Good commits:
-- Single logical change
-- Clear, searchable subject
-- References issues when applicable
-- Explains business value
-
-## Integration with GitHub
-
-After commit, suggest next steps:
-- "Push changes?" 
-- "Create PR for issue #X?"
-- "Continue with next task?"
-
-## Common Patterns for Java Projects
-
-### Adding new functionality
-```
-feat(extension): add support for prioritized extensions
-
-Allow extensions to specify priority order for execution.
-Extensions with higher priority run first.
+Generated builders now fail compilation when a required oneof branch is
+left unset, matching the proto2 required-field guarantee.
 
 Closes #123
 ```
 
-### Fixing bugs
 ```
-fix(classloader): resolve resource lookup in nested JARs
+fix(data): close JDBC statement when the result iterator is exhausted
 
-ClassLoader.getResource() was failing for resources in
-JARs loaded from plugin JARs (nested JARs). Fixed by
-implementing proper resource resolution chain.
+IterativeDbSource leaked a Statement when callers stopped before the last
+row. Wrap the cursor in try-with-resources so it closes on every path.
 
 Fixes #456
 ```
 
-### Dependency updates
 ```
-build(deps): bump slf4j from 1.7.30 to 2.0.9
+refactor(context): extract project-tree assembly from the MCP adapter
 
-Updates SLF4J to latest stable version. No API changes
-required as we use only stable APIs.
-```
-
-### Documentation improvements
-```
-docs(readme): add plugin development quickstart guide
-
-Add step-by-step guide for creating first plugin:
-- Project setup
-- Implementing Plugin interface
-- Building and testing
+Keeps the uniqueness/context core free of any MCP dependency, satisfying
+the layering rule pinned by the architecture tests.
 ```
 
-### Performance optimizations
 ```
-perf(plugin-loader): cache plugin descriptors
+test(claude-code-enforcer): cover duplicate skill descriptions
 
-Cache parsed plugin descriptors to avoid repeated I/O
-and parsing. Reduces plugin loading time by ~40%.
-
-Related to #789
+Add cases for UniqueDescriptionsRule when two SKILL.md files share a
+description.
 ```
 
-## Multi-file Changes
-
-When changes span multiple components:
-
 ```
-refactor(core): reorganize plugin lifecycle management
-
-- Extract lifecycle state machine to separate class
-- Move validation logic to validators package
-- Update tests to reflect new structure
-
-This refactoring improves testability and separation
-of concerns without changing external APIs.
-
-Related to #111, #222
+build(deps): add the shellcheck-maven-plugin with embedded binary resolution
 ```
 
-## Breaking Changes
+## Workflow
+1. Inspect staged changes: `git diff --staged --stat`, then targeted diffs.
+2. Pick the scope from the changed module(s); split unrelated changes into
+   separate commits.
+3. Choose the type from the nature of the change.
+4. Write the message; commit with `git commit -m "..."` (or a file for the body).
 
-Always use BREAKING CHANGE footer:
-
-```
-feat(api)!: replace Plugin.start() with Plugin.initialize()
-
-BREAKING CHANGE: The Plugin.start() method has been renamed
-to Plugin.initialize() for better semantic clarity. All
-plugin implementations must update their code.
-
-Migration guide: Replace @Override start() with @Override
-initialize() in all Plugin implementations.
-
-Closes #999
-```
-
-## Quick Reference Card
-
-| Change Type | Type | Example Scope |
-|-------------|------|---------------|
-| New feature | feat | api, core, loader |
-| Bug fix | fix | plugin-loader, lifecycle |
-| Refactoring | refactor | core, utils |
-| Tests | test | integration, unit |
-| Docs | docs | readme, javadoc |
-| Build | build | maven, deps |
-| Performance | perf | classloader, cache |
-| Maintenance | chore | ci, tooling |
+## Anti-patterns
+❌ "fix stuff" / "update code" / "WIP" (unless asked) / mixing unrelated changes
+/ inventing scopes that aren't real modules.
+✅ One logical change · clear searchable subject · real scope · references issues
+when applicable.
 
 ## References
-
-- [Conventional Commits Specification](https://www.conventionalcommits.org/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- `AGENTS.md` — module map and release process

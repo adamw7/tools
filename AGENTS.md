@@ -168,6 +168,16 @@ removed anything, plain `mvn install` is fine and faster.
 CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
 quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
 
+**Parallel builds.** `.mvn/maven.config` also passes `-T1C` (one build thread
+per CPU core), so the reactor builds independent modules — and runs their test
+forks — in parallel. Maven honours the module dependency graph, so ordering
+stays correct; on a 4-core machine this roughly halves the full-build wall-clock
+versus a serial run. Because several test forks then run at once and contend for
+CPU, the one-time cold-fork warmup the first test in each fork pays stretches
+well beyond its ~0.7s dedicated-core cost (measured up to ~3.9s), which is why
+the per-test timeout is sized at 5 s rather than a tighter bound — see *Testing,
+coverage & mutation testing*. Override with `-T1` for a fully serial build.
+
 **Shellcheck.** The root pom lints `scripts/**/*.sh` with
 `dev.dimlight:shellcheck-maven-plugin` (`check` goal). It is configured with
 `<binaryResolutionMethod>embedded</binaryResolutionMethod>`, so the `shellcheck`
@@ -197,14 +207,15 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
 
 - **Unit tests** run in the normal `test`/`package` lifecycle
   (`mvn -pl <module> test`). Write tests for all new logic — behavior, edge
-  cases, and error paths. Surefire enforces a **900-millisecond per-test
-  timeout** (the `junit.jupiter.execution.timeout.testable.method.default` JUnit
-  config parameter set on the surefire plugin in the root `pom.xml`), so a unit
-  test that runs 900 ms or longer fails the build. The limit sits above the
-  one-time JVM/class-loading warmup a cold fork pays (~0.7s at most, and only
-  for the first test to touch a heavy dependency) so it stays green when a
-  single class is run in isolation, while still catching a test that does real
-  work. To keep that warmup below the limit, the one module that uses Mockito
+  cases, and error paths. Surefire enforces a **5-second per-test timeout** (the
+  `junit.jupiter.execution.timeout.testable.method.default` JUnit config
+  parameter set on the surefire plugin in the root `pom.xml`), so a unit test
+  that runs 5 s or longer fails the build. The limit sits above the one-time
+  JVM/class-loading warmup a cold fork pays (~0.7s on a dedicated core, but up to
+  ~3.9s for the first test in a fork when the reactor runs in parallel — see
+  *Build, test, and run* for the `-T1C` default — and only for the first test to
+  touch a heavy dependency) so it stays green under parallel-fork CPU contention,
+  while still catching a test that does real work. To keep that warmup below the limit, the one module that uses Mockito
   (`protogen-maven-plugin`) pre-loads it as a `-javaagent` in surefire, so the
   byte-buddy self-attach happens at JVM startup rather than inside the first
   timed test method. Keep unit tests fast; a genuinely heavier test (e.g. one

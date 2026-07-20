@@ -102,10 +102,11 @@ Write unit tests for all new logic. Focus on behavior, edge cases, and error
 paths.
 
 - **Unit tests** run in the normal `test`/`package` lifecycle. Surefire enforces
-  a **900-millisecond per-test timeout** (configured on the surefire plugin in the
-  root `pom.xml`) — above the one-time cold-JVM warmup but low enough to catch a
-  test doing real work — so keep unit tests fast; a genuinely heavier test opts
-  out with an explicit `@Timeout` and a comment explaining why. A looser
+  a **5-second per-test timeout** (configured on the surefire plugin in the root
+  `pom.xml`) — above the cold-fork warmup, which stretches under the parallel
+  `-T1C` build's CPU contention, but low enough to catch a test doing real work —
+  so keep unit tests fast; a genuinely heavier test opts out with an explicit
+  `@Timeout` and a comment explaining why. A looser
   **10-second lifecycle-method timeout** (15 s under coverage) covers heavier
   shared setup like `@BeforeAll`, and surefire's **300-second
   `forkedProcessTimeoutInSeconds`** kills a fork that hangs outright.

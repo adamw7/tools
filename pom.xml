@@ -26,10 +26,18 @@
 		<grpc.version>1.82.2</grpc.version>
 		<argLine/>
 		<!-- Per-test timeout for unit tests (see the surefire plugin config). The
-		     plain build uses a tight limit; the coverage profile overrides it to a
-		     larger value because the JaCoCo agent's bytecode instrumentation roughly
-		     doubles first-use class-loading time. -->
-		<unit.test.method.timeout>900 ms</unit.test.method.timeout>
+		     build runs the reactor in parallel (-T1C in .mvn/maven.config), so
+		     several modules' test forks run at once and contend for CPU. That
+		     stretches the one-time cold-JVM/class-loading warmup the first test in
+		     each fork pays: on a dedicated core it is ~0.7s, but under 4-way fork
+		     contention the heaviest first-in-fork test (an MCP server boot in the
+		     small mcp-common module, which amortizes the warmup over nothing) was
+		     measured at up to ~3.9s. The limit is sized above that worst case with
+		     margin yet still low enough to catch a test doing real work. The
+		     coverage profile overrides it to a larger value because the JaCoCo
+		     agent's bytecode instrumentation roughly doubles first-use
+		     class-loading time on top of the contention. -->
+		<unit.test.method.timeout>5 s</unit.test.method.timeout>
 		<!-- Companion limit for lifecycle methods (@BeforeAll/@BeforeEach/@AfterEach/
 		     @AfterAll). Deliberately far looser than the per-test method timeout:
 		     lifecycle methods legitimately do shared, one-time setup that a test
@@ -647,8 +655,10 @@
 			<properties>
 				<!-- JaCoCo's bytecode instrumentation roughly doubles the time a
 				     timed test method spends loading classes on first use, so give
-				     the per-test timeouts extra headroom under coverage. -->
-				<unit.test.method.timeout>2 s</unit.test.method.timeout>
+				     the per-test timeouts extra headroom under coverage. This stacks
+				     on top of the parallel-reactor (-T1C) fork contention the base
+				     limit already absorbs, so it is set well above the base 5 s. -->
+				<unit.test.method.timeout>8 s</unit.test.method.timeout>
 				<unit.test.lifecycle.timeout>15 s</unit.test.lifecycle.timeout>
 			</properties>
 			<build>

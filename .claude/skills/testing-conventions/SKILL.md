@@ -1,6 +1,6 @@
 ---
 name: testing-conventions
-description: Write tests that pass this repo's enforced testing rules (Surefire 900ms timeout, network-off unit tests, ArchUnit conventions, JUnit 5 only). Use when adding or changing tests, when a test times out or opens a network connection, or when the user says "write a test", "add tests", or "fix the failing test".
+description: Write tests that pass this repo's enforced testing rules (Surefire 5s timeout, network-off unit tests, ArchUnit conventions, JUnit 5 only). Use when adding or changing tests, when a test times out or opens a network connection, or when the user says "write a test", "add tests", or "fix the failing test".
 ---
 
 # Testing Conventions Skill
@@ -19,10 +19,12 @@ fails the build, not just review.
 ## Hard rules (build fails otherwise)
 
 ### Timeouts
-- **900 ms per unit test.** Surefire enforces a 900-millisecond per-test
-  timeout (root `pom.xml`). Keep unit tests fast — no real I/O, no sleeps, no
-  heavy loops. A genuinely heavier test opts out with an explicit `@Timeout`
-  **and a comment explaining why**.
+- **5 s per unit test.** Surefire enforces a 5-second per-test timeout (root
+  `pom.xml`). The bound is generous because the reactor builds in parallel
+  (`-T1C`) and contending test forks stretch the cold-fork warmup; it is *not* a
+  budget to spend. Keep unit tests fast — no real I/O, no sleeps, no heavy loops.
+  A genuinely heavier test opts out with an explicit `@Timeout` **and a comment
+  explaining why**.
 - Heavy shared setup (`@BeforeAll` etc.) has a looser 10-second limit (15 s
   under coverage). A fork that hangs outright is killed at 300 s
   (`forkedProcessTimeoutInSeconds`).
@@ -57,14 +59,14 @@ fails the build, not just review.
 3. Write focused, fast assertions — behavior, edge cases, and error paths.
 4. Run it: `mvn -pl <module> test` (unit) or
    `mvn -P integration-tests verify` (integration).
-5. If a unit test legitimately needs more than 900 ms, add `@Timeout(...)`
+5. If a unit test legitimately needs more than 5 s, add `@Timeout(...)`
    with a one-line comment justifying it.
 
 ## Quick reference
 
 | Concern | Rule |
 |---|---|
-| Per-unit-test time | 900 ms (opt out with commented `@Timeout`) |
+| Per-unit-test time | 5 s (opt out with commented `@Timeout`) |
 | `@BeforeAll` etc. | 10 s (15 s under coverage) |
 | Network in unit test | Blocked by `NetworkOffExtension` — use `*IT` |
 | Test framework | JUnit 5 only |

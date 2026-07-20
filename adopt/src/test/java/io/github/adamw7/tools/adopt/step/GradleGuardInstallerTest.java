@@ -37,6 +37,17 @@ class GradleGuardInstallerTest {
 	}
 
 	@Test
+	void matchesCarriageReturnLineEndingsWhenAppendingTheGuard(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		Files.writeString(buildFile, "plugins { id 'java' }\r\n");
+		assertTrue(installer.install(buildFile));
+		String content = Files.readString(buildFile);
+		assertTrue(content.contains("tasks.register('enforceClaudeMd')"), "the guard must be appended");
+		assertFalse(content.replace("\r\n", "").contains("\n"),
+				"a CRLF build script must stay CRLF; the appended block must not introduce bare LF endings");
+	}
+
+	@Test
 	void leavesAnAlreadyGuardedBuildUnchanged(@TempDir Path directory) throws IOException {
 		Path buildFile = directory.resolve("build.gradle");
 		Files.writeString(buildFile, "plugins { id 'java' }\n");

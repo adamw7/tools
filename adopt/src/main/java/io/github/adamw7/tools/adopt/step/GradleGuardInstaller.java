@@ -82,9 +82,18 @@ public class GradleGuardInstaller {
 
 	private void append(Path buildFile, String existing, String block) {
 		try {
-			Files.writeString(buildFile, existing + block);
+			Files.writeString(buildFile, existing + matchLineTerminator(block, existing));
 		} catch (IOException e) {
 			throw new AdoptionException("Could not write Gradle build file: " + buildFile, e);
 		}
+	}
+
+	/**
+	 * Rewrites the appended block's LF line terminators to match the ones the script
+	 * already uses, so appending the guard to a CRLF build script does not leave the
+	 * new region with LF endings mixed into an otherwise CRLF file.
+	 */
+	private String matchLineTerminator(String block, String existing) {
+		return existing.contains("\r\n") ? block.replace("\n", "\r\n") : block;
 	}
 }

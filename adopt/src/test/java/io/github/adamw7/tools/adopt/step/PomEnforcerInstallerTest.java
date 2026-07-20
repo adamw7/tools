@@ -240,6 +240,28 @@ class PomEnforcerInstallerTest {
 	}
 
 	@Test
+	void preservesCarriageReturnLineEndingsRatherThanReformattingToLf(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD.replace("\n", "\r\n"));
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("tools.claude-code-enforcer"), "the rule must still be wired in");
+		assertFalse(stripCrlf(result).contains("\n"),
+				"a CRLF POM must stay CRLF; no line may be left with a bare LF ending");
+		assertTrue(result.contains(
+				"      <plugin>\r\n"
+						+ "        <groupId>org.apache.maven.plugins</groupId>\r\n"
+						+ "        <artifactId>maven-compiler-plugin</artifactId>\r\n"
+						+ "      </plugin>"),
+				"the existing plugin must be preserved verbatim with its CRLF endings");
+		assertTrue(result.contains("\r\n            <artifactId>tools.claude-code-enforcer</artifactId>\r\n"),
+				"the added block must use the file's CRLF endings, not LF");
+	}
+
+	private String stripCrlf(String text) {
+		return text.replace("\r\n", "");
+	}
+
+	@Test
 	void indentsTheAddedBlockToTheDocumentsOwnIndentationUnit(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_FOUR_SPACE_INDENT);
 		installer.install(pom);

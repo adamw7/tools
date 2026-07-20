@@ -249,11 +249,35 @@ public class PomEnforcerInstaller {
 	private void write(Document document, Path pomFile, String original) {
 		try {
 			String content = declarationPrefix(original) + transformBody(document);
+			String withTrailingNewline = matchTrailingNewline(content, original);
 			Files.createDirectories(pomFile.toAbsolutePath().getParent());
-			Files.writeString(pomFile, matchTrailingNewline(content, original));
+			Files.writeString(pomFile, applyLineTerminator(withTrailingNewline, lineTerminator(original)));
 		} catch (IOException | TransformerException e) {
 			throw new AdoptionException("Could not write POM: " + pomFile, e);
 		}
+	}
+
+	/**
+	 * The line terminator the original file used. XML parsing normalizes {@code \r\n}
+	 * to {@code \n}, so the DOM the transformer serializes has lost the original
+	 * terminator; capturing it here lets the rewrite keep a CRLF POM on CRLF rather
+	 * than silently flipping every line to LF and reformatting the whole file. A file
+	 * with no {@code \r\n} is treated as LF.
+	 */
+	private String lineTerminator(String original) {
+		return original.contains("\r\n") ? "\r\n" : "\n";
+	}
+
+	/**
+	 * Rewrites every line terminator in {@code content} to {@code terminator}. The
+	 * assembled content mixes the transformer's LF body, the added block's LF
+	 * indentation, and the declaration carried over verbatim from the original, so it
+	 * is first normalized to a single form to avoid double-converting the parts that
+	 * already ended in the target terminator.
+	 */
+	private String applyLineTerminator(String content, String terminator) {
+		String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
+		return terminator.equals("\n") ? normalized : normalized.replace("\n", terminator);
 	}
 
 	private String transformBody(Document document) throws TransformerException {

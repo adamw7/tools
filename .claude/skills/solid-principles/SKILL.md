@@ -574,37 +574,28 @@ public class InMemoryOrderRepository implements OrderRepository {
 }
 ```
 
-### DIP with Spring
+### DIP in this repo (plain constructor injection — no framework)
+
+`tools` is a plain Maven library: **there is no Spring / CDI here.** Wire
+dependencies by hand through the constructor and pass a test double in tests —
+exactly how the `data` sources and the MCP servers are assembled.
 
 ```java
-// Spring handles dependency injection automatically
+// Production wiring — the caller supplies the concretions
+OrderService service = new OrderService(
+    new MySqlOrderRepository(),
+    new SmtpEmailSender());
 
-@Service
-public class OrderService {
-    private final OrderRepository repository;
-    private final NotificationSender notificationSender;
-
-    // Constructor injection (recommended)
-    public OrderService(OrderRepository repository,
-                        NotificationSender notificationSender) {
-        this.repository = repository;
-        this.notificationSender = notificationSender;
-    }
-}
-
-@Repository
-public class JpaOrderRepository implements OrderRepository {
-    // Spring provides implementation
-}
-
-@Component
-@Profile("production")
-public class SmtpEmailSender implements NotificationSender { }
-
-@Component
-@Profile("test")
-public class MockEmailSender implements NotificationSender { }
+// Test wiring — swap in in-memory / fake implementations, no network needed
+OrderService service = new OrderService(
+    new InMemoryOrderRepository(),
+    recordingNotificationSender);
 ```
+
+> Repo caveat: `Optional` is fine as a **return type** (e.g.
+> `Optional<Order> findById(...)`), but a **field must never be `Optional`** —
+> an ArchUnit rule fails the build on `Optional` fields. Hold the value itself
+> and null-check it.
 
 ### How to Detect DIP Violations
 
@@ -643,6 +634,7 @@ When reviewing code, check:
 
 ## Related Skills
 
-- `design-patterns` - Implementation patterns (Factory, Strategy, Observer, etc.)
-- `clean-code` - Code-level principles (DRY, KISS, naming)
-- `java-code-review` - Comprehensive review checklist
+- `java-code-review` - Comprehensive review checklist (leads with the repo's
+  ArchUnit-enforced rules)
+- `testing-conventions` - Writing the fast, network-off, DI-friendly tests these
+  abstractions make possible

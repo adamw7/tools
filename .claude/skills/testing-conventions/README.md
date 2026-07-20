@@ -7,7 +7,7 @@
 ## Description
 
 Helps Claude write tests that satisfy the `tools` repo's enforced testing rules:
-the 900 ms Surefire per-test timeout, network-off unit tests, ArchUnit test
+the 5 s Surefire per-test timeout, network-off unit tests, ArchUnit test
 conventions, and JUnit 5 only.
 
 ---
@@ -25,7 +25,7 @@ conventions, and JUnit 5 only.
 ```
 > view .claude/skills/testing-conventions/SKILL.md
 > "Add a test for the uniqueness checker"
-→ Fast *Test in the right package, no network, under 900 ms
+→ Fast *Test in the right package, no network, under 5 s
 ```
 
 ---

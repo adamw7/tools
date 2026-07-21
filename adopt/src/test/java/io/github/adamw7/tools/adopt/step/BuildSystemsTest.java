@@ -44,13 +44,25 @@ class BuildSystemsTest {
 	}
 
 	@Test
-	void detectsNothingForAnUnsupportedProject(@TempDir Path directory) {
-		assertTrue(BuildSystems.detect(BuildSystems.DEFAULTS, directory).isEmpty());
+	void fallsBackToTheGitHubActionsGuardForAnUnsupportedProject(@TempDir Path directory) {
+		Optional<BuildSystem> detected = BuildSystems.detect(BuildSystems.DEFAULTS, directory);
+		assertEquals("github-actions", detected.orElseThrow().name());
+	}
+
+	@Test
+	void detectsNothingWhenNoCandidateMatchesAndThereIsNoFallback(@TempDir Path directory) {
+		List<BuildSystem> withoutFallback = List.of(new MavenBuildSystem(), new GradleBuildSystem());
+		assertTrue(BuildSystems.detect(withoutFallback, directory).isEmpty());
 	}
 
 	@Test
 	void listsBuildSystemNames() {
-		assertEquals("maven/gradle", BuildSystems.names(BuildSystems.DEFAULTS));
+		assertEquals("maven/gradle/github-actions", BuildSystems.names(BuildSystems.DEFAULTS));
+	}
+
+	@Test
+	void fallbackVerifyCommandRunsTheGuardScript() {
+		assertEquals(List.of("sh", ".github/claude-md-guard.sh"), new FallbackBuildSystem().verifyCommand());
 	}
 
 	@Test

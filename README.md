@@ -727,7 +727,11 @@ being validated on every build. The guard is build-tool aware: a Maven project
 gets the full [`claude-code-enforcer`](#claude-code-files-maven-enforcer) rule in
 its `pom.xml`, while a Gradle project (Groovy `build.gradle` or Kotlin
 `build.gradle.kts`) gets a presence-and-non-empty guard task appended to the
-build script — Gradle has no enforcer-rule equivalent. Finally it pushes the
+build script — Gradle has no enforcer-rule equivalent. A repository with no
+recognised build file falls back to a build-tool-agnostic GitHub Actions
+workflow that runs a portable presence-and-non-empty check script on every push
+and pull request, so even a build-less repository keeps the guard. Finally it
+pushes the
 branch and opens a pull request with the GitHub CLI, so the change is reviewed
 rather than landing straight on the default branch, which is never written to.
 
@@ -781,17 +785,19 @@ The default pipeline runs these steps in order:
    DOM — no third-party XML library — is namespace-aware, and is idempotent); a
    Gradle project has a `enforceClaudeMd` guard task appended to its
    `build.gradle`/`build.gradle.kts` via `GradleGuardInstaller`, wired into
-   `check`. Both installs are idempotent, and a repository with no supported build
-   file is skipped with a warning rather than failing the adoption. Supporting a
-   new build tool is a matter of adding a `BuildSystem` implementation rather than
-   branching inside the step.
+   `check`. A repository with no recognised build file falls back to a
+   `FallbackBuildSystem` that installs a GitHub Actions workflow and the portable
+   `.github/claude-md-guard.sh` check it runs via `WorkflowGuardInstaller`. All
+   installs are idempotent. Supporting a new build tool is a matter of adding a
+   `BuildSystem` implementation rather than branching inside the step.
 8. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
 9. **`VerifyStep`** — runs the detected build system's verification (a
    non-recursive `mvn -N validate` for Maven, the `enforceClaudeMd` task for
-   Gradle) so the freshly wired guard actually executes against the generated
-   `CLAUDE.md`, failing the adoption locally if the file is missing or malformed
-   rather than after the pull request lands.
+   Gradle, the `.github/claude-md-guard.sh` script for the fallback) so the
+   freshly wired guard actually executes against the generated `CLAUDE.md`,
+   failing the adoption locally if the file is missing or malformed rather than
+   after the pull request lands.
 10. **`PushStep`** — pushes the feature branch to origin and sets its upstream
     (`git push -u origin <branch>`).
 11. **`PullRequestStep`** — opens a pull request from the branch with

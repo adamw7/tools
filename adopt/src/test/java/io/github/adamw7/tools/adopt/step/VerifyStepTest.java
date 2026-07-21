@@ -67,10 +67,18 @@ class VerifyStepTest {
 	}
 
 	@Test
-	void skipsWhenNoSupportedBuildFileIsPresent(@TempDir Path workspace) throws IOException {
+	void runsTheFallbackGuardScriptWhenNoBuildFileIsPresent(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
+		assertEquals(FallbackBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
+	}
+
+	@Test
+	void skipsWhenNoConfiguredBuildSystemMatches(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new VerifyStep(List.of(new MavenBuildSystem(), new GradleBuildSystem())).execute(context, runner);
 		assertEquals(0, runner.count());
 	}
 

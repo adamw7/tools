@@ -27,7 +27,9 @@ run `mvn install` from the repository root. The main capabilities are:
   clone, create a feature branch, `claude init` to generate
   `CLAUDE.md` and commit it, wire a build-tool-aware `CLAUDE.md` guard into the
   repo (the `claude-code-enforcer` rule for Maven `pom.xml`, an `enforceClaudeMd`
-  guard task for Gradle) and commit that, verify the guard passes on the
+  guard task for Gradle, and a GitHub Actions workflow plus
+  `.github/claude-md-guard.sh` check as the build-tool-agnostic fallback) and
+  commit that, verify the guard passes on the
   generated file, then push the branch and open a pull request (`gh pr create`)
   with metadata from `PullRequestOptions`; the default branch is never written to
   directly.

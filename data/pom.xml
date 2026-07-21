@@ -19,8 +19,14 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<compilerArgs>
+						<!-- The MCP SDK jars declare hyphenated Automatic-Module-Names
+						     (e.g. io.modelcontextprotocol.sdk.mcp-core), which are not
+						     legal module names and so cannot appear in a `requires`
+						     directive. Let this module read the unnamed module (classpath)
+						     to reach the SDK's io.modelcontextprotocol.spec types and
+						     mcp-common instead. -->
 						<arg>--add-reads</arg>
-						<arg>datamodule=ALL-UNNAMED</arg>
+						<arg>io.github.adamw7.tools.data=ALL-UNNAMED</arg>
 					</compilerArgs>
 				</configuration>
 			</plugin>
@@ -32,7 +38,8 @@
 					     NetworkOffExtension registered through META-INF/services is
 					     discovered by JUnit's extension auto-detection. ServiceLoader
 					     ignores META-INF/services for a named module, and surefire
-					     otherwise patches the test classes into the datamodule module. -->
+					     otherwise patches the test classes into the
+					     io.github.adamw7.tools.data module. -->
 					<argLine>@{argLine}</argLine>
 					<useModulePath>false</useModulePath>
 				</configuration>
@@ -66,7 +73,7 @@
 							</execution>
 						</executions>
 						<configuration>
-							<argLine>--add-reads datamodule=ALL-UNNAMED</argLine>
+							<argLine>--add-reads io.github.adamw7.tools.data=ALL-UNNAMED</argLine>
 						</configuration>
 					</plugin>
 				</plugins>

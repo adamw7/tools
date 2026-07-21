@@ -1,4 +1,4 @@
-package io.github.adamw7.context.mcp;
+package io.github.adamw7.tools.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-
-import io.github.adamw7.context.Language;
 
 public class ToolArgumentsTest {
 
@@ -21,6 +19,30 @@ public class ToolArgumentsTest {
 		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
 				() -> ToolArguments.requiredString(Map.of(), "path"));
 		assertEquals("Missing required argument: path", error.getMessage());
+	}
+
+	@Test
+	void requiredIntParsesNumericStrings() {
+		assertEquals(3, ToolArguments.requiredInt(Map.of("columns_row", "3"), "columns_row"));
+	}
+
+	@Test
+	void requiredIntParsesIntegers() {
+		assertEquals(2, ToolArguments.requiredInt(Map.of("columns_row", 2), "columns_row"));
+	}
+
+	@Test
+	void requiredIntFailsWhenMissing() {
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.requiredInt(Map.of(), "columns_row"));
+		assertEquals("Missing required argument: columns_row", error.getMessage());
+	}
+
+	@Test
+	void requiredIntRejectsNonNumericValues() {
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.requiredInt(Map.of("columns_row", "abc"), "columns_row"));
+		assertEquals("Argument columns_row must be an integer but was abc", error.getMessage());
 	}
 
 	@Test
@@ -49,6 +71,12 @@ public class ToolArgumentsTest {
 	}
 
 	@Test
+	void optionalIntRejectsNonNumericValues() {
+		assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.optionalInt(Map.of("depth", "abc"), "depth", 1));
+	}
+
+	@Test
 	void optionalBoundedIntAcceptsValuesWithinRange() {
 		assertEquals(5, ToolArguments.optionalBoundedInt(Map.of("depth", 5), "depth", 1, 0, 10));
 	}
@@ -69,16 +97,5 @@ public class ToolArgumentsTest {
 	void optionalBoundedIntRejectsNegativeValues() {
 		assertThrows(IllegalArgumentException.class,
 				() -> ToolArguments.optionalBoundedInt(Map.of("depth", -1), "depth", 1, 0, 10));
-	}
-
-	@Test
-	void optionalLanguageFallsBackToDefault() {
-		assertEquals(Language.JAVA, ToolArguments.optionalLanguage(Map.of(), "language", Language.JAVA));
-	}
-
-	@Test
-	void optionalLanguageResolvesTheGivenName() {
-		assertEquals(Language.KOTLIN, ToolArguments.optionalLanguage(Map.of("language", "kotlin"), "language",
-				Language.JAVA));
 	}
 }

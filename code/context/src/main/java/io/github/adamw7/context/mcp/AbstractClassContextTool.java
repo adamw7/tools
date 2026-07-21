@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.ProjectSources;
+import io.github.adamw7.tools.mcp.ToolArguments;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
@@ -40,7 +41,7 @@ abstract class AbstractClassContextTool implements ContextTool {
 	public CallToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP {} tool for {}", getToolDefinition().name(), arguments);
 		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
-		Language language = ToolArguments.optionalLanguage(arguments, "language", Language.JAVA);
+		Language language = LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA);
 		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
 		Set<ClassContainer> containers = Set.copyOf(new ProjectSources(language).load(root).values());
 

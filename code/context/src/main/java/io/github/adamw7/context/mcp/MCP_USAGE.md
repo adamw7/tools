@@ -28,7 +28,8 @@ The implementation lives in a package separate from the core finders:
 3. **ContextTool.java** — the abstraction every tool implements.
 4. **ProjectTreeTool.java** / **ContextFinderTool.java** / **EstimateTokensTool.java**
    — the three tools.
-5. **ToolArguments.java** — shared parsing of the call arguments.
+5. **LanguageArguments.java** — resolves the optional `language` argument; the
+   generic argument parsing is shared from `mcp-common`'s `ToolArguments`.
 
 The server uses:
 

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.mcp;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,6 +24,8 @@ import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransp
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
@@ -171,7 +174,7 @@ public abstract class AbstractMcpConfiguration {
 	private SyncToolSpecification specificationFor(McpTool tool) {
 		return SyncToolSpecification.builder()
 				.tool(tool.getToolDefinition())
-				.callHandler((exchange, request) -> tool.apply(request.arguments()))
+				.callHandler((exchange, request) -> safeApply(tool, request.arguments()))
 				.build();
 	}
 
@@ -182,8 +185,28 @@ public abstract class AbstractMcpConfiguration {
 	private McpStatelessServerFeatures.SyncToolSpecification statelessSpecificationFor(McpTool tool) {
 		return McpStatelessServerFeatures.SyncToolSpecification.builder()
 				.tool(tool.getToolDefinition())
-				.callHandler((context, request) -> tool.apply(request.arguments()))
+				.callHandler((context, request) -> safeApply(tool, request.arguments()))
 				.build();
+	}
+
+	/**
+	 * Invokes a tool and turns any thrown exception into an error {@link CallToolResult}
+	 * rather than letting it surface as a protocol-level failure, so a bad argument or a
+	 * denied path reaches the client as a clear, actionable tool error. Package-private so
+	 * the behaviour can be exercised directly in tests.
+	 */
+	CallToolResult safeApply(McpTool tool, Map<String, Object> arguments) {
+		String name = tool.getToolDefinition().name();
+		try {
+			return tool.apply(arguments);
+		} catch (RuntimeException e) {
+			log.warn("MCP tool {} failed for {}", name, arguments, e);
+			String message = e.getMessage() == null ? e.toString() : e.getMessage();
+			return CallToolResult.builder()
+					.content(List.of(TextContent.builder(name + " failed: " + message).build()))
+					.isError(true)
+					.build();
+		}
 	}
 
 	/**

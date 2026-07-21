@@ -32,7 +32,7 @@ public class McpConfiguration extends AbstractMcpConfiguration {
 
 	@Override
 	protected String serverName() {
-		return "custom-server";
+		return "uniqueness-server";
 	}
 
 	@Override

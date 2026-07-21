@@ -16,6 +16,7 @@ import io.github.adamw7.context.tree.ProjectTreeMermaidSerializer;
 import io.github.adamw7.context.tree.ProjectTreeNode;
 import io.github.adamw7.context.tree.ProjectTreePrinter;
 import io.github.adamw7.context.tree.ProjectTreeSerializer;
+import io.github.adamw7.tools.mcp.ToolArguments;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
@@ -72,7 +73,7 @@ public class ProjectTreeTool implements ContextTool {
 
 	private String buildTree(Map<String, Object> arguments) {
 		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
-		Language language = ToolArguments.optionalLanguage(arguments, "language", Language.JAVA);
+		Language language = LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA);
 		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
 		ProjectTreeNode tree = new ProjectTreeBuilder(language, depth).build(root);
 		return serializerFor(ToolArguments.optionalString(arguments, "format", DEFAULT_FORMAT)).serialize(tree);

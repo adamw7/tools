@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.stereotype.Component;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
@@ -15,11 +14,11 @@ import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
 import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 import io.github.adamw7.tools.mcp.McpTool;
+import io.github.adamw7.tools.mcp.ToolArguments;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
-@Component
 public class UniquenessTool implements McpTool {
 	
 	private static final Logger log = LogManager.getLogger(UniquenessTool.class.getName());
@@ -34,7 +33,7 @@ public class UniquenessTool implements McpTool {
                         ),
                         "required", List.of("file", "columns_row", "columns_name")
                     )).description(
-            "Check if a given set of columns in unique in a given data set").build();
+            "Check if a given set of columns is unique in a given data set").build();
 
 	public UniquenessTool() {
     }
@@ -52,20 +51,20 @@ public class UniquenessTool implements McpTool {
 	}
 
 	private String runUniqueness(Map<String, Object> arguments) {
-		String fileName = String.valueOf(arguments.get("file"));
-		String columnName = String.valueOf(arguments.get("columns_name"));
-		int columnsRow = Integer.parseInt(String.valueOf(arguments.get("columns_row")));
+		String fileName = ToolArguments.requiredString(arguments, "file");
+		String columnName = ToolArguments.requiredString(arguments, "columns_name");
+		int columnsRow = ToolArguments.requiredInt(arguments, "columns_row");
 		try (InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow)) {
 			Uniqueness check = new InMemoryUniquenessCheck(source);
 			Result result = check.exec(columnName);
-			print(result, columnName);
+			logResult(result, columnName);
 			return String.valueOf(result.isUnique());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
 	}
-	
-	private static void print(Result result, String column) {
+
+	private static void logResult(Result result, String column) {
 		log.info("{} is {}", column, result.isUnique() ? "unique" : "NOT unique");
 	}
 

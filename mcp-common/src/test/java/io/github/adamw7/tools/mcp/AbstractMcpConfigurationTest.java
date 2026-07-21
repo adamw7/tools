@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.mcp;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -150,5 +152,35 @@ public class AbstractMcpConfigurationTest {
 		McpStatelessSyncServer server = config.mcpStatelessSyncServer(transport);
 		assertTrue(server.listTools().stream().anyMatch(tool -> "test_tool".equals(tool.name())));
 		server.close();
+	}
+
+	@Test
+	public void safeApplyReturnsTheToolResultWhenItSucceeds() {
+		CallToolResult result = new TestMcpConfiguration().safeApply(new TestTool(), Map.of());
+		assertFalse(result.isError());
+		assertEquals("ok", ((TextContent) result.content().getFirst()).text());
+	}
+
+	@Test
+	public void safeApplyTurnsAThrownExceptionIntoAnErrorResult() {
+		CallToolResult result = new TestMcpConfiguration().safeApply(new ThrowingTool(), Map.of());
+		assertTrue(result.isError());
+		assertEquals("boom failed: bad argument", ((TextContent) result.content().getFirst()).text());
+	}
+
+	private static final class ThrowingTool implements McpTool {
+
+		private final Tool toolDefinition = Tool.builder("boom",
+				Map.of("type", "object", "properties", Map.of())).description("Always fails").build();
+
+		@Override
+		public Tool getToolDefinition() {
+			return toolDefinition;
+		}
+
+		@Override
+		public CallToolResult apply(Map<String, Object> arguments) {
+			throw new IllegalArgumentException("bad argument");
+		}
 	}
 }

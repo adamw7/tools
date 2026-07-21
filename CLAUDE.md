@@ -19,9 +19,14 @@ run `mvn install` from the repository root. The main capabilities are:
 - **Context engineering** (`code/context`) — a regex-based class-usage finder and
   project-tree builder that assembles context for gen-AI agents, plus an MCP
   server exposing `project_tree`, `find_context`, and `estimate_tokens`.
-- **Data** (`data`) — CSV/GZip/JDBC/Parquet data sources (in-memory and iterative), a
-  column-uniqueness/key finder, open-addressing map/set data structures, and an
-  MCP server exposing the uniqueness checker.
+- **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet via an in-process
+  DuckDB engine, plus forward-only JSON/YAML/TOON), each in in-memory and
+  iterative variants. Schema-aware sources implement the narrower
+  `ColumnarDataSource` contract, so callers needing the schema (e.g. the
+  uniqueness check) cannot be handed a forward-only source. Also a
+  column-uniqueness/key finder, open-addressing map/set data structures
+  (`OpenAddressingMap`, `OpenAddressingSet`, primitive-keyed
+  `IntKeyOpenAddressingMap`), and an MCP server exposing the uniqueness checker.
 - **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
   GitHub repo: check the required tools (`git`, `claude`, `gh`) are installed,
   clone, create a feature branch, `claude init` to generate

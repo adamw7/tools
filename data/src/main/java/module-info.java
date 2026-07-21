@@ -1,4 +1,4 @@
-open module datamodule {
+module io.github.adamw7.tools.data {
 	requires org.apache.logging.log4j;
 	requires java.sql;
 	requires duckdb.jdbc;
@@ -17,4 +17,9 @@ open module datamodule {
 	exports io.github.adamw7.tools.data.structure;
 	exports io.github.adamw7.tools.data.uniqueness;
 	exports io.github.adamw7.tools.data.network;
+
+	// Spring reflects into the MCP configuration/beans in this package
+	// (component scan, @Value injection); no other package needs deep
+	// reflection, so open just this one instead of the whole module.
+	opens io.github.adamw7.tools.data.uniqueness.mcp;
 }

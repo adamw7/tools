@@ -15,9 +15,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * {@code CLAUDE.md} fails the adoption locally instead of breaking the
  * contributor's build after the pull request lands. The command to run is
  * chosen from the checkout's build tool — a non-recursive {@code mvn -N validate}
- * for Maven, the guard task for Gradle (see {@link BuildSystem}). A repository
- * with no supported build file has nothing to verify and is skipped, mirroring
- * {@link EnforcerStep}.
+ * for Maven, the guard task for Gradle, the guard script for a project with no
+ * recognised build file (see {@link BuildSystem}). Detection only comes up empty
+ * when the step is configured with a build-system list that has no catch-all
+ * fallback, in which case there is nothing to verify and the step is skipped,
+ * mirroring {@link EnforcerStep}.
  */
 public class VerifyStep extends AbstractCommandStep {
 

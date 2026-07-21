@@ -52,7 +52,10 @@ Maven project. The notable capabilities are:
   gets the full `claude-code-enforcer` rule wired into its `pom.xml` and verified
   with a non-recursive `mvn -N validate`; a Gradle project (Groovy or Kotlin DSL)
   gets an `enforceClaudeMd` presence guard task appended to its build script and
-  verified by running that task. The pull request metadata — title, body,
+  verified by running that task; a repository with no recognised build file falls
+  back to a GitHub Actions workflow and the portable `.github/claude-md-guard.sh`
+  check it runs, verified by running that script — so a build-less repository
+  still keeps the guard. The pull request metadata — title, body,
   reviewers, labels, assignees, and draft flag — is supplied through
   `PullRequestOptions`. External `git`/`claude`/`gh` invocations
   go through a `CommandRunner`

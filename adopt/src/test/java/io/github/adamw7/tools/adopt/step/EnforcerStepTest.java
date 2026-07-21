@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -60,10 +61,19 @@ class EnforcerStepTest {
 	}
 
 	@Test
-	void skipsWhenNoSupportedBuildFileIsPresent(@TempDir Path workspace) throws IOException {
+	void wiresTheFallbackGuardWhenNoBuildFileIsPresent(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		assertDoesNotThrow(() -> new EnforcerStep().execute(context, new RecordingCommandRunner()));
+		new EnforcerStep().execute(context, new RecordingCommandRunner());
+		assertTrue(Files.exists(context.repositoryDirectory().resolve(WorkflowGuardInstaller.WORKFLOW_FILE)));
 		assertFalse(Files.exists(context.repositoryDirectory().resolve("pom.xml")));
+	}
+
+	@Test
+	void skipsWhenNoConfiguredBuildSystemMatches(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		EnforcerStep step = new EnforcerStep(List.of(new MavenBuildSystem(), new GradleBuildSystem()));
+		assertDoesNotThrow(() -> step.execute(context, new RecordingCommandRunner()));
+		assertFalse(Files.exists(context.repositoryDirectory().resolve(WorkflowGuardInstaller.WORKFLOW_FILE)));
 	}
 
 	@Test

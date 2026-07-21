@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
+import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -9,7 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,13 +20,26 @@ import io.github.adamw7.tools.data.Utils;
 
 public class TOONDataSourceTest {
 
+	private static final int FILE_ROW_COUNT = 70;
+
+	private static Map<String, String> collect(InMemoryTOONDataSource source) throws IOException {
+		Map<String, String> rows = new LinkedHashMap<>();
+		while (source.hasMoreData()) {
+			String[] row = source.nextRow();
+			if (row != null) {
+				rows.put(row[0], row[1]);
+			}
+		}
+		return rows;
+	}
+
 	@Test
 	public void testGetColumnNames() throws IOException {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 			String[] columnNames = source.getColumnNames();
 			assertNotNull(columnNames);
-			assertEquals(70, columnNames.length);
+			assertEquals(FILE_ROW_COUNT, columnNames.length);
 		}
 	}
 
@@ -41,7 +57,7 @@ public class TOONDataSourceTest {
 					assertNotNull(row[1]);
 				}
 			}
-			assertEquals(70, rowCount);
+			assertEquals(FILE_ROW_COUNT, rowCount);
 		}
 	}
 
@@ -106,24 +122,8 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			String[] columnNames = source.getColumnNames();
-			assertTrue(columnNames.length > 0);
-
-			// Should contain the array elements
-			boolean foundAdmin = false;
-			boolean foundOps = false;
-			boolean foundDev = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[1] != null) {
-					if (row[1].equals("admin")) foundAdmin = true;
-					if (row[1].equals("ops")) foundOps = true;
-					if (row[1].equals("dev")) foundDev = true;
-				}
-			}
-			assertTrue(foundAdmin);
-			assertTrue(foundOps);
-			assertTrue(foundDev);
+			assertTrue(source.getColumnNames().length > 0);
+			assertEquals(Map.of("tags", "3", "tags[0]", "admin", "tags[1]", "ops", "tags[2]", "dev"), collect(source));
 		}
 	}
 
@@ -134,17 +134,10 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundAlice = false;
-			boolean foundBob = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[1] != null) {
-					if (row[1].equals("Alice")) foundAlice = true;
-					if (row[1].equals("Bob")) foundBob = true;
-				}
-			}
-			assertTrue(foundAlice);
-			assertTrue(foundBob);
+			assertEquals(Map.ofEntries(entry("id", "id"), entry("name", "name"), entry("role", "role"),
+					entry("users", "2"), entry("users[0].id", "1"), entry("users[0].name", "Alice"),
+					entry("users[0].role", "admin"), entry("users[1].id", "2"), entry("users[1].name", "Bob"),
+					entry("users[1].role", "user")), collect(source));
 		}
 	}
 
@@ -155,17 +148,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundTask = false;
-			boolean foundLocation = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null) {
-					if (row[0].equals("context.task") && row[1].equals("Our favorite hikes")) foundTask = true;
-					if (row[0].equals("context.location") && row[1].equals("Boulder")) foundLocation = true;
-				}
-			}
-			assertTrue(foundTask);
-			assertTrue(foundLocation);
+			assertEquals(Map.of("context.task", "Our favorite hikes", "context.location", "Boulder"), collect(source));
 		}
 	}
 
@@ -176,14 +159,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean found = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0].equals("message") && row[1].equals("Hello, World!")) {
-					found = true;
-				}
-			}
-			assertTrue(found);
+			assertEquals(Map.of("message", "Hello, World!"), collect(source));
 		}
 	}
 
@@ -202,7 +178,7 @@ public class TOONDataSourceTest {
 				assertNotNull(row);
 				count++;
 			}
-			assertEquals(70, count);
+			assertEquals(FILE_ROW_COUNT, count);
 		}
 	}
 
@@ -211,31 +187,15 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundAppName = false;
-			boolean foundVersion = false;
-			boolean foundIsEnabled = false;
-			boolean foundIsDisabled = false;
-			boolean foundMaxRetries = false;
-			boolean foundPi = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("appName") && row[1].equals("MyTestApp")) foundAppName = true;
-					if (row[0].equals("version") && row[1].equals("1.2.3")) foundVersion = true;
-					if (row[0].equals("isEnabled") && row[1].equals("true")) foundIsEnabled = true;
-					if (row[0].equals("isDisabled") && row[1].equals("false")) foundIsDisabled = true;
-					if (row[0].equals("maxRetries") && row[1].equals("5")) foundMaxRetries = true;
-					if (row[0].equals("pi") && row[1].equals("3.14159")) foundPi = true;
-				}
-			}
-
-			assertTrue(foundAppName, "Expected to find appName=MyTestApp");
-			assertTrue(foundVersion, "Expected to find version=1.2.3");
-			assertTrue(foundIsEnabled, "Expected to find isEnabled=true");
-			assertTrue(foundIsDisabled, "Expected to find isDisabled=false");
-			assertTrue(foundMaxRetries, "Expected to find maxRetries=5");
-			assertTrue(foundPi, "Expected to find pi=3.14159");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("MyTestApp", rows.get("appName"));
+			assertEquals("1.2.3", rows.get("version"));
+			assertEquals("true", rows.get("isEnabled"));
+			assertEquals("false", rows.get("isDisabled"));
+			assertEquals("5", rows.get("maxRetries"));
+			assertEquals("3.14159", rows.get("pi"));
 		}
 	}
 
@@ -244,25 +204,13 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundHost = false;
-			boolean foundPort = false;
-			boolean foundUsername = false;
-			boolean foundPassword = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("database.host") && row[1].equals("localhost")) foundHost = true;
-					if (row[0].equals("database.port") && row[1].equals("5432")) foundPort = true;
-					if (row[0].equals("database.credentials.username") && row[1].equals("admin")) foundUsername = true;
-					if (row[0].equals("database.credentials.password") && row[1].equals("secret123")) foundPassword = true;
-				}
-			}
-
-			assertTrue(foundHost, "Expected to find database.host=localhost");
-			assertTrue(foundPort, "Expected to find database.port=5432");
-			assertTrue(foundUsername, "Expected to find database.credentials.username=admin");
-			assertTrue(foundPassword, "Expected to find database.credentials.password=secret123");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("localhost", rows.get("database.host"));
+			assertEquals("5432", rows.get("database.port"));
+			assertEquals("admin", rows.get("database.credentials.username"));
+			assertEquals("secret123", rows.get("database.credentials.password"));
 		}
 	}
 
@@ -271,22 +219,12 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundGreeting = false;
-			boolean foundPathWithSpaces = false;
-			boolean foundQuotedValue = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("greeting") && row[1].equals("Hello, World!")) foundGreeting = true;
-					if (row[0].equals("pathWithSpaces") && row[1].equals("C:\\Program Files\\App")) foundPathWithSpaces = true;
-					if (row[0].equals("quotedValue") && row[1].equals("She said \"Hello\" to me")) foundQuotedValue = true;
-				}
-			}
-
-			assertTrue(foundGreeting, "Expected to find greeting=Hello, World!");
-			assertTrue(foundPathWithSpaces, "Expected to find pathWithSpaces with backslash escape");
-			assertTrue(foundQuotedValue, "Expected to find quotedValue with escaped quotes");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("Hello, World!", rows.get("greeting"));
+			assertEquals("C:\\Program Files\\App", rows.get("pathWithSpaces"));
+			assertEquals("She said \"Hello\" to me", rows.get("quotedValue"));
 		}
 	}
 
@@ -295,19 +233,11 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundMultilineHint = false;
-			boolean foundTabSeparated = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("multilineHint") && row[1].equals("Line1\nLine2\nLine3")) foundMultilineHint = true;
-					if (row[0].equals("tabSeparated") && row[1].equals("col1\tcol2\tcol3")) foundTabSeparated = true;
-				}
-			}
-
-			assertTrue(foundMultilineHint, "Expected to find multilineHint with newline escapes");
-			assertTrue(foundTabSeparated, "Expected to find tabSeparated with tab escapes");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("Line1\nLine2\nLine3", rows.get("multilineHint"));
+			assertEquals("col1\tcol2\tcol3", rows.get("tabSeparated"));
 		}
 	}
 
@@ -316,25 +246,13 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundHigh = false;
-			boolean foundMedium = false;
-			boolean foundLow = false;
-			boolean foundCount = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("priorities") && row[1].equals("3")) foundCount = true;
-					if (row[0].equals("priorities[0]") && row[1].equals("high")) foundHigh = true;
-					if (row[0].equals("priorities[1]") && row[1].equals("medium")) foundMedium = true;
-					if (row[0].equals("priorities[2]") && row[1].equals("low")) foundLow = true;
-				}
-			}
-
-			assertTrue(foundCount, "Expected to find priorities count=3");
-			assertTrue(foundHigh, "Expected to find priorities[0]=high");
-			assertTrue(foundMedium, "Expected to find priorities[1]=medium");
-			assertTrue(foundLow, "Expected to find priorities[2]=low");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("3", rows.get("priorities"));
+			assertEquals("high", rows.get("priorities[0]"));
+			assertEquals("medium", rows.get("priorities[1]"));
+			assertEquals("low", rows.get("priorities[2]"));
 		}
 	}
 
@@ -343,31 +261,15 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundProduct1Sku = false;
-			boolean foundProduct1Name = false;
-			boolean foundProduct1Price = false;
-			boolean foundProduct1Desc = false;
-			boolean foundProduct2Sku = false;
-			boolean foundProduct2Name = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("products[0].sku") && row[1].equals("SKU001")) foundProduct1Sku = true;
-					if (row[0].equals("products[0].name") && row[1].equals("Widget Pro")) foundProduct1Name = true;
-					if (row[0].equals("products[0].price") && row[1].equals("29.99")) foundProduct1Price = true;
-					if (row[0].equals("products[0].description") && row[1].equals("A great widget, really!")) foundProduct1Desc = true;
-					if (row[0].equals("products[1].sku") && row[1].equals("SKU002")) foundProduct2Sku = true;
-					if (row[0].equals("products[1].name") && row[1].equals("Gadget Plus")) foundProduct2Name = true;
-				}
-			}
-
-			assertTrue(foundProduct1Sku, "Expected to find products[0].sku=SKU001");
-			assertTrue(foundProduct1Name, "Expected to find products[0].name=Widget Pro");
-			assertTrue(foundProduct1Price, "Expected to find products[0].price=29.99");
-			assertTrue(foundProduct1Desc, "Expected to find products[0].description with comma inside quotes");
-			assertTrue(foundProduct2Sku, "Expected to find products[1].sku=SKU002");
-			assertTrue(foundProduct2Name, "Expected to find products[1].name=Gadget Plus");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("SKU001", rows.get("products[0].sku"));
+			assertEquals("Widget Pro", rows.get("products[0].name"));
+			assertEquals("29.99", rows.get("products[0].price"));
+			assertEquals("A great widget, really!", rows.get("products[0].description"));
+			assertEquals("SKU002", rows.get("products[1].sku"));
+			assertEquals("Gadget Plus", rows.get("products[1].name"));
 		}
 	}
 
@@ -376,28 +278,14 @@ public class TOONDataSourceTest {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
 
-			boolean foundTemperature = false;
-			boolean foundTemperatureValue = false;
-			boolean foundHumidity = false;
-			boolean foundPressure = false;
-			boolean foundPressureValue = false;
+			Map<String, String> rows = collect(source);
 
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("metrics[0].name") && row[1].equals("temperature")) foundTemperature = true;
-					if (row[0].equals("metrics[0].value") && row[1].equals("72.5")) foundTemperatureValue = true;
-					if (row[0].equals("metrics[1].name") && row[1].equals("humidity")) foundHumidity = true;
-					if (row[0].equals("metrics[2].name") && row[1].equals("pressure")) foundPressure = true;
-					if (row[0].equals("metrics[2].value") && row[1].equals("1013.25")) foundPressureValue = true;
-				}
-			}
-
-			assertTrue(foundTemperature, "Expected to find metrics[0].name=temperature");
-			assertTrue(foundTemperatureValue, "Expected to find metrics[0].value=72.5 (decimal)");
-			assertTrue(foundHumidity, "Expected to find metrics[1].name=humidity");
-			assertTrue(foundPressure, "Expected to find metrics[2].name=pressure");
-			assertTrue(foundPressureValue, "Expected to find metrics[2].value=1013.25 (decimal)");
+			assertEquals(FILE_ROW_COUNT, rows.size());
+			assertEquals("temperature", rows.get("metrics[0].name"));
+			assertEquals("72.5", rows.get("metrics[0].value"));
+			assertEquals("humidity", rows.get("metrics[1].name"));
+			assertEquals("pressure", rows.get("metrics[2].name"));
+			assertEquals("1013.25", rows.get("metrics[2].value"));
 		}
 	}
 
@@ -408,17 +296,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundTrue = false;
-			boolean foundFalse = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("enabled") && row[1].equals("true")) foundTrue = true;
-					if (row[0].equals("disabled") && row[1].equals("false")) foundFalse = true;
-				}
-			}
-			assertTrue(foundTrue, "Expected to find enabled=true");
-			assertTrue(foundFalse, "Expected to find disabled=false");
+			assertEquals(Map.of("enabled", "true", "disabled", "false"), collect(source));
 		}
 	}
 
@@ -429,20 +307,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundCount = false;
-			boolean foundNegative = false;
-			boolean foundZero = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("count") && row[1].equals("42")) foundCount = true;
-					if (row[0].equals("negative") && row[1].equals("-10")) foundNegative = true;
-					if (row[0].equals("zero") && row[1].equals("0")) foundZero = true;
-				}
-			}
-			assertTrue(foundCount, "Expected to find count=42");
-			assertTrue(foundNegative, "Expected to find negative=-10");
-			assertTrue(foundZero, "Expected to find zero=0");
+			assertEquals(Map.of("count", "42", "negative", "-10", "zero", "0"), collect(source));
 		}
 	}
 
@@ -453,20 +318,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundPi = false;
-			boolean foundSmall = false;
-			boolean foundLarge = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("pi") && row[1].equals("3.14159")) foundPi = true;
-					if (row[0].equals("small") && row[1].equals("0.001")) foundSmall = true;
-					if (row[0].equals("large") && row[1].equals("12345.6789")) foundLarge = true;
-				}
-			}
-			assertTrue(foundPi, "Expected to find pi=3.14159");
-			assertTrue(foundSmall, "Expected to find small=0.001");
-			assertTrue(foundLarge, "Expected to find large=12345.6789");
+			assertEquals(Map.of("pi", "3.14159", "small", "0.001", "large", "12345.6789"), collect(source));
 		}
 	}
 
@@ -477,16 +329,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			boolean foundDeep = false;
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null && row[0] != null && row[1] != null) {
-					if (row[0].equals("level1.level2.level3.value") && row[1].equals("deep")) {
-						foundDeep = true;
-					}
-				}
-			}
-			assertTrue(foundDeep, "Expected to find level1.level2.level3.value=deep");
+			assertEquals(Map.of("level1.level2.level3.value", "deep"), collect(source));
 		}
 	}
 }

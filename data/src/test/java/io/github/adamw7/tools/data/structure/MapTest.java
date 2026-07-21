@@ -91,6 +91,7 @@ public class MapTest {
 		}
 
 		Collection<String> values = map.values();
+		assertEquals(size, values.size());
 		for (int i = 0; i < size; ++i) {
 			assertTrue(values.contains(String.valueOf(i)), i + " is missing in values");
 		}
@@ -157,6 +158,7 @@ public class MapTest {
 			map.put(key, String.valueOf(key));
 		}
 		Set<Integer> keySet = map.keySet();
+		assertEquals(keys.length, keySet.size());
 		for (int key : keys) {
 			assertTrue(keySet.contains(key), key + " is missing in keys");
 		}
@@ -264,10 +266,12 @@ public class MapTest {
 		map.put(key12, value12);
 		
 		assertEquals(2, map.size());
+		assertEquals(value10, map.get(key10));
+		assertEquals(value12, map.get(key12));
 		Set<ConflictingKey> keySet = map.keySet();
 		assertTrue(keySet.contains(key10));
 		assertTrue(keySet.contains(key12));
-		
+
 		Collection<String> values = map.values();
 		assertTrue(values.contains(value10));
 		assertTrue(values.contains(value12));

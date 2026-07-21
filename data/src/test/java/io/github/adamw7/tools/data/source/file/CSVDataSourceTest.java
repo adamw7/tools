@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.source.file;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -66,15 +67,20 @@ public class CSVDataSourceTest {
 		source.open();
 
 		int i = 0;
+		String[] firstRow = null;
 		while (source.hasMoreData()) {
 			String[] row = source.nextRow();
 			if (row != null) {
+				if (i == 0) {
+					firstRow = row;
+				}
 				++i;
 				assertEquals(6, row.length);
 			}
 		}
 		Utils.close(source);
 		assertEquals(4, i);
+		assertArrayEquals(new String[] { "John", "Doe", "120 jefferson st.", "Riverside", " NJ", " 08075" }, firstRow);
 	}
 
 	@ParameterizedTest
@@ -102,15 +108,24 @@ public class CSVDataSourceTest {
 		source.open();
 
 		int i = 0;
+		String[] firstRow = null;
 		while (source.hasMoreData()) {
 			String[] row = source.nextRow();
 			if (row != null) {
+				if (i == 0) {
+					firstRow = row;
+				}
 				++i;
 				assertEquals(10, row.length);
 			}
 		}
 		Utils.close(source);
 		assertEquals(100, i);
+		// The quoted second field embeds a comma, so quote-aware splitting must keep
+		// it as a single field instead of breaking the row into 11 columns.
+		assertEquals("1", firstRow[0]);
+		assertEquals("\"Eldon Base for stackable storage shelf, platinum\"", firstRow[1]);
+		assertEquals("Muhammed MacIntyre", firstRow[2]);
 	}
 
 	@ParameterizedTest
@@ -186,6 +201,9 @@ public class CSVDataSourceTest {
 		List<String[]> data = inMemoryDataSource.readAll();
 		Utils.close(inMemoryDataSource);
 		assertEquals(70, data.size());
+		assertEquals(15, data.get(0).length);
+		assertEquals("All households", data.get(0)[0]);
+		assertEquals("2008", data.get(0)[1]);
 	}
 
 	@Test
@@ -194,13 +212,19 @@ public class CSVDataSourceTest {
 			IterableDataSource dataSource = new CSVDataSource(stream);
 			dataSource.open();
 			int i = 0;
+			String[] firstRow = null;
 			while (dataSource.hasMoreData()) {
 				String[] row = dataSource.nextRow();
 				if (row != null) {
-					i++;	
+					if (i == 0) {
+						firstRow = row;
+					}
+					i++;
 				}
 			}
 			assertEquals(4, i);
+			assertEquals(6, firstRow.length);
+			assertEquals("John", firstRow[0]);
 			dataSource.close();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

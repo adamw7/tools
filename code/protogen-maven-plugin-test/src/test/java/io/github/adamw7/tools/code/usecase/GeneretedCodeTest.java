@@ -43,6 +43,8 @@ import io.github.adamw7.tools.code.test.MyMessage;
 import io.github.adamw7.tools.code.test.Server;
 import io.github.adamw7.tools.code.test.Shipment;
 import io.github.adamw7.tools.code.test.Wheel;
+import io.github.adamw7.tools.code.test2.User;
+import io.github.adamw7.tools.code.test3.OneOptionalFieldOnly;
 import io.github.adamw7.tools.code.test4.Payment;
 import io.github.adamw7.tools.code.test4.Profile;
 import io.github.adamw7.tools.code.test4.Team;
@@ -71,13 +73,18 @@ public class GeneretedCodeTest {
 	
 	@Test
 	public void userTest() {
-		assertNotNull(new UserBuilder().setNumber(7).setValue("val").build());
+		User user = new UserBuilder().setNumber(7).setValue("val").build();
+		assertNotNull(user);
+		assertEquals(7, user.getNumber());
+		assertEquals("val", user.getValue());
 	}
-	
+
 	@Test
 	public void oneOptionalFieldTest() {
 		OneOptionalFieldOnlyBuilder builder = new OneOptionalFieldOnlyBuilder();
-		assertNotNull(builder.setValue("V").build());
+		OneOptionalFieldOnly message = builder.setValue("V").build();
+		assertNotNull(message);
+		assertEquals("V", message.getValue());
 	}
 	
 	@Test

@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 
@@ -57,10 +59,10 @@ public final class PathValidator {
 			Path resolved = Path.of(filePath).toAbsolutePath().normalize();
 			Path baseDir = allowedBaseDir;
 			if (baseDir != null) {
-				Path normalizedBase = baseDir.toAbsolutePath().normalize();
-				if (!resolved.startsWith(normalizedBase)) {
+				Path realResolved = toRealPathAllowingMissing(resolved);
+				if (!realResolved.startsWith(baseDir)) {
 					throw new SecurityException(
-							"Access denied: path '" + resolved + "' is outside the allowed base directory '" + normalizedBase + "'");
+							"Access denied: path '" + realResolved + "' is outside the allowed base directory '" + baseDir + "'");
 				}
 			}
 
@@ -68,6 +70,31 @@ public final class PathValidator {
 			return resolved.toString();
 		} catch (InvalidPathException e) {
 			throw new IllegalArgumentException("Invalid file path: " + filePath, e);
+		}
+	}
+
+	/**
+	 * Resolves {@code path} to its real, symlink-followed location so the containment
+	 * check cannot be bypassed by a symlink that lives inside the base directory but
+	 * points outside it. A purely textual {@code normalize()} would collapse {@code ..}
+	 * without ever following the link, letting {@code <base>/link/secret} slip past when
+	 * {@code link} targets {@code /etc}. The nearest existing ancestor is canonicalised
+	 * with {@link Path#toRealPath()} and the not-yet-created remainder re-appended, so the
+	 * check works whether or not the leaf file exists yet.
+	 */
+	private static Path toRealPathAllowingMissing(Path path) {
+		Path existing = path;
+		while (existing != null && !Files.exists(existing)) {
+			existing = existing.getParent();
+		}
+		if (existing == null) {
+			return path;
+		}
+		try {
+			Path realExisting = existing.toRealPath();
+			return realExisting.resolve(existing.relativize(path)).normalize();
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not resolve real path for: " + path, e);
 		}
 	}
 

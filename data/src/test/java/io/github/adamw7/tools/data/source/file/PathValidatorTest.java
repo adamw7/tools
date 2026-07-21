@@ -3,6 +3,7 @@ package io.github.adamw7.tools.data.source.file;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -83,6 +84,27 @@ public class PathValidatorTest {
 
 		Path outside = tempDir.resolve("outside.csv");
 		assertThrows(SecurityException.class, () -> PathValidator.validate(outside.toString()));
+	}
+
+	@Test
+	public void deniesSymlinkInsideBaseDirPointingOutside(@TempDir Path tempDir) throws IOException {
+		Path baseDir = Files.createDirectory(tempDir.resolve("base"));
+		Path secret = Files.writeString(tempDir.resolve("secret.csv"), "top,secret");
+		Path link = baseDir.resolve("link.csv");
+		assumeTrue(canCreateSymbolicLink(link, secret),
+				"platform does not support creating symbolic links");
+		PathValidator.setAllowedBaseDir(baseDir);
+
+		assertThrows(SecurityException.class, () -> PathValidator.validate(link.toString()));
+	}
+
+	private static boolean canCreateSymbolicLink(Path link, Path target) {
+		try {
+			Files.createSymbolicLink(link, target);
+			return true;
+		} catch (UnsupportedOperationException | IOException e) {
+			return false;
+		}
 	}
 
 	@Test

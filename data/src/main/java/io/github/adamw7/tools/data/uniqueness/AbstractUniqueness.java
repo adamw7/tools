@@ -132,14 +132,24 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	 * opens the source to read its column names and then reuses that same open source,
 	 * so neither entry point opens the source twice &mdash; which the open-once
 	 * map-backed in-memory sources reject with {@code DataSource is already open}.
+	 *
+	 * <p>Implementations must not close the source: the subset search that follows a
+	 * successful check {@link IterableDataSource#reset() resets} it between passes,
+	 * and a source that owns its connection (the Parquet ones) cannot be reopened
+	 * once closed. The public entry points close the source exactly once, after the
+	 * whole check &mdash; subsets included &mdash; has finished.
 	 */
 	protected abstract Result execOnOpenSource(String[] keyCandidates);
 
 	@Override
 	public Result execForAllColumns() {
 		dataSource.open();
-		String[] keyCandidates = dataSource.getColumnNames();
-		check(keyCandidates);
-		return execOnOpenSource(keyCandidates);
+		try {
+			String[] keyCandidates = dataSource.getColumnNames();
+			check(keyCandidates);
+			return execOnOpenSource(keyCandidates);
+		} finally {
+			close(dataSource);
+		}
 	}
 }

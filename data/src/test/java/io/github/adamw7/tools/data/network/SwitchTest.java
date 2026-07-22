@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
 
@@ -24,6 +25,19 @@ public class SwitchTest {
 		RuntimeException thrown = assertThrows(RuntimeException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
 
 		assertEquals("java.lang.UnsupportedOperationException: The network is off", thrown.getMessage());
+	}
+
+	@Test
+	public void directSocketConnectionsAreBlocked() {
+		Switch.off();
+
+		// A plain client socket never consults the ProxySelector, so the switch's
+		// SocketImplFactory must refuse it. The literal TEST-NET-1 address needs no
+		// DNS lookup and would never be routable even if the block failed.
+		UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
+				() -> new Socket("192.0.2.1", 80), "Expected the socket factory to block the connection");
+
+		assertEquals("The network is off", thrown.getMessage());
 	}
 
 	@Test

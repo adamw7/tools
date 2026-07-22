@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -119,6 +121,49 @@ public class OpenAddressingSetTest {
 		assertTrue(set.addAll(source));
 		assertTrue(set.containsAll(source));
 		assertEquals(50, set.size());
+	}
+
+	@ParameterizedTest
+	@MethodSource("implementations")
+	public void removeAllWithLargerCollectionUsesTheIterator(Set<Integer> set) {
+		set.add(1);
+		set.add(2);
+		set.add(3);
+		// The collection is larger than the set, so AbstractSet.removeAll walks the
+		// set's own iterator and relies on its remove() writing through.
+		assertTrue(set.removeAll(List.of(0, 1, 2, 8, 9)));
+		assertEquals(Set.of(3), set);
+	}
+
+	@ParameterizedTest
+	@MethodSource("implementations")
+	public void retainAllKeepsOnlyGivenElements(Set<Integer> set) {
+		for (int i = 0; i < 10; ++i) {
+			set.add(i);
+		}
+		assertTrue(set.retainAll(List.of(1, 3, 5)));
+		assertEquals(Set.of(1, 3, 5), set);
+	}
+
+	@ParameterizedTest
+	@MethodSource("implementations")
+	public void removeIfRemovesMatchingElements(Set<Integer> set) {
+		for (int i = 0; i < 10; ++i) {
+			set.add(i);
+		}
+		assertTrue(set.removeIf(element -> element % 2 == 0));
+		assertEquals(Set.of(1, 3, 5, 7, 9), set);
+	}
+
+	@ParameterizedTest
+	@MethodSource("implementations")
+	public void iteratorRemoveWritesThroughToTheSet(Set<Integer> set) {
+		set.add(1);
+		set.add(2);
+		Iterator<Integer> iterator = set.iterator();
+		iterator.next();
+		iterator.remove();
+		assertEquals(1, set.size());
 	}
 
 	@Test

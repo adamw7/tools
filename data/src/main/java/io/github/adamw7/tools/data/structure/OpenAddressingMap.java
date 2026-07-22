@@ -1,11 +1,13 @@
 package io.github.adamw7.tools.data.structure;
 
-import java.util.Arrays;
+import java.util.AbstractCollection;
+import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
 import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
@@ -46,7 +48,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public boolean containsKey(Object key) {
-		return get(key) != null;
+		return find(key) != null;
 	}
 
 	@Override
@@ -165,25 +167,117 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 	@Override
 	public Set<K> keySet() {
-		return validWrappers().map(wrapper -> wrapper.getKey()).collect(Collectors.toSet());
+		return new KeySetView();
 	}
 
 	@Override
 	public Collection<V> values() {
-		return validWrappers().map(wrapper -> wrapper.getValue()).collect(Collectors.toList());
+		return new ValuesView();
 	}
 
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		return validWrappers().<Entry<K, V>>map(wrapper -> wrapper).collect(Collectors.toSet());
-	}
-
-	private Stream<Wrapper<K, V>> validWrappers() {
-		return Arrays.stream(array).filter(this::valid);
+		return new EntrySetView();
 	}
 
 	private boolean valid(Wrapper<K, V> wrapper) {
 		return wrapper != null && !wrapper.isRemoved();
+	}
+
+	private final class KeySetView extends AbstractSet<K> {
+
+		@Override
+		public Iterator<K> iterator() {
+			return new LiveEntryIterator<>(Wrapper::getKey);
+		}
+
+		@Override
+		public int size() {
+			return OpenAddressingMap.this.size();
+		}
+
+		@Override
+		public boolean contains(Object key) {
+			return containsKey(key);
+		}
+	}
+
+	private final class ValuesView extends AbstractCollection<V> {
+
+		@Override
+		public Iterator<V> iterator() {
+			return new LiveEntryIterator<>(Wrapper::getValue);
+		}
+
+		@Override
+		public int size() {
+			return OpenAddressingMap.this.size();
+		}
+	}
+
+	private final class EntrySetView extends AbstractSet<Entry<K, V>> {
+
+		@Override
+		public Iterator<Entry<K, V>> iterator() {
+			return new LiveEntryIterator<>(wrapper -> wrapper);
+		}
+
+		@Override
+		public int size() {
+			return OpenAddressingMap.this.size();
+		}
+	}
+
+	/**
+	 * Walks the live entries of the backing array, mapping each wrapper to the
+	 * view's element type. {@code remove()} retires the entry returned last, so
+	 * the views are writable and the bulk operations inherited from
+	 * {@code AbstractCollection} (removeAll, retainAll, removeIf) really mutate
+	 * the map instead of a throwaway copy.
+	 */
+	private final class LiveEntryIterator<T> implements Iterator<T> {
+
+		private final Function<Wrapper<K, V>, T> mapper;
+		private int nextIndex;
+		private Wrapper<K, V> lastReturned;
+
+		private LiveEntryIterator(Function<Wrapper<K, V>, T> mapper) {
+			this.mapper = mapper;
+			this.nextIndex = nextValidFrom(0);
+		}
+
+		@Override
+		public boolean hasNext() {
+			return nextIndex < array.length;
+		}
+
+		@Override
+		public T next() {
+			if (!hasNext()) {
+				throw new NoSuchElementException();
+			}
+			lastReturned = array[nextIndex];
+			nextIndex = nextValidFrom(nextIndex + 1);
+			return mapper.apply(lastReturned);
+		}
+
+		@Override
+		public void remove() {
+			if (lastReturned == null) {
+				throw new IllegalStateException("next() has not been called since the last remove()");
+			}
+			lastReturned.markRemoved();
+			size--;
+			lastReturned = null;
+		}
+
+		private int nextValidFrom(int index) {
+			int i = index;
+			while (i < array.length && !valid(array[i])) {
+				++i;
+			}
+			return i;
+		}
 	}
 
 }

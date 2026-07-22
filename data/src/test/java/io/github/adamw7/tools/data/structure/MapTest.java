@@ -353,6 +353,57 @@ public class MapTest {
 	
 	@ParameterizedTest
 	@MethodSource("allImplementations")
+	public void containsKeyWhenValueIsNull(Map<Integer, String> map) {
+		map.put(1, null);
+		assertTrue(map.containsKey(1));
+		assertNull(map.get(1));
+		assertTrue(map.containsValue(null));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void keySetIsALiveViewOfTheMap(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Set<Integer> keySet = map.keySet();
+		assertTrue(keySet.remove(1));
+		assertFalse(map.containsKey(1));
+		assertEquals(1, map.size());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void removeIfOnValuesWritesThroughToTheMap(Map<Integer, String> map) {
+		for (int i = 0; i < 10; ++i) {
+			map.put(i, i % 2 == 0 ? "even" : "odd");
+		}
+		assertTrue(map.values().removeIf("odd"::equals));
+		assertEquals(5, map.size());
+		assertFalse(map.containsValue("odd"));
+		assertTrue(map.containsValue("even"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void entrySetSetValueReturnsPreviousValueAndWritesThrough(Map<Integer, String> map) {
+		map.put(1, "A");
+		Entry<Integer, String> entry = map.entrySet().iterator().next();
+		assertEquals("A", entry.setValue("B"));
+		assertEquals("B", map.get(1));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void entrySetEqualsAnotherMapsEntrySet(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Map<Integer, String> expected = Map.of(1, "A", 2, "B");
+		assertEquals(expected.entrySet(), map.entrySet());
+		assertEquals(map.entrySet(), expected.entrySet());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
 	public void empty(Map<Integer, String> map) {
 		assertTrue(map.isEmpty());
 	}

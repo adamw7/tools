@@ -12,7 +12,11 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness<ColumnarDataSour
 	public Result exec(String... keyCandidates) {
 		check(keyCandidates);
 		dataSource.open();
-		return execOnOpenSource(keyCandidates);
+		try {
+			return execOnOpenSource(keyCandidates);
+		} finally {
+			close(dataSource);
+		}
 	}
 
 	@Override
@@ -23,18 +27,18 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness<ColumnarDataSour
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 			if (finder.found(row)) {
-				close(dataSource);
 				return new Result(false, keyCandidates, row);
 			}
 		}
 
-		Result result = handleSuccessfulCheck(keyCandidates);
-		close(dataSource);
-		return result;
+		return handleSuccessfulCheck(keyCandidates);
 	}
 
 	@Override
 	protected Result checkSubset(String[] newCandidates) {
-		return exec(newCandidates);
+		// The caller has just reset() the source, so it is open again; going
+		// through exec() would close it after this subset and leave nothing for
+		// the next one to reset.
+		return execOnOpenSource(newCandidates);
 	}
 }

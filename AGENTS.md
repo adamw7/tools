@@ -247,7 +247,11 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   for a named JPMS module, the `data` module runs its unit tests from the
   classpath (`<useModulePath>false</useModulePath>` on surefire); the published
   `data` artifact stays a proper module. A `NetworkOffDuringUnitTestsTest`
-  verifies the switch is already engaged by the time a unit test executes.
+  verifies the switch is already engaged by the time a unit test executes. A test
+  can also opt in explicitly with the `@NetworkOff` annotation (a composed
+  `@ExtendWith(NetworkOffExtension.class)`); an explicit `@NetworkOff` engages the
+  kill-switch unconditionally, bypassing the `tools.test.network.off` guard, so the
+  network is off even when that single test is run from an IDE.
 - **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
   under an `...architecture` test package (e.g.
   `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse

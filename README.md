@@ -716,6 +716,20 @@ Auto-detection and the `tools.test.network.off` guard property are set only on
 surefire, so the failsafe integration tests (`*IT`), which need real network, keep
 it. See *Testing* in [AGENTS.md](AGENTS.md) for the details.
 
+A single test can also opt in explicitly with the `@NetworkOff` annotation, which
+registers the same extension via `@ExtendWith`:
+
+```java
+@NetworkOff
+class MyDataSourceTest {
+    // every test here runs with the network off
+}
+```
+
+Unlike the module-wide auto-detection, an explicit `@NetworkOff` engages the
+kill-switch unconditionally — regardless of the `tools.test.network.off`
+property — so the network is off even when the test is run on its own from an IDE.
+
 ## Claude Code adoption
 
 The `adopt` module (`tools.adopt`) is an ordered pipeline that **adopts Claude

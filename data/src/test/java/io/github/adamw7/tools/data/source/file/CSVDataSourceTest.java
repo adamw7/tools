@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -192,6 +194,57 @@ public class CSVDataSourceTest {
 		assertEquals(firstPass, secondPass);
 		assertEquals(15, source.getColumnNames().length);
 		assertEquals("hlpi_name", source.getColumnNames()[0]);
+	}
+
+	@Test
+	public void regexSpecialDelimiterIsTreatedLiterally() throws IOException {
+		try (InputStream stream = streamOf("id|name\n1|Adam\n")) {
+			CSVDataSource source = new CSVDataSource(stream, "|", COLUMNS_ROW);
+			source.open();
+			// An unquoted "|" would be an empty regex alternation that splits between
+			// every character; the delimiter must be matched literally.
+			assertArrayEquals(new String[] { "id", "name" }, source.getColumnNames());
+			assertArrayEquals(new String[] { "1", "Adam" }, source.nextRow());
+			source.close();
+		}
+	}
+
+	@Test
+	public void trailingEmptyColumnsAreKept() throws IOException {
+		try (InputStream stream = streamOf("id,name,comment\n1,Adam,\n")) {
+			CSVDataSource source = new CSVDataSource(stream, ",", COLUMNS_ROW);
+			source.open();
+			assertArrayEquals(new String[] { "1", "Adam", "" }, source.nextRow());
+			source.close();
+		}
+	}
+
+	@Test
+	public void resetOnStreamBackedSourceFailsFast() {
+		CSVDataSource source = new CSVDataSource(streamOf("a,b\n"));
+		source.open();
+		// The consumed stream cannot be reopened, so reset() must fail loudly
+		// instead of silently producing an empty source.
+		assertThrows(IllegalStateException.class, source::reset);
+	}
+
+	@Test
+	public void getFileNameOnStreamBackedSourceFailsFast() {
+		CSVDataSource source = new CSVDataSource(streamOf("a,b\n"));
+		assertThrows(IllegalStateException.class, source::getFileName);
+	}
+
+	@Test
+	public void closeBeforeOpenReleasesTheScanner() throws IOException {
+		InMemoryCSVDataSource source = Utils.createInMemoryDataSource(Utils.getHouseholdFile(), COLUMNS_ROW);
+		source.close();
+		// The constructor already opened the file, so an immediate close must release
+		// it; a genuinely closed scanner then fails fast on any read attempt.
+		assertThrows(IllegalStateException.class, source::nextRow);
+	}
+
+	private static InputStream streamOf(String csv) {
+		return new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
 	}
 
 	@Test

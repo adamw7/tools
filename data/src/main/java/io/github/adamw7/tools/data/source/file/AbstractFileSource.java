@@ -22,10 +22,13 @@ public abstract class AbstractFileSource implements IterableDataSource {
 	
 	@Override
 	public void close() throws IOException {
-		if (opened) {
+		if (scanner != null) {
+			// Closed regardless of the opened flag: the constructor already
+			// opened the underlying file, so a source that is closed before
+			// open() must still release its handle.
 			scanner.close();
-			opened = false;
 		}
+		opened = false;
 	}
 	
 	protected AbstractFileSource(String fileName) {
@@ -66,6 +69,9 @@ public abstract class AbstractFileSource implements IterableDataSource {
 	}
 	
 	public String getFileName() {
+		if (fileName == null) {
+			throw new IllegalStateException("Source is backed by a raw input stream, not a file");
+		}
 		return Paths.get(fileName).getFileName().toString();
 	}
 	

@@ -93,6 +93,16 @@ public class SQLDataSourceTest extends DBTest {
 		Utils.close(source);
 	}
 
+	@Test
+	public void readBeforeOpenFailsFast() {
+		IterableSQLDataSource source = new IterableSQLDataSource(connection, query);
+		// Before open() there is no result set; the source must say so instead of
+		// failing with a raw NullPointerException.
+		assertThrows(IllegalStateException.class, source::getColumnNames);
+		assertThrows(IllegalStateException.class, source::nextRow);
+		assertThrows(IllegalStateException.class, () -> source.nextRows(10));
+	}
+
 	@ParameterizedTest
 	@MethodSource("wrongQuerySources")
 	public void wrongQuery(IterableSQLDataSource source) {

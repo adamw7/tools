@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,14 +43,14 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 		scanner = createScanner(inputStream);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
-		regex = delimiter + REGEX_SUFFIX;
+		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;
 	}
 
 	public CSVDataSource(String fileName, String delimiter, int columnsRow) throws FileNotFoundException {
 		super(fileName);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
-		regex = delimiter + REGEX_SUFFIX;
+		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;
 	}
 
 	@Override
@@ -87,7 +88,9 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 			if (line.trim().startsWith("#")) {
 				return null;
 			} else {
-				return line.split(regex);
+				// The -1 limit keeps trailing empty columns, so every row of a
+				// well-formed file has the same arity as its header.
+				return line.split(regex, -1);
 			}
 		} else {
 			hasMoreData = false;
@@ -97,6 +100,9 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 
 	@Override
 	public void reset() {
+		if (fileName == null) {
+			throw new IllegalStateException("Cannot reset a source backed by a raw input stream");
+		}
 		try {
 			close();
 			scanner = createScanner();

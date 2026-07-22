@@ -52,10 +52,17 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	@Override
 	public String[] getColumnNames() {
+		checkIfOpen();
 		try {
 			return getColumnsFrom(resultSet);
 		} catch (SQLException e) {
 			throw new UncheckedIOException(new IOException(e));
+		}
+	}
+
+	private void checkIfOpen() {
+		if (resultSet == null) {
+			throw new IllegalStateException("DataSource is not open");
 		}
 	}
 
@@ -73,6 +80,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	@Override
 	public String[] nextRow() {
+		checkIfOpen();
 		try {
 			hasMoreData = resultSet.next();
 			return hasMoreData ? getNextFrom(resultSet) : null;
@@ -96,6 +104,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		if (batchSize <= 0) {
 			return;
 		}
+		checkIfOpen();
 		try {
 			resultSet.setFetchSize(batchSize);
 		} catch (SQLException e) {

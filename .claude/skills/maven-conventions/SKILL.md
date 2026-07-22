@@ -42,7 +42,7 @@ profile, is the most common source of avoidable build friction here.
 | `mvn install` | Faster incremental build |
 | `mvn -pl <module> test` | Tests for a single module |
 | `mvn -P integration-tests verify` | MCP integration tests (`*IT`) |
-| `mvn -Pcoverage verify` | JaCoCo coverage (fails under 80%) |
+| `mvn -Pcoverage verify` | JaCoCo coverage (fails under 80% instruction or branch) |
 | `mvn -Ppitest test` | PIT mutation testing |
 | `mvn install -Dskip.shellcheck=true` | Skip the shellcheck lint |
 

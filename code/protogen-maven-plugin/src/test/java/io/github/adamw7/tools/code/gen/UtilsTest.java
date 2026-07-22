@@ -21,12 +21,26 @@ public class UtilsTest {
 	}
 
 	@Test
+	public void toUpperCamelCaseSurvivesConsecutiveAndEdgeUnderscores() {
+		assertEquals("ExternalId", Utils.toUpperCamelCase("external__id"));
+		assertEquals("External", Utils.toUpperCamelCase("_external"));
+		assertEquals("External", Utils.toUpperCamelCase("external_"));
+		assertEquals("", Utils.toUpperCamelCase("_"));
+	}
+
+	@Test
 	public void firstToLower() {
 		String firstToLower = Utils.firstToLower("Builder");
 		assertEquals("builder", firstToLower);
 
 		String shouldNotChange = Utils.firstToLower("builder");
 		assertEquals("builder", shouldNotChange);
+	}
+
+	@Test
+	public void firstToLowerAndUpperAcceptEmptyInput() {
+		assertEquals("", Utils.firstToLower(""));
+		assertEquals("", Utils.firstToUpper(""));
 	}
 
 	@Test

@@ -18,10 +18,16 @@ public class Utils {
 	}
 
 	public static String firstToLower(String string) {
+		if (string.isEmpty()) {
+			return string;
+		}
 		return (String.valueOf(string.charAt(0)).toLowerCase() + string.substring(1));
 	}
 
 	public static String firstToUpper(String string) {
+		if (string.isEmpty()) {
+			return string;
+		}
 		return (firstUpper(string) + string.substring(1));
 	}
 
@@ -39,6 +45,11 @@ public class Utils {
 	}
 
 	static String toProperCase(String s) {
+		if (s.isEmpty()) {
+			// A leading, trailing or doubled underscore in a proto name yields an
+			// empty split part; it contributes nothing to the camel-case name.
+			return s;
+		}
 		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 	}
 	

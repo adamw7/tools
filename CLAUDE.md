@@ -120,7 +120,9 @@ paths.
 - **Unit tests run with the network off.** The `data` module's
   `NetworkOffExtension` engages the `Switch` kill-switch before any test runs, so
   a unit test can never open an outbound connection; the failsafe `*IT` tests are
-  unaffected. See *Testing* in AGENTS.md.
+  unaffected. A single test can opt in explicitly with the `@NetworkOff`
+  annotation, which engages the kill-switch even without the surefire guard
+  property (e.g. when run from an IDE). See *Testing* in AGENTS.md.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend

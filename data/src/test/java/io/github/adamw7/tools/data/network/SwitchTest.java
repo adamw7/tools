@@ -3,9 +3,12 @@ package io.github.adamw7.tools.data.network;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -17,17 +20,28 @@ public class SwitchTest {
 	@Test
 	public void happyPath() {
 		Switch.off();
-		
+
 		RuntimeException thrown = assertThrows(RuntimeException.class, this::connectToInternet, "Expected connectToInternet() method to throw, but it didn't");
 
 		assertEquals("java.lang.UnsupportedOperationException: The network is off", thrown.getMessage());
 	}
-	
+
 	@Test
 	public void testMultipleOff() {
 		Switch.off();
 		assertFalse(Switch.off());
 		assertFalse(Switch.off());
+	}
+
+	@Test
+	public void switchIsAStatelessUtilityWithAPrivateConstructor() throws Exception {
+		Constructor<Switch> constructor = Switch.class.getDeclaredConstructor();
+
+		assertTrue(Modifier.isPrivate(constructor.getModifiers()),
+				"Switch exposes only static behaviour, so it must not be instantiable");
+
+		constructor.setAccessible(true);
+		constructor.newInstance(); // exercise the guarded constructor for coverage
 	}
 
 	private void connectToInternet() throws Exception {

@@ -22,9 +22,6 @@ import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportPro
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 public class AbstractMcpConfigurationTest {
 
@@ -50,18 +47,17 @@ public class AbstractMcpConfigurationTest {
 
 	private static final class TestTool implements McpTool {
 
-		private final Tool toolDefinition = Tool.builder("test_tool",
-				Map.of("type", "object", "properties", Map.of())).description("A test tool").build();
+		private final ToolDefinition toolDefinition = new ToolDefinition("test_tool", "A test tool",
+				Map.of("type", "object", "properties", Map.of()));
 
 		@Override
-		public Tool getToolDefinition() {
+		public ToolDefinition getToolDefinition() {
 			return toolDefinition;
 		}
 
 		@Override
-		public CallToolResult apply(Map<String, Object> arguments) {
-			return CallToolResult.builder()
-					.content(List.of(TextContent.builder("ok").build())).isError(false).build();
+		public ToolResult apply(Map<String, Object> arguments) {
+			return ToolResult.success("ok");
 		}
 	}
 
@@ -156,30 +152,30 @@ public class AbstractMcpConfigurationTest {
 
 	@Test
 	public void safeApplyReturnsTheToolResultWhenItSucceeds() {
-		CallToolResult result = new TestMcpConfiguration().safeApply(new TestTool(), Map.of());
+		ToolResult result = new TestMcpConfiguration().safeApply(new TestTool(), Map.of());
 		assertFalse(result.isError());
-		assertEquals("ok", ((TextContent) result.content().getFirst()).text());
+		assertEquals("ok", result.text());
 	}
 
 	@Test
 	public void safeApplyTurnsAThrownExceptionIntoAnErrorResult() {
-		CallToolResult result = new TestMcpConfiguration().safeApply(new ThrowingTool(), Map.of());
+		ToolResult result = new TestMcpConfiguration().safeApply(new ThrowingTool(), Map.of());
 		assertTrue(result.isError());
-		assertEquals("boom failed: bad argument", ((TextContent) result.content().getFirst()).text());
+		assertEquals("boom failed: bad argument", result.text());
 	}
 
 	private static final class ThrowingTool implements McpTool {
 
-		private final Tool toolDefinition = Tool.builder("boom",
-				Map.of("type", "object", "properties", Map.of())).description("Always fails").build();
+		private final ToolDefinition toolDefinition = new ToolDefinition("boom", "Always fails",
+				Map.of("type", "object", "properties", Map.of()));
 
 		@Override
-		public Tool getToolDefinition() {
+		public ToolDefinition getToolDefinition() {
 			return toolDefinition;
 		}
 
 		@Override
-		public CallToolResult apply(Map<String, Object> arguments) {
+		public ToolResult apply(Map<String, Object> arguments) {
 			throw new IllegalArgumentException("bad argument");
 		}
 	}

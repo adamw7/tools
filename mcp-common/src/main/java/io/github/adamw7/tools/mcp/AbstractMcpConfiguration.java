@@ -26,6 +26,7 @@ import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
@@ -173,8 +174,8 @@ public abstract class AbstractMcpConfiguration {
 
 	private SyncToolSpecification specificationFor(McpTool tool) {
 		return SyncToolSpecification.builder()
-				.tool(tool.getToolDefinition())
-				.callHandler((exchange, request) -> safeApply(tool, request.arguments()))
+				.tool(sdkTool(tool.getToolDefinition()))
+				.callHandler((exchange, request) -> sdkResult(safeApply(tool, request.arguments())))
 				.build();
 	}
 
@@ -184,29 +185,47 @@ public abstract class AbstractMcpConfiguration {
 
 	private McpStatelessServerFeatures.SyncToolSpecification statelessSpecificationFor(McpTool tool) {
 		return McpStatelessServerFeatures.SyncToolSpecification.builder()
-				.tool(tool.getToolDefinition())
-				.callHandler((context, request) -> safeApply(tool, request.arguments()))
+				.tool(sdkTool(tool.getToolDefinition()))
+				.callHandler((context, request) -> sdkResult(safeApply(tool, request.arguments())))
 				.build();
 	}
 
 	/**
-	 * Invokes a tool and turns any thrown exception into an error {@link CallToolResult}
+	 * Invokes a tool and turns any thrown exception into an error {@link ToolResult}
 	 * rather than letting it surface as a protocol-level failure, so a bad argument or a
 	 * denied path reaches the client as a clear, actionable tool error. Package-private so
 	 * the behaviour can be exercised directly in tests.
 	 */
-	CallToolResult safeApply(McpTool tool, Map<String, Object> arguments) {
+	ToolResult safeApply(McpTool tool, Map<String, Object> arguments) {
 		String name = tool.getToolDefinition().name();
 		try {
 			return tool.apply(arguments);
 		} catch (RuntimeException e) {
 			log.warn("MCP tool {} failed for {}", name, arguments, e);
 			String message = e.getMessage() == null ? e.toString() : e.getMessage();
-			return CallToolResult.builder()
-					.content(List.of(TextContent.builder(name + " failed: " + message).build()))
-					.isError(true)
-					.build();
+			return ToolResult.error(name + " failed: " + message);
 		}
+	}
+
+	/**
+	 * Translates the SPI's transport-neutral {@link ToolDefinition} into the SDK's
+	 * {@link Tool}, so tools describe themselves without depending on the SDK.
+	 */
+	private static Tool sdkTool(ToolDefinition definition) {
+		return Tool.builder(definition.name(), definition.inputSchema())
+				.description(definition.description())
+				.build();
+	}
+
+	/**
+	 * Translates the SPI's transport-neutral {@link ToolResult} into the SDK's
+	 * {@link CallToolResult} returned to the client.
+	 */
+	private static CallToolResult sdkResult(ToolResult result) {
+		return CallToolResult.builder()
+				.content(List.of(TextContent.builder(result.text()).build()))
+				.isError(result.isError())
+				.build();
 	}
 
 	/**

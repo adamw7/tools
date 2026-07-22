@@ -20,8 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.context.TokenEstimator;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 public class EstimateTokensToolTest {
 
@@ -82,7 +81,7 @@ public class EstimateTokensToolTest {
 	void unknownClassYieldsAnErrorResult() throws IOException {
 		writeJava("A", "A");
 
-		CallToolResult result = tool.apply(arguments("Missing"));
+		ToolResult result = tool.apply(arguments("Missing"));
 
 		assertTrue(result.isError());
 		assertTrue(text(result).contains("Class not found: Missing"));
@@ -181,7 +180,7 @@ public class EstimateTokensToolTest {
 		Files.writeString(projectRoot.resolve(className + ".java"), body);
 	}
 
-	private JsonNode report(CallToolResult result) {
+	private JsonNode report(ToolResult result) {
 		try {
 			return MAPPER.readTree(text(result));
 		} catch (JsonProcessingException e) {
@@ -189,7 +188,7 @@ public class EstimateTokensToolTest {
 		}
 	}
 
-	private String text(CallToolResult result) {
-		return ((TextContent) result.content().getFirst()).text();
+	private String text(ToolResult result) {
+		return result.text();
 	}
 }

@@ -20,8 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 public class ContextFinderToolTest {
 
@@ -91,7 +90,7 @@ public class ContextFinderToolTest {
 	void unknownClassYieldsAnErrorResult() throws IOException {
 		writeJava("A", "public class A {}");
 
-		CallToolResult result = tool.apply(arguments("Missing"));
+		ToolResult result = tool.apply(arguments("Missing"));
 
 		assertTrue(result.isError());
 		assertTrue(text(result).contains("Class not found: Missing"));
@@ -101,7 +100,7 @@ public class ContextFinderToolTest {
 	void aClassWithoutDependenciesReturnsAnEmptyArray() throws IOException {
 		writeJava("A", "public class A {}");
 
-		CallToolResult result = tool.apply(arguments("A"));
+		ToolResult result = tool.apply(arguments("A"));
 
 		assertFalse(result.isError());
 		assertTrue(dependencies(result).isEmpty());
@@ -140,7 +139,7 @@ public class ContextFinderToolTest {
 		Files.writeString(projectRoot.resolve(className + ".java"), body);
 	}
 
-	private List<String> dependencies(CallToolResult result) {
+	private List<String> dependencies(ToolResult result) {
 		try {
 			JsonNode array = MAPPER.readTree(text(result));
 			List<String> values = new ArrayList<>();
@@ -151,7 +150,7 @@ public class ContextFinderToolTest {
 		}
 	}
 
-	private String text(CallToolResult result) {
-		return ((TextContent) result.content().getFirst()).text();
+	private String text(ToolResult result) {
+		return result.text();
 	}
 }

@@ -1,4 +1,5 @@
 module io.github.adamw7.tools.data {
+	requires tools.mcp.common;
 	requires org.apache.logging.log4j;
 	requires java.sql;
 	requires duckdb.jdbc;
@@ -6,6 +7,7 @@ module io.github.adamw7.tools.data {
 	requires com.fasterxml.jackson.databind;
 	requires com.fasterxml.jackson.dataformat.yaml;
 	requires org.yaml.snakeyaml;
+	requires spring.beans;
 	requires spring.context;
 	requires spring.boot.autoconfigure;
 	requires spring.boot;

@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.PackageAwareFinder;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.github.adamw7.tools.mcp.ToolDefinition;
 
 /**
  * MCP tool that resolves the classes a single source file depends on. It loads
@@ -29,7 +29,8 @@ public class ContextFinderTool extends AbstractClassContextTool {
 		super(pathPolicy);
 	}
 
-	private final Tool toolDefinition = Tool.builder("find_context",
+	private final ToolDefinition toolDefinition = new ToolDefinition("find_context",
+			"Find the classes a given class depends on, within a Java, Kotlin or Scala project",
 			Map.of(
 					"type", "object",
 					"properties", Map.of(
@@ -41,12 +42,10 @@ public class ContextFinderTool extends AbstractClassContextTool {
 									"description", "source language: java (default), kotlin or scala"),
 							"depth", Map.of("type", "integer",
 									"description", "how many levels of transitive dependencies to resolve (default 1)")),
-					"required", List.of("path", "class_name")))
-			.description("Find the classes a given class depends on, within a Java, Kotlin or Scala project")
-			.build();
+					"required", List.of("path", "class_name")));
 
 	@Override
-	public Tool getToolDefinition() {
+	public ToolDefinition getToolDefinition() {
 		return toolDefinition;
 	}
 

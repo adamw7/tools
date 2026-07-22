@@ -15,15 +15,15 @@ import io.github.adamw7.tools.data.uniqueness.Result;
 import io.github.adamw7.tools.data.uniqueness.Uniqueness;
 import io.github.adamw7.tools.mcp.McpTool;
 import io.github.adamw7.tools.mcp.ToolArguments;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.github.adamw7.tools.mcp.ToolDefinition;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 public class UniquenessTool implements McpTool {
-	
+
 	private static final Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
-    private final Tool toolDefinition = Tool.builder("uniqueness_check",
+    private final ToolDefinition toolDefinition = new ToolDefinition("uniqueness_check",
+            "Check if a given set of columns is unique in a given data set",
                     Map.of(
                         "type", "object",
                         "properties", Map.of(
@@ -32,22 +32,21 @@ public class UniquenessTool implements McpTool {
                             "columns_name", Map.of("type", "string", "description", "name of the column to check")
                         ),
                         "required", List.of("file", "columns_row", "columns_name")
-                    )).description(
-            "Check if a given set of columns is unique in a given data set").build();
+                    ));
 
 	public UniquenessTool() {
     }
 
-	public Tool getToolDefinition() {
+	public ToolDefinition getToolDefinition() {
 		return toolDefinition;
 	}
 
 	@Override
-	public CallToolResult apply(Map<String, Object> arguments) {
+	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP uniqueness tool for {}", arguments);
 		String result = runUniqueness(arguments);
 
-		return CallToolResult.builder().content(List.of(TextContent.builder(result).build())).isError(false).build();
+		return ToolResult.success(result);
 	}
 
 	private String runUniqueness(Map<String, Object> arguments) {

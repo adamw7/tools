@@ -1,7 +1,6 @@
 package io.github.adamw7.context.mcp;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,8 +11,7 @@ import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.ProjectSources;
 import io.github.adamw7.tools.mcp.ToolArguments;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * Shared skeleton for the MCP tools that operate on a single class within a
@@ -38,7 +36,7 @@ abstract class AbstractClassContextTool implements ContextTool {
 	}
 
 	@Override
-	public CallToolResult apply(Map<String, Object> arguments) {
+	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP {} tool for {}", getToolDefinition().name(), arguments);
 		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
 		Language language = LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA);
@@ -47,9 +45,9 @@ abstract class AbstractClassContextTool implements ContextTool {
 
 		ClassContainer target = findTarget(containers, arguments, language);
 		if (target == null) {
-			return error("Class not found: " + ToolArguments.requiredString(arguments, "class_name"));
+			return ToolResult.error("Class not found: " + ToolArguments.requiredString(arguments, "class_name"));
 		}
-		return success(result(containers, target, language, depth));
+		return ToolResult.success(result(containers, target, language, depth));
 	}
 
 	/** Computes the tool's textual result from the located class within its project. */
@@ -70,19 +68,5 @@ abstract class AbstractClassContextTool implements ContextTool {
 			return className;
 		}
 		return className + language.extension();
-	}
-
-	private CallToolResult success(String text) {
-		return CallToolResult.builder()
-				.content(List.of(TextContent.builder(text).build()))
-				.isError(false)
-				.build();
-	}
-
-	private CallToolResult error(String message) {
-		return CallToolResult.builder()
-				.content(List.of(TextContent.builder(message).build()))
-				.isError(true)
-				.build();
 	}
 }

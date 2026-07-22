@@ -14,7 +14,11 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 	public Result exec(String... keyCandidates) {
 		check(keyCandidates);
 		dataSource.open();
-		return execOnOpenSource(keyCandidates);
+		try {
+			return execOnOpenSource(keyCandidates);
+		} finally {
+			close(dataSource);
+		}
 	}
 
 	@Override
@@ -28,7 +32,6 @@ public class InMemoryUniquenessCheck extends AbstractUniqueness<InMemoryDataSour
 	private Result findUnique(int[] indices, String... keyCandidates) {
 		dataSource.reset();
 		List<String[]> data = dataSource.readAll();
-		close(dataSource);
 		KeyFinder finder = new KeyFinder(indices);
 		for (String[] row : data) {
 			if (finder.found(row)) {

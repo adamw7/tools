@@ -280,8 +280,12 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   streamable HTTP: `mvn -P integration-tests verify`. Test classes ending in
   `IT` belong to this profile.
 - **Coverage** is the opt-in `coverage` profile (JaCoCo): `mvn -Pcoverage verify`
-  produces reports at `**/target/site/jacoco/` and **fails the build** if bundle
-  instruction coverage drops below **80%** (`COVEREDRATIO >= 0.80`).
+  produces reports at `**/target/site/jacoco/` and **fails the build** if a
+  bundle's instruction **or** branch coverage drops below **80%** (two
+  `COVEREDRATIO >= 0.80` limits, one on the `INSTRUCTION` counter and one on
+  `BRANCH`). The profile also raises the per-test timeout to **8 s** (from the
+  base 5 s), because JaCoCo's bytecode instrumentation slows first-use
+  class-loading.
 - **Mutation testing** is the opt-in `pitest` profile (PIT + JUnit 5):
   `mvn -Ppitest test` writes HTML/XML reports to `**/target/pit-reports/`. It
   excludes `*IT` integration tests and does not fail when a class has no

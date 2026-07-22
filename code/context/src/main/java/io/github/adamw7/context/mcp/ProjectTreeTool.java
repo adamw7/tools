@@ -17,9 +17,8 @@ import io.github.adamw7.context.tree.ProjectTreeNode;
 import io.github.adamw7.context.tree.ProjectTreePrinter;
 import io.github.adamw7.context.tree.ProjectTreeSerializer;
 import io.github.adamw7.tools.mcp.ToolArguments;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.github.adamw7.tools.mcp.ToolDefinition;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * MCP tool that scans a Java, Kotlin or Scala project into a tree of folders,
@@ -43,7 +42,8 @@ public class ProjectTreeTool implements ContextTool {
 		this.pathPolicy = pathPolicy;
 	}
 
-	private final Tool toolDefinition = Tool.builder("project_tree",
+	private final ToolDefinition toolDefinition = new ToolDefinition("project_tree",
+			"Scan a Java, Kotlin or Scala project into a tree of folders, files and class dependencies",
 			Map.of(
 					"type", "object",
 					"properties", Map.of(
@@ -55,20 +55,18 @@ public class ProjectTreeTool implements ContextTool {
 									"description", "how many levels of transitive dependencies to resolve (default 1)"),
 							"format", Map.of("type", "string",
 									"description", "output format: json (default), markdown, text, dot or mermaid")),
-					"required", List.of("path")))
-			.description("Scan a Java, Kotlin or Scala project into a tree of folders, files and class dependencies")
-			.build();
+					"required", List.of("path")));
 
 	@Override
-	public Tool getToolDefinition() {
+	public ToolDefinition getToolDefinition() {
 		return toolDefinition;
 	}
 
 	@Override
-	public CallToolResult apply(Map<String, Object> arguments) {
+	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP project_tree tool for {}", arguments);
 		String rendered = buildTree(arguments);
-		return CallToolResult.builder().content(List.of(TextContent.builder(rendered).build())).isError(false).build();
+		return ToolResult.success(rendered);
 	}
 
 	private String buildTree(Map<String, Object> arguments) {

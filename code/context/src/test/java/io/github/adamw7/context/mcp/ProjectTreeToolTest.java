@@ -18,8 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 public class ProjectTreeToolTest {
 
@@ -148,7 +147,7 @@ public class ProjectTreeToolTest {
 		Files.writeString(projectRoot.resolve(className + ".java"), body);
 	}
 
-	private String text(CallToolResult result) {
-		return ((TextContent) result.content().getFirst()).text();
+	private String text(ToolResult result) {
+		return result.text();
 	}
 }

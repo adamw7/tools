@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.data.uniqueness.mcp;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,9 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.Utils;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
-import io.modelcontextprotocol.spec.McpSchema;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.Content;
+import io.github.adamw7.tools.mcp.ToolResult;
 
 public class UniquenessToolTest {
 
@@ -35,13 +32,9 @@ public class UniquenessToolTest {
 		input.put("file", Utils.getHouseholdFile());
 		input.put("columns_row", "1");
 		input.put("columns_name", "year1");
-		CallToolResult result = tool.apply(input);
+		ToolResult result = tool.apply(input);
         assertFalse(result.isError());
-        assertEquals(1, result.content().size());
-        Content content = result.content().getFirst();
-        assertTrue(content instanceof McpSchema.TextContent);
-        McpSchema.TextContent textContent = (McpSchema.TextContent) content;
-        assertTrue("false".equals(textContent.text()));
+        assertTrue("false".equals(result.text()));
 	}
 
 	@Test
@@ -51,10 +44,9 @@ public class UniquenessToolTest {
 		input.put("file", Utils.getHouseholdFile());
 		input.put("columns_row", "1");
 		input.put("columns_name", "income");
-		CallToolResult result = tool.apply(input);
+		ToolResult result = tool.apply(input);
 		assertFalse(result.isError());
-		McpSchema.TextContent textContent = (McpSchema.TextContent) result.content().getFirst();
-		assertTrue("true".equals(textContent.text()));
+		assertTrue("true".equals(result.text()));
 	}
 
 	@Test

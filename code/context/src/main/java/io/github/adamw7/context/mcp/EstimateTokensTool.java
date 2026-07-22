@@ -14,7 +14,7 @@ import io.github.adamw7.context.Language;
 import io.github.adamw7.context.PackageAwareFinder;
 import io.github.adamw7.context.SubwordTokenEstimator;
 import io.github.adamw7.context.TokenEstimator;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.github.adamw7.tools.mcp.ToolDefinition;
 
 /**
  * MCP tool that estimates the LLM token cost of the context assembled for a
@@ -39,7 +39,8 @@ public class EstimateTokensTool extends AbstractClassContextTool {
 		this.estimator = estimator;
 	}
 
-	private final Tool toolDefinition = Tool.builder("estimate_tokens",
+	private final ToolDefinition toolDefinition = new ToolDefinition("estimate_tokens",
+			"Estimate the LLM token cost of the context assembled for a class and its dependencies",
 			Map.of(
 					"type", "object",
 					"properties", Map.of(
@@ -51,12 +52,10 @@ public class EstimateTokensTool extends AbstractClassContextTool {
 									"description", "source language: java (default), kotlin or scala"),
 							"depth", Map.of("type", "integer",
 									"description", "how many levels of transitive dependencies to include (default 1)")),
-					"required", List.of("path", "class_name")))
-			.description("Estimate the LLM token cost of the context assembled for a class and its dependencies")
-			.build();
+					"required", List.of("path", "class_name")));
 
 	@Override
-	public Tool getToolDefinition() {
+	public ToolDefinition getToolDefinition() {
 		return toolDefinition;
 	}
 

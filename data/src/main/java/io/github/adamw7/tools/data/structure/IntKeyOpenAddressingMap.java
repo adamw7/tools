@@ -19,7 +19,7 @@ import io.github.adamw7.tools.data.structure.internal.Primes;
  * the boxing this class exists to avoid. The API mirrors the relevant map
  * operations with primitive {@code int} keys instead.
  *
- * <p>Unlike {@link OpenAddressingMap}, {@code null} values are stored faithfully
+ * <p>Like {@link OpenAddressingMap}, {@code null} values are stored faithfully
  * and reported by {@link #containsKey(int)}; only {@link #get(int)} cannot tell a
  * stored {@code null} from an absent key. The class is not thread-safe.
  */

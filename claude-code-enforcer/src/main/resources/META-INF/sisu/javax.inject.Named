@@ -12,3 +12,10 @@ io.github.adamw7.tools.enforcer.definition.UniqueNamesRule
 io.github.adamw7.tools.enforcer.settings.HooksFormatRule
 io.github.adamw7.tools.enforcer.mcp.McpConfigFormatRule
 io.github.adamw7.tools.enforcer.definition.UniqueDescriptionsRule
+io.github.adamw7.tools.enforcer.settings.PermissionsFormatRule
+io.github.adamw7.tools.enforcer.doc.MemoryImportsRule
+io.github.adamw7.tools.enforcer.secret.NoSecretsRule
+io.github.adamw7.tools.enforcer.doc.ContextBudgetRule
+io.github.adamw7.tools.enforcer.settings.LocalSettingsIgnoredRule
+io.github.adamw7.tools.enforcer.doc.ModuleMapConsistencyRule
+io.github.adamw7.tools.enforcer.definition.PluginFormatRule

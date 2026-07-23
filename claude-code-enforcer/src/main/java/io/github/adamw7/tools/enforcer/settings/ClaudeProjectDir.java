@@ -23,13 +23,24 @@ final class ClaudeProjectDir {
 
 	/** The path {@code token} resolves to when it references the project dir, else null. */
 	String expand(String token) {
-		if (token.contains(BRACED)) {
-			return token.replace(BRACED, resolve().getPath());
+		String bare = withoutQuotes(token);
+		if (bare.contains(BRACED)) {
+			return bare.replace(BRACED, resolve().getPath());
 		}
-		if (token.contains(PLAIN)) {
-			return token.replace(PLAIN, resolve().getPath());
+		if (bare.contains(PLAIN)) {
+			return bare.replace(PLAIN, resolve().getPath());
 		}
 		return null;
+	}
+
+	/**
+	 * The token without shell quote characters, so a quoted
+	 * {@code "$CLAUDE_PROJECT_DIR/hook.sh"} resolves to the same on-disk path as
+	 * its unquoted spelling — the shell removes the quotes after expansion, and a
+	 * hook path never legitimately contains one.
+	 */
+	private String withoutQuotes(String token) {
+		return token.replace("\"", "").replace("'", "");
 	}
 
 	/** The configured override, else the settings file's grandparent, else the current directory. */

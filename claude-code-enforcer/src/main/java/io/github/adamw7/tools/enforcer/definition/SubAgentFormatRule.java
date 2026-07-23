@@ -21,7 +21,9 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
  * YAML front matter block declaring every required key, and carry a {@code name}
  * that follows the Claude Code naming convention and matches its file name.
  * <p>
- * The required keys default to {@code name} and {@code description}. When
+ * The required keys default to {@code name} and {@code description}, and a
+ * declared {@code description} must be non-empty, because Claude routes to a
+ * sub-agent by matching intent against its description. When
  * {@code allowedModels} is configured and a definition declares a {@code model},
  * that model must be one of the allowed values, so a typo such as
  * {@code claud-opus} cannot slip through. An agents directory with no
@@ -80,6 +82,7 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		collectMissingKeys(definition, frontMatter, violations);
 		collectNameViolations(definition, frontMatter, violations);
+		collectDescriptionViolations(definition, frontMatter, violations);
 		ModelAllowlist.collect(allowedModels, frontMatter, "Sub-agent", definition, violations);
 	}
 
@@ -94,6 +97,17 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectNameViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		frontMatter.value(NAME_KEY).ifPresent(
 				name -> NameConvention.collect(name, DefinitionFiles.baseName(definition), definition.toString(), violations));
+	}
+
+	private void collectDescriptionViolations(File definition, FrontMatter frontMatter, List<String> violations) {
+		frontMatter.value(DESCRIPTION_KEY).ifPresent(
+				description -> addDescriptionViolation(definition, description, violations));
+	}
+
+	private void addDescriptionViolation(File definition, String description, List<String> violations) {
+		if (description.isBlank()) {
+			violations.add("Sub-agent description must not be empty in: " + definition);
+		}
 	}
 
 	private List<String> requiredKeys() {

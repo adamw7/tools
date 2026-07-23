@@ -6,22 +6,24 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Repairs the two unambiguous ways a Claude Code front matter block is commonly
+ * Repairs the unambiguous ways a Claude Code front matter block is commonly
  * malformed, so an auto-fixing rule can rewrite the file rather than only fail
  * the build:
  * <ul>
  * <li>a delimiter written with too many dashes, such as {@code ----}, which
- * {@link FrontMatter} does not recognise as the canonical {@code ---}; and</li>
+ * {@link FrontMatter} does not recognise as the canonical {@code ---};</li>
  * <li>an opening {@code ---} whose closing delimiter is missing, which leaves
- * the block unterminated.</li>
+ * the block unterminated; and</li>
+ * <li>blank lines before the opening delimiter, which Claude Code does not
+ * accept — the block must start on the first line.</li>
  * </ul>
  * <p>
  * The repair is deliberately conservative: it only acts when the document opens
- * with a dashes-only line and the region that would become the block actually
- * contains at least one {@code key: value} entry, so a lone {@code ---} thematic
- * break is never mistaken for front matter. A document whose front matter
- * already parses, or whose problem is not one of the two above, is left
- * untouched and reported by the rule as before.
+ * (past any leading blank lines) with a dashes-only line and the region that
+ * would become the block actually contains at least one {@code key: value}
+ * entry, so a lone {@code ---} thematic break is never mistaken for front
+ * matter. A document whose front matter already parses, or whose problem is not
+ * one of the above, is left untouched and reported by the rule as before.
  */
 public final class FrontMatterFixer {
 
@@ -48,7 +50,13 @@ public final class FrontMatterFixer {
 		if (open < 0 || !isDelimiterLike(lines.get(open))) {
 			return Optional.empty();
 		}
-		return repairFrom(lines, open).map(fixed -> render(fixed, content));
+		return repairFrom(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content));
+	}
+
+	/** The lines with any blank lines before the opening delimiter removed, so the block starts on line one. */
+	private static List<String> withoutLeadingBlanks(List<String> lines) {
+		int first = firstNonBlankIndex(lines);
+		return first <= 0 ? lines : lines.subList(first, lines.size());
 	}
 
 	private static Optional<List<String>> repairFrom(List<String> lines, int open) {

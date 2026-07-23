@@ -72,6 +72,17 @@ class FrontMatterFixerTest {
 	}
 
 	@Test
+	void dropsBlankLinesBeforeTheOpeningDelimiter() {
+		String content = "\n\n---\nname: reviewer\ndescription: Reviews code.\n---\nbody\n";
+
+		Optional<String> repaired = FrontMatterFixer.repair(content);
+
+		assertTrue(repaired.isPresent());
+		assertTrue(repaired.get().startsWith("---\n"), repaired.get());
+		assertTrue(FrontMatter.parse(repaired.get()).isPresent(), repaired.get());
+	}
+
+	@Test
 	void doesNotMistakeALoneThematicBreakForFrontMatter() {
 		String content = """
 				---

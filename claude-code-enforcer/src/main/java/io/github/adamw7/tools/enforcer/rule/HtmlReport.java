@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -34,10 +35,17 @@ final class HtmlReport {
 		this.howToFix = howToFix;
 	}
 
-	/** Writes the rendered report to {@code file}, failing the build if it cannot be written. */
+	/**
+	 * Writes the rendered report to {@code file}, failing the build if it cannot be
+	 * written. Missing parent directories are created first, because a report under
+	 * {@code target/} is typically written at {@code validate}, before any plugin
+	 * has created that directory.
+	 */
 	void writeTo(File file) throws EnforcerRuleException {
 		try {
-			Files.writeString(file.toPath(), render(), StandardCharsets.UTF_8);
+			Path path = file.toPath().toAbsolutePath();
+			Files.createDirectories(path.getParent());
+			Files.writeString(path, render(), StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new EnforcerRuleException("Could not write HTML report to " + file, e);
 		}

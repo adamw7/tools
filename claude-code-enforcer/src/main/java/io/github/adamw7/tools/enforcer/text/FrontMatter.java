@@ -27,19 +27,21 @@ public final class FrontMatter {
 	/**
 	 * Parses the front matter at the start of {@code content}, or returns empty
 	 * when the content does not begin with a closed {@code ---} delimited block.
-	 * A byte-order mark, if any, must already be stripped by the caller.
+	 * Claude Code only recognises a block whose opening delimiter is the very
+	 * first line, so content that reaches its {@code ---} after blank lines has
+	 * no front matter here either. A byte-order mark, if any, must already be
+	 * stripped by the caller.
 	 */
 	public static Optional<FrontMatter> parse(String content) {
 		List<String> allLines = content.lines().toList();
-		if (!MarkdownText.firstNonBlankLine(content).equals(DELIMITER)) {
+		if (allLines.isEmpty() || !allLines.get(0).strip().equals(DELIMITER)) {
 			return Optional.empty();
 		}
-		int start = indexOfDelimiter(allLines, 0);
-		int end = indexOfDelimiter(allLines, start + 1);
+		int end = indexOfDelimiter(allLines, 1);
 		if (end < 0) {
 			return Optional.empty();
 		}
-		return Optional.of(new FrontMatter(allLines.subList(start + 1, end)));
+		return Optional.of(new FrontMatter(allLines.subList(1, end)));
 	}
 
 	/** True when a {@code key:} entry is present, regardless of its value. */

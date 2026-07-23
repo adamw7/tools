@@ -21,7 +21,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
  * default, overridable via {@code requiredKeys}); the {@code name} is held to
  * the Claude Code naming convention (lower-case kebab-case, at most
  * {@value NameConvention#MAX_LENGTH} characters), a {@code version} must be a
- * dotted number with an optional pre-release suffix, and a {@code description}
+ * dotted number with optional pre-release and build-metadata suffixes, and a {@code description}
  * must be non-empty. When {@code allowedKeys} is configured, any key outside
  * that set is reported, which catches typos such as {@code descripton}.
  * <p>
@@ -36,7 +36,9 @@ public class PluginFormatRule extends JsonFileRule {
 	private static final String VERSION_KEY = "version";
 	private static final String DESCRIPTION_KEY = "description";
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of(NAME_KEY);
-	private static final Pattern VERSION = Pattern.compile("\\d+(\\.\\d+){0,2}([-+][A-Za-z0-9.-]+)?");
+
+	/** A dotted version with the optional semver pre-release and build-metadata suffixes, e.g. {@code 1.0.0-beta.1+build.5}. */
+	private static final Pattern VERSION = Pattern.compile("\\d+(\\.\\d+){0,2}(-[A-Za-z0-9.-]+)?(\\+[A-Za-z0-9.-]+)?");
 
 	/** The {@code .claude-plugin/plugin.json} manifest to validate. Injected from the rule configuration. */
 	private File pluginFile;

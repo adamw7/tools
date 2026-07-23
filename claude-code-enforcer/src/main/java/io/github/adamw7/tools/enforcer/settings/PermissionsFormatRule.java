@@ -44,7 +44,14 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private static final String ALLOW_KEY = "allow";
 	private static final String DENY_KEY = "deny";
 	private static final List<String> LIST_KEYS = List.of(ALLOW_KEY, DENY_KEY, "ask");
-	private static final Pattern ENTRY_SYNTAX = Pattern.compile("[A-Za-z][A-Za-z0-9_]*(\\(.+\\))?");
+
+	/**
+	 * A built-in tool name, or an {@code mcp__server__tool} name whose server and
+	 * tool parts may contain hyphens (e.g. {@code mcp__claude-code-remote__list_repos}),
+	 * each optionally followed by a parenthesised specifier.
+	 */
+	private static final Pattern ENTRY_SYNTAX = Pattern
+			.compile("(mcp__[A-Za-z0-9_-]+|[A-Za-z][A-Za-z0-9_]*)(\\(.+\\))?");
 	private static final String MCP_TOOL_PREFIX = "mcp__";
 
 	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */

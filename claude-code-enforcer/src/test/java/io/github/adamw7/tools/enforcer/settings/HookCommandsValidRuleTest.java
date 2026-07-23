@@ -51,6 +51,27 @@ class HookCommandsValidRuleTest {
 	}
 
 	@Test
+	void passesWhenTheScriptReferenceIsQuoted() {
+		writeString(tempDir.resolve("session-start.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/session-start.sh\\\""));
+		rule.setProjectDir(tempDir.toFile());
+
+		// The shell removes the quotes after expansion, so a quoted reference
+		// points at the same existing script as its unquoted spelling.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenAQuotedScriptReferenceIsMissing() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/gone.sh\\\""));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenNotConfigured() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new HookCommandsValidRule()::execute);
 		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());

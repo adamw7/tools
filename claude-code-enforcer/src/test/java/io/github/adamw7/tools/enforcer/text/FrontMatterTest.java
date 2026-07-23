@@ -38,6 +38,13 @@ class FrontMatterTest {
 	}
 
 	@Test
+	void requiresTheOpeningDelimiterOnTheFirstLine() {
+		// Claude Code only recognises front matter that starts on line one, so a
+		// block reached after blank lines must not parse here either.
+		assertTrue(FrontMatter.parse("\n\n---\nname: x\n---\n").isEmpty());
+	}
+
+	@Test
 	void detectsDeclaredKeys() {
 		FrontMatter frontMatter = FrontMatter.parse(DOCUMENT).orElseThrow();
 

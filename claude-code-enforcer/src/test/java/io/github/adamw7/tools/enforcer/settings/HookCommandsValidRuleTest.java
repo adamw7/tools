@@ -63,6 +63,17 @@ class HookCommandsValidRuleTest {
 	}
 
 	@Test
+	void passesWhenTheScriptReferenceIsSingleQuoted() {
+		writeString(tempDir.resolve("session-start.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("'$CLAUDE_PROJECT_DIR/session-start.sh'"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// Single quotes are stripped just like double quotes, so the reference
+		// still points at the same existing script.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsWhenAQuotedScriptReferenceIsMissing() {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/gone.sh\\\""));
 		rule.setProjectDir(tempDir.toFile());

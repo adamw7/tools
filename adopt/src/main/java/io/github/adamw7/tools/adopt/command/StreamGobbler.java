@@ -1,9 +1,9 @@
 package io.github.adamw7.tools.adopt.command;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -15,11 +15,14 @@ import java.time.Duration;
  * the background lets {@link ProcessCommandRunner} time out and destroy the
  * child while its partial output is still recovered.
  *
- * <p>Each line is accumulated as it is read, and {@link #output()} bounds its
- * wait for the reader thread. A direct child can exit while a descendant it
- * spawned keeps the output pipe open, in which case the stream never reaches
- * end-of-stream; the bounded join stops that from hanging the caller forever
- * and still returns whatever was captured before the wait elapsed.
+ * <p>The stream is copied verbatim as it is read — every byte the child emits is
+ * preserved, including its own line terminators and any trailing newline — so the
+ * captured transcript reflects exactly what the command printed rather than a
+ * re-joined approximation. {@link #output()} bounds its wait for the reader
+ * thread: a direct child can exit while a descendant it spawned keeps the output
+ * pipe open, in which case the stream never reaches end-of-stream; the bounded
+ * join stops that from hanging the caller forever and still returns whatever was
+ * captured before the wait elapsed.
  */
 final class StreamGobbler {
 
@@ -32,7 +35,6 @@ final class StreamGobbler {
 
 	private final Thread thread;
 	private final StringBuilder output = new StringBuilder();
-	private boolean firstLine = true;
 
 	private StreamGobbler(InputStream stream) {
 		this.thread = new Thread(() -> drain(stream), "adopt-stream-gobbler");
@@ -68,28 +70,25 @@ final class StreamGobbler {
 	}
 
 	private void drain(InputStream stream) {
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-			append(reader);
+		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+			copy(reader);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
 	}
 
-	private void append(BufferedReader reader) throws IOException {
-		String line = reader.readLine();
-		while (line != null) {
-			appendLine(line);
-			line = reader.readLine();
+	private void copy(Reader reader) throws IOException {
+		char[] buffer = new char[8192];
+		int read = reader.read(buffer);
+		while (read != -1) {
+			append(buffer, read);
+			read = reader.read(buffer);
 		}
 	}
 
-	private void appendLine(String line) {
+	private void append(char[] buffer, int length) {
 		synchronized (output) {
-			if (!firstLine) {
-				output.append(System.lineSeparator());
-			}
-			output.append(line);
-			firstLine = false;
+			output.append(buffer, 0, length);
 		}
 	}
 }

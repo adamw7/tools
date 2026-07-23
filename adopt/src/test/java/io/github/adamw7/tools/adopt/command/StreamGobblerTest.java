@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Timeout;
 class StreamGobblerTest {
 
 	@Test
-	void joinsMultipleLinesWithTheLineSeparator() {
+	void preservesMultipleLinesVerbatim() {
 		String text = "first" + System.lineSeparator() + "second" + System.lineSeparator() + "third";
 		StreamGobbler gobbler = StreamGobbler.consuming(
 				new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));
@@ -26,6 +26,19 @@ class StreamGobblerTest {
 	@Test
 	void keepsAnEmptyLeadingLine() {
 		String text = System.lineSeparator() + "second";
+		StreamGobbler gobbler = StreamGobbler.consuming(
+				new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));
+		assertEquals(text, gobbler.output());
+	}
+
+	/**
+	 * The stream is copied byte-for-byte rather than split into lines and re-joined,
+	 * so the child's own {@code \n} terminators and its trailing newline survive
+	 * unchanged regardless of the host's {@link System#lineSeparator()}.
+	 */
+	@Test
+	void preservesLineTerminatorsAndTrailingNewlineVerbatim() {
+		String text = "first\nsecond\n";
 		StreamGobbler gobbler = StreamGobbler.consuming(
 				new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));
 		assertEquals(text, gobbler.output());

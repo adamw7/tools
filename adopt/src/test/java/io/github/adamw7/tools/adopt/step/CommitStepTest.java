@@ -24,7 +24,24 @@ class CommitStepTest {
 		new CommitStep("my message").execute(context, runner);
 		assertEquals(List.of("git", "add", "-A"), runner.commandAt(0));
 		assertEquals(List.of("git", "diff", "--cached", "--quiet"), runner.commandAt(1));
-		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(2));
+		assertEquals(List.of("git", "config", "--get", "user.name"), runner.commandAt(2));
+		assertEquals(List.of("git", "config", "--get", "user.email"), runner.commandAt(3));
+		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(4));
+	}
+
+	@Test
+	void suppliesAFallbackIdentityWhenGitHasNone() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::stagedChangesWithoutIdentity);
+		new CommitStep("my message").execute(context, runner);
+		assertEquals(List.of("git", "-c", "user.name=" + CommitStep.FALLBACK_NAME, "-c",
+				"user.email=" + CommitStep.FALLBACK_EMAIL, "commit", "-m", "my message"), runner.commandAt(4));
+	}
+
+	@Test
+	void leavesAConfiguredIdentityInForce() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::stagedChanges);
+		new CommitStep("my message").execute(context, runner);
+		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(4));
 	}
 
 	@Test
@@ -43,6 +60,16 @@ class CommitStepTest {
 
 	private CommandResult stagedChanges(List<String> command) {
 		if (command.contains("diff")) {
+			return new CommandResult(command, 1, "");
+		}
+		return new CommandResult(command, 0, "");
+	}
+
+	private CommandResult stagedChangesWithoutIdentity(List<String> command) {
+		if (command.contains("diff")) {
+			return new CommandResult(command, 1, "");
+		}
+		if (command.contains("config")) {
 			return new CommandResult(command, 1, "");
 		}
 		return new CommandResult(command, 0, "");

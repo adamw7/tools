@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -7,11 +8,13 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
+import io.github.adamw7.tools.adopt.step.AssetsStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
 import io.github.adamw7.tools.adopt.step.ClaudeInitStep;
 import io.github.adamw7.tools.adopt.step.CloneStep;
 import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
+import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.adopt.step.PullRequestStep;
 import io.github.adamw7.tools.adopt.step.PushStep;
 import io.github.adamw7.tools.adopt.step.ToolchainStep;
@@ -28,6 +31,12 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  * {@code git}, {@code claude}, or {@code gh} fails the adoption before any
  * expensive work. The adoption never writes to the default branch. Steps and the
  * command runner are injected so the pipeline is easy to reconfigure and to test.
+ *
+ * <p>Each run returns an {@link AdoptionReport} of the steps that completed and
+ * the pull request's URL, so callers can act on the outcome without scraping
+ * logs. The default pipeline can optionally include an {@link AssetsStep} that
+ * commits starter Claude Code configuration assets alongside the generated
+ * {@code CLAUDE.md}.
  */
 public class GitHubRepoAdopter {
 
@@ -45,8 +54,17 @@ public class GitHubRepoAdopter {
 		return new GitHubRepoAdopter(runner, defaultSteps());
 	}
 
+	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
+			boolean includeAssets) {
+		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets));
+	}
+
 	public static List<AdoptionStep> defaultSteps() {
-		return List.of(
+		return defaultSteps(PullRequestOptions.defaults(), false);
+	}
+
+	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets) {
+		List<AdoptionStep> steps = new ArrayList<>(List.of(
 				new ToolchainStep(),
 				new CloneStep(),
 				new BranchStep(),
@@ -54,22 +72,30 @@ public class GitHubRepoAdopter {
 				new ClaudeInitStep(),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
 				new EnforcerStep(),
-				new CommitStep("Add claude-code-enforcer to the build"),
-				new VerifyStep(),
-				new PushStep(),
-				new PullRequestStep());
+				new CommitStep("Add claude-code-enforcer to the build")));
+		if (includeAssets) {
+			steps.add(new AssetsStep());
+			steps.add(new CommitStep("Add Claude Code configuration assets"));
+		}
+		steps.add(new VerifyStep());
+		steps.add(new PushStep());
+		steps.add(new PullRequestStep(options));
+		return List.copyOf(steps);
 	}
 
-	public void adopt(AdoptionContext context) {
+	public AdoptionReport adopt(AdoptionContext context) {
 		log.info("Adopting Claude Code into {}", context.repositoryUrl());
+		AdoptionReport report = new AdoptionReport();
 		for (AdoptionStep step : steps) {
-			runStep(step, context);
+			runStep(step, context, report);
 		}
 		log.info("Adoption complete for {}", context.repositoryUrl());
+		return report;
 	}
 
-	private void runStep(AdoptionStep step, AdoptionContext context) {
+	private void runStep(AdoptionStep step, AdoptionContext context, AdoptionReport report) {
 		log.info("Step: {}", step.name());
-		step.execute(context, runner);
+		step.execute(context, runner, report);
+		report.recordStep(step.name());
 	}
 }

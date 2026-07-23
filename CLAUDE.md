@@ -36,8 +36,14 @@ run `mvn install` from the repository root. The main capabilities are:
   `.github/claude-md-guard.sh` check as the build-tool-agnostic fallback) and
   commit that, verify the guard passes on the
   generated file, then push the branch and open a pull request (`gh pr create`)
-  with metadata from `PullRequestOptions`; the default branch is never written to
-  directly.
+  with metadata from `PullRequestOptions` (exposed as CLI flags such as
+  `--title`, `--reviewer`, and `--draft`); the default branch is never written to
+  directly. An optional `--assets` flag commits starter Claude Code
+  configuration assets (an `AGENTS.md` pointer, `.claude/settings.json`, a
+  session-start hook stub, `.mcp.json`, and an `@claude`-mention workflow); each
+  run returns an `AdoptionReport` with the pull request URL, written as JSON via
+  `--report <file>`, and an MCP server exposes the pipeline as an `adopt_repo`
+  tool.
 
 Module map (root reactor: `claude-code-enforcer`, `mcp-common`, `data`, `code`,
 `adopt`, `grpc-example`, `assembly`; `data-test` is built separately):

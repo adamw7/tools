@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
+import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 
 class GitHubRepoAdopterTest {
 
@@ -61,6 +62,14 @@ class GitHubRepoAdopterTest {
 	}
 
 	@Test
+	void reportsEveryCompletedStep() {
+		List<String> order = new ArrayList<>();
+		List<AdoptionStep> steps = List.of(new NamingStep("a", order), new NamingStep("b", order));
+		AdoptionReport report = new GitHubRepoAdopter(new RecordingCommandRunner(), steps).adopt(context);
+		assertEquals(List.of("a", "b"), report.completedSteps());
+	}
+
+	@Test
 	void stopsAtFirstFailingStep() {
 		List<String> order = new ArrayList<>();
 		List<AdoptionStep> steps = List.of(new NamingStep("a", order), new ExplodingStep(),
@@ -75,5 +84,13 @@ class GitHubRepoAdopterTest {
 		List<String> names = GitHubRepoAdopter.defaultSteps().stream().map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "commit", "enforcer", "commit",
 				"verify", "push", "pull-request"), names);
+	}
+
+	@Test
+	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
+		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true).stream()
+				.map(AdoptionStep::name).toList();
+		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "commit", "enforcer", "commit",
+				"assets", "commit", "verify", "push", "pull-request"), names);
 	}
 }

@@ -642,6 +642,42 @@
 												<consistentPattern>proto(\d)</consistentPattern>
 											</consistentPatterns>
 										</readmeConsistency>
+										<permissionsFormat>
+											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
+										</permissionsFormat>
+										<memoryImports>
+											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
+										</memoryImports>
+										<noSecrets>
+											<files>
+												<file>${project.basedir}/.claude/settings.json</file>
+												<file>${project.basedir}/.mcp.json</file>
+											</files>
+											<directories>
+												<directory>${project.basedir}/.claude/hooks</directory>
+											</directories>
+										</noSecrets>
+										<contextBudget>
+											<files>
+												<file>${project.basedir}/CLAUDE.md</file>
+											</files>
+											<!-- CLAUDE.md is loaded into every session; keep it a
+											     summary that defers to AGENTS.md rather than a copy. -->
+											<maxBytes>32768</maxBytes>
+										</contextBudget>
+										<localSettingsIgnored>
+											<gitignoreFile>${project.basedir}/.gitignore</gitignoreFile>
+										</localSettingsIgnored>
+										<moduleMapConsistency>
+											<pomFile>${project.basedir}/pom.xml</pomFile>
+											<docFiles>
+												<docFile>${project.basedir}/CLAUDE.md</docFile>
+												<docFile>${project.basedir}/AGENTS.md</docFile>
+											</docFiles>
+										</moduleMapConsistency>
+										<pluginFormat>
+											<pluginFile>${project.basedir}/.claude-plugin/plugin.json</pluginFile>
+										</pluginFormat>
 									</rules>
 								</configuration>
 							</execution>

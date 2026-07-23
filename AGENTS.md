@@ -424,6 +424,73 @@ profile:
   README is allowed to document a curated subset — so only a value present in both
   files that disagrees fails the build. Both rules share a `DocumentConsistency`
   helper that owns the pattern validation and capture logic.
+- `PermissionsFormatRule` (`permissionsFormat`) validates the entries of the
+  `permissions` lists (`allow`, `deny`, `ask`) in `.claude/settings.json`.
+  Where `settingsJsonValid` asserts policy (which entries must or must not be
+  present), this rule validates the entries themselves: each must be a
+  non-blank string of the form `Tool` or `Tool(specifier)`, because a
+  malformed entry such as `Bash(mvn *` grants nothing and fails silently at
+  runtime. A duplicate within a list is reported, and so is an entry that
+  appears in both `allow` and `deny`, since the contradiction means one of the
+  two is not doing what its author intended. An optional `allowedTools` list
+  rejects a mistyped tool name (entries prefixed `mcp__` are exempt, their
+  names being defined by the project's servers), and optional
+  `forbiddenEntryPatterns` regexes ban an over-broad `allow` grant such as
+  `Bash(*)` by shape rather than exact spelling. A settings file without a
+  `permissions` section passes.
+- `MemoryImportsRule` (`memoryImports`) follows the `@path` memory imports of
+  `CLAUDE.md` recursively and fails for an import that does not resolve on
+  disk, a circular import, or an import nested deeper than `maxDepth` hops
+  (default 5, the loader's limit — deeper imports are silently never loaded).
+  Imports are recognised the way Claude Code evaluates them — preceded by
+  start-of-line or whitespace, outside fenced code blocks and inline code
+  spans — so `` `@claude` `` in prose is not an import; home-relative imports
+  (`@~/...`) point at machine-specific state a build cannot see and are
+  skipped, as is any path listed in `ignoredImports`.
+- `NoSecretsRule` (`noSecrets`) scans the configured `files` and every regular
+  file under the configured `directories` for what looks like a literal
+  credential — Anthropic, AWS, GitHub, and Slack token formats plus private
+  key blocks by default; `secretPatterns` adds custom regexes, or replaces
+  the defaults when `useDefaultPatterns` is off. Each match is reported with
+  its file, line, and credential kind but only the first characters of the
+  match, so the report never republishes the secret it found. An absent
+  target is skipped, because most of these files are optional; the fix is an
+  environment variable expansion such as `${API_KEY}` plus rotating the
+  leaked value.
+- `ContextBudgetRule` (`contextBudget`) keeps agent context files within a
+  size budget, because `CLAUDE.md` is loaded into every session and each
+  definition file whenever it triggers: every configured file (and every
+  `*.md` under the configured `directories`) must fit `maxBytes`, `maxLines`,
+  and `maxTokens` (estimated with the rough four-characters-per-token
+  heuristic). A budget left at zero is disabled; at least one must be
+  configured. The fix is moving detail into `AGENTS.md` or an on-demand skill
+  rather than the always-loaded context.
+- `LocalSettingsIgnoredRule` (`localSettingsIgnored`) parses the configured
+  `.gitignore` and verifies each path in `ignoredPaths` (by default
+  `.claude/settings.local.json`, the per-developer settings file) is covered,
+  honouring negations, anchoring, directory patterns, and `*`/`?`/`**` globs —
+  a path may be covered by the exact entry, a glob, or an ignored ancestor
+  directory. Committing personal settings imposes one developer's choices on
+  the whole team, so the durable guard is the gitignore entry itself.
+- `ModuleMapConsistencyRule` (`moduleMapConsistency`) extracts every
+  `<module>` entry from the configured aggregator `pomFile` (XML comments are
+  ignored, so a commented-out module does not count) and fails when a
+  module's name — the last path segment, for a nested entry such as
+  `code/context` — is not mentioned in each configured doc file, so a module
+  added to the reactor cannot stay undocumented. The check is presence-only
+  by design: how a doc arranges its module map is prose, but every live
+  module must at least be mentioned. `ignoredModules` exempts a deliberately
+  undocumented module; a pom with no `<module>` entries always fails, because
+  pointing the rule at a non-aggregator pom is a build-setup mistake.
+- `PluginFormatRule` (`pluginFormat`) validates a Claude Code plugin manifest
+  (`.claude-plugin/plugin.json`): when present it must be non-empty valid
+  JSON declaring every required key (`name` by default, overridable via
+  `requiredKeys`), the `name` is held to the naming convention (lower-case
+  kebab-case, at most 64 characters), a `version` must be a dotted version
+  number with an optional pre-release suffix, a present `description` must be
+  non-empty, and `allowedKeys` reports unknown keys, catching typos such as
+  `descripton`. An absent manifest is a pass, since not every repository
+  ships a plugin.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks, and

@@ -65,6 +65,16 @@ class DefinitionFilesTest {
 	}
 
 	@Test
+	void markdownFilesReturnsResultsSortedByName() {
+		writeString(tempDir.resolve("review.md"), "body");
+		writeString(tempDir.resolve("apply.md"), "body");
+		writeString(tempDir.resolve("commit.md"), "body");
+
+		assertArrayEquals(new String[] { "apply.md", "commit.md", "review.md" },
+				names(DefinitionFiles.markdownFiles(tempDir.toFile())));
+	}
+
+	@Test
 	void markdownFilesReturnsEmptyArrayForAnEmptyDirectory() {
 		assertEquals(0, DefinitionFiles.markdownFiles(tempDir.toFile()).length);
 	}
@@ -83,6 +93,16 @@ class DefinitionFilesTest {
 		writeString(tempDir.resolve("review.md"), "body");
 
 		assertArrayEquals(new String[] { "agents", "commands" }, sortedNames(DefinitionFiles.subdirectories(tempDir.toFile())));
+	}
+
+	@Test
+	void subdirectoriesReturnsResultsSortedByName() {
+		createDirectory(tempDir.resolve("skills"));
+		createDirectory(tempDir.resolve("agents"));
+		createDirectory(tempDir.resolve("commands"));
+
+		assertArrayEquals(new String[] { "agents", "commands", "skills" },
+				names(DefinitionFiles.subdirectories(tempDir.toFile())));
 	}
 
 	@Test
@@ -109,6 +129,11 @@ class DefinitionFilesTest {
 
 	private static String[] sortedNames(File[] files) {
 		return Arrays.stream(files).map(File::getName).sorted(Comparator.naturalOrder()).toArray(String[]::new);
+	}
+
+	/** Names in the array's own order, so a test can assert the helper's sorting rather than re-sort it. */
+	private static String[] names(File[] files) {
+		return Arrays.stream(files).map(File::getName).toArray(String[]::new);
 	}
 
 	private static File writeString(Path file, String content) {

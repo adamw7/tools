@@ -503,7 +503,15 @@ violations), so a new rule can be adopted gradually. An optional `reportFile`
 writes the same outcome as a self-contained HTML report — what failed and why
 (the header and one entry per violation) plus per-rule "How to fix" steps — for a
 browser or CI artifact; it is written on pass and fail alike, so it always
-reflects the latest run.
+reflects the latest run. An optional `baselineFile` records the violations a rule
+already accepts, so a rule can be turned into an error gate without first clearing
+the whole backlog: a violation listed in the baseline is suppressed and only a new
+one fails, and the report and failure message reflect only the un-suppressed
+violations. Record the current violations once — set `<writeBaseline>true</writeBaseline>`
+or run the build with `-Dclaude.enforcer.writeBaseline=true`, which writes the file
+and passes — then commit it; each stored signature has the absolute project base
+directory normalised to `${basedir}` so a checked-in baseline stays portable
+between a developer's clone and CI.
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
 also accept an `autoFix` option (off by default). When enabled and a definition's

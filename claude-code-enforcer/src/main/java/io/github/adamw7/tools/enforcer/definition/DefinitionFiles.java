@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
+import java.util.Arrays;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
@@ -10,6 +11,12 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * {@code .md} handling, the null-safe {@link File#listFiles} wrappers and the
  * "directory must exist" check, so each rule keeps only its own validation
  * logic.
+ * <p>
+ * Both listing helpers return their entries sorted by natural {@link File}
+ * order. {@link File#listFiles} yields entries in an unspecified,
+ * filesystem-dependent order, which would let the rules built on these helpers
+ * report violations in a different order run-to-run; sorting here makes every
+ * rule's output — and the HTML report — stable and diffable.
  */
 final class DefinitionFiles {
 
@@ -25,16 +32,22 @@ final class DefinitionFiles {
 		}
 	}
 
-	/** The {@code *.md} files directly in {@code directory}, never null. */
+	/** The {@code *.md} files directly in {@code directory}, sorted, never null. */
 	static File[] markdownFiles(File directory) {
-		File[] files = directory.listFiles(DefinitionFiles::isMarkdownFile);
-		return files != null ? files : new File[0];
+		return sorted(directory.listFiles(DefinitionFiles::isMarkdownFile));
 	}
 
-	/** The immediate subdirectories of {@code directory}, never null. */
+	/** The immediate subdirectories of {@code directory}, sorted, never null. */
 	static File[] subdirectories(File directory) {
-		File[] directories = directory.listFiles(File::isDirectory);
-		return directories != null ? directories : new File[0];
+		return sorted(directory.listFiles(File::isDirectory));
+	}
+
+	private static File[] sorted(File[] files) {
+		if (files == null) {
+			return new File[0];
+		}
+		Arrays.sort(files);
+		return files;
 	}
 
 	/** The file name with the {@code .md} suffix stripped. */

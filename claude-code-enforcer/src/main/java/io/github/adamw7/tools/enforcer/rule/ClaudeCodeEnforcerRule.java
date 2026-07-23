@@ -26,10 +26,20 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * the {@link #howToFix()} steps in a "How to fix" column — so a build can surface
  * the violations in a browser or CI artifact regardless of severity. The report is
  * written whether the check passes or fails, so it always reflects the latest run.
+ * <p>
+ * When {@code <baselineFile>} is configured, a violation already recorded in that
+ * file is suppressed and only a <em>new</em> violation drives the outcome, so a
+ * rule can be turned into an error gate without first fixing every pre-existing
+ * violation. Record the current violations once — set {@code <writeBaseline>true</writeBaseline>}
+ * or run the build with {@code -Dclaude.enforcer.writeBaseline=true}, which writes
+ * the baseline and passes — then commit the file; from then on the backlog is
+ * grandfathered and any newly introduced violation still fails. The HTML report
+ * and the failure message reflect only the un-suppressed violations.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	private static final String WARN = "warn";
+	private static final String WRITE_BASELINE_PROPERTY = "claude.enforcer.writeBaseline";
 
 	/** Optional override: {@code error} (default) fails the build, {@code warn} only logs. */
 	private String severity;
@@ -37,22 +47,60 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	/** Optional path for an HTML report of the outcome. When null, no report is written. */
 	private File reportFile;
 
+	/** Optional path of recorded violations to suppress. When null, nothing is suppressed. */
+	private File baselineFile;
+
+	/** When true (or the {@code claude.enforcer.writeBaseline} property is set), records the current violations. */
+	private boolean writeBaseline;
+
 	/**
-	 * Reports the violations as a single grouped message. Writes the HTML report
-	 * first when {@link #reportFile} is configured, then throws when severity is
-	 * {@code error} and there is at least one violation, logs a warning when
-	 * severity is {@code warn}, or does nothing when there are no violations.
+	 * Reports the violations as a single grouped message. In write-baseline mode it
+	 * records every violation to {@link #baselineFile} and passes. Otherwise it drops
+	 * the violations already accepted by the baseline, writes the HTML report when
+	 * {@link #reportFile} is configured, then throws when severity is {@code error}
+	 * and a new violation remains, logs a warning when severity is {@code warn}, or
+	 * does nothing when no new violation remains.
 	 */
 	protected final void report(String header, List<String> violations) throws EnforcerRuleException {
-		writeReport(header, violations);
-		if (violations.isEmpty()) {
+		if (isWriteBaselineRequested()) {
+			recordBaseline(violations);
 			return;
 		}
-		String message = format(header, violations);
+		Baseline baseline = Baseline.read(baselineFile);
+		List<String> newViolations = baseline.newViolations(violations);
+		writeReport(header, newViolations);
+		logSuppressed(violations.size() - newViolations.size());
+		logStaleEntries(baseline.staleEntries(violations));
+		if (newViolations.isEmpty()) {
+			return;
+		}
+		String message = format(header, newViolations);
 		if (isWarn()) {
 			getLog().warn(message);
 		} else {
 			throw new EnforcerRuleException(message);
+		}
+	}
+
+	private boolean isWriteBaselineRequested() {
+		return baselineFile != null && (writeBaseline || Boolean.getBoolean(WRITE_BASELINE_PROPERTY));
+	}
+
+	private void recordBaseline(List<String> violations) throws EnforcerRuleException {
+		Baseline.write(baselineFile, violations);
+		getLog().info("Recorded " + violations.size() + " violation(s) to the baseline " + baselineFile);
+	}
+
+	private void logSuppressed(int suppressed) {
+		if (suppressed > 0) {
+			getLog().info(suppressed + " violation(s) suppressed by the baseline " + baselineFile);
+		}
+	}
+
+	private void logStaleEntries(List<String> staleEntries) {
+		if (!staleEntries.isEmpty()) {
+			getLog().info(staleEntries.size() + " baseline entry/entries no longer match and can be removed from "
+					+ baselineFile);
 		}
 	}
 
@@ -127,5 +175,13 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	public void setReportFile(File reportFile) {
 		this.reportFile = reportFile;
+	}
+
+	public void setBaselineFile(File baselineFile) {
+		this.baselineFile = baselineFile;
+	}
+
+	public void setWriteBaseline(boolean writeBaseline) {
+		this.writeBaseline = writeBaseline;
 	}
 }

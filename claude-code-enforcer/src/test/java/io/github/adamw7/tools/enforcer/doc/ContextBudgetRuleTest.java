@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -13,6 +14,8 @@ import java.util.List;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
 
 class ContextBudgetRuleTest {
 
@@ -100,6 +103,47 @@ class ContextBudgetRuleTest {
 		rule.setMaxBytes(50);
 
 		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void passesWhenTheOnlyViolationIsRecordedInTheBaseline() {
+		ContextBudgetRule rule = ruleForFile("x".repeat(100));
+		rule.setMaxBytes(50);
+		File baseline = tempDir.resolve("baseline.txt").toFile();
+		rule.setLog(new CapturingLogger());
+		rule.setBaselineFile(baseline);
+		rule.setWriteBaseline(true);
+		assertDoesNotThrow(rule::execute);
+
+		rule.setWriteBaseline(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillFailsForAViolationTheBaselineDoesNotCover() {
+		File baseline = tempDir.resolve("baseline.txt").toFile();
+		writeString(baseline.toPath(), "${basedir}/some-other-file.md is 999 bytes, over the 50-byte budget\n");
+		ContextBudgetRule rule = ruleForFile("x".repeat(100));
+		rule.setMaxBytes(50);
+		rule.setBaselineFile(baseline);
+		rule.setLog(new CapturingLogger());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("over the 50-byte budget"), exception.getMessage());
+	}
+
+	@Test
+	void writeBaselineModeRecordsTheViolationsAndPasses() {
+		ContextBudgetRule rule = ruleForFile("x".repeat(100));
+		rule.setMaxBytes(50);
+		File baseline = tempDir.resolve("baseline.txt").toFile();
+		rule.setBaselineFile(baseline);
+		rule.setWriteBaseline(true);
+		rule.setLog(new CapturingLogger());
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(baseline.isFile(), "expected the baseline file to be written");
 	}
 
 	private ContextBudgetRule ruleForFile(String content) {

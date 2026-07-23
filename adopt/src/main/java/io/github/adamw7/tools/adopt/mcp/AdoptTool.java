@@ -98,8 +98,17 @@ public class AdoptTool implements McpTool {
 
 	private AdoptionContext contextFrom(Map<String, Object> arguments) {
 		String repositoryUrl = ToolArguments.requiredString(arguments, "repository_url");
+		return new AdoptionContext(repositoryUrl, workspace(arguments), branch(arguments));
+	}
+
+	/**
+	 * A blank {@code branch} argument falls back to the default branch, matching the
+	 * command line's handling of a blank branch positional; only an explicitly named
+	 * branch overrides it, so an empty string is not rejected as an invalid branch.
+	 */
+	private String branch(Map<String, Object> arguments) {
 		String branch = ToolArguments.optionalString(arguments, "branch", AdoptionContext.DEFAULT_BRANCH);
-		return new AdoptionContext(repositoryUrl, workspace(arguments), branch);
+		return branch.isBlank() ? AdoptionContext.DEFAULT_BRANCH : branch;
 	}
 
 	private Path workspace(Map<String, Object> arguments) {

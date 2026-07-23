@@ -75,6 +75,12 @@ class AdoptToolTest {
 	}
 
 	@Test
+	void fallsBackToTheDefaultBranchWhenBlank() {
+		tool.apply(Map.of("repository_url", REPO_URL, "branch", "  "));
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context.branchName());
+	}
+
+	@Test
 	void mapsPullRequestMetadataOntoTheOptions() {
 		tool.apply(Map.of("repository_url", REPO_URL,
 				"title", "My title", "body", "My body",

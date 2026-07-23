@@ -20,7 +20,7 @@ class ProcessCommandRunnerTest {
 	void capturesExitCodeAndOutput() {
 		CommandResult result = runner.run(Path.of("."), PlatformCommands.printing("hello"));
 		assertEquals(0, result.exitCode());
-		assertEquals("hello", result.output());
+		assertEquals("hello" + System.lineSeparator(), result.output());
 	}
 
 	@Test
@@ -54,7 +54,7 @@ class ProcessCommandRunnerTest {
 		ProcessCommandRunner patient = new ProcessCommandRunner(Duration.ofSeconds(30));
 		CommandResult result = patient.run(Path.of("."), PlatformCommands.printing("quick"));
 		assertEquals(0, result.exitCode());
-		assertEquals("quick", result.output());
+		assertEquals("quick" + System.lineSeparator(), result.output());
 	}
 
 	@Test

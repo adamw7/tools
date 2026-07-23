@@ -94,6 +94,20 @@ class SubAgentFormatRuleTest {
 	}
 
 	@Test
+	void failsWhenADescriptionIsBlank() {
+		writeString(tempDir.resolve("reviewer.md"), """
+				---
+				name: reviewer
+				description:
+				---
+				# Reviewer
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenNameDoesNotMatchFileName() {
 		writeString(tempDir.resolve("reviewer.md"), """
 				---

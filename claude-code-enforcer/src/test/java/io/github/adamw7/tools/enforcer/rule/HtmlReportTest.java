@@ -108,8 +108,20 @@ class HtmlReportTest {
 	}
 
 	@Test
-	void failsWhenTheReportCannotBeWritten() {
-		File unwritable = tempDir.resolve("missing-dir").resolve("report.html").toFile();
+	void createsMissingParentDirectories() throws Exception {
+		// A report under target/ is typically written at validate, before any
+		// plugin has created that directory, so the writer must create it.
+		File report = tempDir.resolve("missing-dir").resolve("nested").resolve("report.html").toFile();
+
+		new HtmlReport("header", List.of("boom"), List.of("fix it")).writeTo(report);
+
+		assertTrue(Files.readString(report.toPath()).contains("boom"));
+	}
+
+	@Test
+	void failsWhenTheReportCannotBeWritten() throws Exception {
+		Files.writeString(tempDir.resolve("blocker"), "a file, not a directory");
+		File unwritable = tempDir.resolve("blocker").resolve("report.html").toFile();
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
 				() -> new HtmlReport("header", List.of("boom"), List.of("fix it")).writeTo(unwritable));

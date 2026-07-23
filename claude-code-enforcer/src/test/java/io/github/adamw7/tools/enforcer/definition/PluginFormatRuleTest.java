@@ -79,6 +79,11 @@ class PluginFormatRuleTest {
 	}
 
 	@Test
+	void allowsBuildMetadataAfterAPreReleaseSuffix() {
+		assertDoesNotThrow(ruleFor("{ \"name\": \"my-plugin\", \"version\": \"1.0.0-beta.1+build.5\" }")::execute);
+	}
+
+	@Test
 	void failsForABlankDescription() {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
 				ruleFor("{ \"name\": \"my-plugin\", \"description\": \"  \" }")::execute);

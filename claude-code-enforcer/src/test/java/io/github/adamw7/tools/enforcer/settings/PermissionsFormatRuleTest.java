@@ -121,6 +121,17 @@ class PermissionsFormatRuleTest {
 	}
 
 	@Test
+	void acceptsHyphenatedMcpToolNames() {
+		// MCP server names routinely contain hyphens, so an entry such as
+		// mcp__claude-code-remote__list_repos is valid syntax.
+		PermissionsFormatRule rule = ruleFor(
+				"{ \"permissions\": { \"allow\": [ \"mcp__claude-code-remote__list_repos\", \"mcp__my-server__tool(x)\" ] } }");
+		rule.setAllowedTools(List.of("Bash"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void failsForAForbiddenEntryPattern() {
 		PermissionsFormatRule rule = ruleFor("{ \"permissions\": { \"allow\": [ \"Bash(*)\" ] } }");
 		rule.setForbiddenEntryPatterns(List.of("Bash\\(\\*\\)"));

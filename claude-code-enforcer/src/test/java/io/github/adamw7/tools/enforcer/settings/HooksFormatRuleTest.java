@@ -126,6 +126,19 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void treatsAQuotedReferenceAsReferencing() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("\\\"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\\\""));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		// The quotes are stripped before expansion, so the quoted reference marks
+		// the existing script as referenced rather than leaving it an orphan.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void doesNotTreatASymlinkedScriptPointingOutsideAsInsideTheHooksDirectory() {
 		Path outside = tempDir.resolve("outside.sh");
 		writeString(outside, "#!/bin/sh\n");

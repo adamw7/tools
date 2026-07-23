@@ -32,38 +32,28 @@ class MainTest {
 	}
 
 	@Test
+	void rejectsUnknownOptionBeforeAnyWorkStarts() {
+		assertThrows(IllegalArgumentException.class, () -> Main.main(new String[] { REPO_URL, "--frobnicate" }));
+	}
+
+	@Test
 	void createsSuppliedWorkspaceDirectoryWhenMissing(@TempDir Path dir) {
 		Path workspace = dir.resolve("nested/workspace");
-		Path resolved = Main.workspace(new String[] { REPO_URL, workspace.toString() });
+		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL, workspace.toString() }));
 		assertEquals(workspace, resolved);
 		assertTrue(Files.isDirectory(workspace));
 	}
 
 	@Test
 	void keepsAnExistingSuppliedWorkspaceDirectory(@TempDir Path dir) {
-		Path resolved = Main.workspace(new String[] { REPO_URL, dir.toString() });
+		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL, dir.toString() }));
 		assertEquals(dir, resolved);
 		assertTrue(Files.isDirectory(dir));
 	}
 
 	@Test
 	void createsTemporaryWorkspaceWhenNoneSupplied() {
-		Path resolved = Main.workspace(new String[] { REPO_URL });
+		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL }));
 		assertTrue(Files.isDirectory(resolved));
-	}
-
-	@Test
-	void defaultsBranchNameWhenNoneSupplied() {
-		assertEquals(AdoptionContext.DEFAULT_BRANCH, Main.branchName(new String[] { REPO_URL, "/tmp/ws" }));
-	}
-
-	@Test
-	void usesSuppliedBranchName() {
-		assertEquals("feature/x", Main.branchName(new String[] { REPO_URL, "/tmp/ws", "feature/x" }));
-	}
-
-	@Test
-	void defaultsBranchNameWhenSuppliedBlank() {
-		assertEquals(AdoptionContext.DEFAULT_BRANCH, Main.branchName(new String[] { REPO_URL, "/tmp/ws", "  " }));
 	}
 }

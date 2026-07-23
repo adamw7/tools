@@ -36,6 +36,11 @@ public final class ToolArguments {
 		return value == null ? defaultValue : String.valueOf(value);
 	}
 
+	public static boolean optionalBoolean(Map<String, Object> arguments, String key, boolean defaultValue) {
+		Object value = arguments.get(key);
+		return value == null ? defaultValue : parseBoolean(key, value);
+	}
+
 	public static int optionalInt(Map<String, Object> arguments, String key, int defaultValue) {
 		Object value = arguments.get(key);
 		return value == null ? defaultValue : parseInt(key, value);
@@ -48,6 +53,21 @@ public final class ToolArguments {
 					"Argument " + key + " must be between " + min + " and " + max + " but was " + value);
 		}
 		return value;
+	}
+
+	/**
+	 * Accepts a real JSON boolean or its textual form, since loosely-typed clients
+	 * send either; anything else is an error rather than being coerced to false.
+	 */
+	private static boolean parseBoolean(String key, Object value) {
+		if (value instanceof Boolean bool) {
+			return bool;
+		}
+		String text = String.valueOf(value).trim();
+		if ("true".equalsIgnoreCase(text) || "false".equalsIgnoreCase(text)) {
+			return Boolean.parseBoolean(text);
+		}
+		throw new IllegalArgumentException("Argument " + key + " must be a boolean but was " + value);
 	}
 
 	private static int parseInt(String key, Object value) {

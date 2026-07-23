@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -10,10 +11,13 @@ import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class PullRequestStepTest {
+
+	private static final String PR_URL = "https://github.com/adamw7/tools/pull/1";
 
 	private final AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git",
 			Path.of("/tmp/workspace"), "claude/adopt-claude-code");
@@ -57,11 +61,56 @@ class PullRequestStepTest {
 
 	@Test
 	void skipsCreationWhenAPullRequestAlreadyExists() {
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::existingPullRequest);
 		step.execute(context, runner);
-		assertEquals(1, runner.count());
+		assertEquals(2, runner.count());
 		assertEquals(List.of("gh", "pr", "view", "claude/adopt-claude-code", "--json", "url"),
 				runner.commandAt(0));
+		assertEquals(List.of("gh", "pr", "view", "claude/adopt-claude-code", "--json", "url"),
+				runner.commandAt(1));
+	}
+
+	@Test
+	void recordsCreatedPullRequestUrlInReport() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(new ViewFailsUntilCreated());
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertEquals(PR_URL, report.pullRequestUrl().orElseThrow());
+	}
+
+	@Test
+	void recordsExistingPullRequestUrlInReport() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::existingPullRequest);
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertEquals(PR_URL, report.pullRequestUrl().orElseThrow());
+	}
+
+	@Test
+	void recordsUrlEvenWhenViewOutputCarriesNoise() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 0, "a new gh release is available\n{\"url\":\"" + PR_URL + "\"}"));
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertEquals(PR_URL, report.pullRequestUrl().orElseThrow());
+	}
+
+	@Test
+	void leavesUrlAbsentWhenViewOutputIsNotJson() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 0, "not json at all"));
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertTrue(report.pullRequestUrl().isEmpty());
+	}
+
+	@Test
+	void leavesUrlAbsentWhenUrlFieldIsMissing() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 0, "{\"number\": 1}"));
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertTrue(report.pullRequestUrl().isEmpty());
 	}
 
 	@Test
@@ -74,7 +123,11 @@ class PullRequestStepTest {
 		if (command.contains("view")) {
 			return new CommandResult(command, 1, "no pull requests found");
 		}
-		return new CommandResult(command, 0, "https://github.com/adamw7/tools/pull/1");
+		return new CommandResult(command, 0, PR_URL);
+	}
+
+	private CommandResult existingPullRequest(List<String> command) {
+		return new CommandResult(command, 0, "{\"url\":\"" + PR_URL + "\"}");
 	}
 
 	private CommandResult createFails(List<String> command) {
@@ -82,6 +135,28 @@ class PullRequestStepTest {
 			return new CommandResult(command, 1, "no pull requests found");
 		}
 		return new CommandResult(command, 1, "gh: could not authenticate");
+	}
+
+	/**
+	 * Mimics the real gh behaviour around creation: the pre-check view finds no
+	 * pull request, and every view after the create succeeds with the URL.
+	 */
+	private static final class ViewFailsUntilCreated
+			implements java.util.function.Function<List<String>, CommandResult> {
+
+		private boolean created;
+
+		@Override
+		public CommandResult apply(List<String> command) {
+			if (command.contains("create")) {
+				created = true;
+				return new CommandResult(command, 0, PR_URL);
+			}
+			if (created) {
+				return new CommandResult(command, 0, "{\"url\":\"" + PR_URL + "\"}");
+			}
+			return new CommandResult(command, 1, "no pull requests found");
+		}
 	}
 
 	@Test

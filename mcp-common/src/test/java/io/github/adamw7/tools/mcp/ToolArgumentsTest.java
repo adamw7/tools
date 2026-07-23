@@ -56,6 +56,31 @@ public class ToolArgumentsTest {
 	}
 
 	@Test
+	void optionalBooleanFallsBackToDefault() {
+		assertEquals(true, ToolArguments.optionalBoolean(Map.of(), "draft", true));
+		assertEquals(false, ToolArguments.optionalBoolean(Map.of(), "draft", false));
+	}
+
+	@Test
+	void optionalBooleanAcceptsRealBooleans() {
+		assertEquals(true, ToolArguments.optionalBoolean(Map.of("draft", true), "draft", false));
+		assertEquals(false, ToolArguments.optionalBoolean(Map.of("draft", false), "draft", true));
+	}
+
+	@Test
+	void optionalBooleanParsesTextualBooleans() {
+		assertEquals(true, ToolArguments.optionalBoolean(Map.of("draft", "true"), "draft", false));
+		assertEquals(false, ToolArguments.optionalBoolean(Map.of("draft", "False"), "draft", true));
+	}
+
+	@Test
+	void optionalBooleanRejectsNonBooleanValues() {
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+				() -> ToolArguments.optionalBoolean(Map.of("draft", "yes"), "draft", false));
+		assertEquals("Argument draft must be a boolean but was yes", error.getMessage());
+	}
+
+	@Test
 	void optionalIntFallsBackToDefault() {
 		assertEquals(1, ToolArguments.optionalInt(Map.of(), "depth", 1));
 	}

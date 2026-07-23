@@ -57,7 +57,20 @@ Maven project. The notable capabilities are:
   check it runs, verified by running that script — so a build-less repository
   still keeps the guard. The pull request metadata — title, body,
   reviewers, labels, assignees, and draft flag — is supplied through
-  `PullRequestOptions`. External `git`/`claude`/`gh` invocations
+  `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
+  repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
+  `CliArguments` alongside the positional URL, workspace, and branch arguments).
+  An optional `--assets` flag adds an `AssetsStep` that commits starter Claude
+  Code configuration assets — an `AGENTS.md` pointer, a `.claude/settings.json`
+  denying reads of obvious secret files and wiring a
+  `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a GitHub
+  Actions workflow answering `@claude` mentions — never overwriting a file the
+  repository already has. Each run returns an `AdoptionReport` (completed steps
+  plus the pull request URL, read back with `gh pr view --json url`);
+  `--report <file>` writes it as JSON for scripting. An **MCP server** (in the
+  `io.github.adamw7.tools.adopt.mcp` package) exposes the same pipeline as an
+  `adopt_repo` tool that answers with that JSON report. External
+  `git`/`claude`/`gh` invocations
   go through a `CommandRunner`
   abstraction so the steps are unit-tested without spawning real processes; the
   `ProcessCommandRunner` bounds every command with a configurable timeout so a
@@ -97,7 +110,7 @@ list).
 Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the
 context module, `io.github.adamw7.tools.*` elsewhere).
 
-The repository ships two MCP servers, each a Spring Boot app whose entry point
+The repository ships three MCP servers, each a Spring Boot app whose entry point
 is `Main.java` and which supports stdio (default), streamable HTTP
 (`--transport.mode=streamable-http`, served at `/mcp`), stateless HTTP
 (`--transport.mode=stateless-http`, session-less, also served at `/mcp`), or the
@@ -111,6 +124,11 @@ messages at `/mcp/message`):
   `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
   `project_tree`, `find_context` and `estimate_tokens` tools; see its
   [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
+- The adoption server in
+  `adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/`, exposing the
+  `adopt_repo` tool that runs the adoption pipeline and answers with its JSON
+  report; see its
+  [MCP_USAGE.md](adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/MCP_USAGE.md).
 
 ## Environment & toolchain
 

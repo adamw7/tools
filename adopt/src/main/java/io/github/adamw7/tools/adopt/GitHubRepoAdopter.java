@@ -11,6 +11,7 @@ import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.AssetsStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
 import io.github.adamw7.tools.adopt.step.ClaudeInitStep;
+import io.github.adamw7.tools.adopt.step.ClaudeMdConformanceStep;
 import io.github.adamw7.tools.adopt.step.CloneStep;
 import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
@@ -25,7 +26,9 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  * Runs the ordered pipeline that adopts Claude Code into a GitHub repository:
  * check the required tools are installed, clone, create a feature branch, mark
  * the checkout trusted for Claude Code, generate {@code CLAUDE.md} with
- * {@code claude init} and commit it, wire in the {@code claude-code-enforcer} and
+ * {@code claude init}, normalise that file and add a companion {@code AGENTS.md}
+ * so it satisfies the guard the adoption is about to wire in, and commit it, wire
+ * in the {@code claude-code-enforcer} and
  * commit that, verify the enforcer passes on the generated file, then push the
  * branch and open a pull request. The toolchain check runs first so a missing
  * {@code git}, {@code claude}, or {@code gh} fails the adoption before any
@@ -70,6 +73,7 @@ public class GitHubRepoAdopter {
 				new BranchStep(),
 				new TrustStep(),
 				new ClaudeInitStep(),
+				new ClaudeMdConformanceStep(),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
 				new EnforcerStep(),
 				new CommitStep("Add claude-code-enforcer to the build")));

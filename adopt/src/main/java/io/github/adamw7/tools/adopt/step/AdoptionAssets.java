@@ -21,7 +21,7 @@ public final class AdoptionAssets {
 	static final String MCP_CONFIG_FILE = ".mcp.json";
 	static final String CLAUDE_WORKFLOW_FILE = ".github/workflows/claude.yml";
 
-	private static final String AGENTS_MD = """
+	static final String AGENTS_MD = """
 			# Agent guide
 
 			See [CLAUDE.md](CLAUDE.md) for this repository's agent instructions.

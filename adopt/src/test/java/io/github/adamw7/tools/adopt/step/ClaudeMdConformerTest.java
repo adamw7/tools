@@ -54,6 +54,50 @@ class ClaudeMdConformerTest {
 		assertTrue(conformed.contains("Root pom is packaging=pom."), "the renamed section keeps its body");
 	}
 
+	/**
+	 * A heading is only half of what the rule checks: it fails an empty section
+	 * just as it fails a missing one, so a near-miss renamed over a bare section
+	 * has to come out with a body or the adoption fails its own verification.
+	 */
+	@Test
+	void givesARenamedNearMissWithNoContentAStubBody() {
+		String generated = """
+				# CLAUDE.md
+
+				## Project purpose
+
+				## Build commands
+
+				Run `mvn install`.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(conformed.contains("## Project\n\nSee [AGENTS.md](AGENTS.md)."),
+				"the emptied section must be given a body:\n" + conformed);
+		ClaudeMdConformer.REQUIRED_SECTIONS.forEach(section -> assertTrue(hasBody(conformed, section),
+				section + " must have a body:\n" + conformed));
+	}
+
+	@Test
+	void keepsTheBodyOfASectionThatAlreadyHasOne() {
+		String generated = "# CLAUDE.md\n\n" + requiredSectionsBody();
+		String conformed = conformer.conform(generated);
+		assertEquals(ClaudeMdConformer.REQUIRED_SECTIONS.size(), conformed.split("Content\\.", -1).length - 1,
+				"every original body must survive exactly once:\n" + conformed);
+		assertFalse(conformed.contains("Content.\n\nSee [AGENTS.md](AGENTS.md)."),
+				"a section that already has a body must not be given a stub");
+	}
+
+	/**
+	 * Mirrors the enforcer rule's own check: the section must carry something other
+	 * than blank lines before the next heading at its level or shallower.
+	 */
+	private boolean hasBody(String content, String section) {
+		List<String> lines = content.lines().map(String::strip).toList();
+		int start = lines.indexOf(section);
+		return start >= 0 && lines.stream().skip(start + 1L).dropWhile(String::isEmpty).findFirst()
+				.filter(line -> !line.startsWith("## ")).isPresent();
+	}
+
 	@Test
 	void insertsAgentsReferenceWhenAbsent() {
 		String generated = "# CLAUDE.md\n\n" + requiredSectionsBody();

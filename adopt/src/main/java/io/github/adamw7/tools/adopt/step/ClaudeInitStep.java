@@ -14,7 +14,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * Runs the Claude Code CLI in headless mode against the checkout so it
  * generates a {@code CLAUDE.md} for the project. The exact CLI invocation is
  * configurable because the flags differ between environments; the default runs
- * the {@code /init} command non-interactively.
+ * the {@code /init} command non-interactively with {@code --permission-mode
+ * acceptEdits} so the CLI may write the file. Headless {@code -p} mode has no
+ * interactive approver, so without a permission mode that pre-approves edits the
+ * {@code /init} command only prints a request to write {@code CLAUDE.md}, exits
+ * cleanly, and leaves nothing behind.
  *
  * <p>The generated {@code CLAUDE.md} is the whole point of the adoption, so a run
  * that exits cleanly but leaves no {@code CLAUDE.md} behind aborts the adoption
@@ -25,7 +29,8 @@ public class ClaudeInitStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(ClaudeInitStep.class);
 
-	static final List<String> DEFAULT_COMMAND = List.of("claude", "-p", "/init");
+	static final List<String> DEFAULT_COMMAND = List.of("claude", "-p", "/init",
+			"--permission-mode", "acceptEdits");
 
 	private static final String CLAUDE_MD = "CLAUDE.md";
 

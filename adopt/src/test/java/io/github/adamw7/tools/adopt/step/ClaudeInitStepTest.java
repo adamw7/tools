@@ -48,6 +48,12 @@ class ClaudeInitStepTest {
 	}
 
 	@Test
+	void defaultCommandPreApprovesEditsSoHeadlessInitCanWriteTheFile() {
+		assertEquals(List.of("claude", "-p", "/init", "--permission-mode", "acceptEdits"),
+				ClaudeInitStep.DEFAULT_COMMAND);
+	}
+
+	@Test
 	void failedInitAbortsAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner(

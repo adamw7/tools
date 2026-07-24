@@ -82,15 +82,15 @@ class GitHubRepoAdopterTest {
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
 		List<String> names = GitHubRepoAdopter.defaultSteps().stream().map(AdoptionStep::name).toList();
-		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "commit", "enforcer", "commit",
-				"verify", "push", "pull-request"), names);
+		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "conform", "commit", "enforcer",
+				"commit", "verify", "push", "pull-request"), names);
 	}
 
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
 		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true).stream()
 				.map(AdoptionStep::name).toList();
-		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "commit", "enforcer", "commit",
-				"assets", "commit", "verify", "push", "pull-request"), names);
+		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "conform", "commit", "enforcer",
+				"commit", "assets", "commit", "verify", "push", "pull-request"), names);
 	}
 }

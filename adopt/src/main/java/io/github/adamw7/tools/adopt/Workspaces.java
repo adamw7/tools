@@ -11,6 +11,14 @@ import java.nio.file.Path;
  * always has a directory to run in — or a fresh temporary one when the caller
  * left the choice open. Shared by the command-line entry point and the MCP
  * server, so both resolve workspaces identically.
+ *
+ * <p>The returned path is always absolute. The clone step runs {@code git clone}
+ * with the workspace as its working directory and the checkout directory
+ * ({@code workspace/name}) as the clone target, so a relative workspace would
+ * make git resolve that target against the working directory a second time and
+ * nest the checkout under {@code workspace/workspace/name}, leaving every later
+ * step unable to find it. Absolutising the workspace up front — the temporary
+ * directory already is — keeps both entry points on the same, unambiguous path.
  */
 public final class Workspaces {
 
@@ -19,7 +27,7 @@ public final class Workspaces {
 
 	public static Path createIfMissing(Path workspace) {
 		try {
-			return Files.createDirectories(workspace);
+			return Files.createDirectories(workspace).toAbsolutePath();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

@@ -30,6 +30,12 @@ import java.util.stream.IntStream;
  * fenced code blocks are left alone, mirroring how the rule matches, so a
  * {@code ##} line in a code sample is never mistaken for document structure.
  *
+ * <p>A fence the generated document opened but never closed is closed first, so
+ * the sections appended below it are document structure rather than more code.
+ * Without that the rule — which reads fences exactly the same way — sees every
+ * appended heading as part of the unterminated block and reports all of them
+ * missing, and each re-run appends another unreachable copy.
+ *
  * <p>Running the reshape again on an already-conforming document is a no-op
  * (beyond normalising a missing or doubled trailing newline), so re-adopting a
  * repository does not churn the file.
@@ -65,6 +71,7 @@ public class ClaudeMdConformer {
 	 */
 	public String conform(String content) {
 		List<String> lines = splitLines(content);
+		lines = closeUnterminatedFence(lines);
 		lines = ensureTitle(lines);
 		lines = canonicalizeHeadings(lines);
 		lines = appendMissingSections(lines);
@@ -76,6 +83,22 @@ public class ClaudeMdConformer {
 	private List<String> splitLines(String content) {
 		String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
 		return new ArrayList<>(List.of(normalized.split("\n", -1)));
+	}
+
+	/**
+	 * Closes a fence the document opened and never closed, so everything appended
+	 * below it lands outside the block. The closing marker is the one the fence was
+	 * opened with, and a document whose fences already balance is returned untouched,
+	 * so the reshape stays idempotent.
+	 */
+	private List<String> closeUnterminatedFence(List<String> lines) {
+		String open = scanFences(lines).openAtEnd();
+		if (open == null) {
+			return lines;
+		}
+		List<String> result = new ArrayList<>(lines);
+		result.add(open);
+		return result;
 	}
 
 	private List<String> ensureTitle(List<String> lines) {
@@ -306,12 +329,26 @@ public class ClaudeMdConformer {
 	}
 
 	private boolean[] fenceMask(List<String> lines) {
+		return scanFences(lines).mask();
+	}
+
+	/**
+	 * The outcome of reading the document's fences: which lines are code, and the
+	 * marker still open once the last line has been read.
+	 *
+	 * @param openAtEnd the unterminated fence's marker, or {@code null} when the
+	 *                  document's fences balance
+	 */
+	private record Fences(boolean[] mask, String openAtEnd) {
+	}
+
+	private Fences scanFences(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
 		String open = null;
 		for (int index = 0; index < lines.size(); index++) {
 			open = applyFence(lines.get(index).strip(), open, mask, index);
 		}
-		return mask;
+		return new Fences(mask, open);
 	}
 
 	/**

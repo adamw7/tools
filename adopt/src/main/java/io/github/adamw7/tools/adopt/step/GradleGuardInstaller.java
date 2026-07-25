@@ -3,6 +3,8 @@ package io.github.adamw7.tools.adopt.step;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
 
@@ -26,6 +28,15 @@ public class GradleGuardInstaller {
 	static final String GUARD_TASK = "enforceClaudeMd";
 
 	private static final String KOTLIN_SUFFIX = ".kts";
+	private static final String LINE_COMMENT = "//";
+
+	/**
+	 * The shapes that actually register the task in either DSL:
+	 * {@code tasks.register('enforceClaudeMd')}, its {@code create} and
+	 * double-quoted variants, and the legacy {@code task enforceClaudeMd}.
+	 */
+	private static final Pattern DECLARATION = Pattern.compile(
+			"(?:register|create)\\s*\\(\\s*[\"']" + GUARD_TASK + "[\"']|\\btask\\s+" + GUARD_TASK + "\\b");
 
 	private static final String GROOVY_BLOCK = """
 
@@ -61,11 +72,35 @@ public class GradleGuardInstaller {
 	 */
 	public boolean install(Path buildFile) {
 		String existing = read(buildFile);
-		if (existing.contains(GUARD_TASK)) {
+		if (declaresGuard(existing)) {
 			return false;
 		}
 		append(buildFile, existing, blockFor(buildFile));
 		return true;
+	}
+
+	/**
+	 * The task name has to appear in a registration for the script to count as
+	 * guarded, and comment lines are skipped, so a script that merely mentions
+	 * {@value #GUARD_TASK} — in a {@code // TODO} note, or in a declaration someone
+	 * commented out — is still given the task. Matching the bare name anywhere would
+	 * leave such a script without the task {@link GradleBuildSystem#verifyCommand()}
+	 * is about to run, failing the adoption at its verification step.
+	 */
+	private boolean declaresGuard(String script) {
+		return DECLARATION.matcher(withoutCommentLines(script)).find();
+	}
+
+	/**
+	 * The lines are rejoined rather than matched one at a time so a registration
+	 * spread over several lines is still recognised.
+	 */
+	private String withoutCommentLines(String script) {
+		return script.lines().filter(line -> !isCommentLine(line)).collect(Collectors.joining("\n"));
+	}
+
+	private boolean isCommentLine(String line) {
+		return line.strip().startsWith(LINE_COMMENT);
 	}
 
 	private String blockFor(Path buildFile) {

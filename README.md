@@ -806,8 +806,11 @@ The default pipeline runs these steps in order:
    `check`. A repository with no recognised build file falls back to a
    `FallbackBuildSystem` that installs a GitHub Actions workflow and the portable
    `.github/claude-md-guard.sh` check it runs via `WorkflowGuardInstaller`. All
-   installs are idempotent. Supporting a new build tool is a matter of adding a
-   `BuildSystem` implementation rather than branching inside the step.
+   installs are idempotent and none of them overwrites a file the project already
+   carries — a repository with its own `claude-md-guard.yml` or its own
+   `enforceClaudeMd` registration keeps it. Supporting a new build tool is a
+   matter of adding a `BuildSystem` implementation rather than branching inside
+   the step.
 8. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
 9. **`VerifyStep`** — runs the detected build system's verification (a

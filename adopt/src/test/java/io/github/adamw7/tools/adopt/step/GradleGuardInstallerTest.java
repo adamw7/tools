@@ -66,4 +66,47 @@ class GradleGuardInstallerTest {
 		assertFalse(installer.install(buildFile));
 		assertEquals(afterFirstInstall, Files.readString(buildFile));
 	}
+
+	/**
+	 * Matching the bare task name anywhere in the script let a comment stand in for
+	 * the task itself, so the guard was never installed and the adoption then failed
+	 * running a verification task that did not exist.
+	 */
+	@Test
+	void installsTheGuardWhenTheScriptOnlyMentionsTheTaskInAComment(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		Files.writeString(buildFile, "// TODO: one day add an enforceClaudeMd task\nplugins { id 'java' }\n");
+		assertTrue(installer.install(buildFile));
+		assertTrue(Files.readString(buildFile).contains("tasks.register('enforceClaudeMd')"));
+	}
+
+	@Test
+	void installsTheGuardWhenAnEarlierDeclarationWasCommentedOut(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle.kts");
+		Files.writeString(buildFile, "// tasks.register(\"enforceClaudeMd\") { }\nplugins { java }\n");
+		assertTrue(installer.install(buildFile));
+		assertTrue(Files.readString(buildFile).contains("tasks.register(\"enforceClaudeMd\")"));
+	}
+
+	/**
+	 * A project that registers the task itself keeps its own version: appending a
+	 * second registration of the same name would fail the Gradle build outright.
+	 */
+	@Test
+	void leavesAScriptThatRegistersTheTaskItselfUnchanged(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		String own = "tasks.register('enforceClaudeMd') {\n    doLast { }\n}\n";
+		Files.writeString(buildFile, own);
+		assertFalse(installer.install(buildFile));
+		assertEquals(own, Files.readString(buildFile));
+	}
+
+	@Test
+	void recognisesARegistrationSpreadOverSeveralLines(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		String own = "tasks.register(\n    'enforceClaudeMd'\n) {\n    doLast { }\n}\n";
+		Files.writeString(buildFile, own);
+		assertFalse(installer.install(buildFile));
+		assertEquals(own, Files.readString(buildFile));
+	}
 }

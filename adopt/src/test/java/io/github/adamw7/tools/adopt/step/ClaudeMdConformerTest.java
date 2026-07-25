@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -342,5 +343,56 @@ class ClaudeMdConformerTest {
 			builder.append(section).append("\n\nContent.\n\n");
 		}
 		return builder.toString();
+	}
+
+	private static final String UNTERMINATED_FENCE = """
+			# CLAUDE.md
+
+			Intro.
+
+			```java
+			class Foo {}
+			""";
+
+	/**
+	 * A fence the generated document opened and never closed used to swallow every
+	 * appended section: the rule reads fences the same way the conformer does, so it
+	 * saw the headings as code and reported all six sections missing, failing the
+	 * adoption at its own verification step.
+	 */
+	@Test
+	void closesAnUnterminatedFenceSoAppendedSectionsStayDocumentStructure() {
+		String conformed = conformer.conform(UNTERMINATED_FENCE);
+		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+				"every appended section must be a heading, not code:\n" + conformed);
+		assertTrue(conformed.contains("class Foo {}"), "the code block keeps its content:\n" + conformed);
+	}
+
+	/**
+	 * The sections appended below an unterminated fence were invisible to the next
+	 * run's own check for them, so re-adopting a repository appended a second — and
+	 * then a third — unreachable copy of the whole skeleton.
+	 */
+	@Test
+	void reshapingADocumentWithAnUnterminatedFenceIsIdempotent() {
+		String once = conformer.conform(UNTERMINATED_FENCE);
+		assertEquals(once, conformer.conform(once), "a second reshape must not append the sections again");
+	}
+
+	/** Mirrors how the rule finds headings: a heading inside a fence is code, not structure. */
+	private List<String> headingsOutsideFences(String content) {
+		List<String> headings = new ArrayList<>();
+		boolean fenced = false;
+		for (String line : content.lines().map(String::strip).toList()) {
+			fenced = collectHeading(headings, line, fenced);
+		}
+		return headings;
+	}
+
+	private boolean collectHeading(List<String> headings, String line, boolean fenced) {
+		if (!fenced && line.startsWith("#")) {
+			headings.add(line);
+		}
+		return line.startsWith("```") != fenced;
 	}
 }

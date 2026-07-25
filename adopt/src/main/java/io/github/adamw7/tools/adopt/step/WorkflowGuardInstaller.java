@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.adopt.AdoptionException;
 
 /**
@@ -18,11 +21,19 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * shared with every contributor rather than living only in the adopter's local
  * checkout. The script is the single source of truth: the workflow invokes it and
  * {@link FallbackBuildSystem#verifyCommand()} runs the same script locally, so the
- * adoption fails before the branch is pushed just as it would in CI. The install
- * is idempotent: a checkout whose workflow already carries the adoption marker is
- * left unchanged.
+ * adoption fails before the branch is pushed just as it would in CI.
+ *
+ * <p>The two files are installed independently and neither is ever overwritten, so
+ * the install is idempotent and a project that already carries a file at one of
+ * these paths keeps its own version — the same rule {@link AssetInstaller} applies
+ * to every other file the adoption writes. Installing them independently also
+ * means a checkout that kept the workflow but lost the script has the script
+ * written back, rather than being left for {@link FallbackBuildSystem}'s
+ * verification to fail on a file that is not there.
  */
 public class WorkflowGuardInstaller {
+
+	private static final Logger log = LogManager.getLogger(WorkflowGuardInstaller.class);
 
 	static final String WORKFLOW_FILE = ".github/workflows/claude-md-guard.yml";
 	static final String SCRIPT_FILE = ".github/claude-md-guard.sh";
@@ -51,38 +62,38 @@ public class WorkflowGuardInstaller {
 			fi
 			""".formatted(MARKER);
 
+	private final AssetInstaller workflowInstaller = new AssetInstaller(WORKFLOW_FILE, WORKFLOW);
+	private final AssetInstaller scriptInstaller = new AssetInstaller(SCRIPT_FILE, SCRIPT);
+
 	/**
-	 * @return {@code true} when the guard was written, {@code false} when the
-	 *         checkout already carried it and was left unchanged.
+	 * @return {@code true} when either guard file was written, {@code false} when the
+	 *         checkout already carried both and was left unchanged.
 	 */
 	public boolean install(Path repositoryDirectory) {
-		Path workflowFile = repositoryDirectory.resolve(WORKFLOW_FILE);
-		if (alreadyGuarded(workflowFile)) {
-			return false;
-		}
-		write(workflowFile, WORKFLOW);
-		write(repositoryDirectory.resolve(SCRIPT_FILE), SCRIPT);
-		return true;
+		boolean workflowWritten = workflowInstaller.install(repositoryDirectory);
+		boolean scriptWritten = scriptInstaller.install(repositoryDirectory);
+		warnIfWorkflowIsNotOurs(repositoryDirectory, workflowWritten);
+		return workflowWritten || scriptWritten;
 	}
 
-	private boolean alreadyGuarded(Path workflowFile) {
-		return Files.isRegularFile(workflowFile) && read(workflowFile).contains(MARKER);
-	}
-
-	private String read(Path file) {
-		try {
-			return Files.readString(file);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read workflow file: " + file, e);
+	/**
+	 * A workflow the adoption did not write is kept, but it is unlikely to run the
+	 * guard script, so CI may not enforce {@code CLAUDE.md} even though the local
+	 * verification passes. Saying so is more useful than silently overwriting the
+	 * project's own workflow.
+	 */
+	private void warnIfWorkflowIsNotOurs(Path repositoryDirectory, boolean workflowWritten) {
+		if (!workflowWritten && !carriesMarker(repositoryDirectory.resolve(WORKFLOW_FILE))) {
+			log.warn("{} already exists and is not the adoption's workflow; left unchanged, so CI may not run {}",
+					WORKFLOW_FILE, SCRIPT_FILE);
 		}
 	}
 
-	private void write(Path file, String content) {
+	private boolean carriesMarker(Path workflowFile) {
 		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, content);
+			return Files.isRegularFile(workflowFile) && Files.readString(workflowFile).contains(MARKER);
 		} catch (IOException e) {
-			throw new AdoptionException("Could not write guard file: " + file, e);
+			throw new AdoptionException("Could not read workflow file: " + workflowFile, e);
 		}
 	}
 }

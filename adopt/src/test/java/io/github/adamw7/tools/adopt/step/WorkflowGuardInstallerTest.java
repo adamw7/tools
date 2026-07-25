@@ -54,4 +54,33 @@ class WorkflowGuardInstallerTest {
 		assertFalse(installer.install(directory));
 		assertEquals(afterFirstInstall, Files.readString(directory.resolve(WorkflowGuardInstaller.WORKFLOW_FILE)));
 	}
+
+	/**
+	 * The project's own file at the guard's path always wins, as it does for every
+	 * other file the adoption writes; overwriting it destroyed a workflow the
+	 * adoption never wrote.
+	 */
+	@Test
+	void keepsAWorkflowTheProjectAlreadyCarries(@TempDir Path directory) throws IOException {
+		Path workflowFile = directory.resolve(WorkflowGuardInstaller.WORKFLOW_FILE);
+		Files.createDirectories(workflowFile.getParent());
+		String own = "name: my own guard\non: [push]\njobs: {}\n";
+		Files.writeString(workflowFile, own);
+		assertTrue(installer.install(directory), "the guard script is still installed alongside it");
+		assertEquals(own, Files.readString(workflowFile));
+	}
+
+	/**
+	 * The script is what {@link FallbackBuildSystem#verifyCommand()} runs, so a
+	 * checkout that kept the workflow but lost the script has to get the script
+	 * back rather than fail the adoption on a file that is not there.
+	 */
+	@Test
+	void writesBackAGuardScriptThatWentMissing(@TempDir Path directory) throws IOException {
+		installer.install(directory);
+		Path scriptFile = directory.resolve(WorkflowGuardInstaller.SCRIPT_FILE);
+		Files.delete(scriptFile);
+		assertTrue(installer.install(directory));
+		assertTrue(Files.isRegularFile(scriptFile));
+	}
 }

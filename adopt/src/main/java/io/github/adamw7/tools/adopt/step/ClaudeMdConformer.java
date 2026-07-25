@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 /**
  * Reshapes the {@code CLAUDE.md} that {@link ClaudeInitStep} generated so it
@@ -21,9 +23,12 @@ import java.util.Set;
  * A heading that is a near-miss of a required one — the required heading followed
  * by extra words, or the same text in a different case — is <em>renamed</em> in
  * place, preserving the content beneath it; only a required heading with no such
- * near-miss is appended as a fresh stub. Headings inside fenced code blocks are
- * left alone, mirroring how the rule matches, so a {@code ##} line in a code
- * sample is never mistaken for document structure.
+ * near-miss is appended as a fresh stub. A required heading that ends up with an
+ * empty section — a renamed near-miss the generated document left bare, or a
+ * heading immediately followed by its sibling — gets a stub body, because the
+ * rule fails an empty section just as it fails a missing one. Headings inside
+ * fenced code blocks are left alone, mirroring how the rule matches, so a
+ * {@code ##} line in a code sample is never mistaken for document structure.
  *
  * <p>Running the reshape again on an already-conforming document is a no-op
  * (beyond normalising a missing or doubled trailing newline), so re-adopting a
@@ -63,6 +68,7 @@ public class ClaudeMdConformer {
 		lines = ensureTitle(lines);
 		lines = canonicalizeHeadings(lines);
 		lines = appendMissingSections(lines);
+		lines = ensureSectionBodies(lines);
 		lines = ensureAgentsReference(lines);
 		return join(lines);
 	}
@@ -192,6 +198,66 @@ public class ClaudeMdConformer {
 		lines.add(STUB_BODY);
 	}
 
+	/**
+	 * Gives a stub body to every required section that has none. Appended sections
+	 * already carry one, so this only ever fills in a heading the generated document
+	 * supplied — typically a near-miss renamed in place above whose section the
+	 * document left bare.
+	 */
+	private List<String> ensureSectionBodies(List<String> lines) {
+		List<String> result = new ArrayList<>(lines);
+		for (String required : REQUIRED_SECTIONS) {
+			insertStubBodyIfEmpty(result, required);
+		}
+		return result;
+	}
+
+	/**
+	 * The fence mask is rebuilt per section because inserting a stub shifts every
+	 * later line, and the sections are few enough for that to stay cheap.
+	 */
+	private void insertStubBodyIfEmpty(List<String> lines, String required) {
+		boolean[] fence = fenceMask(lines);
+		int index = indexOfHeading(lines, fence, required);
+		if (index >= 0 && !hasBody(lines, fence, index)) {
+			lines.add(index + 1, "");
+			lines.add(index + 2, STUB_BODY);
+		}
+	}
+
+	/**
+	 * Mirrors how the rule decides a section is non-empty: before the next heading
+	 * at its own level or shallower, the section must carry prose, a code block, or
+	 * a deeper sub-heading. Blank lines are neither, so the scan looks past them.
+	 */
+	private boolean hasBody(List<String> lines, boolean[] fence, int headingIndex) {
+		int level = headingLevel(lines.get(headingIndex).strip());
+		return IntStream.range(headingIndex + 1, lines.size())
+				.mapToObj(index -> classifyBodyLine(lines, fence, index, level))
+				.flatMap(Optional::stream)
+				.findFirst()
+				.orElse(false);
+	}
+
+	/**
+	 * @return whether the line is the section's body ({@code true}) or ends it
+	 *         ({@code false}), or empty when it is blank and so decides neither
+	 */
+	private Optional<Boolean> classifyBodyLine(List<String> lines, boolean[] fence, int index, int level) {
+		if (fence[index]) {
+			return Optional.of(true);
+		}
+		String line = lines.get(index).strip();
+		if (isHeading(line)) {
+			return Optional.of(headingLevel(line) > level);
+		}
+		return line.isEmpty() ? Optional.empty() : Optional.of(true);
+	}
+
+	private int headingLevel(String heading) {
+		return (int) heading.chars().takeWhile(character -> character == '#').count();
+	}
+
 	private List<String> ensureAgentsReference(List<String> lines) {
 		boolean[] fence = fenceMask(lines);
 		if (containsOutsideFences(lines, fence, AGENTS_REFERENCE)) {
@@ -215,12 +281,15 @@ public class ClaudeMdConformer {
 	}
 
 	private boolean hasHeading(List<String> lines, boolean[] fence, String heading) {
-		for (int index = 0; index < lines.size(); index++) {
-			if (!fence[index] && lines.get(index).strip().equals(heading)) {
-				return true;
-			}
-		}
-		return false;
+		return indexOfHeading(lines, fence, heading) >= 0;
+	}
+
+	/** @return the index of the heading outside code fences, or {@code -1} when absent */
+	private int indexOfHeading(List<String> lines, boolean[] fence, String heading) {
+		return IntStream.range(0, lines.size())
+				.filter(index -> !fence[index] && lines.get(index).strip().equals(heading))
+				.findFirst()
+				.orElse(-1);
 	}
 
 	private boolean containsOutsideFences(List<String> lines, boolean[] fence, String token) {

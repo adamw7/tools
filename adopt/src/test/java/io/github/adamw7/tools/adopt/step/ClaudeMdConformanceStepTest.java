@@ -61,6 +61,20 @@ class ClaudeMdConformanceStepTest {
 				"the project's own AGENTS.md must win");
 	}
 
+	/**
+	 * Re-adopting a repository must not churn a {@code CLAUDE.md} the previous run
+	 * already normalised, so the second commit has nothing to record for it.
+	 */
+	@Test
+	void leavesAnAlreadyConformingClaudeMdByteIdentical(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\n\nSee AGENTS.md.\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		String conformed = claudeMd(context);
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		assertEquals(conformed, claudeMd(context), "a conforming CLAUDE.md must be left untouched");
+	}
+
 	@Test
 	void missingClaudeMdAbortsAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);

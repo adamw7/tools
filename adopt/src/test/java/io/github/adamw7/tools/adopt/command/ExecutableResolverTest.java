@@ -71,6 +71,14 @@ class ExecutableResolverTest {
 	}
 
 	@Test
+	void windowsLeavesAProgramCarryingABackslashPathUnchanged(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("mvn.cmd"));
+		ExecutableResolver resolver = new ExecutableResolver(true, List.of(dir), EXTENSIONS);
+		List<String> command = List.of("C:\\tools\\mvn", "-N");
+		assertSame(command, resolver.resolve(command));
+	}
+
+	@Test
 	void anEmptyCommandIsReturnedUnchanged() {
 		ExecutableResolver resolver = new ExecutableResolver(true, List.of(), EXTENSIONS);
 		List<String> command = List.of();

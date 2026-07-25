@@ -784,7 +784,11 @@ The default pipeline runs these steps in order:
    `git clone`, giving the remaining steps a working checkout.
 3. **`BranchStep`** — creates and checks out the adoption feature branch with
    `git checkout -B`, so every later commit lands on that branch instead of the
-   default branch.
+   default branch. A fresh clone whose `origin` already publishes the branch — a
+   re-adoption of a repository an earlier run pushed — starts it from that
+   published tip, so the later push stays a fast-forward instead of being
+   rejected; a branch that already exists locally is left alone, so unpushed work
+   in a reused workspace is never reset onto the remote.
 4. **`TrustStep`** — marks the checkout trusted in `~/.claude.json` so the
    headless `claude` run is not blocked by the interactive folder-trust prompt.
 5. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode

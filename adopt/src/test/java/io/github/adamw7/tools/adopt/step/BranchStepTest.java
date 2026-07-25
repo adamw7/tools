@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,10 +22,49 @@ class BranchStepTest {
 
 	@Test
 	void createsFeatureBranchInCheckout() {
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = new RecordingCommandRunner(missingRefs());
 		step.execute(context, runner);
-		assertEquals(List.of("git", "checkout", "-B", "claude/adopt-claude-code"), runner.commandAt(0));
+		assertEquals(List.of("git", "checkout", "-B", "claude/adopt-claude-code"), lastCommand(runner));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
+	}
+
+	/**
+	 * A fresh clone re-adopting a repository an earlier run already pushed carries
+	 * no local branch but does carry origin's. Starting from that published tip is
+	 * what keeps the later push a fast-forward instead of a rejected one.
+	 */
+	@Test
+	void resumesThePublishedBranchWhenTheCheckoutHasNoLocalOne() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				refs(List.of("refs/remotes/origin/claude/adopt-claude-code")));
+		step.execute(context, runner);
+		assertEquals(List.of("git", "checkout", "-B", "claude/adopt-claude-code",
+				"origin/claude/adopt-claude-code"), lastCommand(runner));
+	}
+
+	@Test
+	void keepsALocalBranchRatherThanResettingItOntoTheRemote() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(refs(List.of(
+				"refs/heads/claude/adopt-claude-code", "refs/remotes/origin/claude/adopt-claude-code")));
+		step.execute(context, runner);
+		assertEquals(List.of("git", "checkout", "-B", "claude/adopt-claude-code"), lastCommand(runner));
+	}
+
+	private Function<List<String>, CommandResult> missingRefs() {
+		return refs(List.of());
+	}
+
+	/** Answers {@code git rev-parse --verify} for the named refs only, as git does. */
+	private Function<List<String>, CommandResult> refs(List<String> existing) {
+		return command -> new CommandResult(command, resolves(command, existing) ? 0 : 1, "");
+	}
+
+	private boolean resolves(List<String> command, List<String> existing) {
+		return !command.contains("rev-parse") || existing.contains(command.get(command.size() - 1));
+	}
+
+	private List<String> lastCommand(RecordingCommandRunner runner) {
+		return runner.commandAt(runner.count() - 1);
 	}
 
 	@Test

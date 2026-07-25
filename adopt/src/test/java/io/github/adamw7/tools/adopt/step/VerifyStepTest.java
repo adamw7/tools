@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -13,25 +12,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class VerifyStepTest {
 
-	private AdoptionContext context(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/demo.git", workspace);
-		Files.createDirectories(context.repositoryDirectory());
-		return context;
-	}
-
 	private void writePom(AdoptionContext context) throws IOException {
-		Files.writeString(context.repositoryDirectory().resolve("pom.xml"), "<project/>");
+		AdoptionContexts.write(context, "pom.xml", "<project/>");
 	}
 
 	@Test
 	void runsMavenValidateInCheckout(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
@@ -41,8 +35,8 @@ class VerifyStepTest {
 
 	@Test
 	void runsGradleGuardTaskForAGradleCheckout(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
-		Files.writeString(context.repositoryDirectory().resolve("build.gradle"), "plugins { id 'java' }\n");
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
 		assertEquals(GradleBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
@@ -50,7 +44,7 @@ class VerifyStepTest {
 
 	@Test
 	void runsTheDetectedBuildSystemsVerifyCommand(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		BuildSystem custom = new FakeBuildSystem(List.of("just", "verify"));
@@ -60,7 +54,7 @@ class VerifyStepTest {
 
 	@Test
 	void failedVerificationAbortsAdoption(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> new CommandResult(command, 1, "CLAUDE.md is malformed"));
@@ -69,7 +63,7 @@ class VerifyStepTest {
 
 	@Test
 	void runsTheFallbackGuardScriptWhenNoBuildFileIsPresent(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
 		assertEquals(FallbackBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
@@ -77,7 +71,7 @@ class VerifyStepTest {
 
 	@Test
 	void skipsWhenNoConfiguredBuildSystemMatches(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep(List.of(new MavenBuildSystem(), new GradleBuildSystem())).execute(context, runner);
 		assertEquals(0, runner.count());

@@ -64,7 +64,7 @@ public class ProcessCommandRunner implements CommandRunner {
 		try {
 			return builder.start();
 		} catch (IOException e) {
-			throw new AdoptionException("Could not start command: " + String.join(" ", command), e);
+			throw new AdoptionException("Could not start command: " + CommandResult.describe(command), e);
 		}
 	}
 
@@ -72,7 +72,7 @@ public class ProcessCommandRunner implements CommandRunner {
 		try {
 			process.getOutputStream().close();
 		} catch (IOException e) {
-			throw new AdoptionException("Could not close standard input for: " + String.join(" ", command), e);
+			throw new AdoptionException("Could not close standard input for: " + CommandResult.describe(command), e);
 		}
 	}
 
@@ -85,13 +85,13 @@ public class ProcessCommandRunner implements CommandRunner {
 		} catch (InterruptedException e) {
 			destroyTree(process);
 			Thread.currentThread().interrupt();
-			throw new AdoptionException("Interrupted while running: " + String.join(" ", command), e);
+			throw new AdoptionException("Interrupted while running: " + CommandResult.describe(command), e);
 		}
 	}
 
 	private AdoptionException timedOut(Process process, List<String> command, StreamGobbler output) {
 		destroyTree(process);
-		return new AdoptionException("Timed out after " + timeout + " running: " + String.join(" ", command)
+		return new AdoptionException("Timed out after " + timeout + " running: " + CommandResult.describe(command)
 				+ System.lineSeparator() + output.output());
 	}
 

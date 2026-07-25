@@ -15,6 +15,15 @@ public record CommandResult(List<String> command, int exitCode, String output) {
 	}
 
 	public String describe() {
+		return describe(command);
+	}
+
+	/**
+	 * The command as it would be typed, for the failures raised before there is a
+	 * result to describe — a process that could not be started, or one destroyed on
+	 * its timeout — so every report of a command reads the same way.
+	 */
+	public static String describe(List<String> command) {
 		return String.join(" ", command);
 	}
 }

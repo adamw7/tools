@@ -33,10 +33,10 @@ public final class AdoptionContext {
 	}
 
 	public AdoptionContext(String repositoryUrl, Path workspace, String branchName) {
-		this.repositoryUrl = requireText(repositoryUrl, "repositoryUrl");
+		this.repositoryUrl = Text.required(repositoryUrl, "repositoryUrl");
 		this.workspace = requireWorkspace(workspace);
 		this.repositoryDirectory = workspace.resolve(repositoryName(this.repositoryUrl));
-		this.branchName = requireText(branchName, "branchName");
+		this.branchName = Text.required(branchName, "branchName");
 		this.repositorySlug = repositorySlug(this.repositoryUrl);
 	}
 
@@ -66,11 +66,14 @@ public final class AdoptionContext {
 		return branchName;
 	}
 
-	private static String requireText(String value, String field) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(field + " must not be blank");
-		}
-		return value.strip();
+	/**
+	 * @return the branch to adopt on: the one the caller named, or
+	 *         {@link #DEFAULT_BRANCH} when none was. A blank name counts as none, so
+	 *         an omitted command-line positional and an empty MCP argument both fall
+	 *         back to the default instead of being rejected as an invalid branch.
+	 */
+	public static String branchOrDefault(String branchName) {
+		return Text.isPresent(branchName) ? branchName.strip() : DEFAULT_BRANCH;
 	}
 
 	private static Path requireWorkspace(Path workspace) {

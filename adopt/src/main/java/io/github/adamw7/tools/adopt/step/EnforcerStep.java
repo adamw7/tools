@@ -24,7 +24,6 @@ public class EnforcerStep extends AbstractBuildSystemStep {
 	private static final Logger log = LogManager.getLogger(EnforcerStep.class);
 
 	public EnforcerStep() {
-		this(BuildSystems.DEFAULTS);
 	}
 
 	public EnforcerStep(List<BuildSystem> buildSystems) {

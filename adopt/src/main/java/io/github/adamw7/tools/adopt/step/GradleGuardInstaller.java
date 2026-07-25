@@ -1,12 +1,10 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Appends a {@code CLAUDE.md} guard task to a Gradle build script so the adopted
@@ -37,6 +35,7 @@ public class GradleGuardInstaller {
 
 	static final String GUARD_TASK = "enforceClaudeMd";
 
+	private static final String BUILD_FILE_DESCRIPTION = "Gradle build file";
 	private static final String KOTLIN_SUFFIX = ".kts";
 	private static final String LINE_COMMENT = "//";
 
@@ -81,7 +80,7 @@ public class GradleGuardInstaller {
 	 *         script already declared it and was left unchanged.
 	 */
 	public boolean install(Path buildFile) {
-		String existing = read(buildFile);
+		String existing = AdoptionFiles.read(buildFile, BUILD_FILE_DESCRIPTION);
 		if (declaresGuard(existing)) {
 			return false;
 		}
@@ -117,24 +116,12 @@ public class GradleGuardInstaller {
 		return buildFile.getFileName().toString().endsWith(KOTLIN_SUFFIX) ? KOTLIN_BLOCK : GROOVY_BLOCK;
 	}
 
-	private String read(Path buildFile) {
-		try {
-			return Files.readString(buildFile);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read Gradle build file: " + buildFile, e);
-		}
-	}
-
 	/**
 	 * The appended block's LF line terminators are rewritten to match the ones the
 	 * script already uses, so appending the guard to a CRLF build script does not
 	 * leave the new region with LF endings mixed into an otherwise CRLF file.
 	 */
 	private void append(Path buildFile, String existing, String block) {
-		try {
-			Files.writeString(buildFile, existing + LineTerminators.matching(block, existing));
-		} catch (IOException e) {
-			throw new AdoptionException("Could not write Gradle build file: " + buildFile, e);
-		}
+		AdoptionFiles.write(buildFile, existing + LineTerminators.matching(block, existing), BUILD_FILE_DESCRIPTION);
 	}
 }

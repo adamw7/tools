@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Creates the workspace directory an adoption clones into: either the directory
@@ -28,6 +29,17 @@ import java.nio.file.Path;
 public final class Workspaces {
 
 	private Workspaces() {
+	}
+
+	/**
+	 * The one place the "named workspace or a temporary one" decision is made, so
+	 * the command line and the MCP tool cannot drift apart on it.
+	 *
+	 * @param workspace the directory the caller named, or empty when it left the
+	 *                  choice open
+	 */
+	public static Path resolve(Optional<Path> workspace) {
+		return workspace.map(Workspaces::createIfMissing).orElseGet(Workspaces::createTemporary);
 	}
 
 	public static Path createIfMissing(Path workspace) {

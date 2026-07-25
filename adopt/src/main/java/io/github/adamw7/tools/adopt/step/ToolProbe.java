@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -57,7 +58,7 @@ final class ToolProbe {
 		try {
 			return runner.run(directory, command).succeeded();
 		} catch (AdoptionException e) {
-			log.warn("Probe {} could not be run: {}", String.join(" ", command), e.getMessage());
+			log.warn("Probe {} could not be run: {}", CommandResult.describe(command), e.getMessage());
 			return false;
 		}
 	}

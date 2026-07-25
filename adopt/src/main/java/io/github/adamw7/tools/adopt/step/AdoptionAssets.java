@@ -101,8 +101,18 @@ public final class AdoptionAssets {
 			          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 			""";
 
+	/**
+	 * The {@code AGENTS.md} installer, built here rather than by each caller because
+	 * {@link ClaudeMdConformanceStep} also writes the companion file — the guard's
+	 * reference has to resolve whether or not the run installs the starter assets —
+	 * and the two must write the same content to the same path.
+	 */
+	static AssetInstaller agentsMd() {
+		return new AssetInstaller(AGENTS_MD_FILE, AGENTS_MD);
+	}
+
 	public static final List<AssetInstaller> DEFAULTS = List.of(
-			new AssetInstaller(AGENTS_MD_FILE, AGENTS_MD),
+			agentsMd(),
 			new AssetInstaller(SETTINGS_FILE, SETTINGS),
 			new AssetInstaller(SESSION_START_HOOK_FILE, SESSION_START_HOOK, true),
 			new AssetInstaller(MCP_CONFIG_FILE, MCP_CONFIG),

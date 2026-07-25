@@ -3,7 +3,7 @@ package io.github.adamw7.tools.adopt.mcp;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -107,35 +107,31 @@ public class AdoptTool implements McpTool {
 	 * branch overrides it, so an empty string is not rejected as an invalid branch.
 	 */
 	private String branch(Map<String, Object> arguments) {
-		String branch = ToolArguments.optionalString(arguments, "branch", "");
-		return branch.isBlank() ? AdoptionContext.DEFAULT_BRANCH : branch;
+		return AdoptionContext.branchOrDefault(text(arguments, "branch"));
 	}
 
 	private Path workspace(Map<String, Object> arguments) {
-		String workspace = ToolArguments.optionalString(arguments, "workspace", "");
-		return workspace.isBlank() ? Workspaces.createTemporary() : Workspaces.createIfMissing(Path.of(workspace));
+		String workspace = text(arguments, "workspace");
+		return Workspaces.resolve(workspace.isBlank() ? Optional.empty() : Optional.of(Path.of(workspace)));
 	}
 
 	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {
-		PullRequestOptions.Builder builder = PullRequestOptions.builder()
+		return PullRequestOptions.builder()
 				.reviewers(commaSeparated(arguments, "reviewers"))
 				.labels(commaSeparated(arguments, "labels"))
 				.assignees(commaSeparated(arguments, "assignees"))
-				.draft(ToolArguments.optionalBoolean(arguments, "draft", false));
-		applyText(arguments, "title", builder::title);
-		applyText(arguments, "body", builder::body);
-		return builder.build();
+				.draft(ToolArguments.optionalBoolean(arguments, "draft", false))
+				.titleIfPresent(text(arguments, "title"))
+				.bodyIfPresent(text(arguments, "body"))
+				.build();
 	}
 
-	private void applyText(Map<String, Object> arguments, String key, Consumer<String> target) {
-		String value = ToolArguments.optionalString(arguments, key, "");
-		if (!value.isBlank()) {
-			target.accept(value);
-		}
+	/** @return the argument's text, empty when it was not supplied */
+	private String text(Map<String, Object> arguments, String key) {
+		return ToolArguments.optionalString(arguments, key, "");
 	}
 
 	private List<String> commaSeparated(Map<String, Object> arguments, String key) {
-		String value = ToolArguments.optionalString(arguments, key, "");
-		return Stream.of(value.split(",")).map(String::strip).filter(entry -> !entry.isEmpty()).toList();
+		return Stream.of(text(arguments, key).split(",")).map(String::strip).filter(entry -> !entry.isEmpty()).toList();
 	}
 }

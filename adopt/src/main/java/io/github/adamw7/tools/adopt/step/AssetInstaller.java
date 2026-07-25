@@ -1,13 +1,12 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Writes one starter asset file into a checkout: the file's repository-relative
@@ -60,12 +59,7 @@ public class AssetInstaller {
 	}
 
 	private void write(Path file) {
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not write asset file: " + file, e);
-		}
+		AdoptionFiles.write(file, content, "asset file");
 		markExecutable(file);
 	}
 

@@ -1,7 +1,5 @@
 package io.github.adamw7.tools.adopt;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,19 +29,7 @@ public class AdoptionReportWriter {
 	}
 
 	public void write(Path file, AdoptionContext context, AdoptionReport report) {
-		try {
-			createParentDirectories(file);
-			Files.writeString(file, toJson(context, report));
-		} catch (IOException e) {
-			throw new AdoptionException("Could not write the adoption report to " + file, e);
-		}
-	}
-
-	private void createParentDirectories(Path file) throws IOException {
-		Path parent = file.toAbsolutePath().getParent();
-		if (parent != null) {
-			Files.createDirectories(parent);
-		}
+		AdoptionFiles.write(file, toJson(context, report), "the adoption report");
 	}
 
 	private ObjectNode toNode(AdoptionContext context, AdoptionReport report) {

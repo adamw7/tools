@@ -58,10 +58,36 @@ class PullRequestStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
 		step.execute(context, runner);
 		assertEquals(List.of("gh", "pr", "list", "--head", "claude/adopt-claude-code", "--state", "open", "--json",
-				"url"), runner.commandAt(0));
+				"url", "--repo", "adamw7/tools"), runner.commandAt(0));
 		assertEquals(List.of("gh", "pr", "create", "--title", PullRequestOptions.DEFAULT_TITLE, "--body",
-				PullRequestOptions.DEFAULT_BODY, "--head", "claude/adopt-claude-code"), runner.commandAt(1));
+				PullRequestOptions.DEFAULT_BODY, "--head", "claude/adopt-claude-code", "--repo", "adamw7/tools"),
+				runner.commandAt(1));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(1).workingDirectory());
+	}
+
+	/**
+	 * gh infers the repository from the checkout's git remote, which is not always
+	 * readable as a GitHub one — a {@code url.<base>.insteadOf} rewrite, a mirror,
+	 * or a proxied clone all leave it reporting that no remote points at a known
+	 * GitHub host, failing the last step of an otherwise complete adoption. The
+	 * adoption already knows the repository, so it says so.
+	 */
+	@Test
+	void namesTheTargetRepositoryRatherThanLettingGhInferItFromTheRemote() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
+		AdoptionContext proxied = new AdoptionContext("git@github.com:adamw7/tools.git", Path.of("/tmp/workspace"));
+		new PullRequestStep().execute(proxied, runner);
+		assertTrue(runner.commandAt(0).containsAll(List.of("--repo", "adamw7/tools")));
+		assertTrue(runner.commandAt(1).containsAll(List.of("--repo", "adamw7/tools")));
+	}
+
+	@Test
+	void omitsTheRepositoryFlagWhenTheUrlNamesNoOwner() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
+		AdoptionContext local = new AdoptionContext("/srv/mirrors/tools", Path.of("/tmp/workspace"));
+		new PullRequestStep().execute(local, runner);
+		assertFalse(runner.commandAt(0).contains("--repo"), "gh must fall back to its own inference");
+		assertFalse(runner.commandAt(1).contains("--repo"));
 	}
 
 	@Test
@@ -69,7 +95,7 @@ class PullRequestStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
 		new PullRequestStep("My title", "My body").execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
-				"claude/adopt-claude-code"), runner.commandAt(1));
+				"claude/adopt-claude-code", "--repo", "adamw7/tools"), runner.commandAt(1));
 	}
 
 	@Test
@@ -85,8 +111,8 @@ class PullRequestStepTest {
 				.build();
 		new PullRequestStep(options).execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
-				"claude/adopt-claude-code", "--draft", "--reviewer", "octocat", "--reviewer", "hubot", "--label",
-				"automation", "--assignee", "adamw7"), runner.commandAt(1));
+				"claude/adopt-claude-code", "--repo", "adamw7/tools", "--draft", "--reviewer", "octocat", "--reviewer",
+				"hubot", "--label", "automation", "--assignee", "adamw7"), runner.commandAt(1));
 	}
 
 	@Test
@@ -95,7 +121,7 @@ class PullRequestStepTest {
 		step.execute(context, runner);
 		assertEquals(1, runner.count());
 		assertEquals(List.of("gh", "pr", "list", "--head", "claude/adopt-claude-code", "--state", "open", "--json",
-				"url"), runner.commandAt(0));
+				"url", "--repo", "adamw7/tools"), runner.commandAt(0));
 	}
 
 	@Test
@@ -103,7 +129,8 @@ class PullRequestStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
 		step.execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", PullRequestOptions.DEFAULT_TITLE, "--body",
-				PullRequestOptions.DEFAULT_BODY, "--head", "claude/adopt-claude-code"), runner.commandAt(1));
+				PullRequestOptions.DEFAULT_BODY, "--head", "claude/adopt-claude-code", "--repo", "adamw7/tools"),
+				runner.commandAt(1));
 	}
 
 	@Test

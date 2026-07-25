@@ -32,6 +32,18 @@ class ClaudeInitStepTest {
 		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md");
 	}
 
+	/**
+	 * Stands in for a CLI run that does what the step exists to make happen: writes
+	 * the root CLAUDE.md. The file cannot be put there before the step runs, because
+	 * a checkout that already carries one makes the step skip the CLI entirely.
+	 */
+	private RecordingCommandRunner generatingRunner(AdoptionContext context) {
+		return new RecordingCommandRunner(command -> {
+			writeRootClaudeMd(context);
+			return new CommandResult(command, 0, "");
+		});
+	}
+
 	private Path claudeDirMemory(AdoptionContext context) {
 		return context.repositoryDirectory().resolve(".claude").resolve("CLAUDE.md");
 	}
@@ -79,8 +91,7 @@ class ClaudeInitStepTest {
 	@Test
 	void runsConfiguredClaudeCommandInCheckout(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		generateClaudeMd(context);
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = generatingRunner(context);
 		new ClaudeInitStep(List.of("claude", "init")).execute(context, runner);
 		assertEquals(List.of("claude", "init"), runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
@@ -89,10 +100,39 @@ class ClaudeInitStepTest {
 	@Test
 	void defaultsToHeadlessInitCommand(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		generateClaudeMd(context);
-		RecordingCommandRunner runner = new RecordingCommandRunner();
+		RecordingCommandRunner runner = generatingRunner(context);
 		new ClaudeInitStep().execute(context, runner);
 		assertEquals(ClaudeInitStep.DEFAULT_COMMAND, runner.commandAt(0));
+	}
+
+	/**
+	 * The CLI's output is not reproducible, so re-running an adoption over a
+	 * checkout that already has a CLAUDE.md would rewrite the file — discarding any
+	 * edit made to it since — and produce a second commit with the same message. The
+	 * rest of the pipeline skips work it has already done; this step must too.
+	 */
+	@Test
+	void leavesAnAlreadyAdoptedCheckoutUntouched(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md\n\nHand-edited.");
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ClaudeInitStep().execute(context, runner);
+		assertEquals(0, runner.count(), "claude must not be re-run over an existing CLAUDE.md");
+		assertEquals("# CLAUDE.md\n\nHand-edited.",
+				Files.readString(context.repositoryDirectory().resolve("CLAUDE.md")));
+	}
+
+	/**
+	 * Skipping happens before the {@code .claude/CLAUDE.md} dance, so the memory
+	 * file is never moved when there is no CLI run to steer.
+	 */
+	@Test
+	void doesNotDisturbClaudeDirMemoryWhenSkipping(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		generateClaudeMd(context);
+		writeClaudeDirMemory(context);
+		new ClaudeInitStep().execute(context, new RecordingCommandRunner());
+		assertEquals("# project memory", Files.readString(claudeDirMemory(context)));
 	}
 
 	@Test
@@ -145,8 +185,7 @@ class ClaudeInitStepTest {
 	@Test
 	void leavesRootClaudeMdUntouchedWhenNoClaudeDirMemoryExists(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
-		generateClaudeMd(context);
-		new ClaudeInitStep().execute(context, new RecordingCommandRunner());
+		new ClaudeInitStep().execute(context, generatingRunner(context));
 		assertFalse(Files.exists(claudeDirMemory(context)));
 	}
 

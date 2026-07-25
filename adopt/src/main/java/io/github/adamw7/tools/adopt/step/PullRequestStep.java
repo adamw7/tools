@@ -33,6 +33,16 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * pull request as if it were current and wrongly skip creation. That keeps the
  * decision robust across {@code gh} versions and locales.
  *
+ * <p>Both commands name the target repository with {@code --repo} rather than
+ * letting {@code gh} infer it from the checkout's git remote. The adoption
+ * already knows which repository it is adopting, and the remote is not always
+ * readable as a GitHub one: a {@code url.<base>.insteadOf} rewrite, an
+ * organisation mirror, or a proxied clone leaves {@code gh} reporting that "none
+ * of the git remotes configured for this repository point to a known GitHub
+ * host", which would fail the very last step of an otherwise complete adoption.
+ * A URL that names no owner leaves the flag off, so {@code gh} falls back to its
+ * own inference.
+ *
  * <p>After the pull request is created (or found already open), the step records
  * its URL in the run's {@link AdoptionReport}. The URL is read back with
  * {@code gh pr list --json url} rather than scraped from {@code gh pr create}'s
@@ -89,6 +99,7 @@ public class PullRequestStep extends AbstractCommandStep {
 	private List<String> createCommand(AdoptionContext context) {
 		List<String> command = new ArrayList<>(List.of("gh", "pr", "create", "--title", options.title(), "--body",
 				options.body(), "--head", context.branchName()));
+		addTargetRepository(command, context);
 		if (options.draft()) {
 			command.add("--draft");
 		}
@@ -96,6 +107,13 @@ public class PullRequestStep extends AbstractCommandStep {
 		addRepeated(command, "--label", options.labels());
 		addRepeated(command, "--assignee", options.assignees());
 		return List.copyOf(command);
+	}
+
+	private void addTargetRepository(List<String> command, AdoptionContext context) {
+		context.repositorySlug().ifPresent(slug -> {
+			command.add("--repo");
+			command.add(slug);
+		});
 	}
 
 	private void addRepeated(List<String> command, String flag, List<String> values) {
@@ -120,7 +138,10 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	private List<String> listCommand(AdoptionContext context) {
-		return List.of("gh", "pr", "list", "--head", context.branchName(), "--state", "open", "--json", "url");
+		List<String> command = new ArrayList<>(List.of("gh", "pr", "list", "--head", context.branchName(), "--state",
+				"open", "--json", "url"));
+		addTargetRepository(command, context);
+		return List.copyOf(command);
 	}
 
 	/**

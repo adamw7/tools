@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
@@ -54,6 +56,19 @@ class GitHubRepoAdopterTest {
 		}
 	}
 
+	private static final class SilentlyExplodingStep implements AdoptionStep {
+
+		@Override
+		public String name() {
+			return "quiet";
+		}
+
+		@Override
+		public void execute(AdoptionContext context, CommandRunner runner) {
+			throw new IllegalStateException();
+		}
+	}
+
 	@Test
 	void runsEveryStepInOrder() {
 		List<String> order = new ArrayList<>();
@@ -78,6 +93,39 @@ class GitHubRepoAdopterTest {
 		GitHubRepoAdopter adopter = new GitHubRepoAdopter(new RecordingCommandRunner(), steps);
 		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
 		assertEquals(List.of("a"), order);
+	}
+
+	/**
+	 * A report the adopter creates itself is lost the moment a step throws, which is
+	 * when a caller most wants to know how far the run got. Supplying the report
+	 * keeps it readable after the failure has propagated.
+	 */
+	@Test
+	void fillsInASuppliedReportEvenWhenAStepFails() {
+		List<AdoptionStep> steps = List.of(new NamingStep("a", new ArrayList<>()), new ExplodingStep());
+		GitHubRepoAdopter adopter = new GitHubRepoAdopter(new RecordingCommandRunner(), steps);
+		AdoptionReport report = new AdoptionReport();
+		assertThrows(AdoptionException.class, () -> adopter.adopt(context, report));
+		assertEquals(List.of("a"), report.completedSteps());
+		assertEquals("boom: boom", report.failure().orElseThrow());
+		assertFalse(report.succeeded());
+	}
+
+	@Test
+	void namesTheFailingStepAlongsideTheFailure() {
+		AdoptionReport report = new AdoptionReport();
+		GitHubRepoAdopter adopter = new GitHubRepoAdopter(new RecordingCommandRunner(),
+				List.of(new SilentlyExplodingStep()));
+		assertThrows(IllegalStateException.class, () -> adopter.adopt(context, report));
+		assertEquals("quiet: IllegalStateException", report.failure().orElseThrow(),
+				"an exception with no message must not be reported as a bare null");
+	}
+
+	@Test
+	void aSuppliedReportIsTheOneReturned() {
+		AdoptionReport report = new AdoptionReport();
+		GitHubRepoAdopter adopter = new GitHubRepoAdopter(new RecordingCommandRunner(), List.of());
+		assertSame(report, adopter.adopt(context, report));
 	}
 
 	/**

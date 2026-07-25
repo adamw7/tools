@@ -42,9 +42,12 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  *
  * <p>Each run returns an {@link AdoptionReport} of the steps that completed and
  * the pull request's URL, so callers can act on the outcome without scraping
- * logs. The default pipeline can optionally include an {@link AssetsStep} that
- * commits starter Claude Code configuration assets alongside the generated
- * {@code CLAUDE.md}.
+ * logs. A caller that needs the report of a run that <em>fails</em> — the case
+ * where knowing how far the pipeline got matters most — supplies its own report
+ * to {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it after the
+ * failure propagates. The default pipeline can optionally include an
+ * {@link AssetsStep} that commits starter Claude Code configuration assets
+ * alongside the generated {@code CLAUDE.md}.
  */
 public class GitHubRepoAdopter {
 
@@ -94,8 +97,21 @@ public class GitHubRepoAdopter {
 	}
 
 	public AdoptionReport adopt(AdoptionContext context) {
+		return adopt(context, new AdoptionReport());
+	}
+
+	/**
+	 * Runs the pipeline into a report the caller already holds, so the outcome
+	 * survives a failure: a report created here and only handed back on the return
+	 * path is lost the moment a step throws, which is exactly when a caller wants to
+	 * know which steps completed.
+	 *
+	 * @param report filled in as the run progresses, and marked as failed before a
+	 *               failing step's exception propagates
+	 * @return the same report, once every step has completed
+	 */
+	public AdoptionReport adopt(AdoptionContext context, AdoptionReport report) {
 		log.info("Adopting Claude Code into {}", context.repositoryUrl());
-		AdoptionReport report = new AdoptionReport();
 		for (AdoptionStep step : steps) {
 			runStep(step, context, report);
 		}
@@ -105,7 +121,25 @@ public class GitHubRepoAdopter {
 
 	private void runStep(AdoptionStep step, AdoptionContext context, AdoptionReport report) {
 		log.info("Step: {}", step.name());
-		step.execute(context, runner, report);
+		try {
+			step.execute(context, runner, report);
+		} catch (RuntimeException e) {
+			report.recordFailure(describe(step, e));
+			throw e;
+		}
 		report.recordStep(step.name());
+	}
+
+	/**
+	 * Names the failing step alongside the failure, because an exception message
+	 * alone — {@code "The requested URL returned error: 403"} — does not say which
+	 * stage of the adoption produced it. An exception carrying no message at all
+	 * falls back to its type, so the report never records a bare {@code null}.
+	 */
+	private String describe(AdoptionStep step, RuntimeException failure) {
+		String message = failure.getMessage();
+		return step.name() + ": " + (message == null || message.isBlank()
+				? failure.getClass().getSimpleName()
+				: message);
 	}
 }

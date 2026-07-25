@@ -93,7 +93,8 @@ class PullRequestStepTest {
 	@Test
 	void usesConfiguredTitleAndBody() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
-		new PullRequestStep("My title", "My body").execute(context, runner);
+		new PullRequestStep(PullRequestOptions.builder().title("My title").body("My body").build())
+				.execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
 				"claude/adopt-claude-code", "--repo", "adamw7/tools"), runner.commandAt(1));
 	}

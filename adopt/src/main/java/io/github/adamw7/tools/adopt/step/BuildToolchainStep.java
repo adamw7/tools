@@ -56,7 +56,7 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 
 	private void requireInstalled(String tool, BuildSystem buildSystem, Path repositoryDirectory,
 			CommandRunner runner) {
-		if (probe.succeeds(List.of(tool, "--version"), repositoryDirectory, runner)) {
+		if (probe.isInstalled(tool, repositoryDirectory, runner)) {
 			return;
 		}
 		throw new AdoptionException(name() + " failed: " + repositoryDirectory + " builds with "

@@ -61,17 +61,9 @@ public class GitHubRepoAdopter {
 		this.steps = List.copyOf(steps);
 	}
 
-	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner) {
-		return new GitHubRepoAdopter(runner, defaultSteps());
-	}
-
 	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
 			boolean includeAssets) {
 		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets));
-	}
-
-	public static List<AdoptionStep> defaultSteps() {
-		return defaultSteps(PullRequestOptions.defaults(), false);
 	}
 
 	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets) {

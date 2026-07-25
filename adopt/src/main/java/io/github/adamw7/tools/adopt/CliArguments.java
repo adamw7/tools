@@ -119,18 +119,20 @@ public final class CliArguments {
 		return index + 2;
 	}
 
+	/**
+	 * A blank workspace or branch positional counts as not supplied — the rule
+	 * {@link Text} defines for every optional input — so it falls back to its
+	 * default rather than resolving the empty path or being rejected as an invalid
+	 * branch.
+	 */
 	private void consumePositional(String argument) {
-		assignPositional(positionals, argument);
-		positionals++;
-	}
-
-	private void assignPositional(int position, String argument) {
-		switch (position) {
+		switch (positionals) {
 			case 0 -> repositoryUrl = argument;
-			case 1 -> workspace = argument.isBlank() ? null : Path.of(argument);
-			case 2 -> branchName = argument.isBlank() ? null : argument;
+			case 1 -> workspace = Text.isPresent(argument) ? Path.of(argument.strip()) : null;
+			case 2 -> branchName = Text.isPresent(argument) ? argument : null;
 			default -> throw new IllegalArgumentException("Unexpected argument " + argument + ". " + USAGE);
 		}
+		positionals++;
 	}
 
 	private void requireRepositoryUrl() {

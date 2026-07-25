@@ -60,10 +60,6 @@ public class PullRequestStep extends AbstractCommandStep {
 		this(PullRequestOptions.defaults());
 	}
 
-	public PullRequestStep(String title, String body) {
-		this(PullRequestOptions.builder().title(title).body(body).build());
-	}
-
 	public PullRequestStep(PullRequestOptions options) {
 		this.options = options;
 	}

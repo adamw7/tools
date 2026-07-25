@@ -3,7 +3,6 @@ package io.github.adamw7.tools.adopt.mcp;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -111,8 +110,7 @@ public class AdoptTool implements McpTool {
 	}
 
 	private Path workspace(Map<String, Object> arguments) {
-		String workspace = text(arguments, "workspace");
-		return Workspaces.resolve(workspace.isBlank() ? Optional.empty() : Optional.of(Path.of(workspace)));
+		return Workspaces.resolveNamed(text(arguments, "workspace"));
 	}
 
 	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {

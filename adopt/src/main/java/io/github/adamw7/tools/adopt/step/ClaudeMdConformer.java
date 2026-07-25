@@ -76,8 +76,7 @@ public class ClaudeMdConformer {
 		lines = closeUnterminatedFence(lines);
 		lines = ensureTitle(lines);
 		lines = canonicalizeHeadings(lines);
-		lines = appendMissingSections(lines);
-		lines = ensureSectionBodies(lines);
+		lines = ensureRequiredSections(lines);
 		lines = ensureAgentsReference(lines);
 		return join(lines);
 	}
@@ -176,30 +175,34 @@ public class ClaudeMdConformer {
 		return actual.equals(wanted) || actual.startsWith(wanted + " ");
 	}
 
-	private List<String> appendMissingSections(List<String> lines) {
-		boolean[] fence = fenceMask(lines);
-		List<String> missing = missingSections(lines, fence);
-		if (missing.isEmpty()) {
-			return lines;
-		}
+	/**
+	 * Gives every required section both a heading and a body. A section the
+	 * document does not carry at all is appended with a stub body; one whose
+	 * heading the document supplied but left bare — typically a near-miss renamed
+	 * in place above — has a stub inserted beneath it. The rule fails an empty
+	 * section just as it fails a missing one, so the two cases are settled together
+	 * rather than in separate passes.
+	 */
+	private List<String> ensureRequiredSections(List<String> lines) {
 		List<String> result = new ArrayList<>(lines);
-		for (String section : missing) {
-			appendSection(result, section);
+		for (String required : REQUIRED_SECTIONS) {
+			ensureSection(result, required);
 		}
 		return result;
 	}
 
-	private List<String> missingSections(List<String> lines, boolean[] fence) {
-		List<String> missing = new ArrayList<>();
-		for (String required : REQUIRED_SECTIONS) {
-			addIfMissing(missing, lines, fence, required);
-		}
-		return missing;
-	}
-
-	private void addIfMissing(List<String> missing, List<String> lines, boolean[] fence, String required) {
-		if (!hasHeading(lines, fence, required)) {
-			missing.add(required);
+	/**
+	 * The fence mask is rebuilt per section because appending a section or
+	 * inserting a stub shifts the lines the next one is found at, and the sections
+	 * are few enough for that to stay cheap.
+	 */
+	private void ensureSection(List<String> lines, String required) {
+		boolean[] fence = fenceMask(lines);
+		int index = indexOfHeading(lines, fence, required);
+		if (index < 0) {
+			appendSection(lines, required);
+		} else if (!hasBody(lines, fence, index)) {
+			insertStubBody(lines, index);
 		}
 	}
 
@@ -210,31 +213,9 @@ public class ClaudeMdConformer {
 		lines.add(STUB_BODY);
 	}
 
-	/**
-	 * Gives a stub body to every required section that has none. Appended sections
-	 * already carry one, so this only ever fills in a heading the generated document
-	 * supplied — typically a near-miss renamed in place above whose section the
-	 * document left bare.
-	 */
-	private List<String> ensureSectionBodies(List<String> lines) {
-		List<String> result = new ArrayList<>(lines);
-		for (String required : REQUIRED_SECTIONS) {
-			insertStubBodyIfEmpty(result, required);
-		}
-		return result;
-	}
-
-	/**
-	 * The fence mask is rebuilt per section because inserting a stub shifts every
-	 * later line, and the sections are few enough for that to stay cheap.
-	 */
-	private void insertStubBodyIfEmpty(List<String> lines, String required) {
-		boolean[] fence = fenceMask(lines);
-		int index = indexOfHeading(lines, fence, required);
-		if (index >= 0 && !hasBody(lines, fence, index)) {
-			lines.add(index + 1, "");
-			lines.add(index + 2, STUB_BODY);
-		}
+	private void insertStubBody(List<String> lines, int headingIndex) {
+		lines.add(headingIndex + 1, "");
+		lines.add(headingIndex + 2, STUB_BODY);
 	}
 
 	/**

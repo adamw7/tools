@@ -12,19 +12,15 @@ import java.util.Optional;
  * left the choice open. Shared by the command-line entry point and the MCP
  * server, so both resolve workspaces identically.
  *
- * <p>A workspace that cannot be created — the caller named a path that is already
- * a regular file, or one the process may not write — fails with an
- * {@link AdoptionException} like every other adoption failure, rather than
- * surfacing a raw {@link java.io.UncheckedIOException} through the command line
- * and the MCP tool.
+ * <p>A workspace that cannot be created — an existing regular file, or a path the
+ * process may not write — fails with an {@link AdoptionException} like every other
+ * adoption failure rather than a raw {@link java.io.UncheckedIOException}.
  *
  * <p>The returned path is always absolute. The clone step runs {@code git clone}
- * with the workspace as its working directory and the checkout directory
- * ({@code workspace/name}) as the clone target, so a relative workspace would
- * make git resolve that target against the working directory a second time and
- * nest the checkout under {@code workspace/workspace/name}, leaving every later
- * step unable to find it. Absolutising the workspace up front — the temporary
- * directory already is — keeps both entry points on the same, unambiguous path.
+ * with the workspace as its working directory and {@code workspace/name} as the
+ * clone target, so a relative workspace would make git resolve that target against
+ * the working directory a second time and nest the checkout under
+ * {@code workspace/workspace/name}, leaving every later step unable to find it.
  */
 public final class Workspaces {
 

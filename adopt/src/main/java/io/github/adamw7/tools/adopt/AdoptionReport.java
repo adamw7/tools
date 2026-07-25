@@ -7,15 +7,13 @@ import java.util.Optional;
 /**
  * The machine-readable outcome of an adoption run: the steps that completed, in
  * order, and the URL of the pull request the run opened (or found already open).
- * {@link GitHubRepoAdopter#adopt} fills one in and returns it, so callers — the
- * command line, the MCP server, or any embedding code — can report what happened
- * without scraping logs. The pull-request URL is absent until a step records it,
- * for example when the pipeline is configured without a pull-request step.
+ * {@link GitHubRepoAdopter#adopt} fills one in and returns it, so callers can
+ * report what happened without scraping logs. The pull-request URL is absent until
+ * a step records it.
  *
- * <p>A report is also filled in for a run that fails part-way: the steps that did
- * complete stay recorded and the failing step's message is recorded as the run's
- * failure, so the report distinguishes a completed adoption from an abandoned one
- * instead of looking like a short but successful run.
+ * <p>A run that fails part-way is reported too: the steps that did complete stay
+ * recorded and the failing step's message becomes the run's failure, so an
+ * abandoned adoption cannot look like a short but successful one.
  */
 public final class AdoptionReport {
 

@@ -33,14 +33,10 @@ public interface BuildSystem {
 	List<String> verifyCommand();
 
 	/**
-	 * The program {@link #verifyCommand()} launches and that must therefore be
-	 * installed for the verification to run at all, so {@link BuildToolchainStep}
+	 * The program {@link #verifyCommand()} launches, so {@link BuildToolchainStep}
 	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
-	 * will not be able to verify.
-	 *
-	 * <p>The verification launches the first word of its own command, so that is
-	 * what the default probes; a build system whose guard needs nothing installed
-	 * overrides this with an empty answer.
+	 * will not be able to verify. The verification launches the first word of its
+	 * own command, so that is what the default probes.
 	 *
 	 * @return the program to probe, or empty when the verification needs nothing
 	 *         beyond the POSIX shell every supported platform already provides

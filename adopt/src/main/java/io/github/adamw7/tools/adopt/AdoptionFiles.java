@@ -12,13 +12,11 @@ import java.nio.file.Path;
  * has to wrap for itself.
  *
  * <p>Every write creates the file's parent directories first, so an asset nested
- * in a directory the checkout does not carry yet ({@code .claude/hooks/}) and a
- * report named under a path that does not exist are both written rather than
- * failing on the missing parent.
- *
- * <p>The {@code description} names the file in the failure message the way the
- * operator thinks of it — "POM", "CLAUDE.md", "the adoption report" — because a
- * bare path does not say what the adoption was trying to do with it.
+ * in a directory the checkout does not carry yet ({@code .claude/hooks/}) is
+ * written rather than failing on the missing parent. The {@code description} names
+ * the file in the failure message the way the operator thinks of it — "POM",
+ * "CLAUDE.md", "the adoption report" — because a bare path does not say what the
+ * adoption was trying to do with it.
  */
 public final class AdoptionFiles {
 

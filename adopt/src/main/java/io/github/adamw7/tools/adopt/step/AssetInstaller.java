@@ -11,15 +11,10 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
 /**
  * Writes one starter asset file into a checkout: the file's repository-relative
  * path, its content, and whether it must be executable (for hook scripts).
- * Installation is deliberately conservative: a file that already exists is never
- * overwritten — the project's own version always wins over the starter content —
- * so re-running the adoption, or adopting a repository that already configured
- * Claude Code, leaves the checkout untouched.
- *
- * <p>Which of the two happened is logged here rather than by each caller, so
- * every asset the adoption writes — the starter files, the companion
- * {@code AGENTS.md}, and the fallback guard's workflow and script — is reported
- * the same way.
+ * Installation is deliberately conservative: an existing file is never
+ * overwritten — the project's own version always wins — so re-adopting a
+ * repository leaves the checkout untouched. Which of the two happened is logged
+ * here rather than by each caller, so every asset is reported the same way.
  */
 public class AssetInstaller {
 

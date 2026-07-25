@@ -3,9 +3,10 @@ package io.github.adamw7.tools.adopt.step;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -37,14 +38,11 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  *
  * <p>Each appended element is preceded by a newline and an indentation matching
  * the document's own unit (detected from the file, defaulting to two spaces), and
- * is inserted before the parent's own closing indentation so that closing tag
- * stays put. Every container is attached to its parent before its children are
- * added, so an element's depth — and therefore its indentation — is known as soon
- * as it is appended.
- *
- * <p>The edit is performed on the JDK's DOM so no third-party XML library is
- * needed, and is namespace-aware so new elements join the POM's default
- * namespace.
+ * is inserted before the parent's closing indentation so that closing tag stays
+ * put. Every container is attached to its parent before its children are added,
+ * so an element's depth — and therefore its indentation — is known as soon as it
+ * is appended. The edit runs on the JDK's namespace-aware DOM, so no third-party
+ * XML library is needed and new elements join the POM's default namespace.
  */
 final class PomDocument {
 
@@ -94,12 +92,10 @@ final class PomDocument {
 	}
 
 	static List<Element> children(Element parent, String name) {
-		List<Element> matches = new ArrayList<>();
-		NodeList nodes = parent.getChildNodes();
-		for (int index = 0; index < nodes.getLength(); index++) {
-			addIfMatch(matches, nodes.item(index), name);
-		}
-		return matches;
+		return childNodes(parent)
+				.filter(node -> node instanceof Element element && name.equals(element.getLocalName()))
+				.map(Element.class::cast)
+				.toList();
 	}
 
 	/** @return the element's {@code artifactId} text, when it declares one */
@@ -112,27 +108,21 @@ final class PomDocument {
 	}
 
 	/**
-	 * Writes the document back verbatim. The transformer's own indentation is left
-	 * off and the parsed whitespace nodes are kept, so only the elements the edit
-	 * added differ from the original. The original's XML declaration and trailing
-	 * newline are carried over exactly so the first and last lines are not disturbed
-	 * either.
-	 *
-	 * <p>XML parsing normalizes {@code \r\n} to {@code \n}, so the DOM the
-	 * transformer serializes has lost the original terminator;
-	 * {@link LineTerminators} puts it back, keeping a CRLF POM on CRLF rather than
-	 * silently flipping every line to LF and reformatting the whole file.
+	 * Writes the document back verbatim: the transformer's own indentation is left
+	 * off and the parsed whitespace nodes are kept, so only the added elements
+	 * differ from the original, whose XML declaration and trailing newline are
+	 * carried over exactly. XML parsing normalizes {@code \r\n} to {@code \n}, so
+	 * {@link LineTerminators} puts the original terminator back rather than flipping
+	 * a CRLF POM to LF and reformatting the whole file.
 	 */
 	void write() {
-		String content = declarationPrefix() + serialize();
-		String withTrailingNewline = matchTrailingNewline(content);
-		AdoptionFiles.write(file, LineTerminators.matching(withTrailingNewline, original), DESCRIPTION);
+		String content = matchTrailingNewline(declarationPrefix() + serialize());
+		AdoptionFiles.write(file, LineTerminators.matching(content, original), DESCRIPTION);
 	}
 
-	private static void addIfMatch(List<Element> matches, Node node, String name) {
-		if (node instanceof Element element && name.equals(element.getLocalName())) {
-			matches.add(element);
-		}
+	private static Stream<Node> childNodes(Element parent) {
+		NodeList nodes = parent.getChildNodes();
+		return IntStream.range(0, nodes.getLength()).mapToObj(nodes::item);
 	}
 
 	private Element appendChild(Element parent, Element child) {
@@ -177,14 +167,11 @@ final class PomDocument {
 	 * element's leading whitespace, or two spaces when the POM carries none.
 	 */
 	private static String detectIndentUnit(Element root) {
-		NodeList children = root.getChildNodes();
-		for (int index = 0; index < children.getLength(); index++) {
-			String unit = leadingIndentOf(children.item(index));
-			if (!unit.isEmpty()) {
-				return unit;
-			}
-		}
-		return DEFAULT_INDENT_UNIT;
+		return childNodes(root)
+				.map(PomDocument::leadingIndentOf)
+				.filter(unit -> !unit.isEmpty())
+				.findFirst()
+				.orElse(DEFAULT_INDENT_UNIT);
 	}
 
 	private static String leadingIndentOf(Node node) {
@@ -227,16 +214,12 @@ final class PomDocument {
 
 	private String serialize() {
 		try {
-			return transformBody();
+			StringWriter writer = new StringWriter();
+			transformer().transform(new DOMSource(document), new StreamResult(writer));
+			return writer.toString();
 		} catch (TransformerException e) {
 			throw new AdoptionException("Could not write POM: " + file, e);
 		}
-	}
-
-	private String transformBody() throws TransformerException {
-		StringWriter writer = new StringWriter();
-		transformer().transform(new DOMSource(document), new StreamResult(writer));
-		return writer.toString();
 	}
 
 	private static Transformer transformer() throws TransformerException {
@@ -249,10 +232,9 @@ final class PomDocument {
 	}
 
 	/**
-	 * The XML declaration the original file opened with, up to and including its
-	 * line terminator, or empty when it had none. Carrying it over verbatim keeps
-	 * the transformer from inventing one (and adding a spurious first-line change)
-	 * on a POM that started straight with {@code <project>}.
+	 * The XML declaration the original opened with, up to and including its line
+	 * terminator, or empty when it had none — so the transformer cannot invent one
+	 * (a spurious first-line change) on a POM that started with {@code <project>}.
 	 */
 	private String declarationPrefix() {
 		if (!original.stripLeading().startsWith("<?xml")) {

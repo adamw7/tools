@@ -17,19 +17,16 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * branch and opens a pull request from it, leaving the default branch untouched.
  *
  * <p>{@code -B} resets the branch to the current {@code HEAD} whether or not it
- * already exists, so re-running the adoption against a checkout that already
- * carries the branch starts the feature branch afresh rather than aborting on an
- * "already exists" failure.
+ * already exists, so re-running the adoption starts the feature branch afresh
+ * rather than aborting on an "already exists" failure.
  *
- * <p>A checkout that carries no local branch yet but whose {@code origin} already
- * publishes one — a fresh clone re-adopting a repository an earlier run already
- * pushed, which is what the default temporary workspace produces on every run —
- * starts the branch from that published tip instead of from {@code HEAD}. Without
- * it the branch would restart at the default branch, and {@link PushStep} would
- * be rejected as a non-fast-forward, so a second adoption could never get past
- * the push even though every other step is idempotent. A local branch that
- * already exists is left to the plain {@code -B} above, so unpushed work in a
- * reused workspace is never reset onto the remote.
+ * <p>A checkout with no local branch yet but whose {@code origin} already
+ * publishes one — a fresh clone re-adopting a repository an earlier run pushed,
+ * which the default temporary workspace produces on every run — starts from that
+ * published tip instead of {@code HEAD}. Otherwise the branch would restart at the
+ * default branch and {@link PushStep} would be rejected as a non-fast-forward, so
+ * a second adoption could never get past the push. An existing local branch is
+ * left to the plain {@code -B}, so unpushed work is never reset onto the remote.
  */
 public class BranchStep extends AbstractCommandStep {
 
@@ -57,7 +54,7 @@ public class BranchStep extends AbstractCommandStep {
 	/**
 	 * @return the published branch to start from, or empty when the checkout
 	 *         already carries the branch locally or {@code origin} does not publish
-	 *         it yet — in both cases the branch starts from {@code HEAD} as before.
+	 *         it yet — in both cases the branch starts from {@code HEAD}
 	 */
 	private Optional<String> startPoint(AdoptionContext context, CommandRunner runner) {
 		if (hasLocalBranch(context, runner) || !hasRemoteBranch(context, runner)) {

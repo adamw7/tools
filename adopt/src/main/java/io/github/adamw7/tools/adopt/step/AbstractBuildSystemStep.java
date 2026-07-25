@@ -17,10 +17,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * all three acting on the same build tool, so the guard that is wired in is the
  * guard that is verified with the tool that was probed.
  *
- * <p>Detection only comes up empty when a step is configured with a build-system
- * list that has no catch-all fallback — {@link BuildSystems#DEFAULTS} always
- * matches — in which case the step is skipped with a warning rather than failing
- * the adoption.
+ * <p>Detection only comes up empty for a step configured with a build-system list
+ * that has no catch-all fallback ({@link BuildSystems#DEFAULTS} always matches),
+ * in which case the step is skipped with a warning rather than failing the run.
  */
 public abstract class AbstractBuildSystemStep extends AbstractCommandStep {
 

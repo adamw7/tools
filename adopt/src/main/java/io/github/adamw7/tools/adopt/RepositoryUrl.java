@@ -7,12 +7,10 @@ import java.util.stream.Stream;
 /**
  * A repository clone URL, parsed once into the two facts the adoption needs from
  * it: the repository name the checkout directory is created under, and the
- * {@code owner/repository} slug the steps name their target repository with.
- *
- * <p>Both are derived up front so a malformed URL fails on the adoption's input
- * rather than several steps later, and so {@link AdoptionContext} can stay what
- * its name says it is — the inputs the pipeline shares — instead of also being a
- * git-URL parser.
+ * {@code owner/repository} slug the steps name their target repository with. Both
+ * are derived up front so a malformed URL fails on the adoption's input rather
+ * than several steps later, and so {@link AdoptionContext} can stay the inputs the
+ * pipeline shares instead of also being a git-URL parser.
  */
 public final class RepositoryUrl {
 
@@ -50,10 +48,9 @@ public final class RepositoryUrl {
 	}
 
 	/**
-	 * @return the {@code owner/repository} the URL names, for the steps that must
-	 *         tell a tool which repository to act on rather than let it guess from
-	 *         the checkout's git remote; empty when the URL carries no host and so
-	 *         names no owner
+	 * @return the {@code owner/repository} the URL names, for the steps that tell a
+	 *         tool which repository to act on rather than let it guess from the
+	 *         checkout's git remote; empty when the URL names no owner
 	 */
 	public Optional<String> slug() {
 		return Optional.ofNullable(slug);
@@ -67,11 +64,10 @@ public final class RepositoryUrl {
 
 	/**
 	 * A URL whose last segment is empty or a directory alias — {@code .../repo//},
-	 * {@code .../.git}, or a bare {@code ..} — would otherwise resolve the checkout
-	 * onto the workspace itself or above it, so the clone would land beside the
-	 * other repositories the workspace holds instead of in its own directory.
-	 * Rejecting it here fails the adoption on its input rather than several steps
-	 * later on a checkout directory nobody intended.
+	 * {@code .../.git}, or a bare {@code ..} — would resolve the checkout onto the
+	 * workspace itself or above it, so the clone would land beside the other
+	 * repositories the workspace holds. Rejecting it fails the adoption on its input
+	 * rather than several steps later on a checkout directory nobody intended.
 	 */
 	private static String requireName(String name, String repositoryUrl) {
 		if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
@@ -84,16 +80,13 @@ public final class RepositoryUrl {
 	/**
 	 * Derives {@code owner/repository} from the clone URL, covering the forms git
 	 * accepts: {@code https://host/owner/repo.git}, {@code ssh://git@host/owner/repo},
-	 * and the scp-like {@code git@host:owner/repo}. The scheme is dropped and the
-	 * remainder split on both separators, so the scp-like form's {@code ':'} is
-	 * treated as the path separator it is.
+	 * and the scp-like {@code git@host:owner/repo} — hence splitting on both
+	 * separators, so that form's {@code ':'} is the path separator it is.
 	 *
-	 * <p>A URL is only read as naming an owner when a host segment precedes the last
-	 * two — the segment before the owner must look like a hostname. Without that
-	 * check a plain filesystem path such as {@code /tmp/workspace/repo} would yield
-	 * the nonsense slug {@code workspace/repo}, and a step would confidently point a
-	 * tool at a repository that does not exist; an empty result instead leaves the
-	 * step to fall back to its own inference.
+	 * <p>A URL only names an owner when a host-looking segment precedes the last two.
+	 * Without that check a plain filesystem path such as {@code /tmp/workspace/repo}
+	 * would yield the nonsense slug {@code workspace/repo} and point a tool at a
+	 * repository that does not exist; an empty result leaves the step to infer.
 	 *
 	 * @return the slug, or {@code null} when the URL names no owner
 	 */

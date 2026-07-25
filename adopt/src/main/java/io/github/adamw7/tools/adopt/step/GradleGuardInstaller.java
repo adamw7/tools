@@ -9,26 +9,22 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
 /**
  * Appends a {@code CLAUDE.md} guard task to a Gradle build script so the adopted
  * repository fails its build when the generated {@code CLAUDE.md} is missing or
- * empty. Unlike the Maven path — which wires the full {@code claude-code-enforcer}
- * format rule — Gradle has no such rule available, so the guard is a
- * dependency-free presence-and-non-empty check written directly into the build
- * script.
+ * empty. Gradle has no {@code claude-code-enforcer} equivalent, so the guard is a
+ * dependency-free presence-and-non-empty check rather than the full format rule
+ * the Maven path wires in.
  *
- * <p>The correct syntax is chosen from the script's extension: the Kotlin DSL
- * ({@code build.gradle.kts}) and the Groovy DSL ({@code build.gradle}) differ.
- * The block is appended rather than parsed in because Gradle scripts are code,
- * not data, and a self-contained task needs no structural edit. The install is
- * idempotent: a script that already declares the {@value #GUARD_TASK} task is
- * left untouched.
+ * <p>The syntax is chosen from the script's extension, since the Kotlin
+ * ({@code build.gradle.kts}) and Groovy ({@code build.gradle}) DSLs differ. The
+ * block is appended rather than parsed in because Gradle scripts are code, not
+ * data. The install is idempotent: a script that already declares the
+ * {@value #GUARD_TASK} task is left untouched.
  *
  * <p>The file to check is resolved while the task is being <em>configured</em> and
  * only read inside {@code doLast}, so the task body captures a plain
  * {@link java.io.File} rather than reaching back into the {@code Project} at
- * execution time. Gradle's configuration cache — on by default from Gradle 9, and
- * widely opted into before that — rejects a task that holds a script or
- * {@code Project} reference, and would otherwise fail the guard task in the Groovy
- * DSL and the whole build in the Kotlin one, aborting the adoption at
- * {@link GradleBuildSystem#verifyCommand()} and breaking {@code check} for every
+ * execution time. Gradle's configuration cache rejects a task that holds a script
+ * or {@code Project} reference, which would abort the adoption at
+ * {@link GradleBuildSystem#verifyCommand()} and break {@code check} for every
  * contributor afterwards.
  */
 public class GradleGuardInstaller {
@@ -89,12 +85,10 @@ public class GradleGuardInstaller {
 	}
 
 	/**
-	 * The task name has to appear in a registration for the script to count as
-	 * guarded, and comment lines are skipped, so a script that merely mentions
-	 * {@value #GUARD_TASK} — in a {@code // TODO} note, or in a declaration someone
-	 * commented out — is still given the task. Matching the bare name anywhere would
-	 * leave such a script without the task {@link GradleBuildSystem#verifyCommand()}
-	 * is about to run, failing the adoption at its verification step.
+	 * The task name only counts when it appears in a registration outside a comment,
+	 * so a script that merely mentions {@value #GUARD_TASK} — in a {@code // TODO},
+	 * or in a declaration someone commented out — is still given the task rather
+	 * than left without the one {@link GradleBuildSystem#verifyCommand()} runs.
 	 */
 	private boolean declaresGuard(String script) {
 		return DECLARATION.matcher(withoutCommentLines(script)).find();
@@ -105,22 +99,14 @@ public class GradleGuardInstaller {
 	 * spread over several lines is still recognised.
 	 */
 	private String withoutCommentLines(String script) {
-		return script.lines().filter(line -> !isCommentLine(line)).collect(Collectors.joining("\n"));
-	}
-
-	private boolean isCommentLine(String line) {
-		return line.strip().startsWith(LINE_COMMENT);
+		return script.lines().filter(line -> !line.strip().startsWith(LINE_COMMENT)).collect(Collectors.joining("\n"));
 	}
 
 	private String blockFor(Path buildFile) {
 		return buildFile.getFileName().toString().endsWith(KOTLIN_SUFFIX) ? KOTLIN_BLOCK : GROOVY_BLOCK;
 	}
 
-	/**
-	 * The appended block's LF line terminators are rewritten to match the ones the
-	 * script already uses, so appending the guard to a CRLF build script does not
-	 * leave the new region with LF endings mixed into an otherwise CRLF file.
-	 */
+	/** The block's LF terminators are rewritten to the script's own, so a CRLF file stays CRLF throughout. */
 	private void append(Path buildFile, String existing, String block) {
 		AdoptionFiles.write(buildFile, existing + LineTerminators.matching(block, existing), BUILD_FILE_DESCRIPTION);
 	}

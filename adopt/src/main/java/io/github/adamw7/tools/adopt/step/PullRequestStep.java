@@ -26,28 +26,21 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>The step stays idempotent when re-run: it asks {@code gh pr list --state
  * open} whether an <em>open</em> pull request already exists for the branch and
- * skips creation when one does, rather than creating unconditionally and then
- * matching the wording of a failure. Scoping the query to open pull requests
- * matters because a branch whose earlier pull request was closed or merged still
- * needs a fresh one — {@code gh pr view <branch>} would report that stale closed
- * pull request as if it were current and wrongly skip creation. That keeps the
- * decision robust across {@code gh} versions and locales.
+ * skips creation when one does, rather than matching the wording of a failure.
+ * Scoping the query to open pull requests matters because a branch whose earlier
+ * pull request was closed or merged still needs a fresh one.
  *
  * <p>Both commands name the target repository with {@code --repo} rather than
- * letting {@code gh} infer it from the checkout's git remote. The adoption
- * already knows which repository it is adopting, and the remote is not always
- * readable as a GitHub one: a {@code url.<base>.insteadOf} rewrite, an
- * organisation mirror, or a proxied clone leaves {@code gh} reporting that "none
- * of the git remotes configured for this repository point to a known GitHub
- * host", which would fail the very last step of an otherwise complete adoption.
- * A URL that names no owner leaves the flag off, so {@code gh} falls back to its
- * own inference.
+ * letting {@code gh} infer it from the checkout's git remote, which an
+ * {@code insteadOf} rewrite, an organisation mirror, or a proxied clone can leave
+ * unreadable as a GitHub one — failing the very last step of an otherwise
+ * complete adoption. A URL that names no owner leaves the flag off, so {@code gh}
+ * falls back to its own inference.
  *
- * <p>After the pull request is created (or found already open), the step records
- * its URL in the run's {@link AdoptionReport}. The URL is read back with
- * {@code gh pr list --json url} rather than scraped from {@code gh pr create}'s
- * human-oriented output, so the extraction is one structured path for both the
- * fresh and the re-run case.
+ * <p>The pull request's URL is recorded in the run's {@link AdoptionReport}, read
+ * back with {@code gh pr list --json url} rather than scraped from {@code gh pr
+ * create}'s human-oriented output, so both the fresh and the re-run case take one
+ * structured path.
  */
 public class PullRequestStep extends AbstractCommandStep {
 
@@ -106,24 +99,16 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	private void addTargetRepository(List<String> command, AdoptionContext context) {
-		context.repositorySlug().ifPresent(slug -> {
-			command.add("--repo");
-			command.add(slug);
-		});
+		context.repositorySlug().ifPresent(slug -> command.addAll(List.of("--repo", slug)));
 	}
 
 	private void addRepeated(List<String> command, String flag, List<String> values) {
-		for (String value : values) {
-			command.add(flag);
-			command.add(value);
-		}
+		values.forEach(value -> command.addAll(List.of(flag, value)));
 	}
 
 	/**
 	 * @return the URL of the branch's open pull request, or empty when none is open
-	 *         (or {@code gh} could not be queried). The query is scoped to open pull
-	 *         requests so a stale closed or merged one for the same branch does not
-	 *         count as already open.
+	 *         or {@code gh} could not be queried
 	 */
 	private Optional<String> openPullRequestUrl(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(), listCommand(context));
@@ -158,15 +143,15 @@ public class PullRequestStep extends AbstractCommandStep {
 
 	/**
 	 * {@code gh pr list --json} writes a JSON array to stdout, but the captured
-	 * output may carry surrounding noise (for example update notices merged in from
-	 * stderr), so parsing starts at an opening bracket instead of assuming a pure
-	 * JSON payload. Every bracket is tried in turn rather than only the first,
-	 * because a diagnostic printed <em>before</em> the payload can itself contain
-	 * one; stopping at the first would parse the noise, conclude no pull request is
-	 * open, and make the step create a duplicate — which {@code gh} rejects, failing
-	 * an adoption that was only being re-run. The first element's {@code url} is
-	 * returned, or empty when no bracket starts a JSON array, the array is empty, or
-	 * it carries no textual URL.
+	 * output may carry surrounding noise (update notices merged in from stderr), so
+	 * parsing starts at an opening bracket. Every bracket is tried rather than only
+	 * the first, because a diagnostic printed <em>before</em> the payload can itself
+	 * contain one; stopping there would parse the noise, conclude no pull request is
+	 * open, and make the step create a duplicate {@code gh} rejects — failing an
+	 * adoption that was only being re-run.
+	 *
+	 * @return the first element's {@code url}, or empty when no bracket starts a
+	 *         JSON array, the array is empty, or it carries no textual URL
 	 */
 	private Optional<String> extractUrl(String output) {
 		for (int start = output.indexOf('['); start >= 0; start = output.indexOf('[', start + 1)) {

@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -28,31 +27,25 @@ final class ToolProbe {
 	/**
 	 * @return the tools whose {@code --version} probe could not be run or exited
 	 *         non-zero, in the order they were given. Every tool is probed even
-	 *         after one is found missing, so a single failure can name all of the
-	 *         absent tools at once rather than stopping at the first and hiding the
-	 *         rest.
+	 *         after one is found missing, so a single failure names all of the
+	 *         absent tools at once.
 	 */
 	List<String> missingFrom(List<String> tools, Path directory, CommandRunner runner) {
-		List<String> missing = new ArrayList<>();
-		for (String tool : tools) {
-			collectIfMissing(missing, tool, directory, runner);
-		}
-		return missing;
+		return tools.stream().filter(tool -> !found(tool, directory, runner)).toList();
 	}
 
-	private void collectIfMissing(List<String> missing, String tool, Path directory, CommandRunner runner) {
-		if (isInstalled(tool, directory, runner)) {
+	private boolean found(String tool, Path directory, CommandRunner runner) {
+		boolean installed = isInstalled(tool, directory, runner);
+		if (installed) {
 			log.info("Found required tool: {}", tool);
-		} else {
-			missing.add(tool);
 		}
+		return installed;
 	}
 
 	/**
 	 * @return whether the tool's {@code --version} probe runs and exits zero. The
-	 *         probe's shape lives here rather than at each caller, so
-	 *         {@link ToolchainStep} and {@link BuildToolchainStep} cannot drift apart
-	 *         on how a tool is checked for.
+	 *         probe's shape lives here so {@link ToolchainStep} and
+	 *         {@link BuildToolchainStep} cannot drift apart on it.
 	 */
 	boolean isInstalled(String tool, Path directory, CommandRunner runner) {
 		return succeeds(List.of(tool, VERSION_FLAG), directory, runner);

@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -9,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -37,7 +37,7 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 	private final AssetInstaller agentsMdInstaller;
 
 	public ClaudeMdConformanceStep() {
-		this(new ClaudeMdConformer(), new AssetInstaller(AdoptionAssets.AGENTS_MD_FILE, AdoptionAssets.AGENTS_MD));
+		this(new ClaudeMdConformer(), AdoptionAssets.agentsMd());
 	}
 
 	ClaudeMdConformanceStep(ClaudeMdConformer conformer, AssetInstaller agentsMdInstaller) {
@@ -64,7 +64,7 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 		if (conformed.equals(original)) {
 			log.info("{} already satisfies the claudeMdFormat rule; left unchanged", CLAUDE_MD);
 		} else {
-			write(claudeMd, conformed);
+			AdoptionFiles.write(claudeMd, conformed, CLAUDE_MD);
 			log.info("Normalised {} to satisfy the claudeMdFormat rule", CLAUDE_MD);
 		}
 	}
@@ -74,18 +74,6 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 			throw new AdoptionException(name() + " requires " + CLAUDE_MD + " but it was not found in "
 					+ claudeMd.getParent());
 		}
-		try {
-			return Files.readString(claudeMd);
-		} catch (IOException e) {
-			throw new AdoptionException(name() + " could not read " + claudeMd, e);
-		}
-	}
-
-	private void write(Path claudeMd, String content) {
-		try {
-			Files.writeString(claudeMd, content);
-		} catch (IOException e) {
-			throw new AdoptionException(name() + " could not write " + claudeMd, e);
-		}
+		return AdoptionFiles.read(claudeMd, CLAUDE_MD);
 	}
 }

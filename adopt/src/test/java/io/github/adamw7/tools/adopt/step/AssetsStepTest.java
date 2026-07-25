@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class AssetsStepTest {
@@ -22,7 +23,7 @@ class AssetsStepTest {
 
 	@Test
 	void installsEveryDefaultAsset(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		step.execute(context, new RecordingCommandRunner());
 		Path checkout = context.repositoryDirectory();
 		assertTrue(Files.isRegularFile(checkout.resolve(AdoptionAssets.AGENTS_MD_FILE)));
@@ -35,13 +36,13 @@ class AssetsStepTest {
 	@Test
 	void runsNoExternalCommands(@TempDir Path workspace) throws IOException {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
-		step.execute(contextFor(workspace), runner);
+		step.execute(AdoptionContexts.checkedOutIn(workspace), runner);
 		assertEquals(0, runner.count());
 	}
 
 	@Test
 	void installedJsonAssetsAreValidJson(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		step.execute(context, new RecordingCommandRunner());
 		ObjectMapper mapper = new ObjectMapper();
 		Path checkout = context.repositoryDirectory();
@@ -52,7 +53,7 @@ class AssetsStepTest {
 
 	@Test
 	void sessionStartHookIsExecutable(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		step.execute(context, new RecordingCommandRunner());
 		assertTrue(Files.isExecutable(context.repositoryDirectory()
 				.resolve(AdoptionAssets.SESSION_START_HOOK_FILE)));
@@ -60,7 +61,7 @@ class AssetsStepTest {
 
 	@Test
 	void settingsWireTheSessionStartHook(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		step.execute(context, new RecordingCommandRunner());
 		String settings = Files.readString(context.repositoryDirectory().resolve(AdoptionAssets.SETTINGS_FILE));
 		assertTrue(settings.contains(AdoptionAssets.SESSION_START_HOOK_FILE));
@@ -68,7 +69,7 @@ class AssetsStepTest {
 
 	@Test
 	void isIdempotentAcrossReRuns(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		step.execute(context, new RecordingCommandRunner());
 		Path agentsMd = context.repositoryDirectory().resolve(AdoptionAssets.AGENTS_MD_FILE);
 		Files.writeString(agentsMd, "customised\n");
@@ -78,7 +79,7 @@ class AssetsStepTest {
 
 	@Test
 	void installsOnlyConfiguredAssets(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = contextFor(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		new AssetsStep(List.of(new AssetInstaller("only.txt", "content\n")))
 				.execute(context, new RecordingCommandRunner());
 		assertTrue(Files.isRegularFile(context.repositoryDirectory().resolve("only.txt")));
@@ -90,9 +91,4 @@ class AssetsStepTest {
 		assertEquals("assets", step.name());
 	}
 
-	private AdoptionContext contextFor(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/owner/repo.git", workspace);
-		Files.createDirectories(context.repositoryDirectory());
-		return context;
-	}
 }

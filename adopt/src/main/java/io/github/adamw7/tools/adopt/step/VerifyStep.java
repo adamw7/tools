@@ -23,7 +23,6 @@ public class VerifyStep extends AbstractBuildSystemStep {
 	private static final Logger log = LogManager.getLogger(VerifyStep.class);
 
 	public VerifyStep() {
-		this(BuildSystems.DEFAULTS);
 	}
 
 	public VerifyStep(List<BuildSystem> buildSystems) {

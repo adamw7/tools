@@ -48,7 +48,7 @@ public class Main {
 	}
 
 	static Path workspace(CliArguments cli) {
-		return cli.workspace().map(Workspaces::createIfMissing).orElseGet(Workspaces::createTemporary);
+		return Workspaces.resolve(cli.workspace());
 	}
 
 	/**

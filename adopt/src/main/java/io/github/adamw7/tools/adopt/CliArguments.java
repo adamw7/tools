@@ -62,19 +62,15 @@ public final class CliArguments {
 	}
 
 	public String branchName() {
-		return branchName == null ? AdoptionContext.DEFAULT_BRANCH : branchName;
+		return AdoptionContext.branchOrDefault(branchName);
 	}
 
 	public PullRequestOptions pullRequestOptions() {
-		PullRequestOptions.Builder builder = PullRequestOptions.builder()
-				.reviewers(reviewers).labels(labels).assignees(assignees).draft(draft);
-		if (title != null) {
-			builder.title(title);
-		}
-		if (body != null) {
-			builder.body(body);
-		}
-		return builder.build();
+		return PullRequestOptions.builder()
+				.reviewers(reviewers).labels(labels).assignees(assignees).draft(draft)
+				.titleIfPresent(title)
+				.bodyIfPresent(body)
+				.build();
 	}
 
 	public boolean includeAssets() {

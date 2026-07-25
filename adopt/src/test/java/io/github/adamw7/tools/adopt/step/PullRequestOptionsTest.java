@@ -69,6 +69,31 @@ class PullRequestOptionsTest {
 		assertThrows(IllegalArgumentException.class, withoutBody::build);
 	}
 
+	/**
+	 * The command line and the MCP tool both map an optional input straight into the
+	 * builder, so an omitted title or body has to leave the adoption default in place
+	 * rather than blank out a field the record refuses.
+	 */
+	@Test
+	void keepsTheDefaultsWhenNoTitleOrBodyWasSupplied() {
+		PullRequestOptions options = PullRequestOptions.builder()
+				.titleIfPresent(null)
+				.bodyIfPresent("   ")
+				.build();
+		assertEquals(PullRequestOptions.DEFAULT_TITLE, options.title());
+		assertEquals(PullRequestOptions.DEFAULT_BODY, options.body());
+	}
+
+	@Test
+	void suppliedTitleAndBodyOverrideTheDefaults() {
+		PullRequestOptions options = PullRequestOptions.builder()
+				.titleIfPresent("Title")
+				.bodyIfPresent("Body")
+				.build();
+		assertEquals("Title", options.title());
+		assertEquals("Body", options.body());
+	}
+
 	@Test
 	void defensivelyCopiesReviewers() {
 		List<String> reviewers = new ArrayList<>(List.of("octocat"));

@@ -2,6 +2,8 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.util.List;
 
+import io.github.adamw7.tools.adopt.Text;
+
 /**
  * The metadata a {@link PullRequestStep} opens its pull request with: the title
  * and body, plus optional reviewers, labels, and assignees to request, and
@@ -21,8 +23,8 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 			+ "into the build so the file keeps being validated.";
 
 	public PullRequestOptions {
-		title = requireText(title, "title");
-		body = requireText(body, "body");
+		title = Text.required(title, "title");
+		body = Text.required(body, "body");
 		reviewers = List.copyOf(reviewers);
 		labels = List.copyOf(labels);
 		assignees = List.copyOf(assignees);
@@ -34,13 +36,6 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 
 	public static Builder builder() {
 		return new Builder();
-	}
-
-	private static String requireText(String value, String field) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(field + " must not be blank");
-		}
-		return value.strip();
 	}
 
 	/** Fluent builder that starts from the adoption defaults and no reviewers, labels, or assignees. */
@@ -64,6 +59,20 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 		public Builder body(String body) {
 			this.body = body;
 			return this;
+		}
+
+		/**
+		 * Overrides the default title only when one was actually supplied, so a caller
+		 * mapping an optional input — an omitted {@code --title} flag, a blank MCP
+		 * argument — does not have to guard the call itself.
+		 */
+		public Builder titleIfPresent(String title) {
+			return Text.isPresent(title) ? title(title) : this;
+		}
+
+		/** Overrides the default body only when one was supplied; see {@link #titleIfPresent(String)}. */
+		public Builder bodyIfPresent(String body) {
+			return Text.isPresent(body) ? body(body) : this;
 		}
 
 		public Builder reviewers(List<String> reviewers) {

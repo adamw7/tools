@@ -28,6 +28,11 @@ public abstract class AbstractBuildSystemStep extends AbstractCommandStep {
 
 	private final List<BuildSystem> buildSystems;
 
+	/** Detects the checkout's build system among {@link BuildSystems#DEFAULTS}. */
+	protected AbstractBuildSystemStep() {
+		this(BuildSystems.DEFAULTS);
+	}
+
 	protected AbstractBuildSystemStep(List<BuildSystem> buildSystems) {
 		this.buildSystems = List.copyOf(buildSystems);
 	}

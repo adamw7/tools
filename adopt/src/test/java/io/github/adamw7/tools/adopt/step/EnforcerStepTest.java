@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class EnforcerStepTest {
@@ -39,16 +40,10 @@ class EnforcerStepTest {
 		return new EnforcerStep(List.of(new MavenBuildSystem(new PomEnforcerInstaller(RULE_VERSION))));
 	}
 
-	private AdoptionContext context(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/demo.git", workspace);
-		Files.createDirectories(context.repositoryDirectory());
-		return context;
-	}
-
 	@Test
 	void wiresEnforcerIntoCheckoutPom(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
-		Files.writeString(context.repositoryDirectory().resolve("pom.xml"), POM);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "pom.xml", POM);
 		mavenStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.readString(context.repositoryDirectory().resolve("pom.xml"))
 				.contains("maven-enforcer-plugin"));
@@ -56,7 +51,7 @@ class EnforcerStepTest {
 
 	@Test
 	void wiresGuardIntoAGroovyGradleBuild(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		Path buildFile = context.repositoryDirectory().resolve("build.gradle");
 		Files.writeString(buildFile, "plugins { id 'java' }\n");
 		new EnforcerStep().execute(context, new RecordingCommandRunner());
@@ -65,7 +60,7 @@ class EnforcerStepTest {
 
 	@Test
 	void wiresGuardIntoAKotlinGradleBuild(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		Path buildFile = context.repositoryDirectory().resolve("build.gradle.kts");
 		Files.writeString(buildFile, "plugins { java }\n");
 		new EnforcerStep().execute(context, new RecordingCommandRunner());
@@ -74,7 +69,7 @@ class EnforcerStepTest {
 
 	@Test
 	void wiresTheFallbackGuardWhenNoBuildFileIsPresent(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		new EnforcerStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.exists(context.repositoryDirectory().resolve(WorkflowGuardInstaller.WORKFLOW_FILE)));
 		assertFalse(Files.exists(context.repositoryDirectory().resolve("pom.xml")));
@@ -82,7 +77,7 @@ class EnforcerStepTest {
 
 	@Test
 	void skipsWhenNoConfiguredBuildSystemMatches(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		EnforcerStep step = new EnforcerStep(List.of(new MavenBuildSystem(), new GradleBuildSystem()));
 		assertDoesNotThrow(() -> step.execute(context, new RecordingCommandRunner()));
 		assertFalse(Files.exists(context.repositoryDirectory().resolve(WorkflowGuardInstaller.WORKFLOW_FILE)));
@@ -90,7 +85,7 @@ class EnforcerStepTest {
 
 	@Test
 	void leavesAnAlreadyWiredPomByteForByteUnchanged(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		Path pom = context.repositoryDirectory().resolve("pom.xml");
 		Files.writeString(pom, POM);
 		EnforcerStep step = mavenStep();

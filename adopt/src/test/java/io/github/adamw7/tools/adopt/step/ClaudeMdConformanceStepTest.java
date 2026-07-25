@@ -12,19 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class ClaudeMdConformanceStepTest {
 
-	private AdoptionContext context(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/security.git", workspace);
-		Files.createDirectories(context.repositoryDirectory());
-		return context;
-	}
-
 	private void writeClaudeMd(AdoptionContext context, String content) throws IOException {
-		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), content);
+		AdoptionContexts.write(context, "CLAUDE.md", content);
 	}
 
 	private String claudeMd(AdoptionContext context) throws IOException {
@@ -42,7 +37,7 @@ class ClaudeMdConformanceStepTest {
 
 	@Test
 	void writesAgentsMdAndNormalisesClaudeMd(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\n\n## Project purpose\n\nA repo.\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.isRegularFile(agentsMd(context)), "a companion AGENTS.md must be written");
@@ -53,7 +48,7 @@ class ClaudeMdConformanceStepTest {
 
 	@Test
 	void doesNotOverwriteAnExistingAgentsMd(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\n");
 		Files.writeString(agentsMd(context), "# Project's own AGENTS.md\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
@@ -67,7 +62,7 @@ class ClaudeMdConformanceStepTest {
 	 */
 	@Test
 	void leavesAnAlreadyConformingClaudeMdByteIdentical(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\n\nSee AGENTS.md.\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
 		String conformed = claudeMd(context);
@@ -77,7 +72,7 @@ class ClaudeMdConformanceStepTest {
 
 	@Test
 	void missingClaudeMdAbortsAdoption(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		ClaudeMdConformanceStep step = new ClaudeMdConformanceStep();
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));

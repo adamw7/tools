@@ -3,7 +3,6 @@ package io.github.adamw7.tools.adopt.step;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +28,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
@@ -61,6 +61,8 @@ public class PomEnforcerInstaller {
 	static final String BUILD_PROPERTIES = "/adopt-build.properties";
 	static final String RULE_VERSION_KEY = "enforcer.rule.version";
 	static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
+
+	private static final String POM_DESCRIPTION = "POM";
 
 	private final Supplier<String> ruleVersion;
 
@@ -138,7 +140,7 @@ public class PomEnforcerInstaller {
 	 *         unchanged.
 	 */
 	public boolean install(Path pomFile) {
-		String original = readText(pomFile);
+		String original = AdoptionFiles.read(pomFile, POM_DESCRIPTION);
 		Document document = parse(pomFile);
 		PomEditor editor = new PomEditor(document);
 		Element plugins = editor.pluginsElement();
@@ -236,14 +238,6 @@ public class PomEnforcerInstaller {
 		}
 	}
 
-	private String readText(Path pomFile) {
-		try {
-			return Files.readString(pomFile);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read POM: " + pomFile, e);
-		}
-	}
-
 	private Document parse(Path pomFile) {
 		try {
 			return builder().parse(pomFile.toFile());
@@ -278,12 +272,15 @@ public class PomEnforcerInstaller {
 	 * silently flipping every line to LF and reformatting the whole file.
 	 */
 	private void write(Document document, Path pomFile, String original) {
+		String content = declarationPrefix(original) + serialize(document, pomFile);
+		String withTrailingNewline = matchTrailingNewline(content, original);
+		AdoptionFiles.write(pomFile, LineTerminators.matching(withTrailingNewline, original), POM_DESCRIPTION);
+	}
+
+	private String serialize(Document document, Path pomFile) {
 		try {
-			String content = declarationPrefix(original) + transformBody(document);
-			String withTrailingNewline = matchTrailingNewline(content, original);
-			Files.createDirectories(pomFile.toAbsolutePath().getParent());
-			Files.writeString(pomFile, LineTerminators.matching(withTrailingNewline, original));
-		} catch (IOException | TransformerException e) {
+			return transformBody(document);
+		} catch (TransformerException e) {
 			throw new AdoptionException("Could not write POM: " + pomFile, e);
 		}
 	}

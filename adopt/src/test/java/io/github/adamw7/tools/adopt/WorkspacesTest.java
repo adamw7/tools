@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -68,6 +69,21 @@ class WorkspacesTest {
 		Path second = Workspaces.createTemporary();
 		assertNotEquals(first, second, "each run must get its own workspace");
 		assertTrue(first.isAbsolute(), "the clone target is resolved against the workspace, so it must be absolute");
+	}
+
+	/** Both entry points resolve their workspace here, so a named one is created and reused. */
+	@Test
+	void resolvesANamedWorkspace(@TempDir Path dir) {
+		Path named = dir.resolve("workspace");
+		assertEquals(named, Workspaces.resolve(Optional.of(named)));
+		assertTrue(Files.isDirectory(named));
+	}
+
+	@Test
+	void resolvesAnUnnamedWorkspaceToATemporaryOne() {
+		Path workspace = Workspaces.resolve(Optional.empty());
+		assertTrue(Files.isDirectory(workspace));
+		assertTrue(workspace.getFileName().toString().startsWith("claude-adopt-"));
 	}
 
 	@Test

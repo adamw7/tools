@@ -27,4 +27,10 @@ class CommandResultTest {
 		CommandResult result = new CommandResult(List.of("git", "commit", "-m", "msg"), 0, "");
 		assertEquals("git commit -m msg", result.describe());
 	}
+
+	/** The failures raised before a result exists describe their command the same way. */
+	@Test
+	void describesACommandWithoutAResult() {
+		assertEquals("gh pr create", CommandResult.describe(List.of("gh", "pr", "create")));
+	}
 }

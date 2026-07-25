@@ -34,7 +34,6 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 	private final ToolProbe probe = new ToolProbe();
 
 	public BuildToolchainStep() {
-		this(BuildSystems.DEFAULTS);
 	}
 
 	public BuildToolchainStep(List<BuildSystem> buildSystems) {

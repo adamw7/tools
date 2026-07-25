@@ -16,20 +16,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class ClaudeInitStepTest {
 
-	private AdoptionContext context(Path workspace) throws IOException {
-		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace);
-		Files.createDirectories(context.repositoryDirectory());
-		return context;
-	}
-
 	private void generateClaudeMd(AdoptionContext context) throws IOException {
-		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md");
+		AdoptionContexts.write(context, "CLAUDE.md", "# CLAUDE.md");
 	}
 
 	/**
@@ -61,7 +56,7 @@ class ClaudeInitStepTest {
 	 */
 	@Test
 	void aFailedRestoreDoesNotReplaceTheOriginalFailure(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeDirMemory(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
 			blockRestore(context);
@@ -90,7 +85,7 @@ class ClaudeInitStepTest {
 
 	@Test
 	void runsConfiguredClaudeCommandInCheckout(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = generatingRunner(context);
 		new ClaudeInitStep(List.of("claude", "init")).execute(context, runner);
 		assertEquals(List.of("claude", "init"), runner.commandAt(0));
@@ -99,7 +94,7 @@ class ClaudeInitStepTest {
 
 	@Test
 	void defaultsToHeadlessInitCommand(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = generatingRunner(context);
 		new ClaudeInitStep().execute(context, runner);
 		assertEquals(ClaudeInitStep.DEFAULT_COMMAND, runner.commandAt(0));
@@ -113,8 +108,8 @@ class ClaudeInitStepTest {
 	 */
 	@Test
 	void leavesAnAlreadyAdoptedCheckoutUntouched(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
-		Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md\n\nHand-edited.");
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "CLAUDE.md", "# CLAUDE.md\n\nHand-edited.");
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new ClaudeInitStep().execute(context, runner);
 		assertEquals(0, runner.count(), "claude must not be re-run over an existing CLAUDE.md");
@@ -128,7 +123,7 @@ class ClaudeInitStepTest {
 	 */
 	@Test
 	void doesNotDisturbClaudeDirMemoryWhenSkipping(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		generateClaudeMd(context);
 		writeClaudeDirMemory(context);
 		new ClaudeInitStep().execute(context, new RecordingCommandRunner());
@@ -143,7 +138,7 @@ class ClaudeInitStepTest {
 
 	@Test
 	void failedInitAbortsAdoption(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> new CommandResult(command, 1, "boom"));
 		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
@@ -151,14 +146,14 @@ class ClaudeInitStepTest {
 
 	@Test
 	void missingClaudeMdAbortsAdoption(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
 	}
 
 	@Test
 	void movesExistingClaudeDirMemoryAsideSoHeadlessInitWritesRootFile(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeDirMemory(context);
 		AtomicBoolean memoryHiddenDuringInit = new AtomicBoolean();
 		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
@@ -174,7 +169,7 @@ class ClaudeInitStepTest {
 
 	@Test
 	void restoresExistingClaudeDirMemoryWhenInitFails(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeDirMemory(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> new CommandResult(command, 1, "boom"));
@@ -184,14 +179,14 @@ class ClaudeInitStepTest {
 
 	@Test
 	void leavesRootClaudeMdUntouchedWhenNoClaudeDirMemoryExists(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = context(workspace);
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		new ClaudeInitStep().execute(context, generatingRunner(context));
 		assertFalse(Files.exists(claudeDirMemory(context)));
 	}
 
 	private void writeRootClaudeMd(AdoptionContext context) {
 		try {
-			Files.writeString(context.repositoryDirectory().resolve("CLAUDE.md"), "# CLAUDE.md");
+			AdoptionContexts.write(context, "CLAUDE.md", "# CLAUDE.md");
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

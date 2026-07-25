@@ -1,13 +1,12 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Installs a build-tool-agnostic {@code CLAUDE.md} guard into a checkout that has
@@ -90,10 +89,7 @@ public class WorkflowGuardInstaller {
 	}
 
 	private boolean carriesMarker(Path workflowFile) {
-		try {
-			return Files.isRegularFile(workflowFile) && Files.readString(workflowFile).contains(MARKER);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read workflow file: " + workflowFile, e);
-		}
+		return Files.isRegularFile(workflowFile)
+				&& AdoptionFiles.read(workflowFile, "workflow file").contains(MARKER);
 	}
 }

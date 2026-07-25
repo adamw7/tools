@@ -159,4 +159,19 @@ class AdoptionContextTest {
 		assertTrue(new AdoptionContext("file:///tmp/tools", workspace).repositorySlug().isEmpty());
 		assertTrue(new AdoptionContext("tools", workspace).repositorySlug().isEmpty());
 	}
+
+	/**
+	 * An omitted command-line positional and an empty MCP argument both mean "adopt
+	 * on the default branch", so neither may be rejected as an invalid branch.
+	 */
+	@Test
+	void aBlankOrAbsentBranchFallsBackToTheDefault() {
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, AdoptionContext.branchOrDefault(null));
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, AdoptionContext.branchOrDefault("   "));
+	}
+
+	@Test
+	void aNamedBranchOverridesTheDefault() {
+		assertEquals("feature/adopt", AdoptionContext.branchOrDefault("  feature/adopt  "));
+	}
 }

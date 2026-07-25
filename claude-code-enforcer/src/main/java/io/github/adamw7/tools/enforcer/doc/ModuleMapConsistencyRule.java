@@ -11,7 +11,6 @@ import javax.inject.Named;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Enforcer rule that keeps the module map in the agent docs from drifting away
@@ -95,14 +94,10 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 		requireExists(docFile, docFile.getName());
 		String content = requireContent(docFile, docFile.getName());
 		for (String module : modules) {
-			addMissingMention(docFile, module, content, violations);
-		}
-	}
-
-	private void addMissingMention(File docFile, String module, String content, List<String> violations) {
-		String name = moduleName(module);
-		if (!isIgnored(name) && !content.contains(name)) {
-			violations.add(docFile + " does not mention module '" + name + "' declared in " + pomFile);
+			String name = moduleName(module);
+			if (!isIgnored(name) && !content.contains(name)) {
+				violations.add(docFile + " does not mention module '" + name + "' declared in " + pomFile);
+			}
 		}
 	}
 

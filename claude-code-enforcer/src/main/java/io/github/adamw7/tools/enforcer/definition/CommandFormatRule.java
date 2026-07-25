@@ -33,7 +33,8 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 @Named("commandFormat")
 public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final String DESCRIPTION_KEY = "description";
+	private static final String LABEL = "Command";
+	private static final String DEFINITION = "command definition";
 
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
@@ -59,51 +60,23 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectCommandViolations(File command, List<String> violations) {
-		String content = MarkdownText.read(command, "command definition");
+		String content = MarkdownText.read(command, DEFINITION);
 		if (content.isBlank()) {
 			violations.add("Command definition is empty: " + command);
-		} else {
-			collectNonEmptyViolations(command, content, violations);
+			return;
 		}
-	}
-
-	private void collectNonEmptyViolations(File command, String content, List<String> violations) {
 		String baseName = DefinitionFiles.baseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
-		String fixed = FrontMatterAutoFix.apply(command, "command definition", content, autoFix, getLog());
+		String fixed = FrontMatterAutoFix.apply(command, DEFINITION, content, autoFix, getLog());
 		FrontMatter.parse(fixed)
 				.ifPresent(frontMatter -> collectFrontMatterViolations(command, frontMatter, violations));
 	}
 
 	private void collectFrontMatterViolations(File command, FrontMatter frontMatter, List<String> violations) {
-		collectUnknownKeys(command, frontMatter, violations);
-		collectDescriptionViolations(command, frontMatter, violations);
-		ModelAllowlist.collect(allowedModels, frontMatter, "Command", command, violations);
-	}
-
-	private void collectUnknownKeys(File command, FrontMatter frontMatter, List<String> violations) {
-		if (allowedFrontMatterKeys == null) {
-			return;
-		}
-		for (String key : frontMatter.keys()) {
-			addUnknownKeyViolation(command, key, violations);
-		}
-	}
-
-	private void addUnknownKeyViolation(File command, String key, List<String> violations) {
-		if (!allowedFrontMatterKeys.contains(key)) {
-			violations.add("Command front matter has unknown key '" + key + ":' in: " + command);
-		}
-	}
-
-	private void collectDescriptionViolations(File command, FrontMatter frontMatter, List<String> violations) {
-		frontMatter.value(DESCRIPTION_KEY).ifPresent(description -> addDescriptionViolation(command, description, violations));
-	}
-
-	private void addDescriptionViolation(File command, String description, List<String> violations) {
-		if (description.isBlank()) {
-			violations.add("Command description must not be empty in: " + command);
-		}
+		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, command, violations);
+		checks.allowOnlyKeys(allowedFrontMatterKeys);
+		checks.checkDescription(0);
+		checks.checkModel(allowedModels);
 	}
 
 	void setCommandsDir(File commandsDir) {

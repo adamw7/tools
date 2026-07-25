@@ -36,9 +36,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	private static final String SKILL_FILE_NAME = "SKILL.md";
-	private static final String NAME_KEY = "name";
-	private static final String DESCRIPTION_KEY = "description";
-	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of(NAME_KEY, DESCRIPTION_KEY);
+	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
 	private static final int DEFAULT_MAX_DESCRIPTION_LENGTH = 1024;
 
 	/** The {@code .claude/skills} directory to scan. Injected from the rule configuration. */
@@ -80,15 +78,10 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 		String content = MarkdownText.read(skillFile, SKILL_FILE_NAME);
 		if (content.isBlank()) {
 			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
-		} else {
-			String fixed = FrontMatterAutoFix.apply(skillFile, SKILL_FILE_NAME, content, autoFix, getLog());
-			collectFrontMatterViolations(skillDirectory, skillFile, fixed, violations);
+			return;
 		}
-	}
-
-	private void collectFrontMatterViolations(File skillDirectory, File skillFile, String content,
-			List<String> violations) {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
+		String fixed = FrontMatterAutoFix.apply(skillFile, SKILL_FILE_NAME, content, autoFix, getLog());
+		Optional<FrontMatter> frontMatter = FrontMatter.parse(fixed);
 		if (frontMatter.isEmpty()) {
 			violations.add(SKILL_FILE_NAME + " must start with a YAML front matter block delimited by '---': "
 					+ skillFile);
@@ -99,53 +92,11 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	private void collectFrontMatterViolations(File skillDirectory, File skillFile, FrontMatter frontMatter,
 			List<String> violations) {
-		collectMissingKeys(skillFile, frontMatter, violations);
-		collectUnknownKeys(skillFile, frontMatter, violations);
-		collectNameViolations(skillDirectory, skillFile, frontMatter, violations);
-		collectDescriptionViolations(skillFile, frontMatter, violations);
-	}
-
-	private void collectMissingKeys(File skillFile, FrontMatter frontMatter, List<String> violations) {
-		for (String key : requiredKeys()) {
-			if (!frontMatter.hasKey(key)) {
-				violations.add(SKILL_FILE_NAME + " front matter is missing '" + key + ":' in: " + skillFile);
-			}
-		}
-	}
-
-	private void collectUnknownKeys(File skillFile, FrontMatter frontMatter, List<String> violations) {
-		if (allowedFrontMatterKeys == null) {
-			return;
-		}
-		for (String key : frontMatter.keys()) {
-			addUnknownKeyViolation(skillFile, key, violations);
-		}
-	}
-
-	private void addUnknownKeyViolation(File skillFile, String key, List<String> violations) {
-		if (!allowedFrontMatterKeys.contains(key)) {
-			violations.add(SKILL_FILE_NAME + " front matter has unknown key '" + key + ":' in: " + skillFile);
-		}
-	}
-
-	private void collectNameViolations(File skillDirectory, File skillFile, FrontMatter frontMatter,
-			List<String> violations) {
-		frontMatter.value(NAME_KEY).ifPresent(
-				name -> NameConvention.collect(name, skillDirectory.getName(), skillFile.toString(), violations));
-	}
-
-	private void collectDescriptionViolations(File skillFile, FrontMatter frontMatter, List<String> violations) {
-		frontMatter.value(DESCRIPTION_KEY).ifPresent(
-				description -> addDescriptionViolations(skillFile, description, violations));
-	}
-
-	private void addDescriptionViolations(File skillFile, String description, List<String> violations) {
-		if (description.isBlank()) {
-			violations.add(SKILL_FILE_NAME + " description must not be empty in: " + skillFile);
-		} else if (description.length() > maxDescriptionLength) {
-			violations.add(SKILL_FILE_NAME + " description exceeds " + maxDescriptionLength
-					+ " characters in: " + skillFile);
-		}
+		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, SKILL_FILE_NAME, skillFile, violations);
+		checks.requireKeys(requiredKeys());
+		checks.allowOnlyKeys(allowedFrontMatterKeys);
+		checks.checkName(skillDirectory.getName());
+		checks.checkDescription(maxDescriptionLength);
 	}
 
 	private List<String> requiredKeys() {

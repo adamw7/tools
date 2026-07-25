@@ -90,10 +90,8 @@ final class Gitignore {
 	 * one of its ancestor directories is.
 	 */
 	boolean covers(String path) {
-		if (isIgnored(path, false)) {
-			return true;
-		}
-		return ancestorsOf(path).stream().anyMatch(ancestor -> isIgnored(ancestor, true));
+		return isIgnored(path, false)
+				|| ancestorsOf(path).stream().anyMatch(ancestor -> isIgnored(ancestor, true));
 	}
 
 	/** The verdict of the last matching line, honouring negations; directory-only lines match directories alone. */

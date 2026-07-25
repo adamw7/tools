@@ -34,7 +34,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
  * The title and required sections default to the subclass-provided values but
  * can be overridden from the rule configuration, so the rule is reusable across
  * projects without a recompile. Subclasses contribute the file, its name, the
- * defaults, and any document-specific checks.
+ * required sections, and any document-specific checks.
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
@@ -82,11 +82,17 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	/** Human-readable file name used in messages, e.g. {@code CLAUDE.md}. */
 	protected abstract String documentName();
 
-	/** The default title heading the document must start with, e.g. {@code # CLAUDE.md}. */
-	protected abstract String defaultTitleHeading();
-
 	/** The default section headings the document must contain. */
 	protected abstract List<String> defaultRequiredSections();
+
+	/**
+	 * The default title heading the document must start with. A document is titled
+	 * after itself, e.g. {@code # CLAUDE.md}, so the file name is the default; a
+	 * document titled otherwise overrides this.
+	 */
+	protected String defaultTitleHeading() {
+		return "# " + documentName();
+	}
 
 	/** Hook for document-specific checks. The default implementation does nothing. */
 	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
@@ -139,8 +145,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
-		requireConfigured(file, documentName());
-		requireExists(file, documentName());
+		requireDocument(file, documentName());
 		return MarkdownDocument.parse(requireContent(file, documentName()));
 	}
 
@@ -152,15 +157,11 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	private void collectSectionViolations(MarkdownDocument document, List<String> violations) {
 		for (String section : requiredSections()) {
-			addSectionViolation(document, section, violations);
-		}
-	}
-
-	private void addSectionViolation(MarkdownDocument document, String section, List<String> violations) {
-		if (!document.hasHeading(section)) {
-			violations.add(documentName() + " is missing required section heading: " + section);
-		} else if (!document.hasBody(section)) {
-			violations.add(documentName() + " has an empty section: " + section);
+			if (!document.hasHeading(section)) {
+				violations.add(documentName() + " is missing required section heading: " + section);
+			} else if (!document.hasBody(section)) {
+				violations.add(documentName() + " has an empty section: " + section);
+			}
 		}
 	}
 
@@ -173,16 +174,12 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		if (!enforceSectionOrder) {
 			return;
 		}
-		List<String> expected = presentRequiredSections(document);
+		Set<String> headings = document.headings();
+		List<String> expected = requiredSections().stream().filter(headings::contains).toList();
 		List<String> actual = document.headingsInOrder(requiredSections());
 		if (!actual.equals(expected)) {
 			violations.add(documentName() + " sections are out of order; expected " + expected + " but found " + actual);
 		}
-	}
-
-	private List<String> presentRequiredSections(MarkdownDocument document) {
-		Set<String> headings = document.headings();
-		return requiredSections().stream().filter(headings::contains).toList();
 	}
 
 	private void collectForbiddenTokenViolations(MarkdownDocument document, List<String> violations) {
@@ -201,14 +198,11 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		for (int i = 0; i < document.lineCount(); i++) {
-			addLineLengthViolation(document.line(i), document.isInsideFence(i), i, violations);
-		}
-	}
-
-	private void addLineLengthViolation(String line, boolean insideFence, int index, List<String> violations) {
-		if (!insideFence && line.length() > maxLineLength) {
-			violations.add(documentName() + " line " + (index + 1) + " exceeds " + maxLineLength
-					+ " characters (" + line.length() + ")");
+			String line = document.line(i);
+			if (!document.isInsideFence(i) && line.length() > maxLineLength) {
+				violations.add(documentName() + " line " + (i + 1) + " exceeds " + maxLineLength
+						+ " characters (" + line.length() + ")");
+			}
 		}
 	}
 
@@ -218,17 +212,17 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		File baseDir = referenceBaseDir();
 		for (int i = 0; i < document.lineCount(); i++) {
-			collectLineReferences(document.line(i), document.isInsideFence(i), baseDir, violations);
+			collectLineReferences(document, i, baseDir, violations);
 		}
 	}
 
-	private void collectLineReferences(String line, boolean insideFence, File baseDir, List<String> violations) {
-		if (insideFence) {
+	private void collectLineReferences(MarkdownDocument document, int index, File baseDir, List<String> violations) {
+		if (document.isInsideFence(index)) {
 			return;
 		}
-		Matcher matcher = MARKDOWN_LINK.matcher(line);
+		Matcher matcher = MARKDOWN_LINK.matcher(document.line(index));
 		while (matcher.find()) {
-			addReferenceViolation(linkDestination(matcher.group(1)), baseDir, violations);
+			addReferenceViolation(localReferencePath(linkDestination(matcher.group(1))), baseDir, violations);
 		}
 	}
 
@@ -245,8 +239,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		return target.split("\\s", 2)[0].strip();
 	}
 
-	private void addReferenceViolation(String target, File baseDir, List<String> violations) {
-		String localPath = localReferencePath(target);
+	private void addReferenceViolation(String localPath, File baseDir, List<String> violations) {
 		if (localPath != null && !new File(baseDir, localPath).exists()) {
 			violations.add(documentName() + " references a missing file: " + localPath);
 		}
@@ -257,13 +250,8 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		if (target.isEmpty() || target.startsWith("#") || EXTERNAL_REFERENCE.matcher(target).matches()) {
 			return null;
 		}
-		String withoutAnchor = stripAfter(stripAfter(target, '#'), '?');
-		return withoutAnchor.isEmpty() ? null : withoutAnchor;
-	}
-
-	private String stripAfter(String value, char delimiter) {
-		int index = value.indexOf(delimiter);
-		return index < 0 ? value : value.substring(0, index);
+		String path = target.split("[#?]", 2)[0];
+		return path.isEmpty() ? null : path;
 	}
 
 	private File referenceBaseDir() {

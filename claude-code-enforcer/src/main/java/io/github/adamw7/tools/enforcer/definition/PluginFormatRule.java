@@ -64,11 +64,6 @@ public class PluginFormatRule extends JsonFileRule {
 		return "plugin.json";
 	}
 
-	@Override
-	protected String header() {
-		return "plugin.json is not well formed:";
-	}
-
 	/** Not every repository ships a plugin, so an absent manifest is a pass. */
 	@Override
 	protected void handleMissingFile(File file) {
@@ -96,13 +91,9 @@ public class PluginFormatRule extends JsonFileRule {
 			return;
 		}
 		for (String key : JsonNodes.fieldNames(manifest)) {
-			addUnknownKeyViolation(key, violations);
-		}
-	}
-
-	private void addUnknownKeyViolation(String key, List<String> violations) {
-		if (!allowedKeys.contains(key)) {
-			violations.add("plugin.json has unknown key '" + key + "' in: " + pluginFile);
+			if (!allowedKeys.contains(key)) {
+				violations.add("plugin.json has unknown key '" + key + "' in: " + pluginFile);
+			}
 		}
 	}
 

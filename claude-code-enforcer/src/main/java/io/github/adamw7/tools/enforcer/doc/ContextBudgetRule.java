@@ -1,19 +1,16 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
@@ -56,14 +53,15 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		requireLimitConfigured();
-		requireTargetsConfigured();
+		ScanTargets targets = new ScanTargets(files, directories);
+		targets.requireConfigured();
 		List<String> violations = new ArrayList<>();
-		for (File file : configuredFiles()) {
+		for (File file : targets.files()) {
 			requireExists(file, file.getName());
 			collectBudgetViolations(file, violations);
 		}
-		for (File directory : configuredDirectories()) {
-			collectDirectoryViolations(directory, violations);
+		for (File file : targets.filesInDirectories(ContextBudgetRule::isMarkdown)) {
+			collectBudgetViolations(file, violations);
 		}
 		report("Context budget exceeded:", violations);
 	}
@@ -82,41 +80,16 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	private void requireTargetsConfigured() throws EnforcerRuleException {
-		if (configuredFiles().isEmpty() && configuredDirectories().isEmpty()) {
-			throw new EnforcerRuleException("Configure at least one of the files or directories parameters");
-		}
-	}
-
-	private void collectDirectoryViolations(File directory, List<String> violations) {
-		if (!directory.isDirectory()) {
-			return;
-		}
-		for (Path file : markdownFilesIn(directory)) {
-			collectBudgetViolations(file.toFile(), violations);
-		}
-	}
-
-	private List<Path> markdownFilesIn(File directory) {
-		try (Stream<Path> walk = Files.walk(directory.toPath())) {
-			return walk.filter(Files::isRegularFile)
-					.filter(path -> path.getFileName().toString().endsWith(MARKDOWN_EXTENSION))
-					.sorted().toList();
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not scan directory " + directory, e);
-		}
+	private static boolean isMarkdown(Path path) {
+		return path.getFileName().toString().endsWith(MARKDOWN_EXTENSION);
 	}
 
 	private void collectBudgetViolations(File file, List<String> violations) {
-		collectBytesViolation(file, violations);
-		if (maxLines > 0 || maxTokens > 0) {
-			collectContentViolations(file, MarkdownText.read(file, file.getName()), violations);
-		}
-	}
-
-	private void collectBytesViolation(File file, List<String> violations) {
 		if (maxBytes > 0 && file.length() > maxBytes) {
 			violations.add(file + " is " + file.length() + " bytes, over the " + maxBytes + "-byte budget");
+		}
+		if (maxLines > 0 || maxTokens > 0) {
+			collectContentViolations(file, MarkdownText.read(file, file.getName()), violations);
 		}
 	}
 
@@ -125,28 +98,15 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		if (maxLines > 0 && lines > maxLines) {
 			violations.add(file + " has " + lines + " lines, over the " + maxLines + "-line budget");
 		}
-		collectTokensViolation(file, content, violations);
-	}
-
-	private void collectTokensViolation(File file, String content, List<String> violations) {
 		long tokens = estimatedTokens(content);
 		if (maxTokens > 0 && tokens > maxTokens) {
-			violations.add(file + " is an estimated " + tokens + " tokens, over the " + maxTokens
-					+ "-token budget");
+			violations.add(file + " is an estimated " + tokens + " tokens, over the " + maxTokens + "-token budget");
 		}
 	}
 
 	/** Rounds up, so a one-character file estimates to one token rather than zero. */
 	private long estimatedTokens(String content) {
 		return (content.length() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
-	}
-
-	private List<File> configuredFiles() {
-		return files != null ? files : List.of();
-	}
-
-	private List<File> configuredDirectories() {
-		return directories != null ? directories : List.of();
 	}
 
 	void setFiles(List<File> files) {

@@ -90,17 +90,13 @@ public class McpConfigFormatRule extends JsonFileRule {
 		if (server == null) {
 			return;
 		}
-		collectTransportConflict(name, server, violations);
+		if (server.has(COMMAND_KEY) && server.has(URL_KEY)) {
+			add(name, "declares both a 'command' and a 'url'", violations);
+		}
 		collectArgsViolations(name, server, violations);
 		collectStringMapViolations(name, server, ENV_KEY, violations);
 		collectStringMapViolations(name, server, HEADERS_KEY, violations);
 		collectUrlViolations(name, server, violations);
-	}
-
-	private void collectTransportConflict(String name, JsonNode server, List<String> violations) {
-		if (server.has(COMMAND_KEY) && server.has(URL_KEY)) {
-			violations.add("mcp.json server '" + name + "' declares both a 'command' and a 'url'");
-		}
 	}
 
 	private void collectArgsViolations(String name, JsonNode server, List<String> violations) {
@@ -109,16 +105,12 @@ public class McpConfigFormatRule extends JsonFileRule {
 			return;
 		}
 		if (!args.isArray()) {
-			violations.add("mcp.json server '" + name + "' has an 'args' that is not an array");
-		} else {
-			collectArgElements(name, args, violations);
+			add(name, "has an 'args' that is not an array", violations);
+			return;
 		}
-	}
-
-	private void collectArgElements(String name, JsonNode args, List<String> violations) {
 		for (int i = 0; i < args.size(); i++) {
 			if (!args.get(i).isTextual()) {
-				violations.add("mcp.json server '" + name + "' has a non-string entry in 'args'");
+				add(name, "has a non-string entry in 'args'", violations);
 			}
 		}
 	}
@@ -129,16 +121,12 @@ public class McpConfigFormatRule extends JsonFileRule {
 			return;
 		}
 		if (!map.isObject()) {
-			violations.add("mcp.json server '" + name + "' has a '" + key + "' that is not an object");
-		} else {
-			collectStringMapValues(name, key, map, violations);
+			add(name, "has a '" + key + "' that is not an object", violations);
+			return;
 		}
-	}
-
-	private void collectStringMapValues(String name, String key, JsonNode map, List<String> violations) {
 		for (String field : JsonNodes.fieldNames(map)) {
 			if (!map.get(field).isTextual()) {
-				violations.add("mcp.json server '" + name + "' has a non-string value for '" + key + "." + field + "'");
+				add(name, "has a non-string value for '" + key + "." + field + "'", violations);
 			}
 		}
 	}
@@ -148,16 +136,17 @@ public class McpConfigFormatRule extends JsonFileRule {
 		if (url == null || !url.isTextual()) {
 			return;
 		}
-		addUrlViolation(name, url.asText(), violations);
+		String scheme = schemeOf(url.asText());
+		if (scheme == null) {
+			add(name, "has a malformed 'url': " + url.asText(), violations);
+		} else if (requireHttps && !scheme.equals(HTTPS_SCHEME)) {
+			add(name, "must use an https 'url': " + url.asText(), violations);
+		}
 	}
 
-	private void addUrlViolation(String name, String url, List<String> violations) {
-		String scheme = schemeOf(url);
-		if (scheme == null) {
-			violations.add("mcp.json server '" + name + "' has a malformed 'url': " + url);
-		} else if (requireHttps && !scheme.equals(HTTPS_SCHEME)) {
-			violations.add("mcp.json server '" + name + "' must use an https 'url': " + url);
-		}
+	/** Every violation names the server whose entry is malformed. */
+	private void add(String name, String problem, List<String> violations) {
+		violations.add("mcp.json server '" + name + "' " + problem);
 	}
 
 	/** The {@code http}/{@code https} scheme of a syntactically valid absolute URL, or null otherwise. */

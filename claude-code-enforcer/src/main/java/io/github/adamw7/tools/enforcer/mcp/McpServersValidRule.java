@@ -70,11 +70,6 @@ public class McpServersValidRule extends JsonFileRule {
 		return "mcp.json";
 	}
 
-	@Override
-	protected String header() {
-		return "mcp.json is not well formed:";
-	}
-
 	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
 	@Override
 	protected void handleMissingFile(File file) {
@@ -82,19 +77,11 @@ public class McpServersValidRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode mcp, List<String> violations) {
-		collectServersViolations(mcp, violations);
-	}
-
-	private void collectServersViolations(JsonNode mcp, List<String> violations) {
 		JsonNode servers = JsonNodes.objectAt(mcp, MCP_SERVERS_KEY);
 		if (servers == null) {
 			violations.add("mcp.json is missing the 'mcpServers' object");
-		} else {
-			collectKnownServersViolations(servers, violations);
+			return;
 		}
-	}
-
-	private void collectKnownServersViolations(JsonNode servers, List<String> violations) {
 		for (String name : JsonNodes.fieldNames(servers)) {
 			collectServerViolations(name, JsonNodes.objectAt(servers, name), violations);
 		}
@@ -102,36 +89,21 @@ public class McpServersValidRule extends JsonFileRule {
 		collectForbiddenServers(servers, violations);
 	}
 
+	/**
+	 * A server with no explicit {@code type} is a stdio server, inferred from its
+	 * {@code command}; an explicit type must be allowed and then carries either a
+	 * {@code command} (stdio) or a {@code url} (sse/http).
+	 */
 	private void collectServerViolations(String name, JsonNode server, List<String> violations) {
 		if (server == null) {
-			violations.add("mcp.json server '" + name + "' must be a JSON object");
-		} else {
-			collectTransportViolations(name, server, violations);
+			add(name, "must be a JSON object", violations);
+			return;
 		}
-	}
-
-	private void collectTransportViolations(String name, JsonNode server, List<String> violations) {
 		String type = JsonNodes.textAt(server, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
 			collectInferredTransportViolations(name, server, violations);
-		} else {
-			collectExplicitTransportViolations(name, server, type, violations);
-		}
-	}
-
-	private void collectInferredTransportViolations(String name, JsonNode server, List<String> violations) {
-		if (server.has(COMMAND_KEY)) {
-			collectCommandViolation(name, server, violations);
-		} else {
-			violations.add("mcp.json server '" + name
-					+ "' must declare a 'command' (stdio) or a 'type' with a 'url' (sse/http)");
-		}
-	}
-
-	private void collectExplicitTransportViolations(String name, JsonNode server, String type,
-			List<String> violations) {
-		if (!allowedTypes().contains(type)) {
-			violations.add("mcp.json server '" + name + "' has an unsupported type: " + type);
+		} else if (!allowedTypes().contains(type)) {
+			add(name, "has an unsupported type: " + type, violations);
 		} else if (type.equals(STDIO_TYPE)) {
 			collectCommandViolation(name, server, violations);
 		} else {
@@ -139,16 +111,29 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
+	private void collectInferredTransportViolations(String name, JsonNode server, List<String> violations) {
+		if (server.has(COMMAND_KEY)) {
+			collectCommandViolation(name, server, violations);
+		} else {
+			add(name, "must declare a 'command' (stdio) or a 'type' with a 'url' (sse/http)", violations);
+		}
+	}
+
 	private void collectCommandViolation(String name, JsonNode server, List<String> violations) {
 		if (JsonNodes.textAt(server, COMMAND_KEY, "").isBlank()) {
-			violations.add("mcp.json server '" + name + "' (stdio) is missing a 'command'");
+			add(name, "(stdio) is missing a 'command'", violations);
 		}
 	}
 
 	private void collectUrlViolation(String name, String type, JsonNode server, List<String> violations) {
 		if (JsonNodes.textAt(server, URL_KEY, "").isBlank()) {
-			violations.add("mcp.json server '" + name + "' (" + type + ") is missing a 'url'");
+			add(name, "(" + type + ") is missing a 'url'", violations);
 		}
+	}
+
+	/** Every violation names the server whose entry is malformed. */
+	private void add(String name, String problem, List<String> violations) {
+		violations.add("mcp.json server '" + name + "' " + problem);
 	}
 
 	private void collectRequiredServers(JsonNode servers, List<String> violations) {

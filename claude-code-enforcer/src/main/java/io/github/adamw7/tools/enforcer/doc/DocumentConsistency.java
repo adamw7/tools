@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.doc;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -9,10 +10,11 @@ import java.util.regex.Pattern;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.doc.BoundedCharSequence.BacktrackLimitExceededException;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
- * Compares two named documents against a list of single-group regular
- * expressions and reports where a captured value differs. Shared by
+ * Compares two documents against a list of single-group regular expressions and
+ * reports where a captured value differs. Shared by
  * {@link CrossDocConsistencyRule} and {@link ReadmeConsistencyRule} so the
  * pattern validation and capture logic live in one place.
  * <p>
@@ -22,7 +24,7 @@ import io.github.adamw7.tools.enforcer.doc.BoundedCharSequence.BacktrackLimitExc
  * document but not the other: mirror documents (CLAUDE.md and AGENTS.md) require
  * it in both, while a curated view (README.md against the agent docs) ignores a
  * fact the view simply chose not to repeat. That choice is the
- * {@code requireInBoth} flag passed to {@link #violations}.
+ * {@code requireInBoth} flag.
  */
 final class DocumentConsistency {
 
@@ -36,13 +38,31 @@ final class DocumentConsistency {
 	private static final long MINIMUM_STEPS = 1_000_000L;
 
 	/** A document to compare: its content, and the name shown in violation messages. */
-	record Document(String name, String content) {
+	private record Document(String name, String content) {
 	}
 
 	private final List<String> patterns;
+	private final boolean requireInBoth;
 
-	DocumentConsistency(List<String> patterns) {
+	DocumentConsistency(List<String> patterns, boolean requireInBoth) {
 		this.patterns = patterns != null ? patterns : List.of();
+		this.requireInBoth = requireInBoth;
+	}
+
+	/**
+	 * Collects one violation per pattern whose captured values disagree. A pattern
+	 * that matches in neither document is ignored, as is one that matches in only
+	 * one document unless {@code requireInBoth} was set.
+	 */
+	List<String> violations(File firstFile, File secondFile) throws EnforcerRuleException {
+		verifyPatterns();
+		Document first = read(firstFile);
+		Document second = read(secondFile);
+		List<String> violations = new ArrayList<>();
+		for (String pattern : patterns) {
+			collect(pattern, first, second, violations);
+		}
+		return violations;
 	}
 
 	/**
@@ -51,7 +71,7 @@ final class DocumentConsistency {
 	 * with a clear message instead of letting an opaque
 	 * {@link IndexOutOfBoundsException} escape at match time.
 	 */
-	void verifyPatterns() throws EnforcerRuleException {
+	private void verifyPatterns() throws EnforcerRuleException {
 		for (String pattern : patterns) {
 			if (Pattern.compile(pattern).matcher("").groupCount() < 1) {
 				throw new EnforcerRuleException(
@@ -60,63 +80,32 @@ final class DocumentConsistency {
 		}
 	}
 
-	/**
-	 * Collects one violation per pattern whose captured values disagree. When
-	 * {@code requireInBoth} is true a fact present in only one document is a
-	 * mismatch; when false such a fact is ignored, so the second document may
-	 * document a curated subset of the first. A pattern that matches in neither
-	 * document is always ignored.
-	 */
-	List<String> violations(Document first, Document second, boolean requireInBoth) {
-		List<String> violations = new ArrayList<>();
-		for (String pattern : patterns) {
-			collect(pattern, first, second, requireInBoth, violations);
-		}
-		return violations;
+	private Document read(File file) {
+		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
 	}
 
-	private void collect(String pattern, Document first, Document second, boolean requireInBoth,
-			List<String> violations) {
-		Pattern compiled = Pattern.compile(pattern);
+	private void collect(String pattern, Document first, Document second, List<String> violations) {
 		try {
-			collectCapturedMismatch(pattern, compiled, first, second, requireInBoth, violations);
+			addMismatch(pattern, first, second, violations);
 		} catch (BacktrackLimitExceededException e) {
 			violations.add("pattern '" + pattern
 					+ "' could not be evaluated within its backtracking budget (possible catastrophic backtracking)");
 		}
 	}
 
-	private void collectCapturedMismatch(String pattern, Pattern compiled, Document first, Document second,
-			boolean requireInBoth, List<String> violations) {
+	private void addMismatch(String pattern, Document first, Document second, List<String> violations) {
+		Pattern compiled = Pattern.compile(pattern);
 		Optional<String> firstValue = capture(compiled, first.content());
 		Optional<String> secondValue = capture(compiled, second.content());
-		if (isIgnored(firstValue, secondValue, requireInBoth)) {
-			return;
-		}
-		addMismatch(pattern, first, firstValue, second, secondValue, violations);
-	}
-
-	/**
-	 * A pattern is ignored when it matches in neither document, or when it matches
-	 * in only one and the caller does not require the fact in both.
-	 */
-	private boolean isIgnored(Optional<String> firstValue, Optional<String> secondValue, boolean requireInBoth) {
-		if (firstValue.isEmpty() && secondValue.isEmpty()) {
-			return true;
-		}
-		return absentFromOne(firstValue, secondValue) && !requireInBoth;
-	}
-
-	private boolean absentFromOne(Optional<String> firstValue, Optional<String> secondValue) {
-		return firstValue.isEmpty() || secondValue.isEmpty();
-	}
-
-	private void addMismatch(String pattern, Document first, Optional<String> firstValue, Document second,
-			Optional<String> secondValue, List<String> violations) {
-		if (!firstValue.equals(secondValue)) {
+		if (!firstValue.equals(secondValue) && !isIgnored(firstValue, secondValue)) {
 			violations.add("pattern '" + pattern + "' captured " + describe(first, firstValue) + " but "
 					+ describe(second, secondValue));
 		}
+	}
+
+	/** A fact present in only one document is a mismatch only when required in both. */
+	private boolean isIgnored(Optional<String> firstValue, Optional<String> secondValue) {
+		return (firstValue.isEmpty() || secondValue.isEmpty()) && !requireInBoth;
 	}
 
 	private String describe(Document document, Optional<String> value) {

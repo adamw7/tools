@@ -1,10 +1,5 @@
 package io.github.adamw7.tools.enforcer.definition;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -28,28 +23,8 @@ public class UniqueNamesRule extends MultiDefinitionRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		Map<String, List<String>> sourcesByName = new LinkedHashMap<>();
-		forEachDefinition((definitionFile, source, name) -> record(name, source.toString(), sourcesByName));
-		report("Claude Code names must be unique:", duplicates(sourcesByName));
-	}
-
-	private void record(String name, String source, Map<String, List<String>> sourcesByName) {
-		sourcesByName.computeIfAbsent(name, key -> new ArrayList<>()).add(source);
-	}
-
-	private List<String> duplicates(Map<String, List<String>> sourcesByName) {
-		List<String> violations = new ArrayList<>();
-		for (Map.Entry<String, List<String>> entry : sourcesByName.entrySet()) {
-			addDuplicateViolation(entry, violations);
-		}
-		return violations;
-	}
-
-	private void addDuplicateViolation(Map.Entry<String, List<String>> entry, List<String> violations) {
-		List<String> sources = entry.getValue();
-		if (sources.size() > 1) {
-			violations.add("name '" + entry.getKey() + "' is used by " + sources.size()
-					+ " definitions: " + String.join(", ", sources));
-		}
+		Duplicates names = new Duplicates();
+		forEachDefinition((definitionFile, source, name) -> names.add(name, name, source.toString()));
+		report("Claude Code names must be unique:", names.violations("name"));
 	}
 }

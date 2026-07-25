@@ -2,19 +2,17 @@ package io.github.adamw7.tools.enforcer.secret;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.stream.Stream;
 
 import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 
 /**
  * Enforcer rule that fails the build when a configured file contains what looks
@@ -57,14 +55,15 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		List<SecretPattern> patterns = patterns();
-		requireTargetsConfigured();
+		ScanTargets targets = new ScanTargets(files, directories);
+		targets.requireConfigured();
 		requirePatterns(patterns);
 		List<String> violations = new ArrayList<>();
-		for (File file : configuredFiles()) {
+		for (File file : targets.files()) {
 			scanIfPresent(file, patterns, violations);
 		}
-		for (File directory : configuredDirectories()) {
-			scanDirectory(directory, patterns, violations);
+		for (File file : targets.filesInDirectories()) {
+			scanIfPresent(file, patterns, violations);
 		}
 		report("Files contain what look like secrets:", violations);
 	}
@@ -78,33 +77,10 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 				"Re-run the build to confirm no secrets remain.");
 	}
 
-	private void requireTargetsConfigured() throws EnforcerRuleException {
-		if (configuredFiles().isEmpty() && configuredDirectories().isEmpty()) {
-			throw new EnforcerRuleException("Configure at least one of the files or directories parameters");
-		}
-	}
-
 	private void requirePatterns(List<SecretPattern> patterns) throws EnforcerRuleException {
 		if (patterns.isEmpty()) {
 			throw new EnforcerRuleException(
 					"Configure secretPatterns or leave useDefaultPatterns enabled, so there is something to scan for");
-		}
-	}
-
-	private void scanDirectory(File directory, List<SecretPattern> patterns, List<String> violations) {
-		if (!directory.isDirectory()) {
-			return;
-		}
-		for (Path file : regularFilesIn(directory)) {
-			scanIfPresent(file.toFile(), patterns, violations);
-		}
-	}
-
-	private List<Path> regularFilesIn(File directory) {
-		try (Stream<Path> walk = Files.walk(directory.toPath())) {
-			return walk.filter(Files::isRegularFile).sorted().toList();
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not scan directory " + directory, e);
 		}
 	}
 
@@ -154,22 +130,11 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		if (useDefaultPatterns) {
 			patterns.addAll(SecretPattern.defaults());
 		}
-		for (String regex : configuredSecretPatterns()) {
+		List<String> configured = secretPatterns != null ? secretPatterns : List.of();
+		for (String regex : configured) {
 			patterns.add(SecretPattern.of(regex, regex));
 		}
 		return patterns;
-	}
-
-	private List<File> configuredFiles() {
-		return files != null ? files : List.of();
-	}
-
-	private List<File> configuredDirectories() {
-		return directories != null ? directories : List.of();
-	}
-
-	private List<String> configuredSecretPatterns() {
-		return secretPatterns != null ? secretPatterns : List.of();
 	}
 
 	void setFiles(List<File> files) {

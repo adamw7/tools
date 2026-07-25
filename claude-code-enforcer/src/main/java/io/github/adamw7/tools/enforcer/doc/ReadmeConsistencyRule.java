@@ -5,6 +5,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+
 /**
  * Enforcer rule that keeps the README from drifting away from the agent docs.
  * {@code README.md} is a curated, example-heavy view of the same project that
@@ -22,7 +26,7 @@ import javax.inject.Named;
  * reported together.
  */
 @Named("readmeConsistency")
-public class ReadmeConsistencyRule extends AbstractDocumentConsistencyRule {
+public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	/** The README under review. Injected from the rule configuration. */
 	private File readmeFile;
@@ -34,38 +38,11 @@ public class ReadmeConsistencyRule extends AbstractDocumentConsistencyRule {
 	private List<String> consistentPatterns;
 
 	@Override
-	protected File firstFile() {
-		return readmeFile;
-	}
-
-	@Override
-	protected String firstParameterName() {
-		return "readmeFile";
-	}
-
-	@Override
-	protected File secondFile() {
-		return agentDocFile;
-	}
-
-	@Override
-	protected String secondParameterName() {
-		return "agentDocFile";
-	}
-
-	@Override
-	protected List<String> consistentPatterns() {
-		return consistentPatterns;
-	}
-
-	@Override
-	protected boolean requireInBoth() {
-		return false;
-	}
-
-	@Override
-	protected String reportHeader() {
-		return "README has drifted from the agent docs:";
+	public void execute() throws EnforcerRuleException {
+		requireDocument(readmeFile, "readmeFile");
+		requireDocument(agentDocFile, "agentDocFile");
+		report("README has drifted from the agent docs:",
+				new DocumentConsistency(consistentPatterns, false).violations(readmeFile, agentDocFile));
 	}
 
 	void setReadmeFile(File readmeFile) {

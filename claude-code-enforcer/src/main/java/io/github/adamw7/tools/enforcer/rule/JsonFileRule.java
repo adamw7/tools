@@ -50,11 +50,17 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	/** Human-readable file name used in messages, e.g. {@code settings.json}. */
 	protected abstract String description();
 
-	/** The header that prefixes the grouped violation report. */
-	protected abstract String header();
-
 	/** Document-specific checks against the parsed JSON. */
 	protected abstract void collectViolations(JsonNode root, List<String> violations);
+
+	/**
+	 * The header that prefixes the grouped violation report. A rule that validates
+	 * only part of its file overrides this to name that part, e.g.
+	 * {@code settings.json permissions are not well formed:}.
+	 */
+	protected String header() {
+		return description() + " is not well formed:";
+	}
 
 	@Override
 	protected List<String> howToFix() {

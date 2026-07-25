@@ -24,13 +24,11 @@ final class ClaudeProjectDir {
 	/** The path {@code token} resolves to when it references the project dir, else null. */
 	String expand(String token) {
 		String bare = withoutQuotes(token);
-		if (bare.contains(BRACED)) {
-			return bare.replace(BRACED, resolve().getPath());
+		if (!bare.contains(BRACED) && !bare.contains(PLAIN)) {
+			return null;
 		}
-		if (bare.contains(PLAIN)) {
-			return bare.replace(PLAIN, resolve().getPath());
-		}
-		return null;
+		String root = resolve().getPath();
+		return bare.replace(BRACED, root).replace(PLAIN, root);
 	}
 
 	/**

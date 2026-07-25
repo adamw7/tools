@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.enforcer.text;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,11 +61,7 @@ public final class FrontMatter {
 
 	/** The declared keys, in document order, without their trailing colon. */
 	public List<String> keys() {
-		List<String> keys = new ArrayList<>();
-		for (String line : lines) {
-			entryKey(line).ifPresent(keys::add);
-		}
-		return keys;
+		return lines.stream().map(this::entryKey).flatMap(Optional::stream).toList();
 	}
 
 	/**

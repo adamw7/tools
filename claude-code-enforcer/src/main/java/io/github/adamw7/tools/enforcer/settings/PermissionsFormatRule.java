@@ -1,11 +1,11 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.inject.Named;
 
@@ -91,32 +91,24 @@ public class PermissionsFormatRule extends JsonFileRule {
 		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
 		if (permissions == null) {
 			violations.add("settings.json 'permissions' must be a JSON object");
-		} else {
-			collectListViolations(permissions, violations);
+			return;
 		}
-	}
-
-	private void collectListViolations(JsonNode permissions, List<String> violations) {
 		for (String key : LIST_KEYS) {
-			collectSingleListViolations(permissions, key, violations);
+			collectListViolations(permissions, key, violations);
 		}
 		collectContradictions(permissions, violations);
 		collectForbiddenEntries(permissions, violations);
 	}
 
-	private void collectSingleListViolations(JsonNode permissions, String key, List<String> violations) {
+	private void collectListViolations(JsonNode permissions, String key, List<String> violations) {
 		if (!permissions.has(key)) {
 			return;
 		}
 		JsonNode list = JsonNodes.arrayAt(permissions, key);
 		if (list == null) {
-			violations.add("settings.json 'permissions." + key + "' must be an array");
-		} else {
-			collectEntryViolations(list, key, violations);
+			add(key, "must be an array", violations);
+			return;
 		}
-	}
-
-	private void collectEntryViolations(JsonNode list, String key, List<String> violations) {
 		Set<String> seen = new LinkedHashSet<>();
 		for (int i = 0; i < list.size(); i++) {
 			collectEntryViolations(list.get(i), key, i, seen, violations);
@@ -126,29 +118,24 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private void collectEntryViolations(JsonNode entry, String key, int index, Set<String> seen,
 			List<String> violations) {
 		if (!entry.isTextual()) {
-			violations.add("settings.json 'permissions." + key + "' entry " + (index + 1) + " must be a string");
+			add(key, "entry " + (index + 1) + " must be a string", violations);
 			return;
 		}
 		String value = entry.asText();
 		collectSyntaxViolations(value, key, violations);
-		collectDuplicateViolation(value, key, seen, violations);
+		if (!seen.add(value)) {
+			add(key, "lists '" + value + "' more than once", violations);
+		}
 		collectUnknownToolViolation(value, key, violations);
 	}
 
 	private void collectSyntaxViolations(String value, String key, List<String> violations) {
 		if (value.isBlank()) {
-			violations.add("settings.json 'permissions." + key + "' contains a blank entry");
+			add(key, "contains a blank entry", violations);
 		} else if (!ENTRY_SYNTAX.matcher(value).matches()) {
-			violations.add("settings.json 'permissions." + key + "' entry '" + value
-					+ "' is not of the form Tool or Tool(specifier)");
+			add(key, "entry '" + value + "' is not of the form Tool or Tool(specifier)", violations);
 		} else if (specifierOf(value).isBlank() && value.contains("(")) {
-			violations.add("settings.json 'permissions." + key + "' entry '" + value + "' has a blank specifier");
-		}
-	}
-
-	private void collectDuplicateViolation(String value, String key, Set<String> seen, List<String> violations) {
-		if (!seen.add(value)) {
-			violations.add("settings.json 'permissions." + key + "' lists '" + value + "' more than once");
+			add(key, "entry '" + value + "' has a blank specifier", violations);
 		}
 	}
 
@@ -158,21 +145,16 @@ public class PermissionsFormatRule extends JsonFileRule {
 		}
 		String tool = toolNameOf(value);
 		if (!tool.startsWith(MCP_TOOL_PREFIX) && !allowedTools.contains(tool)) {
-			violations.add("settings.json 'permissions." + key + "' entry '" + value
-					+ "' references unknown tool '" + tool + "'");
+			add(key, "entry '" + value + "' references unknown tool '" + tool + "'", violations);
 		}
 	}
 
 	private void collectContradictions(JsonNode permissions, List<String> violations) {
 		Set<String> denied = textEntries(permissions, DENY_KEY);
 		for (String entry : textEntries(permissions, ALLOW_KEY)) {
-			addContradictionViolation(entry, denied, violations);
-		}
-	}
-
-	private void addContradictionViolation(String entry, Set<String> denied, List<String> violations) {
-		if (denied.contains(entry)) {
-			violations.add("settings.json permission '" + entry + "' appears in both 'allow' and 'deny'");
+			if (denied.contains(entry)) {
+				violations.add("settings.json permission '" + entry + "' appears in both 'allow' and 'deny'");
+			}
 		}
 	}
 
@@ -189,26 +171,24 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private void addForbiddenEntryViolations(String entry, List<Pattern> patterns, List<String> violations) {
 		for (Pattern pattern : patterns) {
 			if (pattern.matcher(entry).matches()) {
-				violations.add("settings.json 'permissions.allow' entry '" + entry
-						+ "' matches forbidden pattern '" + pattern + "'");
+				add(ALLOW_KEY, "entry '" + entry + "' matches forbidden pattern '" + pattern + "'", violations);
 			}
 		}
 	}
 
+	/** The textual entries of one permission list, in document order, de-duplicated. */
 	private Set<String> textEntries(JsonNode permissions, String key) {
 		JsonNode list = JsonNodes.arrayAt(permissions, key);
-		Set<String> entries = new LinkedHashSet<>();
-		int size = list != null ? list.size() : 0;
-		for (int i = 0; i < size; i++) {
-			addTextEntry(list.get(i), entries);
+		if (list == null) {
+			return Set.of();
 		}
-		return entries;
+		return list.valueStream().filter(JsonNode::isTextual).map(JsonNode::asText)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
-	private void addTextEntry(JsonNode entry, Set<String> entries) {
-		if (entry.isTextual()) {
-			entries.add(entry.asText());
-		}
+	/** Every violation names the permission list the entry sits in. */
+	private void add(String key, String problem, List<String> violations) {
+		violations.add("settings.json 'permissions." + key + "' " + problem);
 	}
 
 	/** The specifier between the parentheses, or the whole value when there are none. */

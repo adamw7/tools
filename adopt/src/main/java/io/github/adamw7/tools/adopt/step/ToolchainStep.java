@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -8,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -24,14 +22,25 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * zero. Every required tool is probed even after one is found missing, so a
  * single failure can name all of the absent tools at once rather than stopping at
  * the first and hiding the rest.
+ *
+ * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
+ * for a GitHub CLI nobody is logged in to, and the adoption would only discover
+ * that at {@link PullRequestStep}, its very last step. The login is therefore
+ * probed here too, so an unauthenticated {@code gh} fails just as early as an
+ * absent one. The adopted project's own build tool is not this step's concern —
+ * which one it is only becomes known once the repository is cloned, so
+ * {@link BuildToolchainStep} probes it there.
  */
 public class ToolchainStep implements AdoptionStep {
 
 	private static final Logger log = LogManager.getLogger(ToolchainStep.class);
 
-	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", "gh");
+	static final String GITHUB_CLI = "gh";
+	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", GITHUB_CLI);
+	static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "auth", "status");
 
 	private final List<String> tools;
+	private final ToolProbe probe = new ToolProbe();
 
 	public ToolchainStep() {
 		this(DEFAULT_TOOLS);
@@ -49,42 +58,24 @@ public class ToolchainStep implements AdoptionStep {
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		log.info("Checking required tools are available: {}", tools);
-		List<String> missing = missingTools(context, runner);
+		requireInstalled(context, runner);
+		requireGitHubLogin(context, runner);
+	}
+
+	private void requireInstalled(AdoptionContext context, CommandRunner runner) {
+		List<String> missing = probe.missingFrom(tools, context.workspace(), runner);
 		if (!missing.isEmpty()) {
 			throw new AdoptionException(name() + " failed: required tools were not found on the PATH: "
 					+ String.join(", ", missing));
 		}
 	}
 
-	private List<String> missingTools(AdoptionContext context, CommandRunner runner) {
-		List<String> missing = new ArrayList<>();
-		for (String tool : tools) {
-			collectIfMissing(missing, context, runner, tool);
+	private void requireGitHubLogin(AdoptionContext context, CommandRunner runner) {
+		if (!tools.contains(GITHUB_CLI) || probe.succeeds(AUTHENTICATION_PROBE, context.workspace(), runner)) {
+			return;
 		}
-		return missing;
-	}
-
-	private void collectIfMissing(List<String> missing, AdoptionContext context, CommandRunner runner, String tool) {
-		if (isAvailable(context, runner, tool)) {
-			log.info("Found required tool: {}", tool);
-		} else {
-			missing.add(tool);
-		}
-	}
-
-	/**
-	 * A tool the runner cannot even start throws an {@link AdoptionException} out
-	 * of {@link CommandRunner#run}; that is exactly the "not installed" case the
-	 * probe is looking for, so it is caught and reported as unavailable rather than
-	 * aborting the whole check on the first absent tool.
-	 */
-	private boolean isAvailable(AdoptionContext context, CommandRunner runner, String tool) {
-		try {
-			CommandResult result = runner.run(context.workspace(), List.of(tool, "--version"));
-			return result.succeeded();
-		} catch (AdoptionException e) {
-			log.warn("Required tool {} could not be run: {}", tool, e.getMessage());
-			return false;
-		}
+		throw new AdoptionException(name() + " failed: " + GITHUB_CLI
+				+ " is installed but not authenticated, so the pull request could not be opened."
+				+ " Run 'gh auth login', or set GH_TOKEN for a non-interactive host.");
 	}
 }

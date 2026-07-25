@@ -31,6 +31,44 @@ class ToolchainStepTest {
 	}
 
 	@Test
+	void probesTheGitHubLoginOnceEveryToolIsPresent() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep().execute(context, runner);
+		assertEquals(List.of("gh", "auth", "status"), runner.commandAt(3));
+		assertEquals(context.workspace(), runner.invocations().get(3).workingDirectory());
+	}
+
+	/**
+	 * {@code gh --version} succeeds for a GitHub CLI nobody is logged in to, so
+	 * without this the adoption would only find out at its very last step, after a
+	 * clone, a claude init, and a build have already run.
+	 */
+	@Test
+	void anUnauthenticatedGitHubCliAbortsTheAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> command.contains("auth") ? new CommandResult(command, 1, "not logged in")
+						: new CommandResult(command, 0, ""));
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ToolchainStep().execute(context, runner));
+		assertTrue(thrown.getMessage().contains("not authenticated"), thrown.getMessage());
+	}
+
+	@Test
+	void doesNotProbeTheGitHubLoginWhenGhIsNotARequiredTool() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep(List.of("git")).execute(context, runner);
+		assertEquals(1, runner.count());
+	}
+
+	@Test
+	void reportsAMissingToolWithoutProbingTheGitHubLogin() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 1, "missing"));
+		assertThrows(AdoptionException.class, () -> new ToolchainStep().execute(context, runner));
+		assertEquals(3, runner.count());
+	}
+
+	@Test
 	void probesTheConfiguredTools() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new ToolchainStep(List.of("git")).execute(context, runner);

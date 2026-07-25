@@ -779,25 +779,35 @@ The default pipeline runs these steps in order:
    (`git`, `claude`, `gh`) with a `--version` check before any real work, so a
    missing tool aborts the adoption immediately with a message naming every
    absent one instead of failing minutes later after a clone, a `claude init`,
-   and a Maven build have already run.
+   and a Maven build have already run. Being installed is not enough for `gh`:
+   `gh --version` succeeds for a CLI nobody is logged in to, so the login is
+   probed too (`gh auth status`) and an unauthenticated `gh` fails here rather
+   than at the very last step.
 2. **`CloneStep`** — clones the target repository into the workspace with
    `git clone`, giving the remaining steps a working checkout.
-3. **`BranchStep`** — creates and checks out the adoption feature branch with
+3. **`BuildToolchainStep`** — probes the *adopted project's* build tool, now that
+   the clone has revealed which one it is. `ToolchainStep` cannot: the checkout
+   does not exist yet. Without this a machine without the project's `mvn` or
+   `gradle` only fails at `VerifyStep`, after a full `claude init`, a reshaped
+   `CLAUDE.md`, and two commits have already been spent on a checkout that was
+   never going to be verifiable. A build system needing no tool of its own — the
+   fallback guard runs through `sh` — is a no-op.
+4. **`BranchStep`** — creates and checks out the adoption feature branch with
    `git checkout -B`, so every later commit lands on that branch instead of the
    default branch. A fresh clone whose `origin` already publishes the branch — a
    re-adoption of a repository an earlier run pushed — starts it from that
    published tip, so the later push stays a fast-forward instead of being
    rejected; a branch that already exists locally is left alone, so unpushed work
    in a reused workspace is never reset onto the remote.
-4. **`TrustStep`** — marks the checkout trusted in `~/.claude.json` so the
+5. **`TrustStep`** — marks the checkout trusted in `~/.claude.json` so the
    headless `claude` run is not blocked by the interactive folder-trust prompt.
-5. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
+6. **`ClaudeInitStep`** — runs the Claude Code CLI in headless mode
    (`claude -p /init` by default; the invocation is configurable because the
    flags differ between environments) so it generates a `CLAUDE.md`, aborting if
    the file did not appear.
-6. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
+7. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
    CLAUDE.md`).
-7. **`EnforcerStep`** — detects the checkout's build system and wires the
+8. **`EnforcerStep`** — detects the checkout's build system and wires the
    `CLAUDE.md` guard into it. A Maven project has the `claude-code-enforcer` added
    to its root `pom.xml` via `PomEnforcerInstaller` (the edit is done on the JDK's
    DOM — no third-party XML library — is namespace-aware, and is idempotent); a
@@ -811,17 +821,17 @@ The default pipeline runs these steps in order:
    `enforceClaudeMd` registration keeps it. Supporting a new build tool is a
    matter of adding a `BuildSystem` implementation rather than branching inside
    the step.
-8. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
+9. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
-9. **`VerifyStep`** — runs the detected build system's verification (a
+10. **`VerifyStep`** — runs the detected build system's verification (a
    non-recursive `mvn -N validate` for Maven, the `enforceClaudeMd` task for
    Gradle, the `.github/claude-md-guard.sh` script for the fallback) so the
    freshly wired guard actually executes against the generated `CLAUDE.md`,
    failing the adoption locally if the file is missing or malformed rather than
    after the pull request lands.
-10. **`PushStep`** — pushes the feature branch to origin and sets its upstream
+11. **`PushStep`** — pushes the feature branch to origin and sets its upstream
     (`git push -u origin <branch>`).
-11. **`PullRequestStep`** — opens a pull request from the branch with
+12. **`PullRequestStep`** — opens a pull request from the branch with
    `gh pr create`, targeting the repository's default branch as the base. The
    pull request metadata is supplied through `PullRequestOptions` — title, body,
    and optional reviewers, labels, and assignees to request, plus whether to open

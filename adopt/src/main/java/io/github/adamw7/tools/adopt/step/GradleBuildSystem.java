@@ -52,6 +52,11 @@ public class GradleBuildSystem implements BuildSystem {
 		return VERIFY_COMMAND;
 	}
 
+	@Override
+	public Optional<String> requiredTool() {
+		return Optional.of(VERIFY_COMMAND.get(0));
+	}
+
 	/**
 	 * Prefers the Groovy build file over the Kotlin one when a checkout carries
 	 * both, matching the order most Gradle projects resolve them in.

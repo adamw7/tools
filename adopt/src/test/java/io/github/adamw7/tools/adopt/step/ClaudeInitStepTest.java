@@ -42,6 +42,40 @@ class ClaudeInitStepTest {
 		Files.writeString(memory, "# project memory");
 	}
 
+	/**
+	 * The claude transcript carried by the original failure is the only useful
+	 * diagnostic a failed run produces, so a restore that also fails must not throw
+	 * over it — which is what a plain finally block would do.
+	 */
+	@Test
+	void aFailedRestoreDoesNotReplaceTheOriginalFailure(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = context(workspace);
+		writeClaudeDirMemory(context);
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			blockRestore(context);
+			return new CommandResult(command, 3, "claude: the underlying failure");
+		});
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ClaudeInitStep(List.of("claude")).execute(context, runner));
+		assertTrue(thrown.getMessage().contains("the underlying failure"), thrown.getMessage());
+		assertEquals(1, thrown.getSuppressed().length, "the failed restore must be attached, not thrown");
+	}
+
+	/**
+	 * Puts a regular file where the {@code .claude} directory was, while the CLI is
+	 * notionally running — that is, after the memory file has been moved aside and
+	 * before it is put back — so the restore cannot succeed.
+	 */
+	private void blockRestore(AdoptionContext context) {
+		Path claudeDir = context.repositoryDirectory().resolve(".claude");
+		try {
+			Files.delete(claudeDir);
+			Files.writeString(claudeDir, "not a directory");
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
 	@Test
 	void runsConfiguredClaudeCommandInCheckout(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);

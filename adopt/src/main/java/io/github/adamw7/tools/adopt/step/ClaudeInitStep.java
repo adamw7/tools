@@ -32,7 +32,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * the checkout before {@code /init} runs, so the CLI takes its fresh-repository
  * path and writes the root {@code CLAUDE.md}, and restored afterwards; the
  * adoption commits only the new root file and leaves the project's own
- * {@code .claude/CLAUDE.md} untouched.
+ * {@code .claude/CLAUDE.md} untouched. The file is put back whether the CLI
+ * succeeded or failed, and a restore that fails on the failure path is attached to
+ * the original failure rather than replacing it.
  *
  * <p>The generated {@code CLAUDE.md} is the whole point of the adoption, so a run
  * that exits cleanly but leaves no {@code CLAUDE.md} behind aborts the adoption
@@ -71,10 +73,27 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		Optional<Path> relocated = relocateExistingClaudeDirMemory(checkout);
 		try {
 			runOrFail(runner, checkout, claudeCommand);
-		} finally {
-			relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
+		} catch (RuntimeException e) {
+			restoreSuppressing(relocated, checkout, e);
+			throw e;
 		}
+		relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
 		requireGenerated(context);
+	}
+
+	/**
+	 * Restores the relocated memory file on the failure path without letting a
+	 * failed restore replace the failure being reported. Thrown from a
+	 * {@code finally} it would do exactly that, discarding the {@code claude}
+	 * transcript that is the only useful diagnostic the run produced; attaching it as
+	 * a suppressed exception keeps both.
+	 */
+	private void restoreSuppressing(Optional<Path> relocated, Path checkout, RuntimeException failure) {
+		try {
+			relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
+		} catch (RuntimeException e) {
+			failure.addSuppressed(e);
+		}
 	}
 
 	private Path claudeDirMemory(Path checkout) {

@@ -71,7 +71,23 @@ public final class AdoptionContext {
 	private static String repositoryName(String repositoryUrl) {
 		String withoutTrailingSlash = stripTrailingSlash(repositoryUrl);
 		String lastSegment = withoutTrailingSlash.substring(withoutTrailingSlash.lastIndexOf('/') + 1);
-		return stripGitSuffix(lastSegment);
+		return requireName(stripGitSuffix(lastSegment), repositoryUrl);
+	}
+
+	/**
+	 * A URL whose last segment is empty or a directory alias — {@code .../repo//},
+	 * {@code .../.git}, or a bare {@code ..} — would otherwise resolve the checkout
+	 * onto the workspace itself or above it, so the clone would land beside the
+	 * other repositories the workspace holds instead of in its own directory.
+	 * Rejecting it here fails the adoption on its input rather than several steps
+	 * later on a checkout directory nobody intended.
+	 */
+	private static String requireName(String name, String repositoryUrl) {
+		if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
+			throw new IllegalArgumentException(
+					"repositoryUrl must end in a repository name but was: " + repositoryUrl);
+		}
+		return name;
 	}
 
 	private static String stripTrailingSlash(String value) {

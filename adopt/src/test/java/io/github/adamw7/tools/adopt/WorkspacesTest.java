@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -51,13 +50,16 @@ class WorkspacesTest {
 
 	/**
 	 * The clone has nowhere to go if the workspace cannot be created, so the
-	 * failure must surface rather than leaving a later step to fail obscurely.
+	 * failure must surface rather than leaving a later step to fail obscurely — and
+	 * as the module's own exception type, so the command line and the MCP tool
+	 * report it like every other adoption failure instead of leaking a raw
+	 * UncheckedIOException.
 	 */
 	@Test
 	void reportsAWorkspaceThatCannotBeCreated(@TempDir Path dir) throws IOException {
 		Path blocker = dir.resolve("not-a-directory");
 		Files.writeString(blocker, "");
-		assertThrows(UncheckedIOException.class, () -> Workspaces.createIfMissing(blocker.resolve("workspace")));
+		assertThrows(AdoptionException.class, () -> Workspaces.createIfMissing(blocker.resolve("workspace")));
 	}
 
 	@Test

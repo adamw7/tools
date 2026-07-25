@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The catch-all build system for the adoption: it matches every checkout, so a
@@ -47,5 +48,15 @@ public class FallbackBuildSystem implements BuildSystem {
 	@Override
 	public List<String> verifyCommand() {
 		return VERIFY_COMMAND;
+	}
+
+	/**
+	 * The guard runs through {@code sh}, which every platform the adoption supports
+	 * already provides and which has no portable {@code --version} probe, so there is
+	 * nothing to check ahead of time.
+	 */
+	@Override
+	public Optional<String> requiredTool() {
+		return Optional.empty();
 	}
 }

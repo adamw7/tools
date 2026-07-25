@@ -18,6 +18,8 @@ import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class EnforcerStepTest {
 
+	private static final String RULE_VERSION = "1.0.0";
+
 	private static final String POM = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
 			  <modelVersion>4.0.0</modelVersion>
@@ -26,6 +28,16 @@ class EnforcerStepTest {
 			  <version>1.0.0</version>
 			</project>
 			""";
+
+	/**
+	 * The Maven path wires a rule dependency whose version comes from the running
+	 * build, and {@link PomEnforcerInstaller} refuses a snapshot. Pinning a released
+	 * version here keeps these tests about the wiring rather than about whichever
+	 * version the module happens to be built at.
+	 */
+	private EnforcerStep mavenStep() {
+		return new EnforcerStep(List.of(new MavenBuildSystem(new PomEnforcerInstaller(RULE_VERSION))));
+	}
 
 	private AdoptionContext context(Path workspace) throws IOException {
 		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/demo.git", workspace);
@@ -37,7 +49,7 @@ class EnforcerStepTest {
 	void wiresEnforcerIntoCheckoutPom(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = context(workspace);
 		Files.writeString(context.repositoryDirectory().resolve("pom.xml"), POM);
-		new EnforcerStep().execute(context, new RecordingCommandRunner());
+		mavenStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.readString(context.repositoryDirectory().resolve("pom.xml"))
 				.contains("maven-enforcer-plugin"));
 	}
@@ -81,7 +93,7 @@ class EnforcerStepTest {
 		AdoptionContext context = context(workspace);
 		Path pom = context.repositoryDirectory().resolve("pom.xml");
 		Files.writeString(pom, POM);
-		EnforcerStep step = new EnforcerStep();
+		EnforcerStep step = mavenStep();
 		step.execute(context, new RecordingCommandRunner());
 		String afterFirstWiring = Files.readString(pom);
 		step.execute(context, new RecordingCommandRunner());

@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A build tool the adoption knows how to wire a {@code CLAUDE.md} guard into and
@@ -30,4 +31,15 @@ public interface BuildSystem {
 
 	/** Command that runs the wired guard so a missing or malformed {@code CLAUDE.md} fails the build. */
 	List<String> verifyCommand();
+
+	/**
+	 * The program {@link #verifyCommand()} launches and that must therefore be
+	 * installed for the verification to run at all, so {@link BuildToolchainStep}
+	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
+	 * will not be able to verify.
+	 *
+	 * @return the program to probe, or empty when the verification needs nothing
+	 *         beyond the POSIX shell every supported platform already provides
+	 */
+	Optional<String> requiredTool();
 }

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -45,6 +46,9 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * line is left untouched — and only the newly added elements are indented, to the
  * style the POM already uses. The adoption commit therefore shows just the
  * enforcer block being added rather than a reformat of the whole file.
+ *
+ * <p>The rule version comes from the running build and must be a release: see
+ * {@link #requireReleaseVersion(String)}.
  */
 public class PomEnforcerInstaller {
 
@@ -56,15 +60,45 @@ public class PomEnforcerInstaller {
 	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
 	static final String BUILD_PROPERTIES = "/adopt-build.properties";
 	static final String RULE_VERSION_KEY = "enforcer.rule.version";
+	static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
 
-	private final String ruleVersion;
+	private final Supplier<String> ruleVersion;
 
 	public PomEnforcerInstaller() {
-		this(buildRuleVersion());
+		this.ruleVersion = PomEnforcerInstaller::releaseRuleVersion;
 	}
 
 	public PomEnforcerInstaller(String ruleVersion) {
-		this.ruleVersion = ruleVersion;
+		this.ruleVersion = () -> ruleVersion;
+	}
+
+	/**
+	 * The released rule version to wire in. Resolving it lazily — only once a POM is
+	 * actually being edited — keeps merely constructing the default
+	 * {@link BuildSystems#DEFAULTS} list, or adopting a repository that builds with
+	 * something other than Maven, from depending on the running build's version.
+	 */
+	static String releaseRuleVersion() {
+		return requireReleaseVersion(buildRuleVersion());
+	}
+
+	/**
+	 * A snapshot resolves from the adopter's own local repository but from nowhere
+	 * else, so wiring one in would open a pull request that builds on this machine
+	 * and fails for the adopted project's CI and every one of its contributors —
+	 * and {@link VerifyStep} could not catch it, because it too resolves against the
+	 * local repository. Refusing here turns that into an immediate, explicable
+	 * failure for the person running the adoption.
+	 */
+	static String requireReleaseVersion(String version) {
+		if (version.endsWith(SNAPSHOT_SUFFIX)) {
+			throw new AdoptionException("Refusing to wire the snapshot enforcer rule version " + version
+					+ " into the adopted project's pom.xml: a snapshot is not resolvable outside this machine's"
+					+ " local repository, so the pull request would break the adopted project's build."
+					+ " Run the adoption from a released build of tools, or supply a released version to"
+					+ " PomEnforcerInstaller.");
+		}
+		return version;
 	}
 
 	/**
@@ -75,7 +109,7 @@ public class PomEnforcerInstaller {
 	 * published it — rather than to a hardcoded literal that silently drifts as the
 	 * project is versioned.
 	 */
-	private static String buildRuleVersion() {
+	static String buildRuleVersion() {
 		try (InputStream stream = PomEnforcerInstaller.class.getResourceAsStream(BUILD_PROPERTIES)) {
 			return readRuleVersion(stream);
 		} catch (IOException e) {
@@ -171,7 +205,7 @@ public class PomEnforcerInstaller {
 		Element dependency = editor.appendElement(dependencies, "dependency");
 		editor.appendText(dependency, "groupId", RULE_GROUP_ID);
 		editor.appendText(dependency, "artifactId", RULE_ARTIFACT_ID);
-		editor.appendText(dependency, "version", ruleVersion);
+		editor.appendText(dependency, "version", ruleVersion.get());
 	}
 
 	private void enforceExecution(PomEditor editor, Element executions) {

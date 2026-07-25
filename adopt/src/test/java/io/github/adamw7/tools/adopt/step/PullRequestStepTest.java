@@ -1,11 +1,13 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +24,34 @@ class PullRequestStepTest {
 	private final AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git",
 			Path.of("/tmp/workspace"), "claude/adopt-claude-code");
 	private final PullRequestStep step = new PullRequestStep();
+
+	/**
+	 * gh's diagnostics are merged into the captured output, and one printed before
+	 * the JSON can itself contain a '['. Stopping at the first bracket would parse
+	 * the noise, conclude no pull request is open, and create a duplicate that gh
+	 * rejects — failing an adoption that was only being re-run.
+	 */
+	@Test
+	void findsTheOpenPullRequestDespiteLeadingBracketedNoise() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("list")
+				? new CommandResult(command, 0, "warning: [core] ignoring stale entry\n"
+						+ "[{\"url\":\"https://github.com/adamw7/demo/pull/7\"}]\n")
+				: new CommandResult(command, 0, ""));
+		AdoptionReport report = new AdoptionReport();
+		new PullRequestStep().execute(context, runner, report);
+		assertEquals(Optional.of("https://github.com/adamw7/demo/pull/7"), report.pullRequestUrl());
+		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")),
+				"an already-open pull request must not be created a second time");
+	}
+
+	@Test
+	void anEmptyArrayAfterNoiseStillMeansNoOpenPullRequest() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("list")
+				? new CommandResult(command, 0, "warning: [core] ignoring stale entry\n[]\n")
+				: new CommandResult(command, 0, ""));
+		new PullRequestStep().execute(context, runner, new AdoptionReport());
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
 
 	@Test
 	void opensPullRequestForFeatureBranch() {

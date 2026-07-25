@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
@@ -79,18 +80,41 @@ class GitHubRepoAdopterTest {
 		assertEquals(List.of("a"), order);
 	}
 
+	/**
+	 * Every tool is reported missing, so the pipeline aborts in its first step. That
+	 * proves the factory wired the default pipeline without letting any later step —
+	 * TrustStep writes to the real ~/.claude.json — touch anything outside the test.
+	 */
+	@Test
+	void withDefaultPipelineRunsTheDefaultStepsStartingWithTheToolchainCheck() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 1, "missing"));
+		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner);
+		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
+		assertEquals(List.of("git", "--version"), runner.commandAt(0));
+	}
+
+	@Test
+	void withDefaultPipelineHonoursPullRequestOptionsAndTheAssetsFlag() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 1, "missing"));
+		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), true);
+		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
+		assertEquals(List.of("git", "--version"), runner.commandAt(0));
+	}
+
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
 		List<String> names = GitHubRepoAdopter.defaultSteps().stream().map(AdoptionStep::name).toList();
-		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "conform", "commit", "enforcer",
-				"commit", "verify", "push", "pull-request"), names);
+		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
+				"commit", "enforcer", "commit", "verify", "push", "pull-request"), names);
 	}
 
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
 		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true).stream()
 				.map(AdoptionStep::name).toList();
-		assertEquals(List.of("toolchain", "clone", "branch", "trust", "claude-init", "conform", "commit", "enforcer",
-				"commit", "assets", "commit", "verify", "push", "pull-request"), names);
+		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
+				"commit", "enforcer", "commit", "assets", "commit", "verify", "push", "pull-request"), names);
 	}
 }

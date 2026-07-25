@@ -142,16 +142,23 @@ public class PullRequestStep extends AbstractCommandStep {
 	/**
 	 * {@code gh pr list --json} writes a JSON array to stdout, but the captured
 	 * output may carry surrounding noise (for example update notices merged in from
-	 * stderr), so parsing starts at the first opening bracket instead of assuming a
-	 * pure JSON payload. The first element's {@code url} is returned, or empty when
-	 * the array is empty or carries no textual URL.
+	 * stderr), so parsing starts at an opening bracket instead of assuming a pure
+	 * JSON payload. Every bracket is tried in turn rather than only the first,
+	 * because a diagnostic printed <em>before</em> the payload can itself contain
+	 * one; stopping at the first would parse the noise, conclude no pull request is
+	 * open, and make the step create a duplicate — which {@code gh} rejects, failing
+	 * an adoption that was only being re-run. The first element's {@code url} is
+	 * returned, or empty when no bracket starts a JSON array, the array is empty, or
+	 * it carries no textual URL.
 	 */
 	private Optional<String> extractUrl(String output) {
-		int start = output.indexOf('[');
-		if (start < 0) {
-			return Optional.empty();
+		for (int start = output.indexOf('['); start >= 0; start = output.indexOf('[', start + 1)) {
+			Optional<String> url = firstUrl(output.substring(start));
+			if (url.isPresent()) {
+				return url;
+			}
 		}
-		return firstUrl(output.substring(start));
+		return Optional.empty();
 	}
 
 	private Optional<String> firstUrl(String json) {
@@ -163,7 +170,7 @@ public class PullRequestStep extends AbstractCommandStep {
 			JsonNode url = array.get(0).path("url");
 			return url.isTextual() ? Optional.of(url.asText()) : Optional.empty();
 		} catch (JsonProcessingException e) {
-			log.warn("Could not parse gh pr list output as JSON", e);
+			log.debug("Skipping a '[' in the gh pr list output that does not start a JSON array", e);
 			return Optional.empty();
 		}
 	}

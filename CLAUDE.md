@@ -28,8 +28,9 @@ run `mvn install` from the repository root. The main capabilities are:
   (`OpenAddressingMap`, `OpenAddressingSet`, primitive-keyed
   `IntKeyOpenAddressingMap`), and an MCP server exposing the uniqueness checker.
 - **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
-  GitHub repo: check the required tools (`git`, `claude`, `gh`) are installed,
-  clone, create a feature branch, `claude init` to generate
+  GitHub repo: check the required tools (`git`, `claude`, `gh`) are installed
+  and that `gh` is logged in, clone, check the cloned project's own build tool is
+  installed too, create a feature branch, `claude init` to generate
   `CLAUDE.md` and commit it, wire a build-tool-aware `CLAUDE.md` guard into the
   repo (the `claude-code-enforcer` rule for Maven `pom.xml`, an `enforceClaudeMd`
   guard task for Gradle, and a GitHub Actions workflow plus
@@ -57,7 +58,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # compile-time-safe protobuf builder generator
 │   ├── protogen-maven-plugin-test  # integration tests for the plugin
 │   └── context                     # class-usage context finder + MCP server
-├── adopt                  # adopts Claude Code into a GitHub repo (clone, branch, trust, init, enforcer, verify, push, PR)
+├── adopt                  # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, enforcer, verify, push, PR)
 ├── grpc-example           # end-to-end gRPC example
 ├── assembly               # executable jar-with-dependencies (SampleApp)
 └── data-test              # standalone test module (not in root <modules>)

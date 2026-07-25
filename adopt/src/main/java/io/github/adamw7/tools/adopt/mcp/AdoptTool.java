@@ -107,7 +107,7 @@ public class AdoptTool implements McpTool {
 	 * branch overrides it, so an empty string is not rejected as an invalid branch.
 	 */
 	private String branch(Map<String, Object> arguments) {
-		String branch = ToolArguments.optionalString(arguments, "branch", AdoptionContext.DEFAULT_BRANCH);
+		String branch = ToolArguments.optionalString(arguments, "branch", "");
 		return branch.isBlank() ? AdoptionContext.DEFAULT_BRANCH : branch;
 	}
 

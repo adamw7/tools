@@ -31,7 +31,7 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 
 	private static final Logger log = LogManager.getLogger(ClaudeMdConformanceStep.class);
 
-	static final String CLAUDE_MD = "CLAUDE.md";
+	static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
 
 	private final ClaudeMdConformer conformer;
 	private final AssetInstaller agentsMdInstaller;
@@ -53,16 +53,8 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		Path checkout = context.repositoryDirectory();
-		installAgentsMd(checkout);
+		agentsMdInstaller.install(checkout);
 		conformClaudeMd(checkout);
-	}
-
-	private void installAgentsMd(Path checkout) {
-		if (agentsMdInstaller.install(checkout)) {
-			log.info("Wrote companion {}", agentsMdInstaller.relativePath());
-		} else {
-			log.info("{} already exists; left unchanged", agentsMdInstaller.relativePath());
-		}
 	}
 
 	private void conformClaudeMd(Path checkout) {

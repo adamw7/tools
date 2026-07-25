@@ -48,7 +48,7 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	static final List<String> DEFAULT_COMMAND = List.of("claude", "-p", "/init",
 			"--permission-mode", "acceptEdits");
 
-	private static final String CLAUDE_MD = "CLAUDE.md";
+	private static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
 	private static final String CLAUDE_DIR = ".claude";
 
 	private final List<String> claudeCommand;

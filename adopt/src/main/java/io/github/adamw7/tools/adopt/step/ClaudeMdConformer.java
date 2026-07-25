@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -132,17 +134,9 @@ public class ClaudeMdConformer {
 	 * required section.
 	 */
 	private Set<Integer> reservedHeadings(List<String> lines, boolean[] fence) {
-		Set<Integer> reserved = new LinkedHashSet<>();
-		for (int index = 0; index < lines.size(); index++) {
-			addIfReserved(reserved, lines, fence, index);
-		}
-		return reserved;
-	}
-
-	private void addIfReserved(Set<Integer> reserved, List<String> lines, boolean[] fence, int index) {
-		if (!fence[index] && REQUIRED_SECTIONS.contains(lines.get(index).strip())) {
-			reserved.add(index);
-		}
+		return matchesOutsideFences(lines, fence, line -> REQUIRED_SECTIONS.contains(line.strip()))
+				.boxed()
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
 	private void canonicalize(List<String> lines, boolean[] fence, String required, Set<Integer> claimed) {
@@ -157,19 +151,14 @@ public class ClaudeMdConformer {
 	}
 
 	private int firstNearMatch(List<String> lines, boolean[] fence, String required, Set<Integer> claimed) {
-		for (int index = 0; index < lines.size(); index++) {
-			if (isNearMatch(lines, fence, claimed, index, required)) {
-				return index;
-			}
-		}
-		return -1;
+		return matchesOutsideFences(lines, fence, line -> isNearMatch(line, required))
+				.filter(index -> !claimed.contains(index))
+				.findFirst()
+				.orElse(-1);
 	}
 
-	private boolean isNearMatch(List<String> lines, boolean[] fence, Set<Integer> claimed, int index, String required) {
-		if (fence[index] || claimed.contains(index)) {
-			return false;
-		}
-		String stripped = lines.get(index).strip();
+	private boolean isNearMatch(String line, String required) {
+		String stripped = line.strip();
 		return isHeading(stripped) && nearMatches(stripped, required);
 	}
 
@@ -287,20 +276,20 @@ public class ClaudeMdConformer {
 			return lines;
 		}
 		List<String> result = new ArrayList<>(lines);
-		int titleIndex = indexOfTitle(result);
+		int titleIndex = indexOfTitle(result, fence);
 		result.add(titleIndex + 1, "");
 		result.add(titleIndex + 2, AGENTS_REFERENCE_LINE);
 		result.add(titleIndex + 3, "");
 		return result;
 	}
 
-	private int indexOfTitle(List<String> lines) {
-		for (int index = 0; index < lines.size(); index++) {
-			if (lines.get(index).strip().equals(TITLE)) {
-				return index;
-			}
-		}
-		return 0;
+	/**
+	 * The title is the first non-blank line by the time this runs, and a fence marker
+	 * would itself be a non-blank line before it, so the title can never be one the
+	 * mask covers. A document with no title line at all falls back to the top.
+	 */
+	private int indexOfTitle(List<String> lines, boolean[] fence) {
+		return Math.max(indexOfHeading(lines, fence, TITLE), 0);
 	}
 
 	private boolean hasHeading(List<String> lines, boolean[] fence, String heading) {
@@ -309,19 +298,16 @@ public class ClaudeMdConformer {
 
 	/** @return the index of the heading outside code fences, or {@code -1} when absent */
 	private int indexOfHeading(List<String> lines, boolean[] fence, String heading) {
-		return IntStream.range(0, lines.size())
-				.filter(index -> !fence[index] && lines.get(index).strip().equals(heading))
-				.findFirst()
-				.orElse(-1);
+		return matchesOutsideFences(lines, fence, line -> line.strip().equals(heading)).findFirst().orElse(-1);
 	}
 
 	private boolean containsOutsideFences(List<String> lines, boolean[] fence, String token) {
-		for (int index = 0; index < lines.size(); index++) {
-			if (!fence[index] && lines.get(index).contains(token)) {
-				return true;
-			}
-		}
-		return false;
+		return matchesOutsideFences(lines, fence, line -> line.contains(token)).findFirst().isPresent();
+	}
+
+	/** The indices of the lines outside code fences whose text matches, in document order. */
+	private IntStream matchesOutsideFences(List<String> lines, boolean[] fence, Predicate<String> match) {
+		return IntStream.range(0, lines.size()).filter(index -> !fence[index] && match.test(lines.get(index)));
 	}
 
 	private boolean isHeading(String stripped) {

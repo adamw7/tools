@@ -16,6 +16,11 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * overwritten — the project's own version always wins over the starter content —
  * so re-running the adoption, or adopting a repository that already configured
  * Claude Code, leaves the checkout untouched.
+ *
+ * <p>Which of the two happened is logged here rather than by each caller, so
+ * every asset the adoption writes — the starter files, the companion
+ * {@code AGENTS.md}, and the fallback guard's workflow and script — is reported
+ * the same way.
  */
 public class AssetInstaller {
 
@@ -46,9 +51,11 @@ public class AssetInstaller {
 	public boolean install(Path repositoryDirectory) {
 		Path file = repositoryDirectory.resolve(relativePath);
 		if (Files.exists(file)) {
+			log.info("{} already exists; left unchanged", relativePath);
 			return false;
 		}
 		write(file);
+		log.info("Installed {}", relativePath);
 		return true;
 	}
 

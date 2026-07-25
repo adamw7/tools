@@ -18,7 +18,6 @@ import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
 public class AgentsMdFormatRule extends MarkdownFormatRule {
 
 	private static final String DOCUMENT_NAME = "AGENTS.md";
-	private static final String TITLE_HEADING = "# AGENTS.md";
 	private static final List<String> REQUIRED_SECTIONS = List.of(
 			"## Project overview",
 			"## Module layout",
@@ -39,11 +38,6 @@ public class AgentsMdFormatRule extends MarkdownFormatRule {
 	@Override
 	protected String documentName() {
 		return DOCUMENT_NAME;
-	}
-
-	@Override
-	protected String defaultTitleHeading() {
-		return TITLE_HEADING;
 	}
 
 	@Override

@@ -50,7 +50,7 @@ public final class FrontMatterFixer {
 		if (open < 0 || !isDelimiterLike(lines.get(open))) {
 			return Optional.empty();
 		}
-		return repairFrom(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content));
+		return repairDelimiters(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content));
 	}
 
 	/** The lines with any blank lines before the opening delimiter removed, so the block starts on line one. */
@@ -59,32 +59,24 @@ public final class FrontMatterFixer {
 		return first <= 0 ? lines : lines.subList(first, lines.size());
 	}
 
-	private static Optional<List<String>> repairFrom(List<String> lines, int open) {
+	/**
+	 * The lines with both delimiters written canonically, adding the closing one
+	 * when the block never closed. Empty when the region the block would cover
+	 * carries no {@code key: value} entry, so a lone thematic break is left alone.
+	 */
+	private static Optional<List<String>> repairDelimiters(List<String> lines, int open) {
 		int close = nextDelimiterLike(lines, open + 1);
-		if (close > 0) {
-			return normalizeDelimiters(lines, open, close);
-		}
-		return insertClosingDelimiter(lines, open);
-	}
-
-	private static Optional<List<String>> normalizeDelimiters(List<String> lines, int open, int close) {
-		if (!containsKeyEntry(lines, open + 1, close)) {
-			return Optional.empty();
-		}
-		List<String> fixed = new ArrayList<>(lines);
-		fixed.set(open, CANONICAL_DELIMITER);
-		fixed.set(close, CANONICAL_DELIMITER);
-		return Optional.of(fixed);
-	}
-
-	private static Optional<List<String>> insertClosingDelimiter(List<String> lines, int open) {
-		int end = endOfBlock(lines, open + 1);
+		int end = close > 0 ? close : endOfBlock(lines, open + 1);
 		if (!containsKeyEntry(lines, open + 1, end)) {
 			return Optional.empty();
 		}
 		List<String> fixed = new ArrayList<>(lines);
 		fixed.set(open, CANONICAL_DELIMITER);
-		fixed.add(end, CANONICAL_DELIMITER);
+		if (close > 0) {
+			fixed.set(close, CANONICAL_DELIMITER);
+		} else {
+			fixed.add(end, CANONICAL_DELIMITER);
+		}
 		return Optional.of(fixed);
 	}
 

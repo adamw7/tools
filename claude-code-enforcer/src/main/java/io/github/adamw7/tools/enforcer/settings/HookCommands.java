@@ -27,16 +27,13 @@ final class HookCommands {
 	static List<String> from(JsonNode settings) {
 		List<String> commands = new ArrayList<>();
 		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
-		if (hooks != null) {
-			collectEvents(hooks, commands);
+		if (hooks == null) {
+			return commands;
 		}
-		return commands;
-	}
-
-	private static void collectEvents(JsonNode hooks, List<String> commands) {
 		for (String event : JsonNodes.fieldNames(hooks)) {
 			collectGroups(JsonNodes.arrayAt(hooks, event), commands);
 		}
+		return commands;
 	}
 
 	private static void collectGroups(JsonNode groups, List<String> commands) {
@@ -49,10 +46,7 @@ final class HookCommands {
 	}
 
 	private static void collectEntries(JsonNode group, List<String> commands) {
-		if (group == null) {
-			return;
-		}
-		JsonNode entries = JsonNodes.arrayAt(group, HOOKS_KEY);
+		JsonNode entries = group != null ? JsonNodes.arrayAt(group, HOOKS_KEY) : null;
 		if (entries == null) {
 			return;
 		}

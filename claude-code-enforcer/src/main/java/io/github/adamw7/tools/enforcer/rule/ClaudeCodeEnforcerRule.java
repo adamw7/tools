@@ -155,6 +155,16 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	}
 
 	/**
+	 * Fails when a required input file was not configured or does not exist, the
+	 * pair of build-setup checks every rule runs before reading a file. The
+	 * {@code name} names it in both messages.
+	 */
+	protected final void requireDocument(File file, String name) throws EnforcerRuleException {
+		requireConfigured(file, name);
+		requireExists(file, name);
+	}
+
+	/**
 	 * Reads a required input file and fails when it is blank. An empty file is a
 	 * build-setup mistake, so this always fails regardless of {@link #severity}.
 	 * Returns the file content (with any leading byte-order mark stripped) so the

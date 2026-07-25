@@ -106,15 +106,11 @@ public final class MarkdownDocument {
 		Set<String> required = new LinkedHashSet<>(wanted);
 		List<String> ordered = new ArrayList<>();
 		for (int i = 0; i < lines.size(); i++) {
-			addIfRequiredHeading(lines.get(i).strip(), insideFence[i], required, ordered);
+			if (!insideFence[i] && required.remove(lines.get(i).strip())) {
+				ordered.add(lines.get(i).strip());
+			}
 		}
 		return ordered;
-	}
-
-	private void addIfRequiredHeading(String line, boolean lineInsideFence, Set<String> required, List<String> ordered) {
-		if (!lineInsideFence && required.remove(line)) {
-			ordered.add(line);
-		}
 	}
 
 	private int headingIndex(String section) {

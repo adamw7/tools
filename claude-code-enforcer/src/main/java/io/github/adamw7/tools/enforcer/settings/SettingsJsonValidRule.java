@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Named;
@@ -54,16 +53,7 @@ public class SettingsJsonValidRule extends JsonFileRule {
 	}
 
 	@Override
-	protected String header() {
-		return "settings.json is not well formed:";
-	}
-
-	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) {
-		collectPermissionViolations(settings, violations);
-	}
-
-	private void collectPermissionViolations(JsonNode settings, List<String> violations) {
 		if (requiredPermissions == null && forbiddenPermissions == null) {
 			return;
 		}
@@ -75,15 +65,7 @@ public class SettingsJsonValidRule extends JsonFileRule {
 	private List<String> allowList(JsonNode settings) {
 		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
 		JsonNode allow = permissions != null ? JsonNodes.arrayAt(permissions, ALLOW_KEY) : null;
-		return allow != null ? toStringList(allow) : List.of();
-	}
-
-	private List<String> toStringList(JsonNode array) {
-		List<String> entries = new ArrayList<>();
-		for (int i = 0; i < array.size(); i++) {
-			entries.add(array.get(i).asText());
-		}
-		return entries;
+		return allow != null ? allow.valueStream().map(JsonNode::asText).toList() : List.of();
 	}
 
 	private void collectRequiredPermissions(List<String> allow, List<String> violations) {

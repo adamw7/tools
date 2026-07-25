@@ -93,24 +93,12 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 			violations.add("hook script is empty: " + script);
 			return;
 		}
-		collectShebangViolation(script, content, violations);
-		collectExecutableViolation(script, violations);
-		collectExtensionViolation(script, violations);
-	}
-
-	private void collectShebangViolation(File script, String content, List<String> violations) {
 		if (requireShebang && !content.startsWith(SHEBANG)) {
 			violations.add("hook script must start with a '#!' shebang line: " + script);
 		}
-	}
-
-	private void collectExecutableViolation(File script, List<String> violations) {
 		if (requireExecutable && !script.canExecute()) {
 			violations.add("hook script is not executable: " + script);
 		}
-	}
-
-	private void collectExtensionViolation(File script, List<String> violations) {
 		if (allowedExtensions != null && !allowedExtensions.contains(extensionOf(script))) {
 			violations.add("hook script has a disallowed extension: " + script);
 		}
@@ -130,16 +118,13 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 			violations.add("settings.json does not exist at " + settingsFile);
 			return;
 		}
-		JsonNode settings = parseSettings(settingsFile, violations);
+		String content = MarkdownText.read(settingsFile, "settings.json");
+		JsonNode settings = JsonNodes.parseObject(content, "settings.json", violations);
 		if (settings == null) {
 			return;
 		}
 		Set<Path> referenced = collectReferencedScripts(settings, violations);
 		collectUnreferencedScripts(scripts, referenced, violations);
-	}
-
-	private JsonNode parseSettings(File file, List<String> violations) {
-		return JsonNodes.parseObject(MarkdownText.read(file, "settings.json"), "settings.json", violations);
 	}
 
 	private Set<Path> collectReferencedScripts(JsonNode settings, List<String> violations) {
@@ -166,13 +151,9 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		for (File script : scripts) {
-			addUnreferencedViolation(script, referenced, violations);
-		}
-	}
-
-	private void addUnreferencedViolation(File script, Set<Path> referenced, List<String> violations) {
-		if (!referenced.contains(canonical(script.toPath()))) {
-			violations.add("hook script is not referenced by any settings.json hook: " + script);
+			if (!referenced.contains(canonical(script.toPath()))) {
+				violations.add("hook script is not referenced by any settings.json hook: " + script);
+			}
 		}
 	}
 

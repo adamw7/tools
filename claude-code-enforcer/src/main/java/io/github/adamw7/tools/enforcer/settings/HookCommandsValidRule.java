@@ -73,53 +73,34 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) {
-		collectHookViolations(settings, violations);
-	}
-
-	private void collectHookViolations(JsonNode settings, List<String> violations) {
 		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
 		if (hooks == null) {
 			return;
 		}
 		for (String event : JsonNodes.fieldNames(hooks)) {
-			collectEventViolations(event, hooks, violations);
+			collectEventViolations(event, JsonNodes.arrayAt(hooks, event), violations);
 		}
 	}
 
-	private void collectEventViolations(String event, JsonNode hooks, List<String> violations) {
-		addEventNameViolation(event, violations);
-		JsonNode groups = JsonNodes.arrayAt(hooks, event);
-		if (groups == null) {
-			violations.add("hook event '" + event + "' must be a JSON array");
-		} else {
-			collectGroupsViolations(event, groups, violations);
-		}
-	}
-
-	private void addEventNameViolation(String event, List<String> violations) {
+	private void collectEventViolations(String event, JsonNode groups, List<String> violations) {
 		if (allowedEvents != null && !allowedEvents.contains(event)) {
-			violations.add("hook event '" + event + "' is not an allowed event");
+			add(event, "is not an allowed event", violations);
 		}
-	}
-
-	private void collectGroupsViolations(String event, JsonNode groups, List<String> violations) {
+		if (groups == null) {
+			add(event, "must be a JSON array", violations);
+			return;
+		}
 		for (int i = 0; i < groups.size(); i++) {
 			collectGroupViolations(event, JsonNodes.objectAt(groups, i), violations);
 		}
 	}
 
 	private void collectGroupViolations(String event, JsonNode group, List<String> violations) {
+		JsonNode entries = group != null ? JsonNodes.arrayAt(group, HOOKS_KEY) : null;
 		if (group == null) {
-			violations.add("hook event '" + event + "' has an entry that is not a JSON object");
-		} else {
-			collectEntriesViolations(event, group, violations);
-		}
-	}
-
-	private void collectEntriesViolations(String event, JsonNode group, List<String> violations) {
-		JsonNode entries = JsonNodes.arrayAt(group, HOOKS_KEY);
-		if (entries == null) {
-			violations.add("hook event '" + event + "' entry is missing a 'hooks' array");
+			add(event, "has an entry that is not a JSON object", violations);
+		} else if (entries == null) {
+			add(event, "entry is missing a 'hooks' array", violations);
 		} else {
 			collectHookEntries(event, entries, violations);
 		}
@@ -133,16 +114,12 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	private void collectEntryViolations(String event, JsonNode entry, List<String> violations) {
 		if (entry == null) {
-			violations.add("hook event '" + event + "' has a hook that is not a JSON object");
-		} else {
-			collectTypedEntryViolations(event, entry, violations);
+			add(event, "has a hook that is not a JSON object", violations);
+			return;
 		}
-	}
-
-	private void collectTypedEntryViolations(String event, JsonNode entry, List<String> violations) {
 		String type = JsonNodes.textAt(entry, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
-			violations.add("hook event '" + event + "' has a hook missing 'type'");
+			add(event, "has a hook missing 'type'", violations);
 		} else if (type.equals(COMMAND_TYPE)) {
 			collectCommandViolations(event, entry, violations);
 		}
@@ -151,20 +128,18 @@ public class HookCommandsValidRule extends JsonFileRule {
 	private void collectCommandViolations(String event, JsonNode entry, List<String> violations) {
 		String command = JsonNodes.textAt(entry, COMMAND_KEY, "").strip();
 		if (command.isBlank()) {
-			violations.add("hook event '" + event + "' has a command hook with an empty 'command'");
-		} else {
-			addScriptReferenceViolation(event, command, violations);
+			add(event, "has a command hook with an empty 'command'", violations);
+			return;
+		}
+		String script = validateScriptReferences ? localScriptPath(command) : null;
+		if (script != null && !new File(script).exists()) {
+			add(event, "references a missing script: " + script, violations);
 		}
 	}
 
-	private void addScriptReferenceViolation(String event, String command, List<String> violations) {
-		if (!validateScriptReferences) {
-			return;
-		}
-		String script = localScriptPath(command);
-		if (script != null && !new File(script).exists()) {
-			violations.add("hook event '" + event + "' references a missing script: " + script);
-		}
+	/** Every violation names the event whose hook is malformed. */
+	private void add(String event, String problem, List<String> violations) {
+		violations.add("hook event '" + event + "' " + problem);
 	}
 
 	/** The resolved on-disk path of a {@code $CLAUDE_PROJECT_DIR}-rooted token, or null when none is referenced. */

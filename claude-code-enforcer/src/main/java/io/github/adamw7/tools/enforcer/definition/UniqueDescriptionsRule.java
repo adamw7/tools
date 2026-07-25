@@ -1,10 +1,6 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Named;
@@ -37,13 +33,14 @@ public class UniqueDescriptionsRule extends MultiDefinitionRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		verifyConfigured();
-		Map<String, Description> byNormalizedText = new LinkedHashMap<>();
-		forEachDefinition((definitionFile, source, name) -> record(definitionFile, source, byNormalizedText));
-		report("Claude Code descriptions must be unique:", duplicates(byNormalizedText));
+		Duplicates descriptions = new Duplicates();
+		forEachDefinition((definitionFile, source, name) -> record(definitionFile, source, descriptions));
+		report("Claude Code descriptions must be unique:", descriptions.violations("description"));
 	}
 
-	private void record(File definitionFile, File source, Map<String, Description> byText) {
-		descriptionOf(definitionFile).ifPresent(text -> add(text, source, byText));
+	private void record(File definitionFile, File source, Duplicates descriptions) {
+		descriptionOf(definitionFile)
+				.ifPresent(text -> descriptions.add(normalize(text), text, source.toString()));
 	}
 
 	private Optional<String> descriptionOf(File definitionFile) {
@@ -56,41 +53,7 @@ public class UniqueDescriptionsRule extends MultiDefinitionRule {
 				.filter(value -> !value.isBlank());
 	}
 
-	private void add(String text, File source, Map<String, Description> byText) {
-		byText.computeIfAbsent(normalize(text), key -> new Description(text)).addSource(source.toString());
-	}
-
 	private String normalize(String text) {
 		return text.strip().toLowerCase().replaceAll("\\s+", " ");
-	}
-
-	private List<String> duplicates(Map<String, Description> byText) {
-		List<String> violations = new ArrayList<>();
-		for (Description description : byText.values()) {
-			description.addDuplicateViolation(violations);
-		}
-		return violations;
-	}
-
-	/** A description's original text and the sources that declare an equivalent of it. */
-	private static final class Description {
-
-		private final String text;
-		private final List<String> sources = new ArrayList<>();
-
-		private Description(String text) {
-			this.text = text;
-		}
-
-		private void addSource(String source) {
-			sources.add(source);
-		}
-
-		private void addDuplicateViolation(List<String> violations) {
-			if (sources.size() > 1) {
-				violations.add("description '" + text + "' is used by " + sources.size()
-						+ " definitions: " + String.join(", ", sources));
-			}
-		}
 	}
 }

@@ -5,6 +5,10 @@ import java.util.List;
 
 import javax.inject.Named;
 
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
+
+import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+
 /**
  * Enforcer rule that keeps two documents from contradicting each other. Because
  * {@code CLAUDE.md} defers to {@code AGENTS.md} as the single source of truth,
@@ -20,7 +24,7 @@ import javax.inject.Named;
  * together.
  */
 @Named("crossDocConsistency")
-public class CrossDocConsistencyRule extends AbstractDocumentConsistencyRule {
+public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	/** The first document to compare. Injected from the rule configuration. */
 	private File claudeMdFile;
@@ -32,38 +36,11 @@ public class CrossDocConsistencyRule extends AbstractDocumentConsistencyRule {
 	private List<String> consistentPatterns;
 
 	@Override
-	protected File firstFile() {
-		return claudeMdFile;
-	}
-
-	@Override
-	protected String firstParameterName() {
-		return "claudeMdFile";
-	}
-
-	@Override
-	protected File secondFile() {
-		return agentsMdFile;
-	}
-
-	@Override
-	protected String secondParameterName() {
-		return "agentsMdFile";
-	}
-
-	@Override
-	protected List<String> consistentPatterns() {
-		return consistentPatterns;
-	}
-
-	@Override
-	protected boolean requireInBoth() {
-		return true;
-	}
-
-	@Override
-	protected String reportHeader() {
-		return "Documents are inconsistent:";
+	public void execute() throws EnforcerRuleException {
+		requireDocument(claudeMdFile, "claudeMdFile");
+		requireDocument(agentsMdFile, "agentsMdFile");
+		report("Documents are inconsistent:",
+				new DocumentConsistency(consistentPatterns, true).violations(claudeMdFile, agentsMdFile));
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {

@@ -12,7 +12,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
-import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
  * Enforcer rule that fails the build when any sub-agent definition under the
@@ -32,9 +31,9 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 @Named("subAgentFormat")
 public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final String NAME_KEY = "name";
-	private static final String DESCRIPTION_KEY = "description";
-	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of(NAME_KEY, DESCRIPTION_KEY);
+	private static final String LABEL = "Sub-agent";
+	private static final String DEFINITION = "sub-agent definition";
+	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
 
 	/** The {@code .claude/agents} directory to scan. Injected from the rule configuration. */
 	private File agentsDir;
@@ -60,17 +59,13 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectDefinitionViolations(File definition, List<String> violations) {
-		String content = MarkdownText.read(definition, "sub-agent definition");
+		String content = MarkdownText.read(definition, DEFINITION);
 		if (content.isBlank()) {
 			violations.add("Sub-agent definition is empty: " + definition);
-		} else {
-			String fixed = FrontMatterAutoFix.apply(definition, "sub-agent definition", content, autoFix, getLog());
-			collectFrontMatterViolations(definition, fixed, violations);
+			return;
 		}
-	}
-
-	private void collectFrontMatterViolations(File definition, String content, List<String> violations) {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
+		String fixed = FrontMatterAutoFix.apply(definition, DEFINITION, content, autoFix, getLog());
+		Optional<FrontMatter> frontMatter = FrontMatter.parse(fixed);
 		if (frontMatter.isEmpty()) {
 			violations.add("Sub-agent definition must start with a YAML front matter block delimited by '---': "
 					+ definition);
@@ -80,34 +75,11 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
-		collectMissingKeys(definition, frontMatter, violations);
-		collectNameViolations(definition, frontMatter, violations);
-		collectDescriptionViolations(definition, frontMatter, violations);
-		ModelAllowlist.collect(allowedModels, frontMatter, "Sub-agent", definition, violations);
-	}
-
-	private void collectMissingKeys(File definition, FrontMatter frontMatter, List<String> violations) {
-		for (String key : requiredKeys()) {
-			if (!frontMatter.hasKey(key)) {
-				violations.add("Sub-agent front matter is missing '" + key + ":' in: " + definition);
-			}
-		}
-	}
-
-	private void collectNameViolations(File definition, FrontMatter frontMatter, List<String> violations) {
-		frontMatter.value(NAME_KEY).ifPresent(
-				name -> NameConvention.collect(name, DefinitionFiles.baseName(definition), definition.toString(), violations));
-	}
-
-	private void collectDescriptionViolations(File definition, FrontMatter frontMatter, List<String> violations) {
-		frontMatter.value(DESCRIPTION_KEY).ifPresent(
-				description -> addDescriptionViolation(definition, description, violations));
-	}
-
-	private void addDescriptionViolation(File definition, String description, List<String> violations) {
-		if (description.isBlank()) {
-			violations.add("Sub-agent description must not be empty in: " + definition);
-		}
+		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, definition, violations);
+		checks.requireKeys(requiredKeys());
+		checks.checkName(DefinitionFiles.baseName(definition));
+		checks.checkDescription(0);
+		checks.checkModel(allowedModels);
 	}
 
 	private List<String> requiredKeys() {

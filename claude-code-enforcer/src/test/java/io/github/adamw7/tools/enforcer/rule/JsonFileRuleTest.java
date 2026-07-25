@@ -179,11 +179,6 @@ class JsonFileRuleTest {
 		}
 
 		@Override
-		protected String header() {
-			return "test.json is not well formed:";
-		}
-
-		@Override
 		protected void handleMissingFile(File missing) throws EnforcerRuleException {
 			if (!optional) {
 				super.handleMissingFile(missing);

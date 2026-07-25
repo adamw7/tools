@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.enforcer.rule;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -67,10 +66,6 @@ public final class JsonNodes {
 
 	/** The field names of an object node, preserving document order. */
 	public static List<String> fieldNames(JsonNode node) {
-		List<String> names = new ArrayList<>();
-		for (Map.Entry<String, JsonNode> field : node.properties()) {
-			names.add(field.getKey());
-		}
-		return names;
+		return node.propertyStream().map(Map.Entry::getKey).toList();
 	}
 }

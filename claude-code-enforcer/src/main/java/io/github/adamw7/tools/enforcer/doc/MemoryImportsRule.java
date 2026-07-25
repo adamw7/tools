@@ -42,6 +42,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	private static final Pattern IMPORT = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9_./-]+)");
 	private static final Pattern CODE_SPAN = Pattern.compile("`[^`]*`");
+	private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
 	private static final int DEFAULT_MAX_DEPTH = 5;
 
 	/** The {@code CLAUDE.md} file whose imports are validated. Injected from the rule configuration. */
@@ -127,11 +128,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	/** Drops sentence punctuation, so "see @docs/setup.md." imports {@code docs/setup.md}. */
 	private String withoutTrailingDots(String imported) {
-		String path = imported;
-		while (path.endsWith(".")) {
-			path = path.substring(0, path.length() - 1);
-		}
-		return path;
+		return TRAILING_DOTS.matcher(imported).replaceAll("");
 	}
 
 	/**

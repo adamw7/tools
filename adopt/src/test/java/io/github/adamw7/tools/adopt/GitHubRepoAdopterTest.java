@@ -134,15 +134,6 @@ class GitHubRepoAdopterTest {
 	 * TrustStep writes to the real ~/.claude.json — touch anything outside the test.
 	 */
 	@Test
-	void withDefaultPipelineRunsTheDefaultStepsStartingWithTheToolchainCheck() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "missing"));
-		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner);
-		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
-		assertEquals(List.of("git", "--version"), runner.commandAt(0));
-	}
-
-	@Test
 	void withDefaultPipelineHonoursPullRequestOptionsAndTheAssetsFlag() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> new CommandResult(command, 1, "missing"));
@@ -153,7 +144,8 @@ class GitHubRepoAdopterTest {
 
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
-		List<String> names = GitHubRepoAdopter.defaultSteps().stream().map(AdoptionStep::name).toList();
+		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), false).stream()
+				.map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
 				"commit", "enforcer", "commit", "verify", "push", "pull-request"), names);
 	}

@@ -42,6 +42,16 @@ public final class Workspaces {
 		return workspace.map(Workspaces::createIfMissing).orElseGet(Workspaces::createTemporary);
 	}
 
+	/**
+	 * Resolves a workspace named as text, treating a blank name as "not supplied"
+	 * the way {@link Text} does everywhere else the adoption reads an optional
+	 * input, so an omitted MCP argument falls back to a temporary workspace instead
+	 * of resolving the empty path.
+	 */
+	public static Path resolveNamed(String workspace) {
+		return resolve(Text.isPresent(workspace) ? Optional.of(Path.of(workspace.strip())) : Optional.empty());
+	}
+
 	public static Path createIfMissing(Path workspace) {
 		try {
 			return Files.createDirectories(workspace).toAbsolutePath();

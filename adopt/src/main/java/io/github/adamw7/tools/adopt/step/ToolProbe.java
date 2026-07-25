@@ -41,11 +41,21 @@ final class ToolProbe {
 	}
 
 	private void collectIfMissing(List<String> missing, String tool, Path directory, CommandRunner runner) {
-		if (succeeds(List.of(tool, VERSION_FLAG), directory, runner)) {
+		if (isInstalled(tool, directory, runner)) {
 			log.info("Found required tool: {}", tool);
 		} else {
 			missing.add(tool);
 		}
+	}
+
+	/**
+	 * @return whether the tool's {@code --version} probe runs and exits zero. The
+	 *         probe's shape lives here rather than at each caller, so
+	 *         {@link ToolchainStep} and {@link BuildToolchainStep} cannot drift apart
+	 *         on how a tool is checked for.
+	 */
+	boolean isInstalled(String tool, Path directory, CommandRunner runner) {
+		return succeeds(List.of(tool, VERSION_FLAG), directory, runner);
 	}
 
 	/**

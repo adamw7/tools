@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.Failures;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -85,26 +86,15 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		try {
 			runOrFail(runner, checkout, claudeCommand);
 		} catch (RuntimeException e) {
-			restoreSuppressing(relocated, checkout, e);
+			Failures.alsoRun(e, () -> restoreRelocated(relocated, checkout));
 			throw e;
 		}
-		relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
+		restoreRelocated(relocated, checkout);
 		requireGenerated(context);
 	}
 
-	/**
-	 * Restores the relocated memory file on the failure path without letting a
-	 * failed restore replace the failure being reported. Thrown from a
-	 * {@code finally} it would do exactly that, discarding the {@code claude}
-	 * transcript that is the only useful diagnostic the run produced; attaching it as
-	 * a suppressed exception keeps both.
-	 */
-	private void restoreSuppressing(Optional<Path> relocated, Path checkout, RuntimeException failure) {
-		try {
-			relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
-		} catch (RuntimeException e) {
-			failure.addSuppressed(e);
-		}
+	private void restoreRelocated(Optional<Path> relocated, Path checkout) {
+		relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
 	}
 
 	private Path claudeDirMemory(Path checkout) {

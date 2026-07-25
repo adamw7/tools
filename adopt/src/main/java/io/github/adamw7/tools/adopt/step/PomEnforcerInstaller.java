@@ -1,34 +1,10 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.function.Supplier;
 
-import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
-import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
@@ -36,19 +12,14 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * so the adopted repository fails its build if the freshly generated
  * {@code CLAUDE.md} is missing or malformed.
  *
- * <p>The edit is performed on the JDK's DOM so no third-party XML library is
- * needed, is namespace-aware so the new elements join the POM's default
- * namespace, and is idempotent: a POM that already wires the rule is left
+ * <p>The install is idempotent: a POM that already wires the rule is left
  * untouched. A POM that already uses the {@code maven-enforcer-plugin} for other
  * rules is augmented in place rather than skipped, so the rule is still wired in.
  *
- * <p>The existing document is preserved verbatim — every original whitespace and
- * line is left untouched — and only the newly added elements are indented, to the
- * style the POM already uses. The adoption commit therefore shows just the
- * enforcer block being added rather than a reformat of the whole file.
- *
- * <p>The rule version comes from the running build and must be a release: see
- * {@link #requireReleaseVersion(String)}.
+ * <p>{@link PomDocument} does the reading, appending, and verbatim writing, so
+ * the existing document is preserved exactly and only the newly added elements
+ * appear in the adoption commit. The rule version comes from
+ * {@link EnforcerRuleVersion} and must be a release.
  */
 public class PomEnforcerInstaller {
 
@@ -58,80 +29,15 @@ public class PomEnforcerInstaller {
 	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	static final String RULE_GROUP_ID = "io.github.adamw7";
 	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
-	static final String BUILD_PROPERTIES = "/adopt-build.properties";
-	static final String RULE_VERSION_KEY = "enforcer.rule.version";
-	static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
-
-	private static final String POM_DESCRIPTION = "POM";
 
 	private final Supplier<String> ruleVersion;
 
 	public PomEnforcerInstaller() {
-		this.ruleVersion = PomEnforcerInstaller::releaseRuleVersion;
+		this.ruleVersion = EnforcerRuleVersion::release;
 	}
 
 	public PomEnforcerInstaller(String ruleVersion) {
 		this.ruleVersion = () -> ruleVersion;
-	}
-
-	/**
-	 * The released rule version to wire in. Resolving it lazily — only once a POM is
-	 * actually being edited — keeps merely constructing the default
-	 * {@link BuildSystems#DEFAULTS} list, or adopting a repository that builds with
-	 * something other than Maven, from depending on the running build's version.
-	 */
-	static String releaseRuleVersion() {
-		return requireReleaseVersion(buildRuleVersion());
-	}
-
-	/**
-	 * A snapshot resolves from the adopter's own local repository but from nowhere
-	 * else, so wiring one in would open a pull request that builds on this machine
-	 * and fails for the adopted project's CI and every one of its contributors —
-	 * and {@link VerifyStep} could not catch it, because it too resolves against the
-	 * local repository. Refusing here turns that into an immediate, explicable
-	 * failure for the person running the adoption.
-	 */
-	static String requireReleaseVersion(String version) {
-		if (version.endsWith(SNAPSHOT_SUFFIX)) {
-			throw new AdoptionException("Refusing to wire the snapshot enforcer rule version " + version
-					+ " into the adopted project's pom.xml: a snapshot is not resolvable outside this machine's"
-					+ " local repository, so the pull request would break the adopted project's build."
-					+ " Run the adoption from a released build of tools, or supply a released version to"
-					+ " PomEnforcerInstaller.");
-		}
-		return version;
-	}
-
-	/**
-	 * Reads the enforcer rule version wired into adopted POMs from the build
-	 * metadata that Maven filters into {@value #BUILD_PROPERTIES} at build time, so
-	 * the dependency is pinned to the exact {@code tools} release running the
-	 * adoption — and is therefore resolvable from the same repository that
-	 * published it — rather than to a hardcoded literal that silently drifts as the
-	 * project is versioned.
-	 */
-	static String buildRuleVersion() {
-		try (InputStream stream = PomEnforcerInstaller.class.getResourceAsStream(BUILD_PROPERTIES)) {
-			return readRuleVersion(stream);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read build metadata: " + BUILD_PROPERTIES, e);
-		}
-	}
-
-	private static String readRuleVersion(InputStream stream) throws IOException {
-		if (stream == null) {
-			throw new AdoptionException("Build metadata not on the classpath: " + BUILD_PROPERTIES
-					+ " (build the module so its resources are filtered)");
-		}
-		Properties properties = new Properties();
-		properties.load(stream);
-		String version = properties.getProperty(RULE_VERSION_KEY, "").strip();
-		if (version.isEmpty() || version.startsWith("${")) {
-			throw new AdoptionException(
-					RULE_VERSION_KEY + " was not filtered into " + BUILD_PROPERTIES + " (found: '" + version + "')");
-		}
-		return version;
 	}
 
 	/**
@@ -140,34 +46,24 @@ public class PomEnforcerInstaller {
 	 *         unchanged.
 	 */
 	public boolean install(Path pomFile) {
-		String original = AdoptionFiles.read(pomFile, POM_DESCRIPTION);
-		Document document = parse(pomFile);
-		PomEditor editor = new PomEditor(document);
-		Element plugins = editor.pluginsElement();
+		PomDocument pom = PomDocument.read(pomFile);
+		Element plugins = pom.pluginsElement();
 		if (declaresClaudeRule(plugins)) {
 			return false;
 		}
-		wireEnforcer(editor, plugins);
-		write(document, pomFile, original);
+		wireEnforcer(pom, plugins);
+		pom.write();
 		return true;
 	}
 
 	private boolean declaresClaudeRule(Element plugins) {
-		return children(plugins, "plugin").stream().anyMatch(this::declaresRuleDependency);
+		return PomDocument.children(plugins, "plugin").stream().anyMatch(this::declaresRuleDependency);
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {
-		return child(plugin, "dependencies").stream()
-				.flatMap(dependencies -> children(dependencies, "dependency").stream())
-				.anyMatch(dependency -> hasArtifactId(dependency, RULE_ARTIFACT_ID));
-	}
-
-	private static boolean hasArtifactId(Element element, String artifactId) {
-		return child(element, "artifactId")
-				.map(Element::getTextContent)
-				.map(String::strip)
-				.filter(artifactId::equals)
-				.isPresent();
+		return PomDocument.child(plugin, "dependencies").stream()
+				.flatMap(dependencies -> PomDocument.children(dependencies, "dependency").stream())
+				.anyMatch(dependency -> PomDocument.hasArtifactId(dependency, RULE_ARTIFACT_ID));
 	}
 
 	/**
@@ -175,276 +71,47 @@ public class PomEnforcerInstaller {
 	 * {@code maven-enforcer-plugin}, reusing an existing plugin declaration when
 	 * one is present so the project keeps a single enforcer plugin entry.
 	 */
-	private void wireEnforcer(PomEditor editor, Element plugins) {
-		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(editor, plugins));
-		ruleDependency(editor, editor.childOrCreate(plugin, "dependencies"));
-		enforceExecution(editor, editor.childOrCreate(plugin, "executions"));
+	private void wireEnforcer(PomDocument pom, Element plugins) {
+		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(pom, plugins));
+		ruleDependency(pom, pom.childOrCreate(plugin, "dependencies"));
+		enforceExecution(pom, pom.childOrCreate(plugin, "executions"));
 	}
 
 	private Optional<Element> findEnforcerPlugin(Element plugins) {
-		return children(plugins, "plugin").stream()
-				.filter(plugin -> hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
+		return PomDocument.children(plugins, "plugin").stream()
+				.filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
 				.findFirst();
 	}
 
-	private Element createEnforcerPlugin(PomEditor editor, Element plugins) {
-		Element plugin = editor.appendElement(plugins, "plugin");
-		editor.appendText(plugin, "groupId", ENFORCER_GROUP_ID);
-		editor.appendText(plugin, "artifactId", ENFORCER_ARTIFACT_ID);
-		editor.appendText(plugin, "version", ENFORCER_VERSION);
+	private Element createEnforcerPlugin(PomDocument pom, Element plugins) {
+		Element plugin = pom.appendElement(plugins, "plugin");
+		pom.appendText(plugin, "groupId", ENFORCER_GROUP_ID);
+		pom.appendText(plugin, "artifactId", ENFORCER_ARTIFACT_ID);
+		pom.appendText(plugin, "version", ENFORCER_VERSION);
 		return plugin;
 	}
 
-	private void ruleDependency(PomEditor editor, Element dependencies) {
-		Element dependency = editor.appendElement(dependencies, "dependency");
-		editor.appendText(dependency, "groupId", RULE_GROUP_ID);
-		editor.appendText(dependency, "artifactId", RULE_ARTIFACT_ID);
-		editor.appendText(dependency, "version", ruleVersion.get());
+	private void ruleDependency(PomDocument pom, Element dependencies) {
+		Element dependency = pom.appendElement(dependencies, "dependency");
+		pom.appendText(dependency, "groupId", RULE_GROUP_ID);
+		pom.appendText(dependency, "artifactId", RULE_ARTIFACT_ID);
+		pom.appendText(dependency, "version", ruleVersion.get());
 	}
 
-	private void enforceExecution(PomEditor editor, Element executions) {
-		Element execution = editor.appendElement(executions, "execution");
-		editor.appendText(execution, "id", "enforce-claude-md");
-		editor.appendText(execution, "phase", "validate");
-		editor.appendText(execution, "inherited", "false");
-		Element goals = editor.appendElement(execution, "goals");
-		editor.appendText(goals, "goal", "enforce");
-		claudeMdConfiguration(editor, execution);
+	private void enforceExecution(PomDocument pom, Element executions) {
+		Element execution = pom.appendElement(executions, "execution");
+		pom.appendText(execution, "id", "enforce-claude-md");
+		pom.appendText(execution, "phase", "validate");
+		pom.appendText(execution, "inherited", "false");
+		Element goals = pom.appendElement(execution, "goals");
+		pom.appendText(goals, "goal", "enforce");
+		claudeMdConfiguration(pom, execution);
 	}
 
-	private void claudeMdConfiguration(PomEditor editor, Element execution) {
-		Element configuration = editor.appendElement(execution, "configuration");
-		Element rules = editor.appendElement(configuration, "rules");
-		Element claudeMdFormat = editor.appendElement(rules, "claudeMdFormat");
-		editor.appendText(claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
-	}
-
-	private static Optional<Element> child(Element parent, String name) {
-		return children(parent, name).stream().findFirst();
-	}
-
-	private static List<Element> children(Element parent, String name) {
-		List<Element> matches = new ArrayList<>();
-		NodeList nodes = parent.getChildNodes();
-		for (int index = 0; index < nodes.getLength(); index++) {
-			addIfMatch(matches, nodes.item(index), name);
-		}
-		return matches;
-	}
-
-	private static void addIfMatch(List<Element> matches, Node node, String name) {
-		if (node instanceof Element element && name.equals(element.getLocalName())) {
-			matches.add(element);
-		}
-	}
-
-	private Document parse(Path pomFile) {
-		try {
-			return builder().parse(pomFile.toFile());
-		} catch (IOException | SAXException e) {
-			throw new AdoptionException("Could not read POM: " + pomFile, e);
-		}
-	}
-
-	private DocumentBuilder builder() {
-		try {
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			factory.setNamespaceAware(true);
-			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-			factory.setExpandEntityReferences(false);
-			return factory.newDocumentBuilder();
-		} catch (ParserConfigurationException e) {
-			throw new AdoptionException("Could not configure XML parser", e);
-		}
-	}
-
-	/**
-	 * Writes the document back verbatim. The transformer's own indentation is left
-	 * off and the parsed whitespace nodes are kept, so only the elements the edit
-	 * added — already indented by {@link PomEditor} — differ from the original. The
-	 * original's XML declaration and trailing newline are carried over exactly so
-	 * the first and last lines are not disturbed either.
-	 *
-	 * <p>XML parsing normalizes {@code \r\n} to {@code \n}, so the DOM the
-	 * transformer serializes has lost the original terminator;
-	 * {@link LineTerminators} puts it back, keeping a CRLF POM on CRLF rather than
-	 * silently flipping every line to LF and reformatting the whole file.
-	 */
-	private void write(Document document, Path pomFile, String original) {
-		String content = declarationPrefix(original) + serialize(document, pomFile);
-		String withTrailingNewline = matchTrailingNewline(content, original);
-		AdoptionFiles.write(pomFile, LineTerminators.matching(withTrailingNewline, original), POM_DESCRIPTION);
-	}
-
-	private String serialize(Document document, Path pomFile) {
-		try {
-			return transformBody(document);
-		} catch (TransformerException e) {
-			throw new AdoptionException("Could not write POM: " + pomFile, e);
-		}
-	}
-
-	private String transformBody(Document document) throws TransformerException {
-		StringWriter writer = new StringWriter();
-		transformer().transform(new DOMSource(document), new StreamResult(writer));
-		return writer.toString();
-	}
-
-	/**
-	 * The XML declaration the original file opened with, up to and including its
-	 * line terminator, or empty when it had none. Carrying it over verbatim keeps
-	 * the transformer from inventing one (and adding a spurious first-line change)
-	 * on a POM that started straight with {@code <project>}.
-	 */
-	private String declarationPrefix(String original) {
-		if (!original.stripLeading().startsWith("<?xml")) {
-			return "";
-		}
-		int end = original.indexOf("?>");
-		if (end < 0) {
-			return "";
-		}
-		int afterTerminator = lineTerminatorEnd(original, end + 2);
-		return original.substring(0, afterTerminator) + (afterTerminator == end + 2 ? "\n" : "");
-	}
-
-	private int lineTerminatorEnd(String text, int from) {
-		int index = from;
-		if (index < text.length() && text.charAt(index) == '\r') {
-			index++;
-		}
-		if (index < text.length() && text.charAt(index) == '\n') {
-			index++;
-		}
-		return index;
-	}
-
-	private String matchTrailingNewline(String content, String original) {
-		boolean originalEnds = original.endsWith("\n") || original.endsWith("\r");
-		boolean contentEnds = content.endsWith("\n") || content.endsWith("\r");
-		return originalEnds && !contentEnds ? content + "\n" : content;
-	}
-
-	private Transformer transformer() throws TransformerException {
-		TransformerFactory factory = TransformerFactory.newInstance();
-		factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-		Transformer transformer = factory.newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "no");
-		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-		return transformer;
-	}
-
-	/**
-	 * Appends new elements to a parsed POM without disturbing its existing layout.
-	 * Each appended element is preceded by a newline and an indentation matching
-	 * the document's own unit (detected from the file, defaulting to two spaces),
-	 * and is inserted before the parent's own closing indentation so that closing
-	 * tag stays put. Every container is attached to its parent before its children
-	 * are added, so an element's depth — and therefore its indentation — is known
-	 * as soon as it is appended.
-	 */
-	private static final class PomEditor {
-
-		private static final String DEFAULT_INDENT_UNIT = "  ";
-
-		private final Document document;
-		private final String namespace;
-		private final String indentUnit;
-
-		private PomEditor(Document document) {
-			this.document = document;
-			this.namespace = document.getDocumentElement().getNamespaceURI();
-			this.indentUnit = detectIndentUnit(document.getDocumentElement());
-		}
-
-		private Element pluginsElement() {
-			Element project = document.getDocumentElement();
-			Element build = childOrCreate(project, "build");
-			return childOrCreate(build, "plugins");
-		}
-
-		private Element childOrCreate(Element parent, String name) {
-			return child(parent, name).orElseGet(() -> appendElement(parent, name));
-		}
-
-		private Element appendElement(Element parent, String name) {
-			return appendChild(parent, create(name));
-		}
-
-		private void appendText(Element parent, String name, String text) {
-			Element element = create(name);
-			element.setTextContent(text);
-			appendChild(parent, element);
-		}
-
-		private Element appendChild(Element parent, Element child) {
-			Node closingIndent = trailingWhitespace(parent);
-			Node childIndent = document.createTextNode(newlineIndent(depthOf(parent) + 1));
-			if (closingIndent == null) {
-				parent.appendChild(childIndent);
-				parent.appendChild(child);
-				parent.appendChild(document.createTextNode(newlineIndent(depthOf(parent))));
-			} else {
-				parent.insertBefore(childIndent, closingIndent);
-				parent.insertBefore(child, closingIndent);
-			}
-			return child;
-		}
-
-		private String newlineIndent(int depth) {
-			return "\n" + indentUnit.repeat(depth);
-		}
-
-		private Element create(String name) {
-			return namespace == null ? document.createElement(name) : document.createElementNS(namespace, name);
-		}
-
-		private static Node trailingWhitespace(Element parent) {
-			Node last = parent.getLastChild();
-			return isWhitespaceText(last) ? last : null;
-		}
-
-		private static int depthOf(Node node) {
-			int depth = 0;
-			Node parent = node.getParentNode();
-			while (parent != null && parent.getNodeType() == Node.ELEMENT_NODE) {
-				depth++;
-				parent = parent.getParentNode();
-			}
-			return depth;
-		}
-
-		/**
-		 * The indentation of a single nesting level, read from the first top-level
-		 * element's leading whitespace, or two spaces when the POM carries none.
-		 */
-		private static String detectIndentUnit(Element root) {
-			NodeList children = root.getChildNodes();
-			for (int index = 0; index < children.getLength(); index++) {
-				String unit = leadingIndentOf(children.item(index));
-				if (!unit.isEmpty()) {
-					return unit;
-				}
-			}
-			return DEFAULT_INDENT_UNIT;
-		}
-
-		private static String leadingIndentOf(Node node) {
-			if (node.getNodeType() != Node.ELEMENT_NODE) {
-				return "";
-			}
-			Node previous = node.getPreviousSibling();
-			if (!isWhitespaceText(previous)) {
-				return "";
-			}
-			String text = previous.getTextContent();
-			int newline = text.lastIndexOf('\n');
-			return newline < 0 ? "" : text.substring(newline + 1);
-		}
-
-		private static boolean isWhitespaceText(Node node) {
-			return node != null && node.getNodeType() == Node.TEXT_NODE && node.getTextContent().isBlank();
-		}
+	private void claudeMdConfiguration(PomDocument pom, Element execution) {
+		Element configuration = pom.appendElement(execution, "configuration");
+		Element rules = pom.appendElement(configuration, "rules");
+		Element claudeMdFormat = pom.appendElement(rules, "claudeMdFormat");
+		pom.appendText(claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
 	}
 }

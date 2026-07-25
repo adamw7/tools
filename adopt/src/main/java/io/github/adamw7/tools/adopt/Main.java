@@ -40,7 +40,7 @@ public class Main {
 		try {
 			adopter.adopt(context, report);
 		} catch (RuntimeException e) {
-			writeReportSuppressing(cli, context, report, e);
+			Failures.alsoRun(e, () -> writeReport(cli, context, report));
 			throw e;
 		}
 		writeReport(cli, context, report);
@@ -49,21 +49,6 @@ public class Main {
 
 	static Path workspace(CliArguments cli) {
 		return Workspaces.resolve(cli.workspace());
-	}
-
-	/**
-	 * Writes the report of a failed run without letting an unwritable report file
-	 * replace the adoption failure being reported — that failure is the diagnostic
-	 * the operator needs, so a secondary write error is attached to it rather than
-	 * thrown over it.
-	 */
-	private static void writeReportSuppressing(CliArguments cli, AdoptionContext context, AdoptionReport report,
-			RuntimeException failure) {
-		try {
-			writeReport(cli, context, report);
-		} catch (RuntimeException e) {
-			failure.addSuppressed(e);
-		}
 	}
 
 	private static void writeReport(CliArguments cli, AdoptionContext context, AdoptionReport report) {

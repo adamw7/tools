@@ -111,8 +111,7 @@ public class AdoptTool implements McpTool {
 	}
 
 	private Path workspace(Map<String, Object> arguments) {
-		String workspace = text(arguments, "workspace");
-		return Workspaces.resolve(workspace.isBlank() ? Optional.empty() : Optional.of(Path.of(workspace)));
+		return Workspaces.resolveNamed(text(arguments, "workspace"));
 	}
 
 	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {

@@ -230,6 +230,112 @@ class ClaudeMdConformerTest {
 		assertEquals(once, twice, "re-running the conformer must not churn the file");
 	}
 
+	@Test
+	void countsAFencedCodeBlockAsASectionBody() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Project
+
+				```bash
+				mvn install
+				```
+
+				## Java version
+
+				Java 25.
+				""";
+		String conformed = conformer.conform(generated);
+		assertFalse(conformed.contains("## Project\n\nSee [AGENTS.md](AGENTS.md)."),
+				"a section whose body is a code block must not be given a stub:\n" + conformed);
+	}
+
+	@Test
+	void countsADeeperSubHeadingAsASectionBody() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Testing
+
+				### Unit tests
+
+				JUnit 5.
+				""";
+		String conformed = conformer.conform(generated);
+		assertFalse(conformed.contains("## Testing\n\nSee [AGENTS.md](AGENTS.md)."),
+				"a section carrying a sub-heading must not be given a stub:\n" + conformed);
+	}
+
+	@Test
+	void leavesHeadingsInsideTildeFencesAlone() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				~~~markdown
+				## Project purpose
+				~~~
+
+				## Project
+
+				A repo.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(conformed.contains("## Project purpose"), "the tilde-fenced heading must be left untouched");
+		assertTrue(headings(conformed).contains("## Project"));
+	}
+
+	@Test
+	void addsTheAgentsReferenceWhenTheOnlyMentionIsInsideAFence() {
+		String generated = """
+				# CLAUDE.md
+
+				```markdown
+				See AGENTS.md.
+				```
+
+				## Project
+
+				A repo.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(referencesAgentsMdOutsideFences(conformed),
+				"a mention that only exists as a code sample does not satisfy the rule:\n" + conformed);
+	}
+
+	/** Mirrors how the rule looks for the reference: fenced lines do not count. */
+	private boolean referencesAgentsMdOutsideFences(String content) {
+		boolean fenced = false;
+		boolean found = false;
+		for (String line : content.lines().toList()) {
+			found = found || (!fenced && line.contains(ClaudeMdConformer.AGENTS_REFERENCE));
+			fenced = line.strip().startsWith("```") != fenced;
+		}
+		return found;
+	}
+
+	@Test
+	void buildsAWholeSkeletonFromAnEmptyDocument() {
+		String conformed = conformer.conform("");
+		assertEquals(ClaudeMdConformer.TITLE, conformed.lines().findFirst().orElseThrow());
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS), conformed);
+		ClaudeMdConformer.REQUIRED_SECTIONS.forEach(section -> assertTrue(hasBody(conformed, section),
+				section + " must have a body:\n" + conformed));
+	}
+
+	@Test
+	void collapsesTrailingBlankLinesToASingleNewline() {
+		String conforming = ("# CLAUDE.md\n\n" + ClaudeMdConformer.AGENTS_REFERENCE_LINE + "\n\n"
+				+ requiredSectionsBody()).stripTrailing() + "\n";
+		String conformed = conformer.conform(conforming + "\n\n\n");
+		assertEquals(conforming, conformed, "trailing blank lines must be normalised away");
+	}
+
 	private String requiredSectionsBody() {
 		StringBuilder builder = new StringBuilder();
 		for (String section : ClaudeMdConformer.REQUIRED_SECTIONS) {

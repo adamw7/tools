@@ -109,6 +109,20 @@ class ClaudeTrustStoreTest {
 		assertEquals(original, Files.readString(config));
 	}
 
+	/**
+	 * A half-written or hand-edited config is not something to silently replace:
+	 * the trust flag is worth far less than the user's own Claude Code settings.
+	 */
+	@Test
+	void refusesToOverwriteAConfigThatIsNotValidJson(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		Files.writeString(config, "{\"projects\": ");
+		ClaudeTrustStore store = new ClaudeTrustStore(config);
+		Path repo = dir.resolve("repo");
+		assertThrows(AdoptionException.class, () -> store.trust(repo));
+		assertEquals("{\"projects\": ", Files.readString(config), "the unreadable config must be left as it was");
+	}
+
 	@Test
 	void treatsAnEmptyConfigFileAsAFreshObject(@TempDir Path dir) throws IOException {
 		Path config = dir.resolve(".claude.json");

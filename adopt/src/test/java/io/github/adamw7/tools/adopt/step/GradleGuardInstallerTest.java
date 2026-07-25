@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -10,6 +11,8 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import io.github.adamw7.tools.adopt.AdoptionException;
 
 class GradleGuardInstallerTest {
 
@@ -45,6 +48,13 @@ class GradleGuardInstallerTest {
 		assertTrue(content.contains("tasks.register('enforceClaudeMd')"), "the guard must be appended");
 		assertFalse(content.replace("\r\n", "").contains("\n"),
 				"a CRLF build script must stay CRLF; the appended block must not introduce bare LF endings");
+	}
+
+	@Test
+	void unreadableBuildScriptAbortsAdoption(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		Files.createDirectory(buildFile);
+		assertThrows(AdoptionException.class, () -> installer.install(buildFile));
 	}
 
 	@Test

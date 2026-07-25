@@ -120,6 +120,29 @@ class PullRequestStepTest {
 		assertTrue(report.pullRequestUrl().isEmpty());
 	}
 
+	/**
+	 * A list that cannot even be run — an unauthenticated {@code gh}, a remote that
+	 * is not a GitHub repository — must not be read as "a pull request is already
+	 * open", or the adoption would report success having created nothing.
+	 */
+	@Test
+	void createsThePullRequestWhenTheListQueryItselfFails() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::listFails);
+		step.execute(context, runner);
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")),
+				"creation must still be attempted when the pre-check could not be answered");
+	}
+
+	/** Output cut short mid-document — a killed {@code gh}, a truncated pipe. */
+	@Test
+	void leavesUrlAbsentWhenListOutputIsTruncatedJson() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 0, "[{\"url\": "));
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertTrue(report.pullRequestUrl().isEmpty());
+	}
+
 	@Test
 	void failedCreationAbortsAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::createFails);
@@ -135,6 +158,13 @@ class PullRequestStepTest {
 
 	private CommandResult existingPullRequest(List<String> command) {
 		return new CommandResult(command, 0, "[{\"url\":\"" + PR_URL + "\"}]");
+	}
+
+	private CommandResult listFails(List<String> command) {
+		if (command.contains("list")) {
+			return new CommandResult(command, 1, "gh: not authenticated");
+		}
+		return new CommandResult(command, 0, PR_URL);
 	}
 
 	private CommandResult createFails(List<String> command) {

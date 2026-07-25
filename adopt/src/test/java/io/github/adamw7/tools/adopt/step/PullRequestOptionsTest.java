@@ -60,6 +60,15 @@ class PullRequestOptionsTest {
 		assertThrows(IllegalArgumentException.class, builder::build);
 	}
 
+	/** A caller clearing a field rather than leaving the default must not slip a null into gh's arguments. */
+	@Test
+	void rejectsANullTitleOrBody() {
+		PullRequestOptions.Builder withoutTitle = PullRequestOptions.builder().title(null);
+		assertThrows(IllegalArgumentException.class, withoutTitle::build);
+		PullRequestOptions.Builder withoutBody = PullRequestOptions.builder().body(null);
+		assertThrows(IllegalArgumentException.class, withoutBody::build);
+	}
+
 	@Test
 	void defensivelyCopiesReviewers() {
 		List<String> reviewers = new ArrayList<>(List.of("octocat"));

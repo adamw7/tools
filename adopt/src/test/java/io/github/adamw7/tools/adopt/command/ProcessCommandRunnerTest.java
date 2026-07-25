@@ -36,6 +36,30 @@ class ProcessCommandRunnerTest {
 	}
 
 	@Test
+	void rejectsATimeoutThatIsNotPositive() {
+		assertThrows(IllegalArgumentException.class, () -> new ProcessCommandRunner(Duration.ZERO));
+		assertThrows(IllegalArgumentException.class, () -> new ProcessCommandRunner(Duration.ofSeconds(-1)));
+		assertThrows(IllegalArgumentException.class, () -> new ProcessCommandRunner(null));
+	}
+
+	/**
+	 * An adoption running inside a host that interrupts its worker — an MCP server
+	 * shutting down — must abort rather than swallow the interrupt, and must leave
+	 * the flag set so the caller above still sees it.
+	 */
+	@Test
+	void interruptionAbortsAndRestoresTheInterruptFlag() {
+		Thread.currentThread().interrupt();
+		try {
+			assertThrows(AdoptionException.class,
+					() -> runner.run(Path.of("."), PlatformCommands.sleepingFor(30)));
+			assertTrue(Thread.currentThread().isInterrupted(), "the interrupt flag must be restored");
+		} finally {
+			Thread.interrupted();
+		}
+	}
+
+	@Test
 	void wrapsMissingExecutableInAdoptionException() {
 		assertThrows(AdoptionException.class,
 				() -> runner.run(Path.of("."), List.of("definitely-not-a-real-binary-xyz")));

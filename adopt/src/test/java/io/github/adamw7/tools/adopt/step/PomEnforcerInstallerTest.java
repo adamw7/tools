@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.step;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,6 +15,8 @@ import java.util.Properties;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import io.github.adamw7.tools.adopt.AdoptionException;
 
 class PomEnforcerInstallerTest {
 
@@ -272,6 +275,65 @@ class PomEnforcerInstallerTest {
 				"a created element must use the file's four-space unit, not the default two");
 		assertTrue(result.contains("\n        <plugins>\n"),
 				"nesting must scale by the detected four-space unit");
+	}
+
+	/**
+	 * A POM that declares no namespace at all is still valid Maven input, and its
+	 * added elements must stay namespace-less too — qualifying them would leave the
+	 * build with elements Maven no longer recognises.
+	 */
+	@Test
+	void wiresTheRuleIntoAPomThatDeclaresNoNamespace(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD.replace(" xmlns=\"http://maven.apache.org/POM/4.0.0\"", ""));
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<artifactId>tools.claude-code-enforcer</artifactId>"),
+				"the rule must be wired in:\n" + result);
+		assertFalse(result.contains("xmlns"), "no namespace may be invented for a POM that had none:\n" + result);
+	}
+
+	@Test
+	void doesNotAddATrailingNewlineToAPomThatHadNone(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD.stripTrailing());
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.endsWith("</project>"), "the file must end exactly as it did:\n" + result);
+	}
+
+	/**
+	 * A declaration sharing its line with the root element has no line terminator
+	 * to carry over, so one is supplied rather than running {@code <project>} onto
+	 * the declaration's line.
+	 */
+	@Test
+	void preservesADeclarationThatSharesItsLineWithTheRootElement(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, "<?xml version=\"1.0\"?>" + POM_WITH_BUILD);
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.startsWith("<?xml version=\"1.0\"?>\n<project "), "unexpected start:\n" + result);
+		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
+	}
+
+	@Test
+	void fallsBackToATwoSpaceUnitForAPomWithNoIndentation(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITHOUT_BUILD.replace("\n  ", "\n"));
+		installer.install(pom);
+		String result = Files.readString(pom);
+		assertTrue(result.contains("\n  <build>\n"),
+				"a POM carrying no indentation of its own must get the two-space default:\n" + result);
+		assertTrue(result.contains("\n    <plugins>\n"), "nesting must scale by the default unit:\n" + result);
+	}
+
+	@Test
+	void malformedPomAbortsAdoption(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, "<project><build></project>");
+		assertThrows(AdoptionException.class, () -> installer.install(pom));
+	}
+
+	@Test
+	void missingPomAbortsAdoption(@TempDir Path dir) {
+		Path pom = dir.resolve("pom.xml");
+		assertThrows(AdoptionException.class, () -> installer.install(pom));
 	}
 
 	/**

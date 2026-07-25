@@ -51,6 +51,27 @@ class StreamGobblerTest {
 	}
 
 	/**
+	 * An interrupted caller must not be left waiting out the join: {@code output()}
+	 * returns what it has and hands the interrupt on, so the runner above can abort
+	 * the adoption instead of losing the signal.
+	 */
+	@Test
+	void interruptedJoinReturnsPromptlyAndRestoresTheInterruptFlag() throws IOException {
+		PipedOutputStream sink = new PipedOutputStream();
+		PipedInputStream source = new PipedInputStream(sink);
+		StreamGobbler gobbler = StreamGobbler.consuming(source);
+
+		Thread.currentThread().interrupt();
+		try {
+			assertEquals("", gobbler.output());
+			assertTrue(Thread.currentThread().isInterrupted(), "the interrupt flag must be restored");
+		} finally {
+			Thread.interrupted();
+			sink.close();
+		}
+	}
+
+	/**
 	 * A descendant of a destroyed child can keep the output pipe open, so the
 	 * stream never reaches end-of-stream. {@link StreamGobbler#output()} must
 	 * still return — with whatever it captured — rather than block forever. This

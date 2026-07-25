@@ -1,8 +1,13 @@
 package io.github.adamw7.context;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -16,6 +21,8 @@ import java.util.regex.Pattern;
  * which name-based and package-aware resolution differ.
  */
 public abstract class AbstractFinder implements Context {
+
+	private static final Logger log = LogManager.getLogger(AbstractFinder.class.getName());
 
 	protected static final Pattern CLASS_REFERENCE =
 			Pattern.compile("\\b[A-Z][A-Za-z0-9_]*(\\.[A-Z][A-Za-z0-9_]*)*\\b");
@@ -77,6 +84,27 @@ public abstract class AbstractFinder implements Context {
 	 * base class.
 	 */
 	protected abstract Set<ClassContainer> findDirectDependencies(ClassContainer source);
+
+	/**
+	 * Runs {@code resolver} over every class reference in {@code strippedCode},
+	 * keeping the ones that resolve to a container in encounter order. Both finders
+	 * scan identically and differ only in how a single reference resolves, which is
+	 * exactly what {@code resolver} supplies.
+	 */
+	protected Set<ClassContainer> resolveReferences(ClassContainer source, String strippedCode,
+			Function<String, ClassContainer> resolver) {
+		Set<ClassContainer> dependencies = new LinkedHashSet<>();
+		CLASS_REFERENCE.matcher(strippedCode).results()
+				.map(result -> resolver.apply(result.group()))
+				.filter(Objects::nonNull)
+				.forEach(container -> addResolved(container, source, dependencies));
+		return dependencies;
+	}
+
+	private void addResolved(ClassContainer container, ClassContainer source, Set<ClassContainer> dependencies) {
+		log.info("Resolved {} used in {}", container.className(), source.className());
+		dependencies.add(container);
+	}
 
 	protected String stripCommentsAndLiterals(String code) {
 		return COMMENTS_AND_LITERALS.matcher(code).replaceAll(" ");

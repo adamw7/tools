@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.code.gen;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -13,12 +12,7 @@ public class Interfaces extends AbstractStatements {
 	}
 
 	public List<ClassContainer> generateRequired() {
-		List<ClassContainer> ifcs = new ArrayList<>();
-		
-		for (FieldDescriptor requiredField : info.nonOptional()) {
-			ifcs.add(generateInterface(requiredField));
-		}
-		return ifcs;
+		return info.nonOptional().stream().map(this::generateInterface).toList();
 	}
 	
 	public ClassContainer generateOptional() {

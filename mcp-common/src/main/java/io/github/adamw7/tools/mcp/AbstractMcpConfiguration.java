@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.Servlet;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -81,10 +83,7 @@ public abstract class AbstractMcpConfiguration {
 	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "streamable-http")
 	public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> streamableServletRegistration(
 			HttpServletStreamableServerTransportProvider transport) {
-		ServletRegistrationBean<HttpServletStreamableServerTransportProvider> registration =
-				new ServletRegistrationBean<>(transport, MCP_ENDPOINT);
-		registration.setAsyncSupported(true);
-		return registration;
+		return asyncRegistration(transport, MCP_ENDPOINT);
 	}
 
 	@Bean
@@ -101,10 +100,7 @@ public abstract class AbstractMcpConfiguration {
 	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
 	public ServletRegistrationBean<HttpServletStatelessServerTransport> statelessServletRegistration(
 			HttpServletStatelessServerTransport transport) {
-		ServletRegistrationBean<HttpServletStatelessServerTransport> registration =
-				new ServletRegistrationBean<>(transport, MCP_ENDPOINT);
-		registration.setAsyncSupported(true);
-		return registration;
+		return asyncRegistration(transport, MCP_ENDPOINT);
 	}
 
 	@Bean
@@ -122,8 +118,15 @@ public abstract class AbstractMcpConfiguration {
 	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
 	public ServletRegistrationBean<HttpServletSseServerTransportProvider> sseServletRegistration(
 			HttpServletSseServerTransportProvider transport) {
-		ServletRegistrationBean<HttpServletSseServerTransportProvider> registration =
-				new ServletRegistrationBean<>(transport, SSE_ENDPOINT, SSE_MESSAGE_ENDPOINT);
+		return asyncRegistration(transport, SSE_ENDPOINT, SSE_MESSAGE_ENDPOINT);
+	}
+
+	/**
+	 * Registers a transport servlet with async support on, which every HTTP transport
+	 * needs so a response can be streamed after the request thread returns.
+	 */
+	private static <T extends Servlet> ServletRegistrationBean<T> asyncRegistration(T transport, String... endpoints) {
+		ServletRegistrationBean<T> registration = new ServletRegistrationBean<>(transport, endpoints);
 		registration.setAsyncSupported(true);
 		return registration;
 	}

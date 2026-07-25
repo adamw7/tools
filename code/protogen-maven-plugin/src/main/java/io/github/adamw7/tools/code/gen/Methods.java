@@ -53,16 +53,12 @@ public class Methods {
 	}
 
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {
-		if (!needsHas(field)) {
+		if (!field.hasPresence()) {
 			return new StringBuilder();
 		}
 		String fieldName = Utils.toUpperCamelCase(field.getName());
 		return override("public boolean has%s() {return %s.has%s();}"
 				.formatted(fieldName, classOrBuilder, fieldName));
-	}
-
-	private boolean needsHas(FieldDescriptor field) {
-		return field.hasPresence();
 	}
 
 	public StringBuilder clear(String classOrBuilder, FieldDescriptor field, String returnType) {
@@ -101,7 +97,7 @@ public class Methods {
 	}
 
 	public StringBuilder declareHas(FieldDescriptor field) {
-		if (!needsHas(field)) {
+		if (!field.hasPresence()) {
 			return new StringBuilder();
 		}
 		return new StringBuilder(

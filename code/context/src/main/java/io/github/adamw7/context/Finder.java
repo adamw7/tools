@@ -1,12 +1,7 @@
 package io.github.adamw7.context;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 /**
@@ -26,8 +21,6 @@ import java.util.stream.Collectors;
  * {@link PackageAwareFinder}); the first one encountered while indexing wins.
  */
 public class Finder extends AbstractFinder {
-
-	private static final Logger log = LogManager.getLogger(Finder.class.getName());
 
 	private final Map<String, ClassContainer> containersByName;
 	private final Language language;
@@ -50,20 +43,7 @@ public class Finder extends AbstractFinder {
 
 	@Override
 	protected Set<ClassContainer> findDirectDependencies(ClassContainer source) {
-		Set<ClassContainer> dependencies = new LinkedHashSet<>();
-		Matcher matcher = CLASS_REFERENCE.matcher(stripCommentsAndLiterals(source.originalCode()));
-		while (matcher.find()) {
-			addResolved(matcher.group(), source, dependencies);
-		}
-		return dependencies;
-	}
-
-	private void addResolved(String className, ClassContainer source, Set<ClassContainer> dependencies) {
-		ClassContainer container = findContainer(className);
-		if (container != null) {
-			log.info("Found {} used in {}", container.className(), source.className());
-			dependencies.add(container);
-		}
+		return resolveReferences(source, stripCommentsAndLiterals(source.originalCode()), this::findContainer);
 	}
 
 	private ClassContainer findContainer(String className) {

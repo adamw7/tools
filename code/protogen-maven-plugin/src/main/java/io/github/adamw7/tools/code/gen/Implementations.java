@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.code.gen;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.OneofDescriptor;
@@ -12,14 +12,8 @@ public class Implementations extends AbstractStatements {
 		super(info, typeMappings, header);
 	}
 
-	public List<ClassContainer> generateRequired() {
-		List<ClassContainer> classes = new ArrayList<>();
-		if (info.nonOptional().size() > 1) {
-			for (int i = 1; i < info.nonOptional().size(); ++i) { // skipping first since already handled
-				classes.add(createContainer(i));
-			}
-		}
-		return classes;
+	public List<ClassContainer> generateRequired() { // skipping the first since it is already handled
+		return IntStream.range(1, info.nonOptional().size()).mapToObj(this::createContainer).toList();
 	}
 
 	private ClassContainer createContainer(int requiredFieldNumber) {

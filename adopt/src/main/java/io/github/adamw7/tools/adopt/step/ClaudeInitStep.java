@@ -40,6 +40,13 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * that exits cleanly but leaves no {@code CLAUDE.md} behind aborts the adoption
  * rather than letting the pipeline push a branch and open a pull request with
  * nothing in it.
+ *
+ * <p>The step is idempotent, like every other step in the pipeline: a checkout
+ * that already carries a root {@code CLAUDE.md} is left alone rather than
+ * regenerated. The CLI's output is not reproducible, so regenerating would
+ * rewrite the file on every re-run — discarding any edit the project made to it
+ * since the adoption and adding a second commit with the same message for a
+ * change nobody asked for.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 
@@ -69,6 +76,10 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		Path checkout = context.repositoryDirectory();
+		if (Files.isRegularFile(checkout.resolve(CLAUDE_MD))) {
+			log.info("{} already carries {}; left unchanged", checkout, CLAUDE_MD);
+			return;
+		}
 		log.info("Running claude init in {}", checkout);
 		Optional<Path> relocated = relocateExistingClaudeDirMemory(checkout);
 		try {

@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 
@@ -117,5 +118,45 @@ class AdoptionContextTest {
 	void rejectsNullWorkspace() {
 		assertThrows(IllegalArgumentException.class,
 				() -> new AdoptionContext("https://github.com/adamw7/tools.git", null));
+	}
+
+	@Test
+	void derivesTheOwnerAndRepositoryFromAnHttpsUrl() {
+		assertEquals("adamw7/tools",
+				new AdoptionContext("https://github.com/adamw7/tools.git", workspace).repositorySlug().orElseThrow());
+		assertEquals("adamw7/tools",
+				new AdoptionContext("https://github.com/adamw7/tools", workspace).repositorySlug().orElseThrow());
+		assertEquals("adamw7/tools",
+				new AdoptionContext("https://github.com/adamw7/tools/", workspace).repositorySlug().orElseThrow());
+	}
+
+	/**
+	 * The scp-like form separates the host from the path with ':', not '/', so a
+	 * naive split on '/' alone would read the host and owner as one segment.
+	 */
+	@Test
+	void derivesTheOwnerAndRepositoryFromSshForms() {
+		assertEquals("adamw7/tools",
+				new AdoptionContext("git@github.com:adamw7/tools.git", workspace).repositorySlug().orElseThrow());
+		assertEquals("adamw7/tools", new AdoptionContext("ssh://git@github.com/adamw7/tools.git", workspace)
+				.repositorySlug().orElseThrow());
+	}
+
+	@Test
+	void derivesTheOwnerAndRepositoryFromAnEnterpriseHost() {
+		assertEquals("adamw7/tools", new AdoptionContext("https://github.example.com/adamw7/tools.git", workspace)
+				.repositorySlug().orElseThrow());
+	}
+
+	/**
+	 * A filesystem path names no owner, so reading its last two segments as one
+	 * would point a tool at a repository that does not exist. Reporting no slug
+	 * leaves the caller to fall back to its own inference.
+	 */
+	@Test
+	void aUrlWithNoHostNamesNoOwner() {
+		assertTrue(new AdoptionContext("/tmp/workspace/tools", workspace).repositorySlug().isEmpty());
+		assertTrue(new AdoptionContext("file:///tmp/tools", workspace).repositorySlug().isEmpty());
+		assertTrue(new AdoptionContext("tools", workspace).repositorySlug().isEmpty());
 	}
 }

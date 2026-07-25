@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -14,6 +15,19 @@ class AdoptionReportTest {
 		AdoptionReport report = new AdoptionReport();
 		assertTrue(report.completedSteps().isEmpty());
 		assertTrue(report.pullRequestUrl().isEmpty());
+		assertTrue(report.failure().isEmpty());
+		assertTrue(report.succeeded());
+	}
+
+	@Test
+	void recordsFailure() {
+		AdoptionReport report = new AdoptionReport();
+		report.recordStep("clone");
+		report.recordFailure("push: the requested URL returned error: 403");
+		assertEquals("push: the requested URL returned error: 403", report.failure().orElseThrow());
+		assertFalse(report.succeeded());
+		assertEquals(List.of("clone"), report.completedSteps(),
+				"a failed run still reports the steps that did complete");
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,31 @@ class AdoptionReportWriterTest {
 		JsonNode node = mapper.readTree(writer.toJson(context, new AdoptionReport()));
 		assertTrue(node.get("pullRequestUrl").isNull());
 		assertTrue(node.get("completedSteps").isEmpty());
+	}
+
+	@Test
+	void serialisesASuccessfulRunAsSucceededWithNoFailure() throws IOException {
+		AdoptionReport report = new AdoptionReport();
+		report.recordStep("clone");
+		JsonNode node = mapper.readTree(writer.toJson(context, report));
+		assertTrue(node.get("succeeded").asBoolean());
+		assertTrue(node.get("failure").isNull());
+	}
+
+	/**
+	 * Without these fields a run that stopped at "push" would serialise exactly like
+	 * a pipeline configured to end there, so a consumer could not tell an abandoned
+	 * adoption from a complete one.
+	 */
+	@Test
+	void serialisesAFailedRunAsNotSucceededWithTheReason() throws IOException {
+		AdoptionReport report = new AdoptionReport();
+		report.recordStep("clone");
+		report.recordFailure("push: the requested URL returned error: 403");
+		JsonNode node = mapper.readTree(writer.toJson(context, report));
+		assertFalse(node.get("succeeded").asBoolean());
+		assertEquals("push: the requested URL returned error: 403", node.get("failure").asText());
+		assertEquals("clone", node.get("completedSteps").get(0).asText());
 	}
 
 	@Test

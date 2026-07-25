@@ -11,11 +11,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Renders an {@link AdoptionReport} as JSON, either to a string or to a file, so
- * the adoption's outcome — repository, branch, pull-request URL, and the steps
- * that completed — is consumable by scripts and other tools rather than only
- * readable in the logs. A report without a pull-request URL serialises the
- * {@code pullRequestUrl} field as JSON {@code null}, keeping the document's
- * shape stable for consumers.
+ * the adoption's outcome — repository, branch, pull-request URL, whether the run
+ * succeeded, and the steps that completed — is consumable by scripts and other
+ * tools rather than only readable in the logs. A report without a pull-request
+ * URL serialises the {@code pullRequestUrl} field as JSON {@code null}, and so
+ * does a successful run's {@code failure}, keeping the document's shape stable
+ * for consumers.
  */
 public class AdoptionReportWriter {
 
@@ -50,6 +51,8 @@ public class AdoptionReportWriter {
 		node.put("repositoryUrl", context.repositoryUrl());
 		node.put("branch", context.branchName());
 		node.put("pullRequestUrl", report.pullRequestUrl().orElse(null));
+		node.put("succeeded", report.succeeded());
+		node.put("failure", report.failure().orElse(null));
 		ArrayNode steps = node.putArray("completedSteps");
 		report.completedSteps().forEach(steps::add);
 		return node;

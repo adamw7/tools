@@ -44,7 +44,9 @@ Maven project. The notable capabilities are:
   repo, creates a feature branch,
   marks the checkout trusted in `~/.claude.json` so the headless CLI is not
   blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
-  generate a `CLAUDE.md` and commits it, then wires a `CLAUDE.md` guard into the
+  generate a `CLAUDE.md` and commits it — skipped for a checkout that already has
+  one, since the CLI's output is not reproducible and regenerating would discard
+  edits made since the adoption — then wires a `CLAUDE.md` guard into the
   project's build and commits that, verifies the guard passes on the generated
   file, and finally pushes the branch and opens a pull request with the GitHub
   CLI (`gh pr create`) — the default branch is never written to directly. The
@@ -65,9 +67,15 @@ Maven project. The notable capabilities are:
   denying reads of obvious secret files and wiring a
   `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a GitHub
   Actions workflow answering `@claude` mentions — never overwriting a file the
-  repository already has. Each run returns an `AdoptionReport` (completed steps
-  plus the pull request URL, read back with `gh pr view --json url`);
-  `--report <file>` writes it as JSON for scripting. An **MCP server** (in the
+  repository already has. Both `gh` invocations name the target repository with
+  `--repo`, derived from the URL being adopted, rather than letting `gh` infer it
+  from the checkout's git remote — a remote rewritten by `url.<base>.insteadOf`,
+  a mirror, or a proxy is not readable as a GitHub one and would fail the last
+  step of an otherwise complete adoption. Each run returns an `AdoptionReport`
+  (completed steps, the pull request URL read back with `gh pr list --json url`,
+  and whether the run succeeded plus the failing step's message when it did not);
+  `--report <file>` writes it as JSON for scripting, on the failure path too, so
+  an abandoned run still records how far it got. An **MCP server** (in the
   `io.github.adamw7.tools.adopt.mcp` package) exposes the same pipeline as an
   `adopt_repo` tool that answers with that JSON report. External
   `git`/`claude`/`gh` invocations

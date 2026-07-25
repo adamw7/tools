@@ -74,4 +74,31 @@ class BuildSystemsTest {
 	void gradleVerifyCommandRunsTheGuardTask() {
 		assertEquals(List.of("gradle", "-q", "enforceClaudeMd"), new GradleBuildSystem().verifyCommand());
 	}
+
+	/**
+	 * The tool BuildToolchainStep probes must be the one the verification actually
+	 * launches, or the check passes for a tool the adoption never runs.
+	 */
+	@Test
+	void mavenRequiresTheToolItsVerificationLaunches() {
+		BuildSystem maven = new MavenBuildSystem();
+		assertEquals(Optional.of(maven.verifyCommand().get(0)), maven.requiredTool());
+		assertEquals(Optional.of("mvn"), maven.requiredTool());
+	}
+
+	@Test
+	void gradleRequiresTheToolItsVerificationLaunches() {
+		BuildSystem gradle = new GradleBuildSystem();
+		assertEquals(Optional.of(gradle.verifyCommand().get(0)), gradle.requiredTool());
+		assertEquals(Optional.of("gradle"), gradle.requiredTool());
+	}
+
+	/**
+	 * The fallback guard runs through sh, which every supported platform provides
+	 * and which has no portable --version probe, so there is nothing to check.
+	 */
+	@Test
+	void theFallbackRequiresNoToolOfItsOwn() {
+		assertEquals(Optional.empty(), new FallbackBuildSystem().requiredTool());
+	}
 }

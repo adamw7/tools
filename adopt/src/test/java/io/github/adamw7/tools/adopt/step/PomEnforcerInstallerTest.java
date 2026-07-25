@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,13 @@ class PomEnforcerInstallerTest {
 			+ "    <artifactId>demo</artifactId>\n"
 			+ "    <version>1.0.0</version>\n"
 			+ "</project>\n";
+
+	private static final String POM_SINGLE_LINE =
+			"<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><artifactId>demo</artifactId></project>\n";
+
+	private static final String POM_NO_TRAILING_NEWLINE = "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n"
+			+ "  <artifactId>demo</artifactId>\n"
+			+ "</project>";
 
 	private static final String POM_WITH_ENFORCER = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
@@ -337,6 +345,36 @@ class PomEnforcerInstallerTest {
 	}
 
 	/**
+	 * A POM whose elements sit on one line offers no indentation to copy, so the
+	 * editor falls back to two spaces rather than running the added block together.
+	 * The original line is still preserved verbatim.
+	 */
+	@Test
+	void indentsTheAddedBlockByTwoSpacesWhenThePomShowsNoIndentation(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_SINGLE_LINE);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.startsWith(POM_SINGLE_LINE.strip().replace("</project>", "")),
+				"the original line must be preserved verbatim: " + result);
+		assertTrue(result.contains("\n  <build>\n"), result);
+		assertTrue(result.contains("\n    <plugins>\n"), result);
+	}
+
+	/**
+	 * The rewrite matches whatever the original ended with, so a POM saved without a
+	 * final newline does not gain one and show a spurious last-line change in the
+	 * adoption commit.
+	 */
+	@Test
+	void leavesAPomThatEndedWithoutANewlineWithoutOne(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_NO_TRAILING_NEWLINE);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains("tools.claude-code-enforcer"), "the rule must still be wired in");
+		assertFalse(result.endsWith("\n"), "a POM with no trailing newline must not gain one");
+	}
+
+	/**
 	 * The default installer must pin the rule to the version Maven filtered into
 	 * {@code adopt-build.properties} — the release actually running the adoption —
 	 * rather than a hardcoded literal that drifts as the project is versioned.
@@ -370,6 +408,26 @@ class PomEnforcerInstallerTest {
 	@Test
 	void aReleaseRuleVersionIsAccepted() {
 		assertEquals("2.6.0", PomEnforcerInstaller.requireReleaseVersion("2.6.0"));
+	}
+
+	/**
+	 * The version the default installer wires in must go through the release guard,
+	 * so a snapshot build cannot put an unresolvable dependency into an adopted POM.
+	 * Whether that refuses or returns depends on how this module was built, so the
+	 * assertion pins the composition rather than one fixed outcome.
+	 */
+	@Test
+	void theDefaultVersionGoesThroughTheReleaseGuard() {
+		assertEquals(outcomeOf(() -> PomEnforcerInstaller.requireReleaseVersion(PomEnforcerInstaller.buildRuleVersion())),
+				outcomeOf(PomEnforcerInstaller::releaseRuleVersion));
+	}
+
+	private String outcomeOf(Supplier<String> version) {
+		try {
+			return "wired " + version.get();
+		} catch (AdoptionException e) {
+			return "refused: " + e.getMessage();
+		}
 	}
 
 	/**

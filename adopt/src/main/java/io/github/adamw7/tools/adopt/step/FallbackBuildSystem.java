@@ -13,8 +13,8 @@ import java.util.Optional;
  *
  * <p>The guard is a GitHub Actions workflow and the portable shell script it runs,
  * installed with {@link WorkflowGuardInstaller}; the verification runs that same
- * script locally so a missing or empty {@code CLAUDE.md} fails the adoption before
- * the branch is pushed, exactly as it would in CI afterwards.
+ * script locally, so a missing or empty {@code CLAUDE.md} fails the adoption
+ * before the branch is pushed, exactly as it would in CI afterwards.
  */
 public class FallbackBuildSystem implements BuildSystem {
 

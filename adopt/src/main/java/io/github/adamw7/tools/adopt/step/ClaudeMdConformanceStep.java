@@ -17,15 +17,12 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * satisfies the {@code claudeMdFormat} rule {@link EnforcerStep} wires into the
  * build, and writes a companion {@code AGENTS.md} so the reference the rule
  * expects resolves to a real file. Without it the adoption fails its own
- * {@link VerifyStep}, because a generic {@code claude init} produces natural,
- * project-specific headings and no {@code AGENTS.md} reference while the rule
- * demands a fixed set of headings plus that reference.
+ * {@link VerifyStep}.
  *
- * <p>The step runs before the first commit so the normalised {@code CLAUDE.md}
- * and its companion {@code AGENTS.md} are committed together. It never overwrites
- * an {@code AGENTS.md} the project already carries, and reshaping an already
- * conforming {@code CLAUDE.md} leaves it unchanged, so the step is idempotent on
- * re-adoption.
+ * <p>The step runs before the first commit so both files are committed together.
+ * It never overwrites an {@code AGENTS.md} the project already carries, and
+ * reshaping an already conforming {@code CLAUDE.md} leaves it unchanged, so the
+ * step is idempotent on re-adoption.
  */
 public class ClaudeMdConformanceStep implements AdoptionStep {
 

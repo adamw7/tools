@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -15,14 +16,12 @@ import java.time.Duration;
  * the background lets {@link ProcessCommandRunner} time out and destroy the
  * child while its partial output is still recovered.
  *
- * <p>The stream is copied verbatim as it is read — every byte the child emits is
- * preserved, including its own line terminators and any trailing newline — so the
- * captured transcript reflects exactly what the command printed rather than a
- * re-joined approximation. {@link #output()} bounds its wait for the reader
- * thread: a direct child can exit while a descendant it spawned keeps the output
- * pipe open, in which case the stream never reaches end-of-stream; the bounded
- * join stops that from hanging the caller forever and still returns whatever was
- * captured before the wait elapsed.
+ * <p>The stream is copied verbatim as it is read — the child's own line
+ * terminators and any trailing newline survive — so the transcript is what the
+ * command printed rather than a re-joined approximation. {@link #output()} bounds
+ * its wait for the reader thread: a direct child can exit while a descendant it
+ * spawned keeps the pipe open, and the bounded join returns what was captured
+ * instead of hanging the caller forever.
  */
 final class StreamGobbler {
 
@@ -34,7 +33,9 @@ final class StreamGobbler {
 	static final Duration JOIN_TIMEOUT = Duration.ofSeconds(5);
 
 	private final Thread thread;
-	private final StringBuilder output = new StringBuilder();
+
+	/** Written by the reader thread and read by {@link #output()}, so its buffer must be synchronized. */
+	private final StringWriter output = new StringWriter();
 
 	private StreamGobbler(InputStream stream) {
 		this.thread = new Thread(() -> drain(stream), "adopt-stream-gobbler");
@@ -49,16 +50,13 @@ final class StreamGobbler {
 
 	/**
 	 * @return everything the stream produced, waiting up to {@link #JOIN_TIMEOUT}
-	 *         for it to reach end-of-stream. Destroying the process closes the
-	 *         stream, so this returns promptly once a timed-out child has been
-	 *         killed; a descendant that keeps the pipe open only delays it by the
-	 *         bounded wait rather than blocking forever.
+	 *         for end-of-stream. Destroying the process closes the stream, so a
+	 *         killed child returns promptly and a descendant holding the pipe open
+	 *         only costs the bounded wait.
 	 */
 	String output() {
 		join();
-		synchronized (output) {
-			return output.toString();
-		}
+		return output.toString();
 	}
 
 	private void join() {
@@ -71,24 +69,9 @@ final class StreamGobbler {
 
 	private void drain(InputStream stream) {
 		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-			copy(reader);
+			reader.transferTo(output);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
-		}
-	}
-
-	private void copy(Reader reader) throws IOException {
-		char[] buffer = new char[8192];
-		int read = reader.read(buffer);
-		while (read != -1) {
-			append(buffer, read);
-			read = reader.read(buffer);
-		}
-	}
-
-	private void append(char[] buffer, int length) {
-		synchronized (output) {
-			output.append(buffer, 0, length);
 		}
 	}
 }

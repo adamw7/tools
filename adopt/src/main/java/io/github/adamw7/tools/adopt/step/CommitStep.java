@@ -18,11 +18,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * git's locale or version and the pipeline stays idempotent when re-run.
  *
  * <p>The adoption runs headless — on a CI runner or an MCP server — where git may
- * have no configured {@code user.name}/{@code user.email}, in which case
- * {@code git commit} aborts with "Author identity unknown". Each identity git is
- * missing is supplied for the commit alone with a {@code -c} override, so the
- * commit succeeds on a bare host while any identity the checkout already
- * configures is left in force rather than overridden.
+ * have no configured {@code user.name}/{@code user.email} and {@code git commit}
+ * aborts with "Author identity unknown". Each missing identity is supplied for the
+ * commit alone with a {@code -c} override, so the commit succeeds on a bare host
+ * while an identity the checkout already configures stays in force.
  */
 public class CommitStep extends AbstractCommandStep {
 
@@ -64,27 +63,17 @@ public class CommitStep extends AbstractCommandStep {
 	}
 
 	private List<String> commitCommand(AdoptionContext context, CommandRunner runner) {
-		List<String> command = new ArrayList<>();
-		command.add("git");
-		command.addAll(identityOverrides(context, runner));
-		command.add("commit");
-		command.add("-m");
-		command.add(message);
+		List<String> command = new ArrayList<>(List.of("git"));
+		addOverrideIfMissing(command, context, runner, "user.name", FALLBACK_NAME);
+		addOverrideIfMissing(command, context, runner, "user.email", FALLBACK_EMAIL);
+		command.addAll(List.of("commit", "-m", message));
 		return command;
 	}
 
-	private List<String> identityOverrides(AdoptionContext context, CommandRunner runner) {
-		List<String> overrides = new ArrayList<>();
-		addOverrideIfMissing(overrides, context, runner, "user.name", FALLBACK_NAME);
-		addOverrideIfMissing(overrides, context, runner, "user.email", FALLBACK_EMAIL);
-		return overrides;
-	}
-
-	private void addOverrideIfMissing(List<String> overrides, AdoptionContext context, CommandRunner runner,
+	private void addOverrideIfMissing(List<String> command, AdoptionContext context, CommandRunner runner,
 			String key, String fallback) {
 		if (!hasConfig(context, runner, key)) {
-			overrides.add("-c");
-			overrides.add(key + "=" + fallback);
+			command.addAll(List.of("-c", key + "=" + fallback));
 		}
 	}
 

@@ -20,16 +20,13 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>A tool counts as available when its {@code --version} probe starts and exits
  * zero. Every required tool is probed even after one is found missing, so a
- * single failure can name all of the absent tools at once rather than stopping at
- * the first and hiding the rest.
+ * single failure names all of the absent tools at once.
  *
  * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
- * for a GitHub CLI nobody is logged in to, and the adoption would only discover
- * that at {@link PullRequestStep}, its very last step. The login is therefore
- * probed here too, so an unauthenticated {@code gh} fails just as early as an
- * absent one. The adopted project's own build tool is not this step's concern —
- * which one it is only becomes known once the repository is cloned, so
- * {@link BuildToolchainStep} probes it there.
+ * for a GitHub CLI nobody is logged in to, which the adoption would only discover
+ * at {@link PullRequestStep}, its very last step. The login is therefore probed
+ * here too. The adopted project's own build tool only becomes known once the
+ * repository is cloned, so {@link BuildToolchainStep} probes it there.
  */
 public class ToolchainStep implements AdoptionStep {
 

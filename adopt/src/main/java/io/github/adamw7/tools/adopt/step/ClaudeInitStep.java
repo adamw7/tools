@@ -28,26 +28,15 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * <p>A repository that already carries a {@code .claude/CLAUDE.md} steers
  * headless {@code /init} into <em>updating that file</em> rather than writing the
  * root {@code CLAUDE.md} the adoption needs — and a write under {@code .claude/}
- * is refused as a sensitive path in headless mode, so the run exits cleanly
- * having produced nothing. That existing memory file is therefore moved out of
- * the checkout before {@code /init} runs, so the CLI takes its fresh-repository
- * path and writes the root {@code CLAUDE.md}, and restored afterwards; the
- * adoption commits only the new root file and leaves the project's own
- * {@code .claude/CLAUDE.md} untouched. The file is put back whether the CLI
- * succeeded or failed, and a restore that fails on the failure path is attached to
- * the original failure rather than replacing it.
+ * is refused as a sensitive path in headless mode, so the run produces nothing.
+ * That memory file is therefore moved aside before {@code /init} runs and
+ * restored afterwards, on the failure path too, so the project's own copy is left
+ * untouched. A run that exits cleanly but leaves no {@code CLAUDE.md} behind
+ * aborts the adoption rather than pushing an empty pull request.
  *
- * <p>The generated {@code CLAUDE.md} is the whole point of the adoption, so a run
- * that exits cleanly but leaves no {@code CLAUDE.md} behind aborts the adoption
- * rather than letting the pipeline push a branch and open a pull request with
- * nothing in it.
- *
- * <p>The step is idempotent, like every other step in the pipeline: a checkout
- * that already carries a root {@code CLAUDE.md} is left alone rather than
- * regenerated. The CLI's output is not reproducible, so regenerating would
- * rewrite the file on every re-run — discarding any edit the project made to it
- * since the adoption and adding a second commit with the same message for a
- * change nobody asked for.
+ * <p>The step is idempotent: a checkout that already carries a root
+ * {@code CLAUDE.md} is left alone, because the CLI's output is not reproducible
+ * and regenerating would discard whatever the project has edited since.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 
@@ -102,14 +91,10 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * Moves an existing {@code .claude/CLAUDE.md} out of the checkout so headless
-	 * {@code /init} writes the root {@code CLAUDE.md} instead of trying — and
-	 * failing — to update the sensitive-path memory file. The backup lands in the
-	 * system temp directory rather than the checkout so a later {@code git add -A}
-	 * cannot pick it up.
+	 * Moves an existing {@code .claude/CLAUDE.md} out of the checkout, into the
+	 * system temp directory so a later {@code git add -A} cannot pick it up.
 	 *
-	 * @return the backup location when a memory file was moved aside, empty when
-	 *         the checkout carried none and nothing had to be relocated
+	 * @return the backup location, or empty when the checkout carried no such file
 	 */
 	private Optional<Path> relocateExistingClaudeDirMemory(Path checkout) {
 		Path memory = claudeDirMemory(checkout);

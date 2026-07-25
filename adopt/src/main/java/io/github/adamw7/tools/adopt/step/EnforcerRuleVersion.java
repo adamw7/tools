@@ -35,12 +35,11 @@ final class EnforcerRuleVersion {
 	}
 
 	/**
-	 * A snapshot resolves from the adopter's own local repository but from nowhere
-	 * else, so wiring one in would open a pull request that builds on this machine
-	 * and fails for the adopted project's CI and every one of its contributors —
-	 * and {@link VerifyStep} could not catch it, because it too resolves against the
-	 * local repository. Refusing here turns that into an immediate, explicable
-	 * failure for the person running the adoption.
+	 * A snapshot resolves from the adopter's own local repository and nowhere else,
+	 * so wiring one in would open a pull request that builds here and fails for the
+	 * adopted project's CI and every contributor — and {@link VerifyStep} could not
+	 * catch it, resolving against the same local repository. Refusing here turns
+	 * that into an immediate, explicable failure.
 	 */
 	static String requireRelease(String version) {
 		if (version.endsWith(SNAPSHOT_SUFFIX)) {
@@ -54,12 +53,10 @@ final class EnforcerRuleVersion {
 	}
 
 	/**
-	 * Reads the enforcer rule version wired into adopted POMs from the build
-	 * metadata that Maven filters into {@value #BUILD_PROPERTIES} at build time, so
-	 * the dependency is pinned to the exact {@code tools} release running the
-	 * adoption — and is therefore resolvable from the same repository that
-	 * published it — rather than to a hardcoded literal that silently drifts as the
-	 * project is versioned.
+	 * Reads the rule version from the metadata Maven filters into
+	 * {@value #BUILD_PROPERTIES} at build time, so the dependency is pinned to the
+	 * exact {@code tools} release running the adoption — resolvable from the
+	 * repository that published it — rather than to a literal that silently drifts.
 	 */
 	static String fromBuildMetadata() {
 		try (InputStream stream = EnforcerRuleVersion.class.getResourceAsStream(BUILD_PROPERTIES)) {

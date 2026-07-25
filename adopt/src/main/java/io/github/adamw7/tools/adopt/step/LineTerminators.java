@@ -18,24 +18,14 @@ final class LineTerminators {
 	private LineTerminators() {
 	}
 
-	/** The terminator the text uses: CRLF when it carries one, LF otherwise. */
-	static String of(String text) {
-		return text.contains(CRLF) ? CRLF : LF;
-	}
-
 	/**
-	 * Rewrites every line terminator in {@code text} to {@code terminator}. The text
-	 * is normalised to LF first, so a text that already mixes terminators — assembled
-	 * from a converted body and a part carried over verbatim — is not
-	 * double-converted where it already ended in the target terminator.
+	 * Rewrites {@code text}'s line terminators to the one {@code sample} already
+	 * uses: CRLF when the sample carries one, LF otherwise. The text is normalised
+	 * to LF first, so one that already mixes terminators — assembled from a
+	 * converted body and a part carried over verbatim — is not double-converted.
 	 */
-	static String apply(String text, String terminator) {
-		String normalized = text.replace(CRLF, LF).replace(CR, LF);
-		return LF.equals(terminator) ? normalized : normalized.replace(LF, terminator);
-	}
-
-	/** Rewrites {@code text}'s line terminators to the one {@code sample} already uses. */
 	static String matching(String text, String sample) {
-		return apply(text, of(sample));
+		String normalized = text.replace(CRLF, LF).replace(CR, LF);
+		return sample.contains(CRLF) ? normalized.replace(LF, CRLF) : normalized;
 	}
 }

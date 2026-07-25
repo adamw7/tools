@@ -26,28 +26,25 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
 /**
  * Runs the ordered pipeline that adopts Claude Code into a GitHub repository:
  * check the required tools are installed, clone, check the cloned project's own
- * build tool is installed too, create a feature branch, mark
- * the checkout trusted for Claude Code, generate {@code CLAUDE.md} with
- * {@code claude init}, normalise that file and add a companion {@code AGENTS.md}
- * so it satisfies the guard the adoption is about to wire in, and commit it, wire
- * in the {@code claude-code-enforcer} and
- * commit that, verify the enforcer passes on the generated file, then push the
- * branch and open a pull request. The toolchain check runs first so a missing
- * {@code git}, {@code claude}, or {@code gh} fails the adoption before any
- * expensive work, and the build-tool check follows the clone — the first moment
- * the project's build system is known — so a missing {@code mvn} or {@code gradle}
- * fails before the {@code claude init} rather than at the verification.
- * The adoption never writes to the default branch. Steps and the
- * command runner are injected so the pipeline is easy to reconfigure and to test.
+ * build tool is installed too, create a feature branch, mark the checkout trusted
+ * for Claude Code, generate {@code CLAUDE.md} with {@code claude init}, normalise
+ * it and add a companion {@code AGENTS.md} so it satisfies the guard the adoption
+ * is about to wire in, commit it, wire in the {@code claude-code-enforcer} and
+ * commit that, verify the guard passes, then push the branch and open a pull
+ * request. The toolchain check runs first so a missing {@code git},
+ * {@code claude}, or {@code gh} fails before any expensive work, and the
+ * build-tool check follows the clone — the first moment the project's build system
+ * is known — so a missing {@code mvn} or {@code gradle} fails before the
+ * {@code claude init} rather than at the verification. The adoption never writes
+ * to the default branch. Steps and the command runner are injected so the pipeline
+ * is easy to reconfigure and to test.
  *
  * <p>Each run returns an {@link AdoptionReport} of the steps that completed and
- * the pull request's URL, so callers can act on the outcome without scraping
- * logs. A caller that needs the report of a run that <em>fails</em> — the case
- * where knowing how far the pipeline got matters most — supplies its own report
- * to {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it after the
- * failure propagates. The default pipeline can optionally include an
- * {@link AssetsStep} that commits starter Claude Code configuration assets
- * alongside the generated {@code CLAUDE.md}.
+ * the pull request's URL, so callers can act on the outcome without scraping logs.
+ * A caller that needs the report of a run that <em>fails</em> supplies its own to
+ * {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it after the
+ * failure propagates. The default pipeline optionally includes an
+ * {@link AssetsStep} that commits starter Claude Code configuration assets.
  */
 public class GitHubRepoAdopter {
 
@@ -123,10 +120,10 @@ public class GitHubRepoAdopter {
 	}
 
 	/**
-	 * Names the failing step alongside the failure, because an exception message
-	 * alone — {@code "The requested URL returned error: 403"} — does not say which
-	 * stage of the adoption produced it. An exception carrying no message at all
-	 * falls back to its type, so the report never records a bare {@code null}.
+	 * Names the failing step alongside the failure, because a message alone —
+	 * {@code "The requested URL returned error: 403"} — does not say which stage
+	 * produced it. An exception with no message falls back to its type, so the
+	 * report never records a bare {@code null}.
 	 */
 	private String describe(AdoptionStep step, RuntimeException failure) {
 		String message = failure.getMessage();

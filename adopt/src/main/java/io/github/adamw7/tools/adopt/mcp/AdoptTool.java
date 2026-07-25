@@ -22,13 +22,11 @@ import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * The MCP tool that runs the adoption pipeline: given a GitHub repository URL —
- * plus optional workspace, branch, pull-request metadata, and the flag for the
- * starter-assets step — it adopts Claude Code into the repository exactly as the
- * command line does and answers with the run's JSON {@link AdoptionReport},
- * including the opened pull request's URL. The pipeline itself is injected
- * behind the {@link Pipeline} seam, so tests exercise the argument mapping and
- * the result shape without cloning anything; the default wiring runs the real
- * default pipeline against a {@link ProcessCommandRunner}.
+ * plus optional workspace, branch, pull-request metadata, and the starter-assets
+ * flag — it adopts Claude Code exactly as the command line does and answers with
+ * the run's JSON {@link AdoptionReport}. The pipeline is injected behind the
+ * {@link Pipeline} seam so tests exercise the argument mapping without cloning
+ * anything; the default wiring runs it against a {@link ProcessCommandRunner}.
  */
 public class AdoptTool implements McpTool {
 

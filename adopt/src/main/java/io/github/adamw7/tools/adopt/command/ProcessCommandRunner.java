@@ -10,17 +10,15 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 
 /**
  * {@link CommandRunner} backed by {@link ProcessBuilder}. Standard error is
- * merged into standard output so a caller gets a single, ordered transcript of
- * what the command printed. Every command is bounded by a timeout so a hung
- * child — a stalled {@code git clone} or a stuck {@code claude} invocation —
- * cannot block the adoption forever: on expiry the whole process tree is
- * destroyed and the failure is reported with whatever output was captured so
- * far.
+ * merged into standard output so a caller gets a single, ordered transcript.
+ * Every command is bounded by a timeout so a hung child — a stalled
+ * {@code git clone}, a stuck {@code claude} — cannot block the adoption forever:
+ * on expiry the whole process tree is destroyed and the failure is reported with
+ * whatever output was captured.
  *
  * <p>The child's standard input is closed as soon as it starts, so a tool that
- * reads from it — a {@code git} credential prompt, a {@code gh} authentication
- * prompt — sees end-of-stream and fails fast instead of blocking on an input
- * that never arrives until the timeout kills it.
+ * reads from it — a {@code git} or {@code gh} credential prompt — sees
+ * end-of-stream and fails fast instead of blocking until the timeout kills it.
  */
 public class ProcessCommandRunner implements CommandRunner {
 
@@ -50,14 +48,9 @@ public class ProcessCommandRunner implements CommandRunner {
 		ProcessBuilder builder = new ProcessBuilder(resolver.resolve(command))
 				.directory(workingDirectory.toFile())
 				.redirectErrorStream(true);
-		return execute(builder, command);
-	}
-
-	private CommandResult execute(ProcessBuilder builder, List<String> command) {
 		Process process = start(builder, command);
 		closeStandardInput(process, command);
-		StreamGobbler output = StreamGobbler.consuming(process.getInputStream());
-		return await(process, command, output);
+		return await(process, command, StreamGobbler.consuming(process.getInputStream()));
 	}
 
 	private Process start(ProcessBuilder builder, List<String> command) {

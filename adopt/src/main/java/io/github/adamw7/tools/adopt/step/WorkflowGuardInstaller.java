@@ -16,19 +16,15 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * adoption already targets GitHub repositories, a workflow is a guard every
  * adopted repository can run without introducing a build tool.
  *
- * <p>The workflow and the script it runs are both committed, so the guard is
- * shared with every contributor rather than living only in the adopter's local
- * checkout. The script is the single source of truth: the workflow invokes it and
+ * <p>Both files are committed, so the guard is shared with every contributor. The
+ * script is the single source of truth: the workflow invokes it and
  * {@link FallbackBuildSystem#verifyCommand()} runs the same script locally, so the
  * adoption fails before the branch is pushed just as it would in CI.
  *
- * <p>The two files are installed independently and neither is ever overwritten, so
- * the install is idempotent and a project that already carries a file at one of
- * these paths keeps its own version — the same rule {@link AssetInstaller} applies
- * to every other file the adoption writes. Installing them independently also
- * means a checkout that kept the workflow but lost the script has the script
- * written back, rather than being left for {@link FallbackBuildSystem}'s
- * verification to fail on a file that is not there.
+ * <p>The two are installed independently and neither is ever overwritten — the
+ * rule {@link AssetInstaller} applies to every file the adoption writes — so the
+ * install is idempotent and a checkout that kept the workflow but lost the script
+ * has the script written back rather than failing verification on a missing file.
  */
 public class WorkflowGuardInstaller {
 
@@ -82,14 +78,11 @@ public class WorkflowGuardInstaller {
 	 * project's own workflow.
 	 */
 	private void warnIfWorkflowIsNotOurs(Path repositoryDirectory, boolean workflowWritten) {
-		if (!workflowWritten && !carriesMarker(repositoryDirectory.resolve(WORKFLOW_FILE))) {
+		Path workflowFile = repositoryDirectory.resolve(WORKFLOW_FILE);
+		if (!workflowWritten && !(Files.isRegularFile(workflowFile)
+				&& AdoptionFiles.read(workflowFile, "workflow file").contains(MARKER))) {
 			log.warn("{} already exists and is not the adoption's workflow; left unchanged, so CI may not run {}",
 					WORKFLOW_FILE, SCRIPT_FILE);
 		}
-	}
-
-	private boolean carriesMarker(Path workflowFile) {
-		return Files.isRegularFile(workflowFile)
-				&& AdoptionFiles.read(workflowFile, "workflow file").contains(MARKER);
 	}
 }

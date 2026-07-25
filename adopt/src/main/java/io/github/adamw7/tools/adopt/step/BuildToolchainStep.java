@@ -15,17 +15,14 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * clone has revealed which one it is. {@link ToolchainStep} can only probe the
  * pipeline's own {@code git}/{@code claude}/{@code gh} because the checkout does
  * not exist yet, but {@link VerifyStep} later shells out to {@code mvn} or
- * {@code gradle} — so without this step a machine without the adopted project's
- * build tool fails at verification, after a full {@code claude init}, a reshaped
- * {@code CLAUDE.md}, and two commits have already been made. That is exactly the
- * late failure the toolchain check exists to prevent.
+ * {@code gradle} — so without this step a machine missing that build tool fails at
+ * verification, after a full {@code claude init} and two commits: exactly the late
+ * failure the toolchain check exists to prevent.
  *
- * <p>The step runs directly after {@link CloneStep} and detects the build system
- * through {@link AbstractBuildSystemStep} exactly as {@link EnforcerStep} and
- * {@link VerifyStep} do, so the tool it probes is the tool the verification will
- * actually run. A build system that needs no installed tool — the
- * {@link FallbackBuildSystem}, whose guard runs through {@code sh} — is a no-op,
- * mirroring how the step is skipped when no build system matches at all.
+ * <p>The build system is detected through {@link AbstractBuildSystemStep} just as
+ * {@link EnforcerStep} and {@link VerifyStep} detect it, so the tool probed is the
+ * tool the verification runs. A build system that needs none — the
+ * {@link FallbackBuildSystem}, whose guard runs through {@code sh} — is a no-op.
  */
 public class BuildToolchainStep extends AbstractBuildSystemStep {
 

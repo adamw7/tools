@@ -20,19 +20,16 @@ import java.util.stream.Stream;
  * such as {@code mvn} or {@code claude} routinely resolves to a {@code .cmd} or
  * {@code .bat} shim, which the underlying {@code CreateProcess} call cannot
  * start: it appends {@code .exe} to an extensionless name and refuses to run a
- * batch script directly, so a bare {@code mvn} fails with "Cannot run program".
- * This resolver searches the {@code PATH} using {@code PATHEXT} and, when the
- * program is a batch script, rewrites the command to run through
- * {@code cmd.exe /c}; a real executable is rewritten to its resolved absolute
- * path. A program that cannot be located is returned unchanged, so the caller
- * still fails with its usual "could not start" error rather than being masked
- * here.
+ * batch script, so a bare {@code mvn} fails with "Cannot run program". This
+ * resolver searches the {@code PATH} using {@code PATHEXT} and rewrites a batch
+ * script to run through {@code cmd.exe /c}, a real executable to its resolved
+ * absolute path. A program that cannot be located is returned unchanged, so the
+ * caller still fails with its usual "could not start" error.
  *
  * <p>Only the program name is ever routed through {@code cmd.exe}; the arguments
- * are handed to {@link ProcessBuilder} unchanged. Free-form arguments such as a
- * pull-request title or body therefore never reach the command interpreter,
- * because {@code git} and {@code gh} resolve to real {@code .exe} files rather
- * than to batch scripts.
+ * reach {@link ProcessBuilder} unchanged. Free-form arguments such as a
+ * pull-request title therefore never reach the command interpreter, because
+ * {@code git} and {@code gh} resolve to real {@code .exe} files.
  */
 final class ExecutableResolver {
 

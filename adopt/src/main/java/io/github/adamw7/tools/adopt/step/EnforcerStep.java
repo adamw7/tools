@@ -2,7 +2,6 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,23 +15,20 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * wiring depends on the checkout's build tool: a Maven project gets the full
  * {@code claude-code-enforcer} rule, a Gradle project gets a presence guard task,
  * and a project with no recognised build file gets the build-tool-agnostic
- * GitHub Actions guard (see {@link BuildSystem}). Detection only comes up empty
- * when the step is configured with a build-system list that has no catch-all
- * fallback, in which case the wiring is skipped with a warning rather than
- * failing the adoption.
+ * GitHub Actions guard (see {@link BuildSystem}). The build system is detected by
+ * {@link AbstractBuildSystemStep}, which also skips the step with a warning when
+ * none matches, rather than failing the adoption.
  */
-public class EnforcerStep implements AdoptionStep {
+public class EnforcerStep extends AbstractBuildSystemStep {
 
 	private static final Logger log = LogManager.getLogger(EnforcerStep.class);
-
-	private final List<BuildSystem> buildSystems;
 
 	public EnforcerStep() {
 		this(BuildSystems.DEFAULTS);
 	}
 
 	public EnforcerStep(List<BuildSystem> buildSystems) {
-		this.buildSystems = List.copyOf(buildSystems);
+		super(buildSystems);
 	}
 
 	@Override
@@ -41,16 +37,8 @@ public class EnforcerStep implements AdoptionStep {
 	}
 
 	@Override
-	public void execute(AdoptionContext context, CommandRunner runner) {
+	protected void onDetected(BuildSystem buildSystem, AdoptionContext context, CommandRunner runner) {
 		Path repositoryDirectory = context.repositoryDirectory();
-		Optional<BuildSystem> buildSystem = BuildSystems.detect(buildSystems, repositoryDirectory);
-		buildSystem.ifPresentOrElse(
-				detected -> install(detected, repositoryDirectory),
-				() -> log.warn("No supported build system ({}) in {}; skipping enforcer wiring",
-						BuildSystems.names(buildSystems), repositoryDirectory));
-	}
-
-	private void install(BuildSystem buildSystem, Path repositoryDirectory) {
 		if (buildSystem.install(repositoryDirectory)) {
 			log.info("Wired the CLAUDE.md guard into the {} build in {}", buildSystem.name(), repositoryDirectory);
 		} else {

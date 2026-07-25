@@ -157,14 +157,14 @@ public class PomEnforcerInstaller {
 	private boolean declaresRuleDependency(Element plugin) {
 		return child(plugin, "dependencies").stream()
 				.flatMap(dependencies -> children(dependencies, "dependency").stream())
-				.anyMatch(this::isRuleDependency);
+				.anyMatch(dependency -> hasArtifactId(dependency, RULE_ARTIFACT_ID));
 	}
 
-	private boolean isRuleDependency(Element dependency) {
-		return child(dependency, "artifactId")
+	private static boolean hasArtifactId(Element element, String artifactId) {
+		return child(element, "artifactId")
 				.map(Element::getTextContent)
 				.map(String::strip)
-				.filter(RULE_ARTIFACT_ID::equals)
+				.filter(artifactId::equals)
 				.isPresent();
 	}
 
@@ -181,16 +181,8 @@ public class PomEnforcerInstaller {
 
 	private Optional<Element> findEnforcerPlugin(Element plugins) {
 		return children(plugins, "plugin").stream()
-				.filter(this::isEnforcerPlugin)
+				.filter(plugin -> hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
 				.findFirst();
-	}
-
-	private boolean isEnforcerPlugin(Element plugin) {
-		return child(plugin, "artifactId")
-				.map(Element::getTextContent)
-				.map(String::strip)
-				.filter(ENFORCER_ARTIFACT_ID::equals)
-				.isPresent();
 	}
 
 	private Element createEnforcerPlugin(PomEditor editor, Element plugins) {
@@ -225,7 +217,7 @@ public class PomEnforcerInstaller {
 		editor.appendText(claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
 	}
 
-	private Optional<Element> child(Element parent, String name) {
+	private static Optional<Element> child(Element parent, String name) {
 		return children(parent, name).stream().findFirst();
 	}
 
@@ -279,39 +271,21 @@ public class PomEnforcerInstaller {
 	 * added — already indented by {@link PomEditor} — differ from the original. The
 	 * original's XML declaration and trailing newline are carried over exactly so
 	 * the first and last lines are not disturbed either.
+	 *
+	 * <p>XML parsing normalizes {@code \r\n} to {@code \n}, so the DOM the
+	 * transformer serializes has lost the original terminator;
+	 * {@link LineTerminators} puts it back, keeping a CRLF POM on CRLF rather than
+	 * silently flipping every line to LF and reformatting the whole file.
 	 */
 	private void write(Document document, Path pomFile, String original) {
 		try {
 			String content = declarationPrefix(original) + transformBody(document);
 			String withTrailingNewline = matchTrailingNewline(content, original);
 			Files.createDirectories(pomFile.toAbsolutePath().getParent());
-			Files.writeString(pomFile, applyLineTerminator(withTrailingNewline, lineTerminator(original)));
+			Files.writeString(pomFile, LineTerminators.matching(withTrailingNewline, original));
 		} catch (IOException | TransformerException e) {
 			throw new AdoptionException("Could not write POM: " + pomFile, e);
 		}
-	}
-
-	/**
-	 * The line terminator the original file used. XML parsing normalizes {@code \r\n}
-	 * to {@code \n}, so the DOM the transformer serializes has lost the original
-	 * terminator; capturing it here lets the rewrite keep a CRLF POM on CRLF rather
-	 * than silently flipping every line to LF and reformatting the whole file. A file
-	 * with no {@code \r\n} is treated as LF.
-	 */
-	private String lineTerminator(String original) {
-		return original.contains("\r\n") ? "\r\n" : "\n";
-	}
-
-	/**
-	 * Rewrites every line terminator in {@code content} to {@code terminator}. The
-	 * assembled content mixes the transformer's LF body, the added block's LF
-	 * indentation, and the declaration carried over verbatim from the original, so it
-	 * is first normalized to a single form to avoid double-converting the parts that
-	 * already ended in the target terminator.
-	 */
-	private String applyLineTerminator(String content, String terminator) {
-		String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
-		return terminator.equals("\n") ? normalized : normalized.replace("\n", terminator);
 	}
 
 	private String transformBody(Document document) throws TransformerException {
@@ -394,7 +368,7 @@ public class PomEnforcerInstaller {
 		}
 
 		private Element childOrCreate(Element parent, String name) {
-			return firstChild(parent, name).orElseGet(() -> appendElement(parent, name));
+			return child(parent, name).orElseGet(() -> appendElement(parent, name));
 		}
 
 		private Element appendElement(Element parent, String name) {
@@ -427,10 +401,6 @@ public class PomEnforcerInstaller {
 
 		private Element create(String name) {
 			return namespace == null ? document.createElement(name) : document.createElementNS(namespace, name);
-		}
-
-		private Optional<Element> firstChild(Element parent, String name) {
-			return children(parent, name).stream().findFirst();
 		}
 
 		private static Node trailingWhitespace(Element parent) {

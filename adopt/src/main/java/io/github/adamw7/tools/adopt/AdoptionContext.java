@@ -25,10 +25,10 @@ public final class AdoptionContext {
 	}
 
 	public AdoptionContext(String repositoryUrl, Path workspace, String branchName) {
-		this.repositoryUrl = requireUrl(repositoryUrl);
+		this.repositoryUrl = requireText(repositoryUrl, "repositoryUrl");
 		this.workspace = requireWorkspace(workspace);
 		this.repositoryDirectory = workspace.resolve(repositoryName(this.repositoryUrl));
-		this.branchName = requireBranch(branchName);
+		this.branchName = requireText(branchName, "branchName");
 	}
 
 	public String repositoryUrl() {
@@ -47,11 +47,11 @@ public final class AdoptionContext {
 		return branchName;
 	}
 
-	private static String requireUrl(String repositoryUrl) {
-		if (repositoryUrl == null || repositoryUrl.isBlank()) {
-			throw new IllegalArgumentException("repositoryUrl must not be blank");
+	private static String requireText(String value, String field) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
 		}
-		return repositoryUrl.strip();
+		return value.strip();
 	}
 
 	private static Path requireWorkspace(Path workspace) {
@@ -59,13 +59,6 @@ public final class AdoptionContext {
 			throw new IllegalArgumentException("workspace must not be null");
 		}
 		return workspace;
-	}
-
-	private static String requireBranch(String branchName) {
-		if (branchName == null || branchName.isBlank()) {
-			throw new IllegalArgumentException("branchName must not be blank");
-		}
-		return branchName.strip();
 	}
 
 	private static String repositoryName(String repositoryUrl) {

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.step;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * The build systems the adoption supports and the detection that picks the one
@@ -30,6 +31,6 @@ public final class BuildSystems {
 	}
 
 	static String names(List<BuildSystem> candidates) {
-		return candidates.stream().map(BuildSystem::name).reduce((a, b) -> a + "/" + b).orElse("");
+		return candidates.stream().map(BuildSystem::name).collect(Collectors.joining("/"));
 	}
 }

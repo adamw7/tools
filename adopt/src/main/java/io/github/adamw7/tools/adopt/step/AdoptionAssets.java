@@ -12,9 +12,16 @@ import java.util.List;
  * mentions on issues and pull requests. Every asset is a plain committed file,
  * so the configuration is shared with all contributors rather than living only
  * in the adopter's local checkout.
+ *
+ * <p>The repository-relative paths the adoption writes are all named here,
+ * including the generated {@code CLAUDE.md}. That one is not a starter asset —
+ * {@link ClaudeInitStep} generates it and {@link ClaudeMdConformanceStep}
+ * reshapes it — but keeping its name beside the others stops the same literal
+ * being spelled out in every step that refers to it.
  */
 public final class AdoptionAssets {
 
+	static final String CLAUDE_MD_FILE = "CLAUDE.md";
 	static final String AGENTS_MD_FILE = "AGENTS.md";
 	static final String SETTINGS_FILE = ".claude/settings.json";
 	static final String SESSION_START_HOOK_FILE = ".claude/hooks/session-start.sh";

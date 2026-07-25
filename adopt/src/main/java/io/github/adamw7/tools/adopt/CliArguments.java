@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 
@@ -102,23 +103,24 @@ public final class CliArguments {
 			case "--label" -> consumeValue(args, index, labels::add);
 			case "--assignee" -> consumeValue(args, index, assignees::add);
 			case "--report" -> consumeValue(args, index, value -> reportFile = Path.of(value));
-			case "--draft" -> consumeSwitch(index, () -> draft = true);
-			case "--assets" -> consumeSwitch(index, () -> assets = true);
+			case "--draft" -> {
+				draft = true;
+				yield index + 1;
+			}
+			case "--assets" -> {
+				assets = true;
+				yield index + 1;
+			}
 			default -> throw new IllegalArgumentException("Unknown option " + flag + ". " + USAGE);
 		};
 	}
 
-	private int consumeValue(String[] args, int index, java.util.function.Consumer<String> target) {
+	private int consumeValue(String[] args, int index, Consumer<String> target) {
 		if (index + 1 >= args.length) {
 			throw new IllegalArgumentException(args[index] + " requires a value. " + USAGE);
 		}
 		target.accept(args[index + 1]);
 		return index + 2;
-	}
-
-	private int consumeSwitch(int index, Runnable target) {
-		target.run();
-		return index + 1;
 	}
 
 	private void consumePositional(String argument) {

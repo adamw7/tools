@@ -38,8 +38,14 @@ public interface BuildSystem {
 	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
 	 * will not be able to verify.
 	 *
+	 * <p>The verification launches the first word of its own command, so that is
+	 * what the default probes; a build system whose guard needs nothing installed
+	 * overrides this with an empty answer.
+	 *
 	 * @return the program to probe, or empty when the verification needs nothing
 	 *         beyond the POSIX shell every supported platform already provides
 	 */
-	Optional<String> requiredTool();
+	default Optional<String> requiredTool() {
+		return Optional.of(verifyCommand().get(0));
+	}
 }

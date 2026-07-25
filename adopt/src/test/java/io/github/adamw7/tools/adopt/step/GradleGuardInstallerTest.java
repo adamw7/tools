@@ -18,6 +18,41 @@ class GradleGuardInstallerTest {
 
 	private final GradleGuardInstaller installer = new GradleGuardInstaller();
 
+	/**
+	 * Gradle's configuration cache — on by default from Gradle 9 — rejects a task
+	 * whose execution-time body reaches back into the Project, failing the guard
+	 * task in the Groovy DSL and the whole build in the Kotlin one. Resolving the
+	 * file while the task is configured and only reading it in doLast keeps the task
+	 * body holding a plain File.
+	 */
+	@Test
+	void theGroovyGuardResolvesTheFileBeforeDoLast(@TempDir Path dir) throws IOException {
+		Path buildFile = write(dir, "build.gradle", "plugins { id 'java' }\n");
+		new GradleGuardInstaller().install(buildFile);
+		String script = Files.readString(buildFile);
+		assertTrue(script.indexOf("project.file('CLAUDE.md')") < script.indexOf("doLast"),
+				"the file must be resolved at configuration time, before doLast: " + script);
+		assertFalse(script.contains("$projectDir"),
+				"a project reference inside the task body breaks the configuration cache: " + script);
+	}
+
+	@Test
+	void theKotlinGuardResolvesTheFileBeforeDoLast(@TempDir Path dir) throws IOException {
+		Path buildFile = write(dir, "build.gradle.kts", "plugins { java }\n");
+		new GradleGuardInstaller().install(buildFile);
+		String script = Files.readString(buildFile);
+		assertTrue(script.indexOf("project.file(\"CLAUDE.md\")") < script.indexOf("doLast"),
+				"the file must be resolved at configuration time, before doLast: " + script);
+		assertFalse(script.contains("$projectDir"),
+				"a project reference inside the task body breaks the configuration cache: " + script);
+	}
+
+	private Path write(Path directory, String fileName, String content) throws IOException {
+		Path buildFile = directory.resolve(fileName);
+		Files.writeString(buildFile, content);
+		return buildFile;
+	}
+
 	@Test
 	void appendsGroovyGuardToBuildGradle(@TempDir Path directory) throws IOException {
 		Path buildFile = directory.resolve("build.gradle");
@@ -36,7 +71,7 @@ class GradleGuardInstallerTest {
 		assertTrue(installer.install(buildFile));
 		String content = Files.readString(buildFile);
 		assertTrue(content.contains("tasks.register(\"enforceClaudeMd\")"));
-		assertTrue(content.contains("val claudeMd = file(\"$projectDir/CLAUDE.md\")"));
+		assertTrue(content.contains("val claudeMd = project.file(\"CLAUDE.md\")"));
 	}
 
 	@Test

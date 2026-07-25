@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -113,6 +114,11 @@ class VerifyStepTest {
 		@Override
 		public List<String> verifyCommand() {
 			return verifyCommand;
+		}
+
+		@Override
+		public Optional<String> requiredTool() {
+			return Optional.empty();
 		}
 	}
 }

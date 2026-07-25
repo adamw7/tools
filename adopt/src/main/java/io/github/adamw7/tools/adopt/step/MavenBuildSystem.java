@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.step;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Maven support for the adoption: detects a {@code pom.xml}, wires the
@@ -45,5 +46,10 @@ public class MavenBuildSystem implements BuildSystem {
 	@Override
 	public List<String> verifyCommand() {
 		return VERIFY_COMMAND;
+	}
+
+	@Override
+	public Optional<String> requiredTool() {
+		return Optional.of(VERIFY_COMMAND.get(0));
 	}
 }

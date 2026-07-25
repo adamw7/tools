@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -11,6 +10,12 @@ import java.nio.file.Path;
  * always has a directory to run in — or a fresh temporary one when the caller
  * left the choice open. Shared by the command-line entry point and the MCP
  * server, so both resolve workspaces identically.
+ *
+ * <p>A workspace that cannot be created — the caller named a path that is already
+ * a regular file, or one the process may not write — fails with an
+ * {@link AdoptionException} like every other adoption failure, rather than
+ * surfacing a raw {@link java.io.UncheckedIOException} through the command line
+ * and the MCP tool.
  *
  * <p>The returned path is always absolute. The clone step runs {@code git clone}
  * with the workspace as its working directory and the checkout directory
@@ -29,7 +34,7 @@ public final class Workspaces {
 		try {
 			return Files.createDirectories(workspace).toAbsolutePath();
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			throw new AdoptionException("Could not create the workspace directory: " + workspace, e);
 		}
 	}
 
@@ -37,7 +42,7 @@ public final class Workspaces {
 		try {
 			return Files.createTempDirectory("claude-adopt-");
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			throw new AdoptionException("Could not create a temporary workspace directory", e);
 		}
 	}
 }

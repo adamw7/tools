@@ -22,6 +22,16 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * not data, and a self-contained task needs no structural edit. The install is
  * idempotent: a script that already declares the {@value #GUARD_TASK} task is
  * left untouched.
+ *
+ * <p>The file to check is resolved while the task is being <em>configured</em> and
+ * only read inside {@code doLast}, so the task body captures a plain
+ * {@link java.io.File} rather than reaching back into the {@code Project} at
+ * execution time. Gradle's configuration cache — on by default from Gradle 9, and
+ * widely opted into before that — rejects a task that holds a script or
+ * {@code Project} reference, and would otherwise fail the guard task in the Groovy
+ * DSL and the whole build in the Kotlin one, aborting the adoption at
+ * {@link GradleBuildSystem#verifyCommand()} and breaking {@code check} for every
+ * contributor afterwards.
  */
 public class GradleGuardInstaller {
 
@@ -42,8 +52,8 @@ public class GradleGuardInstaller {
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
 			tasks.register('%s') {
+			    def claudeMd = project.file('CLAUDE.md')
 			    doLast {
-			        def claudeMd = file("$projectDir/CLAUDE.md")
 			        if (!claudeMd.isFile() || claudeMd.text.trim().isEmpty()) {
 			            throw new GradleException('CLAUDE.md is missing or empty')
 			        }
@@ -56,8 +66,8 @@ public class GradleGuardInstaller {
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
 			tasks.register("%s") {
+			    val claudeMd = project.file("CLAUDE.md")
 			    doLast {
-			        val claudeMd = file("$projectDir/CLAUDE.md")
 			        if (!claudeMd.isFile || claudeMd.readText().trim().isEmpty()) {
 			            throw GradleException("CLAUDE.md is missing or empty")
 			        }

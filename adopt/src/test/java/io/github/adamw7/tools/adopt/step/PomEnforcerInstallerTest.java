@@ -342,14 +342,46 @@ class PomEnforcerInstallerTest {
 	 * rather than a hardcoded literal that drifts as the project is versioned.
 	 */
 	@Test
-	void defaultInstallerPinsTheRuleToTheFilteredBuildVersion(@TempDir Path dir) throws IOException {
-		String buildVersion = filteredRuleVersion();
+	void defaultInstallerReadsTheFilteredBuildVersion() throws IOException {
+		assertEquals(filteredRuleVersion(), PomEnforcerInstaller.buildRuleVersion());
+	}
+
+	@Test
+	void aReleaseRuleVersionIsPinnedIntoThePom(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);
-		assertTrue(new PomEnforcerInstaller().install(pom));
+		assertTrue(new PomEnforcerInstaller("4.1.0").install(pom));
 		String result = Files.readString(pom);
 		assertTrue(result.contains("tools.claude-code-enforcer"));
-		assertTrue(result.contains("<version>" + buildVersion + "</version>"),
-				"the rule dependency must be pinned to the filtered build version " + buildVersion);
+		assertTrue(result.contains("<version>4.1.0</version>"), result);
+	}
+
+	/**
+	 * A snapshot resolves from the adopter's local repository and nowhere else, so
+	 * wiring one in would open a pull request that only builds on the machine that
+	 * opened it.
+	 */
+	@Test
+	void aSnapshotRuleVersionIsRefused() {
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> PomEnforcerInstaller.requireReleaseVersion("2.6.0-SNAPSHOT"));
+		assertTrue(thrown.getMessage().contains("2.6.0-SNAPSHOT"), thrown.getMessage());
+	}
+
+	@Test
+	void aReleaseRuleVersionIsAccepted() {
+		assertEquals("2.6.0", PomEnforcerInstaller.requireReleaseVersion("2.6.0"));
+	}
+
+	/**
+	 * Resolving the version only when a POM is actually being edited keeps a
+	 * non-Maven adoption — and merely constructing the default build-system list —
+	 * independent of whichever version the module was built at.
+	 */
+	@Test
+	void theDefaultInstallerResolvesItsVersionOnlyWhenItWiresAPom(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+		installer.install(pom);
+		assertFalse(new PomEnforcerInstaller().install(pom));
 	}
 
 	private String filteredRuleVersion() throws IOException {

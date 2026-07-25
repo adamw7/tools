@@ -11,6 +11,25 @@ class AdoptionContextTest {
 
 	private final Path workspace = Path.of("/tmp/workspace");
 
+	/**
+	 * An empty last segment would resolve the checkout onto the workspace itself,
+	 * so the clone would land beside the other repositories the workspace holds
+	 * instead of in its own directory.
+	 */
+	@Test
+	void aUrlWithNoRepositoryNameIsRejected() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new AdoptionContext("https://github.com/adamw7//", Path.of("/tmp/workspace")));
+		assertThrows(IllegalArgumentException.class,
+				() -> new AdoptionContext("https://github.com/adamw7/.git", Path.of("/tmp/workspace")));
+	}
+
+	@Test
+	void aUrlWhoseNameIsADirectoryAliasIsRejected() {
+		assertThrows(IllegalArgumentException.class, () -> new AdoptionContext("..", Path.of("/tmp/workspace")));
+		assertThrows(IllegalArgumentException.class, () -> new AdoptionContext(".", Path.of("/tmp/workspace")));
+	}
+
 	@Test
 	void derivesCheckoutDirectoryFromHttpsUrl() {
 		AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git", workspace);

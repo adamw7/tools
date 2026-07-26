@@ -28,4 +28,14 @@ public final class Failures {
 			failure.addSuppressed(e);
 		}
 	}
+
+	/**
+	 * @return the failure's message, falling back to its type when it carries none,
+	 *         so a report never records a bare {@code null} as the reason a run
+	 *         stopped
+	 */
+	public static String describe(RuntimeException failure) {
+		String message = failure.getMessage();
+		return message == null || message.isBlank() ? failure.getClass().getSimpleName() : message;
+	}
 }

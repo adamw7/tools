@@ -40,7 +40,9 @@ run `mvn install` from the repository root. The main capabilities are:
   generated file, then push the branch and open a pull request (`gh pr create`)
   with metadata from `PullRequestOptions` (exposed as CLI flags such as
   `--title`, `--reviewer`, and `--draft`); the default branch is never written to
-  directly. An optional `--assets` flag commits starter Claude Code
+  directly. One run adopts a list of repositories — repeatable `--repo <url>` or
+  `--repos <file>` on the command line, `repository_urls` on the MCP tool — each
+  with its own report, and a repository that fails does not stop the rest. An optional `--assets` flag commits starter Claude Code
   configuration assets (an `AGENTS.md` pointer, `.claude/settings.json`, a
   session-start hook stub, `.mcp.json`, and an `@claude`-mention workflow); each
   run returns an `AdoptionReport` with the pull request URL, written as JSON via

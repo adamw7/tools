@@ -62,6 +62,18 @@ Maven project. The notable capabilities are:
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
   `CliArguments` alongside the positional URL, workspace, and branch arguments).
+  One run adopts a **list of repositories**: repeatable `--repo <url>` and
+  `--repos <file>` (one URL per line, `#` comments and blank lines skipped, read
+  by `RepositoryUrls`) add to the positional URL, duplicates are dropped, and
+  `--workspace`/`--branch` name the shared workspace and branch for a run with no
+  positional arguments — the first positional is always a repository URL, never a
+  workspace. `BatchAdoption` runs the pipeline once per repository with a report
+  each and does *not* stop at the first failure: the adoptions are independent, so
+  a failed one is recorded and the batch runs to the end, with `Main` raising the
+  failures together afterwards so the process still exits non-zero. The MCP tool
+  takes the same list as `repository_urls` (a JSON array, or a comma-separated
+  string) beside `repository_url`, and answers with an error result carrying the
+  report — not a bare exception — when a repository fails.
   An optional `--assets` flag adds an `AssetsStep` that commits starter Claude
   Code configuration assets — an `AGENTS.md` pointer, a `.claude/settings.json`
   denying reads of obvious secret files and wiring a
@@ -85,7 +97,11 @@ Maven project. The notable capabilities are:
   (completed steps, the pull request URL read back with `gh pr list --json url`,
   and whether the run succeeded plus the failing step's message when it did not);
   `--report <file>` writes it as JSON for scripting, on the failure path too, so
-  an abandoned run still records how far it got. An **MCP server** (in the
+  an abandoned run still records how far it got. A run over several repositories
+  writes the batch document instead — an overall `succeeded` and a `repositories`
+  array of those same per-repository documents — while a single-repository run
+  keeps writing its document unwrapped, so the shape existing consumers parse is
+  unchanged. An **MCP server** (in the
   `io.github.adamw7.tools.adopt.mcp` package) exposes the same pipeline as an
   `adopt_repo` tool that answers with that JSON report. External
   `git`/`claude`/`gh` invocations

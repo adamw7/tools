@@ -763,6 +763,49 @@ mvn -pl adopt exec:java \
     -Dexec.args="https://github.com/owner/repo.git [workspace-directory] [branch-name]"
 ```
 
+One run can adopt **a list of repositories** rather than a single one: repeat
+`--repo <url>` for each, or point `--repos <file>` at a file naming one
+repository per line (blank lines are skipped and a `#` line is a comment, so a
+batch can be annotated and a repository commented out for a run). Duplicates are
+adopted once. Every repository of the run shares the workspace and the branch
+name — each clone lands in its own directory under the workspace, named after the
+repository — so a batch driven entirely by the flags names them with
+`--workspace` and `--branch`, the first positional argument always being a
+repository URL:
+
+```bash
+mvn -pl adopt exec:java \
+    -Dexec.args="--repos repos.txt --workspace /tmp/adoptions --report report.json"
+```
+
+A repository whose adoption fails does not strand the ones behind it: the batch
+runs to the end, and the failures are raised together afterwards so the command
+still exits non-zero. The `--report` file says which repositories landed — a run
+over several repositories writes an overall `succeeded` (true only when every one
+was adopted) and a `repositories` array of exactly the per-repository documents a
+single-repository run writes unwrapped:
+
+```json
+{
+  "succeeded" : false,
+  "repositories" : [ {
+    "repositoryUrl" : "https://github.com/owner/repo.git",
+    "branch" : "claude/adopt-claude-code",
+    "pullRequestUrl" : "https://github.com/owner/repo/pull/42",
+    "succeeded" : true,
+    "failure" : null,
+    "completedSteps" : [ "toolchain", "clone", "…", "pull-request" ]
+  }, {
+    "repositoryUrl" : "https://github.com/owner/other.git",
+    "branch" : "claude/adopt-claude-code",
+    "pullRequestUrl" : null,
+    "succeeded" : false,
+    "failure" : "clone: repository not found",
+    "completedSteps" : [ "toolchain" ]
+  } ]
+}
+```
+
 The `claude-code-enforcer` version a Maven project's `pom.xml` is made to depend
 on defaults to the version of the `tools` build running the adoption;
 `--rule-version <version>` pins a different one. A `-SNAPSHOT` is refused either
@@ -780,6 +823,17 @@ derived checkout directory, and the feature-branch name):
 CommandRunner runner = new ProcessCommandRunner();
 GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), false)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace));
+```
+
+`BatchAdoption` wraps that pipeline to work through a list of repositories, one
+`AdoptionContext` at a time, and answers with an `AdoptionRun` (the context and
+its report) per repository — a failing repository is recorded rather than
+allowed to abandon the rest:
+
+```java
+GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(
+    runner, PullRequestOptions.defaults(), false);
+List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(contexts);
 ```
 
 The default pipeline runs these steps in order:

@@ -23,6 +23,7 @@ import io.github.adamw7.tools.adopt.step.AdoptionStep;
 class MainTest {
 
 	private static final String REPO_URL = "https://github.com/owner/repo.git";
+	private static final String OTHER_URL = "https://github.com/owner/other.git";
 
 	@Test
 	void rejectsMissingArguments() {
@@ -68,6 +69,21 @@ class MainTest {
 	}
 
 	/**
+	 * Every repository of a run shares the workspace and the branch name; only the
+	 * checkout directory, derived from the repository name, differs.
+	 */
+	@Test
+	void buildsAContextPerRepository(@TempDir Path dir) {
+		List<AdoptionContext> contexts = Main.contexts(CliArguments.parse(
+				new String[] { REPO_URL, "--repo", OTHER_URL, "--workspace", dir.toString(), "--branch", "feature/x" }));
+		assertEquals(List.of(REPO_URL, OTHER_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+		assertEquals(List.of(dir, dir), contexts.stream().map(AdoptionContext::workspace).toList());
+		assertEquals(List.of(dir.resolve("repo"), dir.resolve("other")),
+				contexts.stream().map(AdoptionContext::repositoryDirectory).toList());
+		assertEquals(List.of("feature/x", "feature/x"), contexts.stream().map(AdoptionContext::branchName).toList());
+	}
+
+	/**
 	 * A run that stops part-way is the one whose report matters most — it records
 	 * which steps completed and why the adoption stopped — so writing it only on the
 	 * success path leaves nothing behind exactly when the operator needs it.
@@ -76,8 +92,8 @@ class MainTest {
 	void writesTheReportWhenTheAdoptionFails(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("report.json");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli(dir, file), context(dir), failingAdopter()));
-		assertEquals("boom", thrown.getMessage());
+				() -> Main.runAndReport(cli(dir, file), contexts(dir), failingAdopter()));
+		assertTrue(thrown.getMessage().contains(REPO_URL + ": explode: boom"), thrown.getMessage());
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertFalse(node.get("succeeded").asBoolean());
 		assertEquals("explode: boom", node.get("failure").asText());
@@ -86,10 +102,37 @@ class MainTest {
 	@Test
 	void writesTheReportWhenTheAdoptionSucceeds(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("report.json");
-		Main.runAndReport(cli(dir, file), context(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
+		Main.runAndReport(cli(dir, file), contexts(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertTrue(node.get("succeeded").asBoolean());
 		assertTrue(node.get("failure").isNull());
+	}
+
+	/**
+	 * The repositories behind a failing one are adopted rather than stranded by it,
+	 * and the batch report says which was which — the whole point of taking a list.
+	 */
+	@Test
+	void adoptsEveryRepositoryEvenWhenOneFails(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("report.json");
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL,
+				"--workspace", dir.toString(), "--report", file.toString() });
+		assertThrows(AdoptionException.class,
+				() -> Main.runAndReport(cli, Main.contexts(cli), failingFor(REPO_URL)));
+		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
+		assertFalse(node.get("succeeded").asBoolean());
+		assertEquals(REPO_URL, node.get("repositories").get(0).get("repositoryUrl").asText());
+		assertFalse(node.get("repositories").get(0).get("succeeded").asBoolean());
+		assertTrue(node.get("repositories").get(1).get("succeeded").asBoolean());
+	}
+
+	@Test
+	void reportsHowManyRepositoriesOfTheBatchFailed(@TempDir Path dir) {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL, "--workspace",
+				dir.toString() });
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> Main.runAndReport(cli, Main.contexts(cli), failingFor(REPO_URL)));
+		assertTrue(thrown.getMessage().startsWith("Adoption failed for 1 of 2 repositories"), thrown.getMessage());
 	}
 
 	/**
@@ -100,15 +143,15 @@ class MainTest {
 	void anUnwritableReportDoesNotReplaceTheAdoptionFailure(@TempDir Path dir) throws IOException {
 		Path blockingFile = Files.createFile(dir.resolve("not-a-directory"));
 		AdoptionException thrown = assertThrows(AdoptionException.class, () -> Main
-				.runAndReport(cli(dir, blockingFile.resolve("report.json")), context(dir), failingAdopter()));
-		assertEquals("boom", thrown.getMessage());
+				.runAndReport(cli(dir, blockingFile.resolve("report.json")), contexts(dir), failingAdopter()));
+		assertTrue(thrown.getMessage().contains("explode: boom"), thrown.getMessage());
 		assertEquals(1, thrown.getSuppressed().length);
 	}
 
 	@Test
 	void writesNoReportWhenNoneWasRequested(@TempDir Path dir) {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, dir.toString() });
-		Main.runAndReport(cli, context(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
+		Main.runAndReport(cli, contexts(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
 		assertTrue(cli.reportFile().isEmpty());
 	}
 
@@ -116,11 +159,16 @@ class MainTest {
 		return CliArguments.parse(new String[] { REPO_URL, workspace.toString(), "--report", reportFile.toString() });
 	}
 
-	private AdoptionContext context(Path workspace) {
-		return new AdoptionContext(REPO_URL, workspace);
+	private List<AdoptionContext> contexts(Path workspace) {
+		return List.of(new AdoptionContext(REPO_URL, workspace));
 	}
 
 	private GitHubRepoAdopter failingAdopter() {
+		return failingFor(REPO_URL);
+	}
+
+	/** An adopter whose only step explodes for the named repository and passes for the rest. */
+	private GitHubRepoAdopter failingFor(String repositoryUrl) {
 		return new GitHubRepoAdopter(new RecordingCommandRunner(), List.of(new AdoptionStep() {
 
 			@Override
@@ -130,7 +178,9 @@ class MainTest {
 
 			@Override
 			public void execute(AdoptionContext context, CommandRunner runner) {
-				throw new AdoptionException("boom");
+				if (repositoryUrl.equals(context.repositoryUrl())) {
+					throw new AdoptionException("boom");
+				}
 			}
 		}));
 	}

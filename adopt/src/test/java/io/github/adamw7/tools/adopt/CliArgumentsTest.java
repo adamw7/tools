@@ -264,6 +264,51 @@ class CliArgumentsTest {
 				() -> CliArguments.parse(new String[] { REPO_URL, "/tmp/ws", "branch", "surplus" }));
 	}
 
+	/**
+	 * The workspace an operator meant to name positionally is read as a repository
+	 * URL, so the run would clone a directory that is not a repository. Rejecting it
+	 * names the flag that was meant instead of failing at the clone.
+	 */
+	@Test
+	void rejectsAWorkspacePositionalAlongsideTheRepositoryFlags(@TempDir Path dir) throws IOException {
+		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n");
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { "/tmp/ws", "--repos", list.toString() }));
+		assertTrue(exception.getMessage().contains("--workspace"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("/tmp/ws"), exception.getMessage());
+	}
+
+	@Test
+	void rejectsAWorkspacePositionalWhateverOrderTheRepositoryFlagCameIn() {
+		assertThrows(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { "--repo", REPO_URL, "/tmp/ws" }));
+	}
+
+	/** A positional URL beside the flags is the documented way to name the first repository. */
+	@Test
+	void acceptsARepositoryPositionalAlongsideTheRepositoryFlags() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL });
+		assertEquals(List.of(REPO_URL, OTHER_URL), cli.repositoryUrls());
+	}
+
+	/**
+	 * A local path names no owner but is adoptable, so a run whose only repository is
+	 * the positional keeps working — the check only fires when the flags named one too.
+	 */
+	@Test
+	void acceptsALocalRepositoryPathAsTheOnlyRepository() {
+		CliArguments cli = CliArguments.parse(new String[] { "/tmp/checkouts/repo", "/tmp/ws" });
+		assertEquals(List.of("/tmp/checkouts/repo"), cli.repositoryUrls());
+		assertEquals(Path.of("/tmp/ws"), cli.workspace().orElseThrow());
+	}
+
+	/** A blank repository flag names nothing, so it cannot turn the positional into a workspace. */
+	@Test
+	void aBlankRepositoryFlagDoesNotRejectALocalRepositoryPositional() {
+		CliArguments cli = CliArguments.parse(new String[] { "/tmp/checkouts/repo", "--repo", "  " });
+		assertEquals(List.of("/tmp/checkouts/repo"), cli.repositoryUrls());
+	}
+
 	private void assertUsageFailure(String[] args) {
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> CliArguments.parse(args));

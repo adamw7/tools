@@ -18,7 +18,9 @@ repository, the branch, the pull request URL, and the completed steps.
 One call can adopt a list of repositories, one after another, sharing the
 workspace and branch name. A repository whose adoption fails does not strand the
 ones behind it: the batch runs to the end and the report says which landed, the
-result being marked as an error when any of them did not.
+result being marked as an error when any of them did not. Two repositories of the
+list that would clone into the same directory under the workspace are refused
+before anything is cloned, so neither is adopted on top of the other.
 
 Because the pipeline shells out to `git`, `claude`, and `gh`, those tools must
 be installed and authenticated on the machine running the MCP server.
@@ -60,7 +62,8 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
   each
 - `workspace` (string, optional): directory to clone into, shared by every
   repository of the call — each clone lands in its own directory under it, named
-  after the repository; a temporary directory is created when omitted
+  after the repository, and two repositories of one call may not share that
+  directory; a temporary directory is created when omitted
 - `branch` (string, optional): feature branch name; defaults to
   `claude/adopt-claude-code`
 - `title` / `body` (string, optional): pull request title and body

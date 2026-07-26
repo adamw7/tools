@@ -771,7 +771,12 @@ adopted once. Every repository of the run shares the workspace and the branch
 name — each clone lands in its own directory under the workspace, named after the
 repository — so a batch driven entirely by the flags names them with
 `--workspace` and `--branch`, the first positional argument always being a
-repository URL:
+repository URL; a first positional that names no repository owner while the flags
+named repositories is rejected, since that is the workspace this reading invites.
+Two repositories that would clone into the same directory — `owner/tools` and
+`other-owner/tools`, or one repository named both with and without its `.git`
+suffix — are rejected before anything is cloned rather than adopted on top of each
+other:
 
 ```bash
 mvn -pl adopt exec:java \

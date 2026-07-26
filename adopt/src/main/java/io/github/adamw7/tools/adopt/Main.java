@@ -64,10 +64,7 @@ public class Main {
 
 	/** Every repository of a run is adopted into one workspace, on one branch name. */
 	static List<AdoptionContext> contexts(CliArguments cli) {
-		Path workspace = workspace(cli);
-		return cli.repositoryUrls().stream()
-				.map(url -> new AdoptionContext(url, workspace, cli.branchName()))
-				.toList();
+		return Checkouts.forRun(cli.repositoryUrls(), workspace(cli), cli.branchName());
 	}
 
 	static Path workspace(CliArguments cli) {

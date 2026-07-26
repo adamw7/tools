@@ -20,7 +20,7 @@ import com.google.protobuf.GeneratedMessage;
 
 import io.github.adamw7.tools.code.gen.Code;
 
-@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = false, requiresDependencyResolution = ResolutionScope.RUNTIME)
+@Mojo(name = "code-generator", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = true, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class CodeMojo extends AbstractMojo {
 
 	private static final Logger log = LogManager.getLogger(CodeMojo.class.getName());
@@ -40,9 +40,17 @@ public class CodeMojo extends AbstractMojo {
 	@Override
 	public void execute() {
 		log.info("Executing {} maven plugin", this);
-		extendClassPath();
-		Set<Class<? extends GeneratedMessage>> allMessages = new MessagesFinder(pkgs).execute();
-		new Code(generatedSourcesDir, outputpackage).genBuilders(allMessages);
+		// The only shared state this goal touches is the thread context classloader
+		// (Reflections scans through it), so restoring it keeps a parallel `-T` build
+		// from leaking one project's classpath into whatever the thread runs next.
+		ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+		try {
+			extendClassPath();
+			Set<Class<? extends GeneratedMessage>> allMessages = new MessagesFinder(pkgs).execute();
+			new Code(generatedSourcesDir, outputpackage).genBuilders(allMessages);
+		} finally {
+			Thread.currentThread().setContextClassLoader(originalClassLoader);
+		}
 	}
 
 	private void extendClassPath() {

@@ -14,6 +14,21 @@
 	<url>https://github.com/adamw7/tools</url>
 	<build>
 		<plugins>
+			<!-- Expose the mockito-core jar path (it arrives transitively through
+			     spring-boot-starter-test) so it can be pre-loaded as a Java agent
+			     below. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>resolve-mockito-agent</id>
+						<goals>
+							<goal>properties</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -26,7 +41,16 @@
 					     io.github.adamw7.tools.data module. Running from the classpath
 					     also lets the tests reach the MCP client/SDK types (which live in
 					     the unnamed module) without patching the module open. -->
-					<argLine>@{argLine}</argLine>
+					<!-- The enable-native-access flag grants the native access the DuckDB
+					     JDBC driver needs for its System::load call. Without it the JVM
+					     warns on every Parquet test and, as that warning says, will block
+					     the call outright in a future release.
+
+					     Pre-loading Mockito as a Java agent (the Spring Boot test context
+					     mocks beans) replaces its runtime self-attach, which warns today
+					     and stops working once the JDK disallows dynamic agent loading.
+					     @{argLine} keeps the JaCoCo agent (coverage profile) composed in. -->
+					<argLine>@{argLine} --enable-native-access=ALL-UNNAMED -javaagent:${org.mockito:mockito-core:jar}</argLine>
 					<useModulePath>false</useModulePath>
 				</configuration>
 			</plugin>

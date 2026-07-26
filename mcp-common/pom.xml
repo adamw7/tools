@@ -12,6 +12,28 @@
 	<name>Shared MCP server scaffolding</name>
 	<description>Shared MCP server scaffolding providing transport wiring and the tool SPI reused by the repository's MCP servers.</description>
 	<url>https://github.com/adamw7/tools</url>
+	<build>
+		<plugins>
+			<!-- This module has no module-info.java, so the JPMS name that
+			     `requires tools.mcp.common` in tools.data resolves against was being
+			     derived from the jar filename. javac warns about publishing such a
+			     filename-based automodule, because renaming the artifact silently
+			     renames the module. Pinning the manifest entry to the name the
+			     filename already produced keeps existing consumers working and makes
+			     the name part of the artifact instead of an accident. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Automatic-Module-Name>tools.mcp.common</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 	<dependencies>
 		<dependency>
 			<groupId>io.modelcontextprotocol.sdk</groupId>

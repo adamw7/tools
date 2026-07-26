@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.code;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 
 // Every test here runs the Mojo end to end: it generates builders and compiles
 // the result with the JDK compiler, which can exceed the global 1-second
@@ -83,6 +86,39 @@ public class MojoTest {
 		assertTrue(dirSet.contains("com"));
 
 		compileSources(GENERATED_SOURCES + File.separator + mojo.outputpackage.replace(".", File.separator));
+	}
+
+	@Test
+	public void restoresContextClassLoader() {
+		CodeMojo mojo = new CodeMojo();
+		mojo.generatedSourcesDir = GENERATED_SOURCES;
+		mojo.pkgs = new String[] { "io.github.adamw7.tools.code.protos" };
+		mojo.outputpackage = "com.sth.generated";
+		mojo.runtimeClasspathElements = List.of();
+
+		ClassLoader beforeExecution = Thread.currentThread().getContextClassLoader();
+		mojo.execute();
+
+		assertSame(beforeExecution, Thread.currentThread().getContextClassLoader(),
+				"The goal is declared thread-safe, so it must not leave its classpath on the build thread");
+	}
+
+	@Test
+	public void restoresContextClassLoaderWhenGenerationFails(@TempDir Path tempDir) throws IOException {
+		// A regular file where the output directory should go makes generation blow up
+		// after the classloader has already been swapped in.
+		Path blockingFile = Files.createFile(tempDir.resolve("not-a-directory"));
+		CodeMojo mojo = new CodeMojo();
+		mojo.generatedSourcesDir = blockingFile.toString();
+		mojo.pkgs = new String[] { "io.github.adamw7.tools.code.protos" };
+		mojo.outputpackage = "com.sth.generated";
+		mojo.runtimeClasspathElements = List.of();
+
+		ClassLoader beforeExecution = Thread.currentThread().getContextClassLoader();
+		assertThrows(UncheckedIOException.class, mojo::execute);
+
+		assertSame(beforeExecution, Thread.currentThread().getContextClassLoader(),
+				"A failing execution must restore the build thread's classloader too");
 	}
 
 	private void compileSources(String dir) {

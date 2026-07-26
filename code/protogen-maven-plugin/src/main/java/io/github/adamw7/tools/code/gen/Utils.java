@@ -21,18 +21,14 @@ public class Utils {
 		if (string.isEmpty()) {
 			return string;
 		}
-		return (String.valueOf(string.charAt(0)).toLowerCase() + string.substring(1));
+		return string.substring(0, 1).toLowerCase() + string.substring(1);
 	}
 
 	public static String firstToUpper(String string) {
 		if (string.isEmpty()) {
 			return string;
 		}
-		return (firstUpper(string) + string.substring(1));
-	}
-
-	private static String firstUpper(String string) {
-		return String.valueOf(string.charAt(0)).toUpperCase();
+		return string.substring(0, 1).toUpperCase() + string.substring(1);
 	}
 
 	public static String toUpperCamelCase(String s) {
@@ -72,13 +68,7 @@ public class Utils {
 	
 	public static String getSuffixOf(String type, int howMany, String delimiter) {
 		String[] tokens = type.split(Pattern.quote(delimiter));
-		StringBuilder suffixBuilder = new StringBuilder();
-		for (int i = howMany; i > 0; i--) {
-			suffixBuilder.append(tokens[tokens.length - i]);
-			suffixBuilder.append(delimiter);
-		}
-		String suffix = suffixBuilder.toString();
-		return suffix.substring(0, suffix.length() - 1);
+		return String.join(delimiter, Arrays.copyOfRange(tokens, tokens.length - howMany, tokens.length));
 	}
 
 	public static String getClassName(String fullName) {

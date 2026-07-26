@@ -1,11 +1,5 @@
 package io.github.adamw7.context;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,8 +27,6 @@ import java.util.stream.Collectors;
  * {@link Language} the finder supports.
  */
 public class PackageAwareFinder extends AbstractFinder {
-
-	private static final Logger log = LogManager.getLogger(PackageAwareFinder.class.getName());
 
 	private static final Pattern PACKAGE = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)");
 
@@ -78,21 +70,7 @@ public class PackageAwareFinder extends AbstractFinder {
 	protected Set<ClassContainer> findDirectDependencies(ClassContainer source) {
 		String code = stripCommentsAndLiterals(source.originalCode());
 		ResolutionScope scope = scopeOf(code);
-		Set<ClassContainer> dependencies = new LinkedHashSet<>();
-		Matcher matcher = CLASS_REFERENCE.matcher(code);
-		while (matcher.find()) {
-			addResolved(matcher.group(), scope, source, dependencies);
-		}
-		return dependencies;
-	}
-
-	private void addResolved(String reference, ResolutionScope scope, ClassContainer source,
-			Set<ClassContainer> dependencies) {
-		ClassContainer container = resolve(outerSimpleName(reference), scope);
-		if (container != null) {
-			log.info("Resolved {} used in {}", container.className(), source.className());
-			dependencies.add(container);
-		}
+		return resolveReferences(source, code, reference -> resolve(outerSimpleName(reference), scope));
 	}
 
 	private String outerSimpleName(String reference) {
@@ -139,8 +117,8 @@ public class PackageAwareFinder extends AbstractFinder {
 	}
 
 	private ResolutionScope scopeOf(String strippedCode) {
-		return new ResolutionScope(packageOf(strippedCode), explicitImports(strippedCode),
-				wildcardPackages(strippedCode));
+		List<String> imports = IMPORT.matcher(strippedCode).results().map(result -> result.group(1)).toList();
+		return new ResolutionScope(packageOf(strippedCode), explicitImports(imports), wildcardPackages(imports));
 	}
 
 	private String packageOf(String strippedCode) {
@@ -148,34 +126,21 @@ public class PackageAwareFinder extends AbstractFinder {
 		return matcher.find() ? matcher.group(1) : "";
 	}
 
-	private Map<String, String> explicitImports(String strippedCode) {
-		Matcher matcher = IMPORT.matcher(strippedCode);
-		Map<String, String> imports = new HashMap<>();
-		while (matcher.find()) {
-			recordExplicitImport(matcher.group(1), imports);
-		}
-		return imports;
+	private Map<String, String> explicitImports(List<String> imports) {
+		return imports.stream()
+				.filter(imported -> !isWildcard(imported))
+				.collect(Collectors.toMap(this::lastSegment, imported -> imported, (first, second) -> second));
 	}
 
-	private void recordExplicitImport(String imported, Map<String, String> imports) {
-		if (!imported.endsWith(".*")) {
-			imports.put(lastSegment(imported), imported);
-		}
+	private List<String> wildcardPackages(List<String> imports) {
+		return imports.stream()
+				.filter(this::isWildcard)
+				.map(imported -> imported.substring(0, imported.length() - 2))
+				.toList();
 	}
 
-	private List<String> wildcardPackages(String strippedCode) {
-		Matcher matcher = IMPORT.matcher(strippedCode);
-		List<String> packages = new ArrayList<>();
-		while (matcher.find()) {
-			recordWildcard(matcher.group(1), packages);
-		}
-		return packages;
-	}
-
-	private void recordWildcard(String imported, List<String> packages) {
-		if (imported.endsWith(".*")) {
-			packages.add(imported.substring(0, imported.length() - 2));
-		}
+	private boolean isWildcard(String imported) {
+		return imported.endsWith(".*");
 	}
 
 	private String lastSegment(String dotted) {

@@ -7,12 +7,13 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -52,20 +53,14 @@ public class Code {
 		return dir;
 	}
 
+	/** Deletes depth-first — reverse document order puts every child before its parent. */
 	private void deleteRecursively(Path path) throws IOException {
 		if (Files.notExists(path)) {
 			return;
 		}
-		if (Files.isDirectory(path)) {
-			deleteChildren(path);
-		}
-		Files.delete(path);
-	}
-
-	private void deleteChildren(Path directory) throws IOException {
-		try (DirectoryStream<Path> children = Files.newDirectoryStream(directory)) {
-			for (Path child : children) {
-				deleteRecursively(child);
+		try (Stream<Path> tree = Files.walk(path)) {
+			for (Path entry : tree.sorted(Comparator.reverseOrder()).toList()) {
+				Files.delete(entry);
 			}
 		}
 	}

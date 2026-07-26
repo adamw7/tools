@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.code.gen;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 import com.google.protobuf.Descriptors;
@@ -17,6 +17,7 @@ public class ClassInfo {
 	private final List<FieldDescriptor> requiredFields;
 	private final List<FieldDescriptor> nonOptionalFields;
 	private final List<FieldDescriptor> groupFields;
+	private final List<FieldDescriptor> pureComplexFields;
 
 	private final Descriptor descriptor;
 	private final String inputPkg;
@@ -28,18 +29,11 @@ public class ClassInfo {
 		repeatedFields = getRepeatedFields(descriptor);
 		requiredFields = getRequiredFields(descriptor);
 		groupFields = getGroupFields(descriptor);
+		pureComplexFields = getPureComplexFields(descriptor);
 		this.descriptor = descriptor;
-		this.nonOptionalFields = union(required(), map(), repeated());
+		this.nonOptionalFields = Stream.of(required(), map(), repeated()).flatMap(List::stream).toList();
 		this.inputPkg = inputPkg;
 		this.outputPkg = outputPkg;
-	}
-
-	protected List<FieldDescriptor> union(@SuppressWarnings("unchecked") List<FieldDescriptor>... fieldsLists) {
-		List<FieldDescriptor> all = new ArrayList<>();
-		for (List<FieldDescriptor> fieldsList : fieldsLists) {
-			all.addAll(fieldsList);
-		}
-		return all;
 	}
 
 	private List<FieldDescriptor> getRepeatedFields(Descriptor descriptor) {
@@ -63,14 +57,7 @@ public class ClassInfo {
 	}
 	
 	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {
-		List<FieldDescriptor> allComplexFields =  descriptor.getFields().stream().filter(ClassInfo::isComplexType).toList();
-		List<FieldDescriptor> pureComplexFields = new ArrayList<>();
-		for (FieldDescriptor field : allComplexFields ) {
-			if (isPure(field)) {
-				pureComplexFields.add(field);
-			}
-		}
-		return pureComplexFields;
+		return descriptor.getFields().stream().filter(ClassInfo::isComplexType).filter(ClassInfo::isPure).toList();
 	}
 
 	private static boolean isPure(FieldDescriptor field) {
@@ -78,13 +65,7 @@ public class ClassInfo {
 	}
 
 	private static List<FieldDescriptor> getGroupFields(Descriptor descriptor) {
-		List<FieldDescriptor> groups = new ArrayList<>();
-		for (Descriptors.FieldDescriptor fieldDescriptor : descriptor.getFields()) {
-			if (isGroup(fieldDescriptor)) {
-				groups.add(fieldDescriptor);
-			}
-		}
-		return groups;
+		return descriptor.getFields().stream().filter(ClassInfo::isGroup).toList();
 	}
 
 	private static boolean isGroup(Descriptors.FieldDescriptor fieldDescriptor) {
@@ -136,7 +117,7 @@ public class ClassInfo {
 	}
 	
 	public List<FieldDescriptor> getPureComplexFields() {
-		return getPureComplexFields(descriptor);
+		return pureComplexFields;
 	}
 
 	private static boolean isComplexType(Descriptors.FieldDescriptor fieldDescriptor) {

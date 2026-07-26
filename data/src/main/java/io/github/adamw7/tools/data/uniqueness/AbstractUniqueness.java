@@ -1,10 +1,10 @@
 package io.github.adamw7.tools.data.uniqueness;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,21 +42,11 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	}
 
 	protected int[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
-		List<Integer> indicies = new ArrayList<>();
-
-		for (int i = 0; i < allColumns.length; ++i) {
-			for (int j = 0; j < keyCandidates.length; ++j) {
-				if (allColumns[i].equalsIgnoreCase(keyCandidates[j])) {
-					indicies.add(i);
-				}
-			}
-		}
-
-		int[] result = new int[indicies.size()];
-		for (int i = 0; i < result.length; ++i) {
-			result[i] = indicies.get(i);
-		}
-		return result;
+		return IntStream.range(0, allColumns.length)
+				.flatMap(index -> Arrays.stream(keyCandidates)
+						.filter(candidate -> allColumns[index].equalsIgnoreCase(candidate))
+						.mapToInt(candidate -> index))
+				.toArray();
 	}
 	
 	protected void check(String[] keyCandidates) {
@@ -68,10 +58,8 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 		if (keyCandidates == null || keyCandidates.length == 0) {
 			throw new IllegalArgumentException("Wrong input: " + Arrays.toString(keyCandidates));
 		}
-		for (String candidate : keyCandidates) {
-			if (candidate == null) {
-				throw new IllegalArgumentException("Input columns cannot be null");
-			}
+		if (Arrays.stream(keyCandidates).anyMatch(Objects::isNull)) {
+			throw new IllegalArgumentException("Input columns cannot be null");
 		}
 	}
 

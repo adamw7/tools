@@ -1,6 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -66,9 +64,7 @@
 			<url>https://www.opensource.org/licenses/mit-license.php</url>
 		</license>
 	</licenses>
-	<scm child.scm.connection.inherit.append.path="false"
-		child.scm.developerConnection.inherit.append.path="false"
-		child.scm.url.inherit.append.path="false">
+	<scm child.scm.connection.inherit.append.path="false" child.scm.developerConnection.inherit.append.path="false" child.scm.url.inherit.append.path="false">
 		<connection>scm:git:git@github.com:adamw7/tools.git</connection>
 		<developerConnection>scm:git:git@github.com:adamw7/tools.git</developerConnection>
 		<url>https://github.com/adamw7/tools</url>
@@ -501,7 +497,7 @@
 						</goals>
 						<configuration>
 							<rules>
-								<banDuplicatePomDependencyVersions />
+								<banDuplicatePomDependencyVersions/>
 								<requireMavenVersion>
 									<version>[3.9,4.0)</version>
 								</requireMavenVersion>
@@ -511,16 +507,38 @@
 								<requireReleaseDeps>
 									<onlyWhenRelease>true</onlyWhenRelease>
 								</requireReleaseDeps>
-								<reactorModuleConvergence />
+								<reactorModuleConvergence/>
 								<requirePluginVersions>
 									<banSnapshots>false</banSnapshots>
 								</requirePluginVersions>
-								<dependencyConvergence />
-								<requireNoRepositories />
+								<dependencyConvergence/>
+								<requireNoRepositories/>
+							</rules>
+						</configuration>
+					</execution>
+					<execution>
+						<id>enforce-claude-md</id>
+						<phase>validate</phase>
+						<inherited>false</inherited>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<claudeMdFormat>
+									<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
+								</claudeMdFormat>
 							</rules>
 						</configuration>
 					</execution>
 				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>io.github.adamw7</groupId>
+						<artifactId>tools.claude-code-enforcer</artifactId>
+						<version>2.6.0</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 			<!-- The root pom uses a CI-friendly ${revision} version, so the
 			     installed/deployed pom of every module would otherwise still

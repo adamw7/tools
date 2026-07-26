@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -40,6 +42,7 @@ class AssetInstallerTest {
 
 	@Test
 	void doesNotMarkAnOrdinaryAssetExecutable(@TempDir Path checkout) {
+		assumeTrue(supportsExecutableBit(), "filesystem has no executable bit to leave unset");
 		AssetInstaller installer = new AssetInstaller("plain.txt", "content\n");
 		assertTrue(installer.install(checkout));
 		assertFalse(Files.isExecutable(checkout.resolve("plain.txt")));
@@ -55,5 +58,12 @@ class AssetInstallerTest {
 		Files.createFile(checkout.resolve("blocking"));
 		AssetInstaller installer = new AssetInstaller("blocking/file.txt", "content\n");
 		assertThrows(AdoptionException.class, () -> installer.install(checkout));
+	}
+
+	// Windows has no executable bit to leave unset: every readable file reports
+	// itself as executable there, so only a POSIX filesystem can tell the two
+	// installers apart.
+	private boolean supportsExecutableBit() {
+		return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
 	}
 }

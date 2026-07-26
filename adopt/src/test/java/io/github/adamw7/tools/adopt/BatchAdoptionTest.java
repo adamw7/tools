@@ -65,6 +65,40 @@ class BatchAdoptionTest {
 		assertEquals("IllegalStateException", runs.get(0).failure().orElseThrow());
 	}
 
+	/**
+	 * How far a failed repository got is the report's most useful line, so the steps
+	 * it did complete must survive the failure that stopped it.
+	 */
+	@Test
+	void keepsTheStepsARepositoryCompletedBeforeItFailed() {
+		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+			report.recordStep("clone");
+			throw new AdoptionException("boom");
+		}).adoptAll(contexts(REPO_URL));
+		assertEquals(List.of("clone"), runs.get(0).report().completedSteps());
+	}
+
+	@Test
+	void answersWithTheContextEachRepositoryWasAdoptedWith() {
+		List<AdoptionContext> contexts = contexts(REPO_URL, OTHER_URL);
+		List<AdoptionRun> runs = new BatchAdoption(this::record).adoptAll(contexts);
+		assertEquals(contexts, runs.stream().map(AdoptionRun::context).toList());
+	}
+
+	/**
+	 * A failure raised outside the pipeline — an argument the steps never saw, an
+	 * adoption that threw before recording anything — must still be reported as this
+	 * repository's, not swallowed with the batch carrying on silently.
+	 */
+	@Test
+	void recordsAFailureThePipelineNeverDescribed() {
+		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+			throw new IllegalArgumentException("workspace must not be null");
+		}).adoptAll(contexts(REPO_URL));
+		assertFalse(runs.get(0).succeeded());
+		assertEquals("workspace must not be null", runs.get(0).failure().orElseThrow());
+	}
+
 	@Test
 	void adoptsNothingWhenGivenNoRepositories() {
 		assertTrue(new BatchAdoption(this::record).adoptAll(List.of()).isEmpty());

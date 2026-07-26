@@ -83,6 +83,46 @@ class MainTest {
 		assertEquals(List.of("feature/x", "feature/x"), contexts.stream().map(AdoptionContext::branchName).toList());
 	}
 
+	@Test
+	void adoptsARepositoryNamedTwiceOnlyOnce(@TempDir Path dir) {
+		List<AdoptionContext> contexts = Main.contexts(CliArguments
+				.parse(new String[] { REPO_URL, "--repo", REPO_URL, "--workspace", dir.toString() }));
+		assertEquals(List.of(REPO_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+	}
+
+	@Test
+	void adoptsTheRepositoriesAListFileNames(@TempDir Path dir) throws IOException {
+		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n" + OTHER_URL + "\n");
+		List<AdoptionContext> contexts = Main.contexts(CliArguments
+				.parse(new String[] { "--repos", list.toString(), "--workspace", dir.toString() }));
+		assertEquals(List.of(REPO_URL, OTHER_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+	}
+
+	/**
+	 * The workspace is resolved once for the run, so every repository is cloned under
+	 * the same directory rather than each landing in a temporary one of its own.
+	 */
+	@Test
+	void createsOneTemporaryWorkspaceForTheWholeBatch() {
+		List<AdoptionContext> contexts = Main
+				.contexts(CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL }));
+		assertEquals(contexts.get(0).workspace(), contexts.get(1).workspace());
+		assertTrue(Files.isDirectory(contexts.get(0).workspace()));
+	}
+
+	@Test
+	void adoptsEveryRepositoryOfASucceedingBatch(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("report.json");
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL,
+				"--workspace", dir.toString(), "--report", file.toString() });
+		List<AdoptionRun> runs = Main.runAndReport(cli, Main.contexts(cli),
+				new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
+		assertEquals(List.of(REPO_URL, OTHER_URL), runs.stream().map(AdoptionRun::repositoryUrl).toList());
+		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
+		assertTrue(node.get("succeeded").asBoolean());
+		assertEquals(2, node.get("repositories").size());
+	}
+
 	/**
 	 * A run that stops part-way is the one whose report matters most — it records
 	 * which steps completed and why the adoption stopped — so writing it only on the

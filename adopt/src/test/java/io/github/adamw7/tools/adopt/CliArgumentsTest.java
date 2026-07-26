@@ -21,6 +21,7 @@ class CliArgumentsTest {
 	private static final String REPO_URL = "https://github.com/owner/repo.git";
 	private static final String OTHER_URL = "https://github.com/owner/other.git";
 	private static final String THIRD_URL = "https://github.com/owner/third.git";
+	private static final String FOURTH_URL = "https://github.com/owner/fourth.git";
 
 	@Test
 	void parsesPositionalArguments() {
@@ -68,6 +69,76 @@ class CliArgumentsTest {
 	void ignoresABlankRepositoryFlag() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", "  " });
 		assertEquals(List.of(REPO_URL), cli.repositoryUrls());
+	}
+
+	/**
+	 * The list is read in the order the operator wrote it — the positional first,
+	 * then each flag as it was met — so the run's report reads in the order they
+	 * expect.
+	 */
+	@Test
+	void keepsTheOrderTheRepositoriesWereNamedIn(@TempDir Path dir) throws IOException {
+		Path list = Files.writeString(dir.resolve("repos.txt"), THIRD_URL + "\n");
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL, "--repos", list.toString(),
+				"--repo", FOURTH_URL });
+		assertEquals(List.of(REPO_URL, OTHER_URL, THIRD_URL, FOURTH_URL), cli.repositoryUrls());
+	}
+
+	@Test
+	void adoptsARepositoryListedInAFileAndNamedOnTheCommandLineOnlyOnce(@TempDir Path dir) throws IOException {
+		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n" + OTHER_URL + "\n");
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repos", list.toString() });
+		assertEquals(List.of(REPO_URL, OTHER_URL), cli.repositoryUrls());
+	}
+
+	/**
+	 * A file of nothing but comments names no repository, so a run with no other URL
+	 * fails on its arguments rather than adopting nothing and reporting success.
+	 */
+	@Test
+	void rejectsARepositoryListThatNamesNoRepository(@TempDir Path dir) throws IOException {
+		Path list = Files.writeString(dir.resolve("repos.txt"), "# nothing to adopt yet\n\n");
+		assertUsageFailure(new String[] { "--repos", list.toString() });
+	}
+
+	@Test
+	void rejectsABlankRepositoryListFileName() {
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { REPO_URL, "--repos", "  " }));
+		assertTrue(exception.getMessage().contains("--repos"), exception.getMessage());
+	}
+
+	@Test
+	void rejectsTheRepositoryFlagsMissingTheirValue() {
+		assertThrows(IllegalArgumentException.class, () -> CliArguments.parse(new String[] { REPO_URL, "--repo" }));
+		assertThrows(IllegalArgumentException.class, () -> CliArguments.parse(new String[] { REPO_URL, "--repos" }));
+	}
+
+	/**
+	 * The flags write the same value as their positionals, so an operator who names
+	 * one twice gets the last one rather than an error they have to decode.
+	 */
+	@Test
+	void theLastWorkspaceAndBranchNamedWins() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "/tmp/ws", "feature/x",
+				"--workspace", "/tmp/other", "--branch", "feature/y" });
+		assertEquals(Path.of("/tmp/other"), cli.workspace().orElseThrow());
+		assertEquals("feature/y", cli.branchName());
+	}
+
+	@Test
+	void stripsSurroundingWhitespaceFromTheWorkspaceAndBranchFlags() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--workspace", " /tmp/ws ",
+				"--branch", " feature/x " });
+		assertEquals(Path.of("/tmp/ws"), cli.workspace().orElseThrow());
+		assertEquals("feature/x", cli.branchName());
+	}
+
+	/** A positional after the branch is still a surplus argument, whatever the flags named. */
+	@Test
+	void rejectsExtraPositionalArgumentAlongsideTheRepositoryFlags() {
+		assertThrows(IllegalArgumentException.class, () -> CliArguments
+				.parse(new String[] { REPO_URL, "--repo", OTHER_URL, "/tmp/ws", "branch", "surplus" }));
 	}
 
 	@Test

@@ -35,6 +35,7 @@ class AdoptToolTest {
 	private static final class RecordingPipeline implements AdoptTool.Pipeline {
 
 		private final List<AdoptionContext> contexts = new ArrayList<>();
+		private final List<PullRequestOptions> optionsPerRepository = new ArrayList<>();
 		private AdoptionContext context;
 		private PullRequestOptions options;
 		private boolean includeAssets;
@@ -44,6 +45,7 @@ class AdoptToolTest {
 		public void adopt(AdoptionContext context, AdoptionReport report, PullRequestOptions options,
 				boolean includeAssets, Optional<String> ruleVersion) {
 			this.contexts.add(context);
+			this.optionsPerRepository.add(options);
 			this.context = context;
 			this.options = options;
 			this.includeAssets = includeAssets;
@@ -202,6 +204,52 @@ class AdoptToolTest {
 	@Test
 	void requiresTheRepositoryUrl() {
 		assertThrows(IllegalArgumentException.class, () -> tool.apply(Map.of()));
+	}
+
+	@Test
+	void ignoresBlankEntriesInTheRepositoryList() {
+		tool.apply(Map.of("repository_urls", List.of("  ", REPO_URL, "")));
+		assertEquals(List.of(REPO_URL), pipeline.contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+	}
+
+	/**
+	 * A list of one is one repository's adoption, so it answers with the unwrapped
+	 * document a client that never sends a list already parses.
+	 */
+	@Test
+	void answersWithTheUnwrappedReportForAListOfOne() throws IOException {
+		JsonNode node = new ObjectMapper().readTree(tool.apply(Map.of("repository_urls", List.of(REPO_URL))).text());
+		assertEquals(REPO_URL, node.get("repositoryUrl").asText());
+		assertEquals(PR_URL, node.get("pullRequestUrl").asText());
+	}
+
+	/**
+	 * The repositories behind a failing one are adopted rather than stranded by it,
+	 * and the batch's report says which was which.
+	 */
+	@Test
+	void adoptsTheRestOfTheListAfterARepositoryFails() throws IOException {
+		AdoptTool failing = new AdoptTool((context, report, options, includeAssets, ruleVersion) -> {
+			if (REPO_URL.equals(context.repositoryUrl())) {
+				throw new AdoptionException("boom");
+			}
+			report.recordPullRequestUrl(PR_URL);
+		});
+		ToolResult result = failing.apply(Map.of("repository_urls", List.of(REPO_URL, OTHER_URL)));
+		assertTrue(result.isError());
+		JsonNode node = new ObjectMapper().readTree(result.text());
+		assertEquals("boom", node.get("repositories").get(0).get("failure").asText());
+		assertTrue(node.get("repositories").get(1).get("succeeded").asBoolean());
+		assertEquals(PR_URL, node.get("repositories").get(1).get("pullRequestUrl").asText());
+	}
+
+	/** The metadata is the call's, not the first repository's: every adoption gets it. */
+	@Test
+	void passesThePullRequestMetadataOnToEveryRepositoryOfAList() {
+		tool.apply(Map.of("repository_urls", List.of(REPO_URL, OTHER_URL), "title", "My title", "assets", true));
+		assertEquals(List.of("My title", "My title"),
+				pipeline.optionsPerRepository.stream().map(PullRequestOptions::title).toList());
+		assertTrue(pipeline.includeAssets);
 	}
 
 	@Test

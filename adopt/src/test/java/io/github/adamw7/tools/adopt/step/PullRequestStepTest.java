@@ -93,7 +93,7 @@ class PullRequestStepTest {
 	@Test
 	void usesConfiguredTitleAndBody() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
-		new PullRequestStep(PullRequestOptions.builder().title("My title").body("My body").build())
+		new PullRequestStep(new PullRequestOptions("My title", "My body", List.of(), List.of(), List.of(), false))
 				.execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
 				"claude/adopt-claude-code", "--repo", "adamw7/tools"), runner.commandAt(1));
@@ -102,14 +102,8 @@ class PullRequestStepTest {
 	@Test
 	void requestsReviewersLabelsAssigneesAndOpensAsDraft() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
-		PullRequestOptions options = PullRequestOptions.builder()
-				.title("My title")
-				.body("My body")
-				.reviewers(List.of("octocat", "hubot"))
-				.labels(List.of("automation"))
-				.assignees(List.of("adamw7"))
-				.draft(true)
-				.build();
+		PullRequestOptions options = new PullRequestOptions("My title", "My body", List.of("octocat", "hubot"),
+				List.of("automation"), List.of("adamw7"), true);
 		new PullRequestStep(options).execute(context, runner);
 		assertEquals(List.of("gh", "pr", "create", "--title", "My title", "--body", "My body", "--head",
 				"claude/adopt-claude-code", "--repo", "adamw7/tools", "--draft", "--reviewer", "octocat", "--reviewer",

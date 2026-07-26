@@ -47,27 +47,6 @@ class MainTest {
 		assertThrows(IllegalArgumentException.class, () -> Main.main(new String[] { REPO_URL, "--frobnicate" }));
 	}
 
-	@Test
-	void createsSuppliedWorkspaceDirectoryWhenMissing(@TempDir Path dir) {
-		Path workspace = dir.resolve("nested/workspace");
-		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL, workspace.toString() }));
-		assertEquals(workspace, resolved);
-		assertTrue(Files.isDirectory(workspace));
-	}
-
-	@Test
-	void keepsAnExistingSuppliedWorkspaceDirectory(@TempDir Path dir) {
-		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL, dir.toString() }));
-		assertEquals(dir, resolved);
-		assertTrue(Files.isDirectory(dir));
-	}
-
-	@Test
-	void createsTemporaryWorkspaceWhenNoneSupplied() {
-		Path resolved = Main.workspace(CliArguments.parse(new String[] { REPO_URL }));
-		assertTrue(Files.isDirectory(resolved));
-	}
-
 	/**
 	 * Every repository of a run shares the workspace and the branch name; only the
 	 * checkout directory, derived from the repository name, differs.

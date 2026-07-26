@@ -8,8 +8,12 @@ import io.github.adamw7.tools.adopt.Text;
  * The metadata a {@link PullRequestStep} opens its pull request with: the title
  * and body, plus optional reviewers, labels, and assignees to request, and
  * whether the pull request is opened as a draft. Grouping them keeps the step
- * from a telescoping constructor and lets callers set only the fields they care
- * about through {@link #builder()}.
+ * from a telescoping constructor.
+ *
+ * <p>A title or body that is absent or blank falls back to the adoption default —
+ * the rule every optional input of the adoption follows — so the command line and
+ * the MCP tool map their arguments straight in rather than each guarding an
+ * omitted flag for itself, and no {@code null} can reach {@code gh}'s arguments.
  *
  * <p>The lists are defensively copied and never {@code null}, so the step can
  * translate each entry into a repeated {@code gh pr create} flag without
@@ -23,80 +27,19 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 			+ "into the build so the file keeps being validated.";
 
 	public PullRequestOptions {
-		title = Text.required(title, "title");
-		body = Text.required(body, "body");
+		title = orDefault(title, DEFAULT_TITLE);
+		body = orDefault(body, DEFAULT_BODY);
 		reviewers = List.copyOf(reviewers);
 		labels = List.copyOf(labels);
 		assignees = List.copyOf(assignees);
 	}
 
+	/** The adoption's own title and body, requesting nobody and not a draft. */
 	public static PullRequestOptions defaults() {
-		return builder().build();
+		return new PullRequestOptions(null, null, List.of(), List.of(), List.of(), false);
 	}
 
-	public static Builder builder() {
-		return new Builder();
-	}
-
-	/** Fluent builder that starts from the adoption defaults and no reviewers, labels, or assignees. */
-	public static final class Builder {
-
-		private String title = DEFAULT_TITLE;
-		private String body = DEFAULT_BODY;
-		private List<String> reviewers = List.of();
-		private List<String> labels = List.of();
-		private List<String> assignees = List.of();
-		private boolean draft;
-
-		private Builder() {
-		}
-
-		public Builder title(String title) {
-			this.title = title;
-			return this;
-		}
-
-		public Builder body(String body) {
-			this.body = body;
-			return this;
-		}
-
-		/**
-		 * Overrides the default title only when one was actually supplied, so a caller
-		 * mapping an optional input — an omitted {@code --title} flag, a blank MCP
-		 * argument — does not have to guard the call itself.
-		 */
-		public Builder titleIfPresent(String title) {
-			return Text.isPresent(title) ? title(title) : this;
-		}
-
-		/** Overrides the default body only when one was supplied; see {@link #titleIfPresent(String)}. */
-		public Builder bodyIfPresent(String body) {
-			return Text.isPresent(body) ? body(body) : this;
-		}
-
-		public Builder reviewers(List<String> reviewers) {
-			this.reviewers = reviewers;
-			return this;
-		}
-
-		public Builder labels(List<String> labels) {
-			this.labels = labels;
-			return this;
-		}
-
-		public Builder assignees(List<String> assignees) {
-			this.assignees = assignees;
-			return this;
-		}
-
-		public Builder draft(boolean draft) {
-			this.draft = draft;
-			return this;
-		}
-
-		public PullRequestOptions build() {
-			return new PullRequestOptions(title, body, reviewers, labels, assignees, draft);
-		}
+	private static String orDefault(String value, String fallback) {
+		return Text.isPresent(value) ? value.strip() : fallback;
 	}
 }

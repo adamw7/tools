@@ -183,14 +183,9 @@ public class AdoptTool implements McpTool {
 	}
 
 	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {
-		return PullRequestOptions.builder()
-				.reviewers(commaSeparated(arguments, "reviewers"))
-				.labels(commaSeparated(arguments, "labels"))
-				.assignees(commaSeparated(arguments, "assignees"))
-				.draft(ToolArguments.optionalBoolean(arguments, "draft", false))
-				.titleIfPresent(text(arguments, "title"))
-				.bodyIfPresent(text(arguments, "body"))
-				.build();
+		return new PullRequestOptions(text(arguments, "title"), text(arguments, "body"),
+				commaSeparated(arguments, "reviewers"), commaSeparated(arguments, "labels"),
+				commaSeparated(arguments, "assignees"), ToolArguments.optionalBoolean(arguments, "draft", false));
 	}
 
 	/**

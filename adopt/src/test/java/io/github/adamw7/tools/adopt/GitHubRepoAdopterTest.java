@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -73,7 +74,7 @@ class GitHubRepoAdopterTest {
 	void runsEveryStepInOrder() {
 		List<String> order = new ArrayList<>();
 		List<AdoptionStep> steps = List.of(new NamingStep("a", order), new NamingStep("b", order));
-		new GitHubRepoAdopter(new RecordingCommandRunner(), steps).adopt(context);
+		new GitHubRepoAdopter(new RecordingCommandRunner(), steps).adopt(context, new AdoptionReport());
 		assertEquals(List.of("a", "b"), order);
 	}
 
@@ -81,7 +82,8 @@ class GitHubRepoAdopterTest {
 	void reportsEveryCompletedStep() {
 		List<String> order = new ArrayList<>();
 		List<AdoptionStep> steps = List.of(new NamingStep("a", order), new NamingStep("b", order));
-		AdoptionReport report = new GitHubRepoAdopter(new RecordingCommandRunner(), steps).adopt(context);
+		AdoptionReport report = new GitHubRepoAdopter(new RecordingCommandRunner(), steps)
+				.adopt(context, new AdoptionReport());
 		assertEquals(List.of("a", "b"), report.completedSteps());
 	}
 
@@ -91,7 +93,7 @@ class GitHubRepoAdopterTest {
 		List<AdoptionStep> steps = List.of(new NamingStep("a", order), new ExplodingStep(),
 				new NamingStep("c", order));
 		GitHubRepoAdopter adopter = new GitHubRepoAdopter(new RecordingCommandRunner(), steps);
-		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
+		assertThrows(AdoptionException.class, () -> adopter.adopt(context, new AdoptionReport()));
 		assertEquals(List.of("a"), order);
 	}
 
@@ -137,14 +139,15 @@ class GitHubRepoAdopterTest {
 	void withDefaultPipelineHonoursPullRequestOptionsAndTheAssetsFlag() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> new CommandResult(command, 1, "missing"));
-		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), true);
-		assertThrows(AdoptionException.class, () -> adopter.adopt(context));
+		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(),
+				true, Optional.empty());
+		assertThrows(AdoptionException.class, () -> adopter.adopt(context, new AdoptionReport()));
 		assertEquals(List.of("git", "--version"), runner.commandAt(0));
 	}
 
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
-		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), false).stream()
+		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), false, Optional.empty()).stream()
 				.map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
 				"commit", "enforcer", "commit", "verify", "push", "pull-request"), names);
@@ -152,7 +155,7 @@ class GitHubRepoAdopterTest {
 
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
-		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true).stream()
+		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true, Optional.empty()).stream()
 				.map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
 				"commit", "enforcer", "commit", "assets", "commit", "verify", "push", "pull-request"), names);

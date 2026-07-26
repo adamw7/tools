@@ -33,11 +33,10 @@ public final class RepositoryUrls {
 	 * @throws AdoptionException when the file cannot be read
 	 */
 	public static List<String> fromFile(Path file) {
-		return fromLines(AdoptionFiles.read(file, "the repository URL list").lines().toList());
-	}
-
-	public static List<String> fromLines(List<String> lines) {
-		return distinct(lines.stream().map(String::strip).filter(RepositoryUrls::isRepository).toList());
+		return distinct(AdoptionFiles.read(file, "the repository URL list").lines()
+				.map(String::strip)
+				.filter(RepositoryUrls::isRepository)
+				.toList());
 	}
 
 	/** @return the URLs stripped of surrounding whitespace, without duplicates, in order */

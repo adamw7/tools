@@ -88,7 +88,7 @@ mvn install                       # faster incremental build
 mvn -pl data test                 # tests for a single module
 mvn -P integration-tests verify   # MCP integration tests (*IT)
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
-mvn -Ppitest test                 # PIT mutation testing
+mvn -Ppitest install              # PIT mutation testing
 ```
 
 Use `clean` after removing a code-generation source, so stale generated builders

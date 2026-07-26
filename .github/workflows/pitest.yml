@@ -20,7 +20,14 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Run PIT mutation testing
-      run: mvn -B -ntp test -Ppitest --file pom.xml
+      # `install`, not `test`: the `data` module is a named JPMS module whose
+      # module-info requires `tools.mcp.common`, the automatic module name
+      # derived from the mcp-common *jar* file name. A `test` build stops before
+      # `package`, so the reactor hands javac `mcp-common/target/classes` — an
+      # exploded directory with no module-info.class, whose automatic name is
+      # `classes` — and compiling `data` fails with "module not found". PIT is
+      # bound to the `test` phase, so it still runs on every module.
+      run: mvn -B -ntp install -Ppitest --file pom.xml
     - name: Upload mutation testing reports
       uses: actions/upload-artifact@v4
       with:

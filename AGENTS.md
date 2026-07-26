@@ -313,9 +313,14 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   base 5 s), because JaCoCo's bytecode instrumentation slows first-use
   class-loading.
 - **Mutation testing** is the opt-in `pitest` profile (PIT + JUnit 5):
-  `mvn -Ppitest test` writes HTML/XML reports to `**/target/pit-reports/`. It
+  `mvn -Ppitest install` writes HTML/XML reports to `**/target/pit-reports/`. It
   excludes `*IT` integration tests and does not fail when a class has no
-  mutations.
+  mutations. Run it with `install` (or any phase past `package`), not with
+  `test`: PIT is bound to the `test` phase either way, but a `test`-only reactor
+  build never packages `mcp-common`, so the `data` module's `requires
+  tools.mcp.common` — an automatic module name derived from that **jar**'s file
+  name — cannot resolve against the exploded `target/classes` directory and
+  compilation fails.
 
 ## Continuous integration
 
@@ -329,7 +334,7 @@ requests to `main`; the rest run on a schedule (or manually).
 | `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests). |
 | `coverage.yml` | weekly | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly; manual | `mvn test -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `pitest.yml` | weekly; manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
 

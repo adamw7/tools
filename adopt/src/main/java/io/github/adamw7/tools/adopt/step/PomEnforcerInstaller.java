@@ -14,8 +14,10 @@ import org.w3c.dom.Element;
  * {@code CLAUDE.md} is missing or malformed.
  *
  * <p>The install is idempotent: a POM that already wires the rule is left
- * untouched. A POM that already uses the {@code maven-enforcer-plugin} for other
- * rules is augmented in place rather than skipped, so the rule is still wired in.
+ * untouched. A POM whose {@code build} already uses the
+ * {@code maven-enforcer-plugin} for other rules has that declaration augmented in
+ * place rather than skipped, so the rule is still wired in and the project keeps a
+ * single enforcer entry.
  *
  * <p>{@link PomDocument} does the reading, splicing, and verbatim writing, so the
  * existing document is preserved exactly and only the newly added markup appears in
@@ -31,7 +33,7 @@ public class PomEnforcerInstaller {
 	static final String RULE_GROUP_ID = "io.github.adamw7";
 	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
 
-	/** Where a plugin belongs in a POM that does not declare the enforcer yet. */
+	/** The one place a plugin both runs from and is added to; see {@link #enforcerPluginOfTheBuild}. */
 	private static final List<String> BUILD_PLUGINS = List.of("build", "plugins");
 
 	/**
@@ -85,7 +87,7 @@ public class PomEnforcerInstaller {
 		if (declaresClaudeRule(pom)) {
 			return false;
 		}
-		enforcerPlugin(pom).ifPresentOrElse(
+		enforcerPluginOfTheBuild(pom).ifPresentOrElse(
 				plugin -> augment(pom, plugin),
 				() -> pom.insertUnder(pom.root(), BUILD_PLUGINS, plugin()));
 		pom.write();
@@ -108,15 +110,30 @@ public class PomEnforcerInstaller {
 				.anyMatch(dependency -> PomDocument.hasArtifactId(dependency, RULE_ARTIFACT_ID));
 	}
 
-	private Optional<Element> enforcerPlugin(PomDocument pom) {
-		return pom.plugins().stream()
+	/**
+	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
+	 * one. Where the rule is <em>looked for</em> is the whole POM — see
+	 * {@link #declaresClaudeRule} — but where it is <em>added</em> cannot be: an
+	 * execution spliced into {@code pluginManagement} only configures a plugin the
+	 * build never runs, and one spliced into a profile runs only when that profile is
+	 * activated. Neither actually enforces anything, and neither shows up as a
+	 * failure: {@code install} would report the rule wired in, {@link VerifyStep}'s
+	 * {@code mvn -N validate} would pass without the rule ever executing, and the
+	 * adoption would open a pull request advertising a guard the project does not
+	 * have. A POM whose only enforcer sits somewhere else therefore gets its own
+	 * declaration in {@code build/plugins}, exactly as a POM with no enforcer at all
+	 * does.
+	 */
+	private Optional<Element> enforcerPluginOfTheBuild(PomDocument pom) {
+		return pom.at(BUILD_PLUGINS).stream()
+				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream())
 				.filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
 				.findFirst();
 	}
 
 	/**
-	 * Adds the rule dependency and the execution to a {@code maven-enforcer-plugin}
-	 * the project already declares — reusing its {@code dependencies} and
+	 * Adds the rule dependency and the execution to the {@code maven-enforcer-plugin}
+	 * the build already declares — reusing its {@code dependencies} and
 	 * {@code executions} when it has them — so the project keeps a single enforcer
 	 * plugin entry and the rules it already ran keep running.
 	 */

@@ -106,6 +106,20 @@ final class PomDocument {
 				.toList();
 	}
 
+	/**
+	 * The element the nested {@code path} names below the root, or empty when the POM
+	 * does not carry every level of it. The counterpart of {@link #insertUnder}: a
+	 * caller asks about the very place it would add to, so what it inspects and what
+	 * it edits cannot drift apart.
+	 */
+	Optional<Element> at(List<String> path) {
+		Optional<Element> element = Optional.of(root());
+		for (String name : path) {
+			element = element.flatMap(parent -> child(parent, name));
+		}
+		return element;
+	}
+
 	static Optional<Element> child(Element parent, String name) {
 		return children(parent, name).stream().findFirst();
 	}

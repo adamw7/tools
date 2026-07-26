@@ -94,6 +94,84 @@ class PomEnforcerInstallerTest {
 			</project>
 			""";
 
+	/** An enforcer declaration that only pins a version, as a multi-module build's does. */
+	private static final String MANAGED_ENFORCER = """
+			    <pluginManagement>
+			      <plugins>
+			        <plugin>
+			          <groupId>org.apache.maven.plugins</groupId>
+			          <artifactId>maven-enforcer-plugin</artifactId>
+			          <version>3.5.0</version>
+			        </plugin>
+			      </plugins>
+			    </pluginManagement>""";
+
+	/** An enforcer declaration that runs rules of its own, but only when its profile is activated. */
+	private static final String PROFILED_ENFORCER = """
+			  <profiles>
+			    <profile>
+			      <id>strict</id>
+			      <build>
+			        <plugins>
+			          <plugin>
+			            <artifactId>maven-enforcer-plugin</artifactId>
+			            <executions>
+			              <execution>
+			                <id>converge</id>
+			              </execution>
+			            </executions>
+			          </plugin>
+			        </plugins>
+			      </build>
+			    </profile>
+			  </profiles>""";
+
+	/**
+	 * Pins the enforcer's version in {@code pluginManagement} without running it, as a
+	 * project with several modules does. {@code pluginManagement} configures a plugin;
+	 * it does not activate one.
+	 */
+	private static final String POM_WITH_ENFORCER_IN_PLUGIN_MANAGEMENT = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			  <build>
+			%s
+			    <plugins>
+			      <plugin>
+			        <artifactId>maven-compiler-plugin</artifactId>
+			      </plugin>
+			    </plugins>
+			  </build>
+			</project>
+			""".formatted(MANAGED_ENFORCER);
+
+	/**
+	 * Runs the enforcer from an opt-in profile — for rules the project does not want on
+	 * every build — and does not run the {@code claude-code-enforcer} rule at all.
+	 */
+	private static final String POM_WITH_ENFORCER_IN_A_PROFILE_ONLY = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			%s
+			</project>
+			""".formatted(PROFILED_ENFORCER);
+
+	/** The enforcer twice over: managed and profiled ahead of the build that actually runs it. */
+	private static final String POM_WITH_ENFORCER_EVERYWHERE = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			%s
+			  <build>
+			%s
+			    <plugins>
+			      <plugin>
+			        <artifactId>maven-enforcer-plugin</artifactId>
+			      </plugin>
+			    </plugins>
+			  </build>
+			</project>
+			""".formatted(PROFILED_ENFORCER, MANAGED_ENFORCER);
+
 	/** Wires the rule the way this repository does: behind an opt-in profile, not in the build. */
 	private static final String POM_WITH_RULE_IN_A_PROFILE = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
@@ -276,6 +354,55 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_RULE_IN_A_PROFILE);
 		assertFalse(installer.install(pom), "the rule is already wired in, in the profile");
 		assertEquals(POM_WITH_RULE_IN_A_PROFILE, Files.readString(pom), "the POM must not have been touched");
+	}
+
+	/**
+	 * A managed enforcer is not a running one: {@code pluginManagement} says which
+	 * version to use if the plugin is ever bound, and nothing more. Adding the
+	 * execution there would leave the adopted project with no guard at all, and would
+	 * not look like a failure — {@link VerifyStep}'s {@code mvn -N validate} passes
+	 * because the rule never runs — so the pull request would advertise a guard the
+	 * project does not have.
+	 */
+	@Test
+	void wiresItsOwnDeclarationWhenTheEnforcerIsOnlyManaged(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_ENFORCER_IN_PLUGIN_MANAGEMENT);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains(MANAGED_ENFORCER),
+				"the managed declaration must be left verbatim; an execution there would never run");
+		assertTrue(result.contains("tools.claude-code-enforcer"), "the rule must still be wired in");
+		assertEquals(2, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+				"the build needs its own enforcer declaration alongside the managed one");
+	}
+
+	/** A profiled enforcer runs only when its profile is activated, which an ordinary build does not do. */
+	@Test
+	void wiresItsOwnDeclarationWhenTheEnforcerIsOnlyInAProfile(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_ENFORCER_IN_A_PROFILE_ONLY);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains(PROFILED_ENFORCER),
+				"the profile must be left verbatim; an execution there runs only when the profile is activated");
+		assertTrue(result.contains("<build>"), "the POM had no build of its own and needs one to run the rule from");
+		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired into that build");
+	}
+
+	/**
+	 * With the enforcer declared in three places, the one that runs on every build is
+	 * the one to augment — not whichever a document-order walk reaches first, which is
+	 * the profile's.
+	 */
+	@Test
+	void augmentsTheBuildsEnforcerRatherThanAProfilesOrAManagedOne(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_ENFORCER_EVERYWHERE);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains(PROFILED_ENFORCER), "the profile must be left verbatim");
+		assertTrue(result.contains(MANAGED_ENFORCER), "the managed declaration must be left verbatim");
+		assertEquals(3, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+				"the build's existing declaration must be augmented, not joined by a fourth");
+		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired in");
 	}
 
 	@Test

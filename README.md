@@ -826,9 +826,13 @@ derived checkout directory, and the feature-branch name):
 
 ```java
 CommandRunner runner = new ProcessCommandRunner();
-GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), false)
-    .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace));
+GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), false, Optional.empty())
+    .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace), new AdoptionReport());
 ```
+
+The report is a parameter rather than a return value alone, so a run that fails
+part-way still leaves the caller holding the steps that did complete and the
+reason it stopped.
 
 `BatchAdoption` wraps that pipeline to work through a list of repositories, one
 `AdoptionContext` at a time, and answers with an `AdoptionRun` (the context and
@@ -837,7 +841,7 @@ allowed to abandon the rest:
 
 ```java
 GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(
-    runner, PullRequestOptions.defaults(), false);
+    runner, PullRequestOptions.defaults(), false, Optional.empty());
 List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(contexts);
 ```
 

@@ -20,15 +20,7 @@ public class GradleBuildSystem implements BuildSystem {
 	static final String GROOVY_BUILD_FILE = "build.gradle";
 	static final String KOTLIN_BUILD_FILE = "build.gradle.kts";
 
-	private final GradleGuardInstaller installer;
-
-	public GradleBuildSystem() {
-		this(new GradleGuardInstaller());
-	}
-
-	public GradleBuildSystem(GradleGuardInstaller installer) {
-		this.installer = installer;
-	}
+	private final GradleGuardInstaller installer = new GradleGuardInstaller();
 
 	@Override
 	public String name() {

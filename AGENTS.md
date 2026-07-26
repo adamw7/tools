@@ -327,10 +327,21 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), no test
   writes to `System.out`/`err` (assert on the value instead), and no test
   calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition).
-- **MCP integration tests** are gated behind the `integration-tests` profile
-  (defined in `data` and `code/context`) and exercise the MCP servers over
-  streamable HTTP: `mvn -P integration-tests verify`. Test classes ending in
-  `IT` belong to this profile.
+- **Integration tests** are gated behind the `integration-tests` profile
+  (defined in `data`, `code/context`, and `adopt`) and are the tests that need
+  something real: `mvn -P integration-tests verify`. Test classes ending in `IT`
+  belong to this profile. `data` and `code/context` exercise their MCP servers
+  over streamable HTTP; `adopt`'s `MultiRepoAdoptionIT` runs a multi-repository
+  adoption against real GitHub URLs, cloning GitHub's `octocat/Hello-World` and
+  `octocat/Spoon-Knife` samples with the real `git`, to prove that a batch gives
+  each repository its own checkout, that a repository which cannot be cloned
+  costs only itself, and that two real URLs for one repository are refused
+  before anything is cloned. That IT stops the pipeline at the branch step, so
+  it stays read-only towards GitHub: it never runs `claude`, never pushes, and
+  never opens a pull request, and it needs no `gh` login. Because it clones
+  over the network, a host with a git `url.<base>.insteadOf` rewrite records the
+  rewritten remote, so the test identifies each checkout by the
+  `owner/repository` its `origin` names rather than by the URL it was given.
 - **Coverage** is the opt-in `coverage` profile (JaCoCo): `mvn -Pcoverage verify`
   produces reports at `**/target/site/jacoco/` and **fails the build** if a
   bundle's instruction **or** branch coverage drops below **80%** (two
@@ -358,7 +369,7 @@ requests to `main`; the rest run on a schedule (or manually).
 | `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. |
 | `docker.yml` | push, PR → `main` | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
 | `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
-| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests). |
+| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |
 | `coverage.yml` | weekly | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
 | `pitest.yml` | weekly; manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |

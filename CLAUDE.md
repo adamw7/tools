@@ -102,7 +102,7 @@ mvn clean install                 # full clean build + install to local repo
 mvn install                       # faster incremental build
 mvn -pl data test                 # tests for a single module
 mvn -B package                    # build without installing (what CI runs)
-mvn -P integration-tests verify   # MCP integration tests (*IT)
+mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
 mvn -Ppitest install              # PIT mutation testing (needs a phase past package)
 ```
@@ -164,8 +164,11 @@ paths.
   conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
   classes, no `@Disabled`, JUnit 5 only, no `System.out`/`err`, and no
   `Thread.sleep`. Keep new code within these rules.
-- **MCP integration tests** (`*IT`) are gated behind the `integration-tests`
-  profile.
+- **Integration tests** (`*IT`) are gated behind the `integration-tests` profile
+  and cover what needs something real: the MCP servers over HTTP, and `adopt`'s
+  `MultiRepoAdoptionIT`, which clones real GitHub sample repositories to prove a
+  batch gives each repository its own checkout. It stops at the branch step, so
+  it never pushes or opens a pull request. See *Testing* in AGENTS.md.
 
 ## Agent configuration
 

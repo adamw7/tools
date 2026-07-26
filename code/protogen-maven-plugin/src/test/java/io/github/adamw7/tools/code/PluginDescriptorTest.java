@@ -95,6 +95,12 @@ public class PluginDescriptorTest {
 	}
 
 	@Test
+	public void mojoIsThreadSafe() {
+		assertEquals("true", textOfFirst(singleMojo(), "threadSafe"),
+				"Goal must be declared thread-safe, or every consumer building with -T warns about it");
+	}
+
+	@Test
 	public void allDocumentedParametersAreRequired() {
 		List<Element> parameters = parameters();
 		assertAll(REQUIRED_PARAMETERS.stream()

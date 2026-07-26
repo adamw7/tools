@@ -146,13 +146,9 @@ public class GitHubRepoAdopter {
 	/**
 	 * Names the failing step alongside the failure, because a message alone —
 	 * {@code "The requested URL returned error: 403"} — does not say which stage
-	 * produced it. An exception with no message falls back to its type, so the
-	 * report never records a bare {@code null}.
+	 * produced it.
 	 */
 	private String describe(AdoptionStep step, RuntimeException failure) {
-		String message = failure.getMessage();
-		return step.name() + ": " + (message == null || message.isBlank()
-				? failure.getClass().getSimpleName()
-				: message);
+		return step.name() + ": " + Failures.describe(failure);
 	}
 }

@@ -15,6 +15,11 @@ verifies it, pushes the branch, and opens a pull request. The default branch is
 never written to. The tool answers with a JSON report of the run: the
 repository, the branch, the pull request URL, and the completed steps.
 
+One call can adopt a list of repositories, one after another, sharing the
+workspace and branch name. A repository whose adoption fails does not strand the
+ones behind it: the batch runs to the end and the report says which landed, the
+result being marked as an error when any of them did not.
+
 Because the pipeline shells out to `git`, `claude`, and `gh`, those tools must
 be installed and authenticated on the machine running the MCP server.
 
@@ -48,9 +53,14 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 ### adopt_repo
 
 **Parameters:**
-- `repository_url` (string, required): URL of the GitHub repository to adopt
-- `workspace` (string, optional): directory to clone into; a temporary
-  directory is created when omitted
+- `repository_url` (string): URL of the GitHub repository to adopt
+- `repository_urls` (array of strings, or a comma-separated string): the
+  repositories to adopt in one call. At least one of `repository_url` and
+  `repository_urls` must name a repository; supplying both adopts them all, once
+  each
+- `workspace` (string, optional): directory to clone into, shared by every
+  repository of the call — each clone lands in its own directory under it, named
+  after the repository; a temporary directory is created when omitted
 - `branch` (string, optional): feature branch name; defaults to
   `claude/adopt-claude-code`
 - `title` / `body` (string, optional): pull request title and body
@@ -68,8 +78,31 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
   "repositoryUrl" : "https://github.com/owner/repo.git",
   "branch" : "claude/adopt-claude-code",
   "pullRequestUrl" : "https://github.com/owner/repo/pull/42",
+  "succeeded" : true,
+  "failure" : null,
   "completedSteps" : [ "toolchain", "clone", "branch", "trust", "claude-init",
     "commit", "enforcer", "commit", "verify", "push", "pull-request" ]
+}
+```
+
+A call that adopted several repositories answers with the batch document
+instead — an overall `succeeded`, true only when every repository was adopted,
+and a `repositories` array of exactly the documents above:
+
+```json
+{
+  "succeeded" : false,
+  "repositories" : [ {
+    "repositoryUrl" : "https://github.com/owner/repo.git",
+    "succeeded" : true,
+    "failure" : null,
+    "…" : "…"
+  }, {
+    "repositoryUrl" : "https://github.com/owner/other.git",
+    "succeeded" : false,
+    "failure" : "clone: repository not found",
+    "…" : "…"
+  } ]
 }
 ```
 

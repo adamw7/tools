@@ -111,7 +111,7 @@ tools (root pom, packaging=pom)
 ```
 
 Root reactor modules are `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-`adopt`, and `assembly`.
+`adopt`, `grpc-example`, and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 

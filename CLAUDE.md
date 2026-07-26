@@ -30,12 +30,13 @@ run `mvn install` from the repository root. The main capabilities are:
 - **Claude Code adoption** (`adopt`) — a pipeline that adopts Claude Code into a
   GitHub repo: check the required tools (`git`, `claude`, `gh`) are installed
   and that `gh` is logged in, clone, check the cloned project's own build tool is
-  installed too, create a feature branch, `claude init` to generate
-  `CLAUDE.md` and commit it, wire a build-tool-aware `CLAUDE.md` guard into the
-  repo (the `claude-code-enforcer` rule for Maven `pom.xml`, an `enforceClaudeMd`
-  guard task for Gradle, and a GitHub Actions workflow plus
-  `.github/claude-md-guard.sh` check as the build-tool-agnostic fallback) and
-  commit that, verify the guard passes on the
+  installed too, create a feature branch, mark the checkout trusted, `claude
+  init` to generate `CLAUDE.md`, conform that file (and add a companion
+  `AGENTS.md`) so it satisfies the guard about to be wired in, commit it, wire a
+  build-tool-aware `CLAUDE.md` guard into the repo (the `claude-code-enforcer`
+  rule for Maven `pom.xml`, an `enforceClaudeMd` guard task for Gradle, and a
+  GitHub Actions workflow plus `.github/claude-md-guard.sh` check as the
+  build-tool-agnostic fallback) and commit that, verify the guard passes on the
   generated file, then push the branch and open a pull request (`gh pr create`)
   with metadata from `PullRequestOptions` (exposed as CLI flags such as
   `--title`, `--reviewer`, and `--draft`); the default branch is never written to
@@ -58,7 +59,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # compile-time-safe protobuf builder generator
 │   ├── protogen-maven-plugin-test  # integration tests for the plugin
 │   └── context                     # class-usage context finder + MCP server
-├── adopt                  # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, enforcer, verify, push, PR)
+├── adopt                  # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example           # end-to-end gRPC example
 ├── assembly               # executable jar-with-dependencies (SampleApp)
 └── data-test              # standalone test module (not in root <modules>)
@@ -66,6 +67,18 @@ tools (root pom, packaging=pom)
 
 Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the context
 module, `io.github.adamw7.tools.*` elsewhere).
+
+Three MCP servers ship here (`data` uniqueness, `code/context`, `adopt`), each a
+Spring Boot app with a `Main.java` entry point supporting stdio (default),
+streamable HTTP, stateless HTTP, or HTTP+SSE; each has its own `MCP_USAGE.md`
+next to its `mcp` package.
+
+Further reading: [README.md](README.md) for worked examples,
+[docs/c4-architecture.md](docs/c4-architecture.md) for the C4 model,
+[docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) for the
+builder walkthrough, and [docs/adr](docs/adr) for the architecture decision
+records behind the standing choices (DuckDB, log4j2, MCP on Spring Boot,
+documentation as an enforced contract, and the security posture).
 
 ## Java version
 
@@ -86,13 +99,18 @@ Common commands (run from the repository root):
 mvn clean install                 # full clean build + install to local repo
 mvn install                       # faster incremental build
 mvn -pl data test                 # tests for a single module
+mvn -B package                    # build without installing (what CI runs)
 mvn -P integration-tests verify   # MCP integration tests (*IT)
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
-mvn -Ppitest install              # PIT mutation testing
+mvn -Ppitest install              # PIT mutation testing (needs a phase past package)
 ```
 
 Use `clean` after removing a code-generation source, so stale generated builders
 in `target/` cannot mask the change.
+
+`.mvn/maven.config` passes `--no-transfer-progress` and `-T1C`, so every build
+from the repo root is quiet and runs one thread per core; override with `-T1`
+for a serial build.
 
 The root pom lints `scripts/**/*.sh` with
 `dev.dimlight:shellcheck-maven-plugin` using
@@ -135,7 +153,8 @@ paths.
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend
   on its MCP adapter, JDBC stays confined to the `source.db` package, loggers are
-  `private static final`, mutable static state is `volatile`, fields are never
+  `private static final`, abstract types carry an `Abstract` prefix, public
+  fields are `final`, mutable static state is `volatile`, fields are never
   `Optional`, date/time uses `java.time` (not the legacy `Date`/`Calendar` API),
   production code logs through log4j2 (no `System.out`/`err`,
   `java.lang.System.Logger`, `printStackTrace`, or `System.exit`), and packages
@@ -145,6 +164,53 @@ paths.
   `Thread.sleep`. Keep new code within these rules.
 - **MCP integration tests** (`*IT`) are gated behind the `integration-tests`
   profile.
+
+## Agent configuration
+
+- `.claude/skills/` holds seven project skills that carry the detail this file
+  only summarises: `data-sources`, `git-commit`, `java-code-review`,
+  `maven-conventions`, `protogen`, `solid-principles`, and
+  `testing-conventions`. Prefer loading the relevant skill over re-deriving a
+  convention.
+- `.claude/settings.json` allows the `mvn` and archive-inspection Bash commands
+  and wires the `SessionStart` hook; `.claude/hooks/session-start.sh` provisions
+  the JDK and warms the Maven cache in web/remote sessions.
+- Personal overrides belong in `.claude/settings.local.json`, which is
+  gitignored — the `localSettingsIgnored` rule fails the build if that entry
+  disappears.
+
+## CLAUDE.md enforcement
+
+The `claude-code-enforcer` module is a set of custom `maven-enforcer-plugin`
+rules that fail the build when this file, `AGENTS.md`, `README.md`, or the
+`.claude` configuration is missing, malformed, or inconsistent. Relevant when
+editing them:
+
+- This file must keep the `# CLAUDE.md` title, reference `AGENTS.md`, and keep
+  every required heading (`## Project`, `## Java version`, `## Maven`,
+  `## Principles for Java Development`, `## Testing`, `## Dependencies`).
+- `contextBudget` caps this file at **32 KB** — it is loaded into every session,
+  so put new detail in AGENTS.md or a skill rather than here.
+- `moduleMapConsistency` requires every `<module>` of the root pom to be
+  mentioned in both CLAUDE.md and AGENTS.md; `crossDocConsistency` pins facts
+  shared with AGENTS.md (the Java version) and `readmeConsistency` pins the
+  README against AGENTS.md (the protobuf major version).
+- `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
+  `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
+  `hookCommandsValid`, `hooksFormat`, `mcpServersValid`, and `mcpConfigFormat`
+  cover the rest of the agent configuration.
+
+The check is opt-in via the `claude-md-enforce` profile and needs a two-phase
+build, since a maven-enforcer rule must be resolvable as a JAR before the build
+runs:
+
+```bash
+mvn -pl claude-code-enforcer -am install   # 1. publish the rule locally
+mvn -N validate -DenforceClaudeMd          # 2. quick root-only doc check
+```
+
+`.github/workflows/maven.yml` is the only CI workflow that opts in
+(`mvn -B package -DenforceClaudeMd`); ordinary builds are unaffected.
 
 ## Dependencies
 

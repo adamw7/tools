@@ -6,21 +6,15 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 /**
- * Creates the workspace directory an adoption clones into: either the directory
- * the caller named — created when it does not yet exist, so the clone step
- * always has a directory to run in — or a fresh temporary one when the caller
- * left the choice open. Shared by the command-line entry point and the MCP
- * server, so both resolve workspaces identically.
- *
- * <p>A workspace that cannot be created — an existing regular file, or a path the
- * process may not write — fails with an {@link AdoptionException} like every other
- * adoption failure rather than a raw {@link java.io.UncheckedIOException}.
+ * Creates the workspace directory an adoption clones into: the directory the
+ * caller named, created when it does not yet exist, or a fresh temporary one when
+ * the caller left the choice open. Shared by the command line and the MCP server,
+ * and failing with an {@link AdoptionException} like every other adoption failure.
  *
  * <p>The returned path is always absolute. The clone step runs {@code git clone}
  * with the workspace as its working directory and {@code workspace/name} as the
- * clone target, so a relative workspace would make git resolve that target against
- * the working directory a second time and nest the checkout under
- * {@code workspace/workspace/name}, leaving every later step unable to find it.
+ * target, so a relative workspace would be resolved a second time and nest the
+ * checkout under {@code workspace/workspace/name}.
  */
 public final class Workspaces {
 

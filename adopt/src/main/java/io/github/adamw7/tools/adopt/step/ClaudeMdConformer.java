@@ -13,18 +13,16 @@ import java.util.stream.IntStream;
  * Reshapes the {@code CLAUDE.md} that {@link ClaudeInitStep} generated so it
  * satisfies the {@code claudeMdFormat} rule {@link EnforcerStep} wires into the
  * build. A generic {@code claude init} writes natural, project-specific headings
- * ({@code ## Project purpose}) and no {@code AGENTS.md} reference, but the rule
- * demands a fixed set of whole-line headings plus that reference — so without
- * this reshape the adoption fails its own {@link VerifyStep}.
+ * and no {@code AGENTS.md} reference, while the rule demands a fixed set of
+ * whole-line headings plus that reference — so without this reshape the adoption
+ * fails its own {@link VerifyStep}.
  *
  * <p>The reshape is deterministic and conservative: a near-miss heading is
  * <em>renamed</em> in place so its body survives, only a genuinely absent section
- * is appended, and a required section left empty gets a stub body because the
- * rule fails an empty section just as it fails a missing one. Fenced code is left
- * alone, mirroring how the rule matches, and an unterminated fence is closed
- * first so appended sections are document structure rather than more code.
- * Reshaping an already-conforming document is a no-op, so re-adopting a
- * repository does not churn the file.
+ * is appended, and a required section left empty gets a stub body because the rule
+ * fails an empty section just as it fails a missing one. Fenced code is left
+ * alone, mirroring how the rule matches, and reshaping an already-conforming
+ * document is a no-op.
  */
 public class ClaudeMdConformer {
 

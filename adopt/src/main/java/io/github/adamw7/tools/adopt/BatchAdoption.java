@@ -6,24 +6,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Adopts a list of repositories, one after another, with a fresh
- * {@link AdoptionReport} for each. A batch is why the adoption takes a list of
- * URLs at all: a team adopts Claude Code across its repositories in one run
- * rather than invoking the pipeline once per repository by hand.
+ * Adopts a list of repositories one after another, with a fresh
+ * {@link AdoptionReport} for each.
  *
- * <p>A repository whose adoption fails does not stop the batch. Failing fast
- * would leave the repositories behind it untried, and their adoptions are
- * independent — a {@code gh} login that expired for one organisation, or a project
- * whose build tool is missing, says nothing about the next repository on the
- * list. The failure is recorded in that repository's report and the run moves on,
- * so the caller can see exactly which repositories were adopted and which were
- * not; deciding what a partly failed batch means — a non-zero exit, an error
- * result — is the caller's, not the batch's.
- *
- * <p>Repositories are adopted sequentially rather than in parallel: every
- * adoption shells out to {@code git}, {@code claude}, and {@code gh}, and a
- * parallel batch would interleave their output and multiply the load a single
- * {@code claude init} already puts on the machine.
+ * <p>A repository whose adoption fails does not stop the batch. The adoptions are
+ * independent — an expired {@code gh} login or a missing build tool says nothing
+ * about the next repository — so the failure is recorded in that repository's
+ * report and the run moves on, leaving the caller to decide what a partly failed
+ * batch means. Repositories are adopted sequentially because every adoption
+ * shells out to {@code git}, {@code claude}, and {@code gh}, whose output a
+ * parallel batch would interleave.
  */
 public final class BatchAdoption {
 

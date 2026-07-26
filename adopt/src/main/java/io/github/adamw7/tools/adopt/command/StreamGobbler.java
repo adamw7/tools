@@ -10,18 +10,16 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * Drains a process's output stream on a dedicated daemon thread so the command
- * can be waited for with a timeout. Reading the stream inline would block until
- * the child closes it, which never happens for a hung process; consuming it in
- * the background lets {@link ProcessCommandRunner} time out and destroy the
- * child while its partial output is still recovered.
+ * Drains a process's output stream on a dedicated daemon thread so the command can
+ * be waited for with a timeout. Reading the stream inline would block until the
+ * child closes it, which a hung process never does; consuming it in the background
+ * lets {@link ProcessCommandRunner} destroy the child with its partial output
+ * still recovered.
  *
- * <p>The stream is copied verbatim as it is read — the child's own line
- * terminators and any trailing newline survive — so the transcript is what the
- * command printed rather than a re-joined approximation. {@link #output()} bounds
- * its wait for the reader thread: a direct child can exit while a descendant it
- * spawned keeps the pipe open, and the bounded join returns what was captured
- * instead of hanging the caller forever.
+ * <p>The stream is copied verbatim, so the transcript keeps the child's own line
+ * terminators rather than a re-joined approximation. {@link #output()} bounds its
+ * wait for the reader thread, because a descendant the child spawned can keep the
+ * pipe open after the child itself has exited.
  */
 final class StreamGobbler {
 

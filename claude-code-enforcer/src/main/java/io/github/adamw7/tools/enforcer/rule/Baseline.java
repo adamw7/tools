@@ -15,19 +15,17 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 /**
  * A set of already-accepted violations a rule may suppress, so a rule can be
  * turned into an error gate without first fixing every pre-existing violation:
- * a violation recorded in the baseline passes, and only a violation that is not
- * in the baseline fails the build. This lets a team graduate a rule from
- * {@code warn} to {@code error} while cleaning up the backlog behind the gate
- * rather than in one big-bang change.
+ * only a violation that is not in the baseline fails the build. This lets a team
+ * graduate a rule from {@code warn} to {@code error} while cleaning up the backlog
+ * behind the gate rather than in one big-bang change.
  * <p>
- * Each accepted violation is stored as one line of its message text. Blank lines
+ * Each accepted violation is stored as one line of its message text; blank lines
  * and lines starting with {@code #} are ignored, so the file can carry comments.
- * Signatures are normalised so a baseline written on one machine still matches on
- * another: the absolute project base directory is replaced with the token
- * {@code ${basedir}}, making a checked-in baseline portable between a developer's
- * clone and CI, whose absolute paths differ. Normalisation is applied on both
- * sides — when reading the file and when comparing a live violation — so a
- * hand-written entry with an absolute path still matches too.
+ * Signatures are normalised — the absolute project base directory is replaced with
+ * the token {@code ${basedir}} — so a checked-in baseline is portable between a
+ * developer's clone and CI. Normalisation is applied both when reading the file
+ * and when comparing a live violation, so a hand-written entry with an absolute
+ * path still matches.
  */
 final class Baseline {
 

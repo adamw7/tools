@@ -17,20 +17,18 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 /**
  * Enforcer rule that fails the build when any skill under the configured skills
  * directory is malformed. Every immediate subdirectory of {@code skillsDir} is
- * treated as a skill and must contain a non-empty {@code SKILL.md} that opens
- * with a YAML front matter block declaring every required key.
+ * treated as a skill and must contain a non-empty {@code SKILL.md} that opens with
+ * a YAML front matter block declaring every required key.
  * <p>
  * The required keys default to {@code name} and {@code description} but can be
- * overridden with {@code requiredKeys}. The {@code name} value is held to the
- * Claude Code naming convention: lower-case kebab-case, at most
- * {@value NameConvention#MAX_LENGTH} characters, and equal to the skill's
- * directory name. The {@code description} must be non-empty and within
- * {@code maxDescriptionLength}. When {@code allowedFrontMatterKeys} is
- * configured, any key outside that set is reported, which catches typos such as
- * {@code descripton}.
- * <p>
- * A skills directory with no skills is allowed; all problems found are reported
- * together.
+ * overridden with {@code requiredKeys}. The {@code name} is held to the Claude
+ * Code naming convention — lower-case kebab-case, at most
+ * {@value NameConvention#MAX_LENGTH} characters — and must equal the skill's
+ * directory name; the {@code description} must be non-empty and within
+ * {@code maxDescriptionLength}. A key outside a configured
+ * {@code allowedFrontMatterKeys} is reported, which catches typos such as
+ * {@code descripton}. A skills directory with no skills is allowed; all problems
+ * found are reported together.
  */
 @Named("skillFilesExist")
 public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {

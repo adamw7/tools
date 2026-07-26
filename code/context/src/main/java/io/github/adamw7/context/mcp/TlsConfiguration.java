@@ -12,33 +12,27 @@ import org.springframework.context.annotation.Configuration;
  * Hardens the embedded server's HTTPS transport. When the streamable HTTP
  * transport is served over HTTPS (SSL enabled through {@code server.ssl.*}), this
  * customiser applies two guarantees regardless of what the deployment
- * configuration requested, so they hold independent of how {@code server.ssl.*}
- * is set:
+ * configuration requested:
  *
  * <ol>
  * <li>the only enabled protocol is pinned to {@code TLSv1.3}, so older, weaker
  * protocols can never be negotiated; and</li>
  * <li>the post-quantum {@code X25519MLKEM768} hybrid group is preferred for the
- * TLS 1.3 key exchange, with classical elliptic-curve groups kept as a fallback
- * so peers that cannot do the hybrid exchange still connect.</li>
+ * TLS 1.3 key exchange, with classical elliptic-curve groups kept as a fallback so
+ * peers that cannot do the hybrid exchange still connect.</li>
  * </ol>
  *
  * <p>{@code X25519MLKEM768} combines a NIST ML-KEM-768 key encapsulation with the
- * classical X25519 exchange; the derived secret stays secure as long as
- * <em>either</em> primitive holds, which defends against "harvest now, decrypt
- * later" attacks by a future quantum adversary. It is requested through the
- * JVM-wide {@code jdk.tls.namedGroups} property, which lists the hybrid group
- * first (so it is preferred) followed by classical groups (so the handshake
- * degrades gracefully). Because that list also names supported classical groups,
- * a JDK whose TLS provider does not yet ship {@code X25519MLKEM768} — such as the
- * SunJSSE provider in JDK 25 — simply ignores the unknown group and negotiates a
- * classical one; the hybrid exchange then activates automatically once the
- * provider supports it, with no code change. The property is set only when HTTPS
- * is enabled, before the connector starts its TLS stack, so SunJSSE reads it when
- * initialising its supported groups.
+ * classical X25519 exchange, so the derived secret stays secure as long as
+ * <em>either</em> primitive holds — the defence against "harvest now, decrypt
+ * later". It is requested through the JVM-wide {@code jdk.tls.namedGroups}
+ * property, which lists the hybrid group first and the classical ones after, so a
+ * JDK whose TLS provider does not yet ship it (SunJSSE in JDK 25) ignores the
+ * unknown group and negotiates a classical one, picking the hybrid up later with
+ * no code change. The property is set only when HTTPS is enabled, before the
+ * connector starts its TLS stack.
  *
- * <p>Plain HTTP and disabled SSL are left untouched — there is no TLS to
- * constrain in those cases.
+ * <p>Plain HTTP and disabled SSL are left untouched.
  */
 @Configuration
 public class TlsConfiguration {

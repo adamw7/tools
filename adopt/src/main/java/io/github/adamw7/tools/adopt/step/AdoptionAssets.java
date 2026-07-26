@@ -4,14 +4,12 @@ import java.util.List;
 
 /**
  * The starter Claude Code configuration assets an {@link AssetsStep} installs
- * beyond the generated {@code CLAUDE.md}: an {@code AGENTS.md} pointer for
- * agents that read the cross-tool convention, a {@code .claude/settings.json}
- * that denies reading obvious secret files and wires the session-start hook, the
- * {@code .claude/hooks/session-start.sh} stub that hook runs, a starter
- * {@code .mcp.json}, and a GitHub Actions workflow that answers {@code @claude}
- * mentions on issues and pull requests. Every asset is a plain committed file,
- * so the configuration is shared with all contributors rather than living only
- * in the adopter's local checkout.
+ * beyond the generated {@code CLAUDE.md}: an {@code AGENTS.md} pointer, a
+ * {@code .claude/settings.json} that denies reading obvious secret files and wires
+ * the session-start hook, the {@code .claude/hooks/session-start.sh} stub that
+ * hook runs, a starter {@code .mcp.json}, and a GitHub Actions workflow answering
+ * {@code @claude} mentions. Every asset is a plain committed file, so the
+ * configuration is shared with all contributors.
  *
  * <p>Every repository-relative path the adoption writes is named here, including
  * the generated {@code CLAUDE.md} — not a starter asset, but keeping its name

@@ -16,27 +16,24 @@ import io.github.adamw7.tools.adopt.Failures;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
- * Runs the Claude Code CLI in headless mode against the checkout so it
- * generates a {@code CLAUDE.md} for the project. The exact CLI invocation is
- * configurable because the flags differ between environments; the default runs
- * the {@code /init} command non-interactively with {@code --permission-mode
- * acceptEdits} so the CLI may write the file. Headless {@code -p} mode has no
- * interactive approver, so without a permission mode that pre-approves edits the
- * {@code /init} command only prints a request to write {@code CLAUDE.md}, exits
- * cleanly, and leaves nothing behind.
+ * Runs the Claude Code CLI in headless mode against the checkout so it generates a
+ * {@code CLAUDE.md} for the project. The invocation is configurable because the
+ * flags differ between environments; the default runs {@code /init}
+ * non-interactively with {@code --permission-mode acceptEdits}, since headless
+ * {@code -p} mode has no interactive approver and would otherwise only print a
+ * request to write the file, exit cleanly, and leave nothing behind.
  *
- * <p>A repository that already carries a {@code .claude/CLAUDE.md} steers
- * headless {@code /init} into <em>updating that file</em> rather than writing the
- * root {@code CLAUDE.md} the adoption needs — and a write under {@code .claude/}
- * is refused as a sensitive path in headless mode, so the run produces nothing.
- * That memory file is therefore moved aside before {@code /init} runs and
- * restored afterwards, on the failure path too, so the project's own copy is left
- * untouched. A run that exits cleanly but leaves no {@code CLAUDE.md} behind
- * aborts the adoption rather than pushing an empty pull request.
+ * <p>A repository that already carries a {@code .claude/CLAUDE.md} steers headless
+ * {@code /init} into updating <em>that</em> file rather than the root one the
+ * adoption needs — and a write under {@code .claude/} is refused as a sensitive
+ * path — so that memory file is moved aside before the run and restored
+ * afterwards, on the failure path too. A run that exits cleanly but leaves no
+ * {@code CLAUDE.md} behind aborts the adoption rather than pushing an empty pull
+ * request.
  *
  * <p>The step is idempotent: a checkout that already carries a root
  * {@code CLAUDE.md} is left alone, because the CLI's output is not reproducible
- * and regenerating would discard whatever the project has edited since.
+ * and regenerating would discard whatever has been edited since.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 

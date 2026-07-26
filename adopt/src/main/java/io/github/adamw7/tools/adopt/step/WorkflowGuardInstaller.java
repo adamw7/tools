@@ -10,11 +10,11 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
  * Installs a build-tool-agnostic {@code CLAUDE.md} guard into a checkout that has
- * no Maven or Gradle build to wire into. The guard is a GitHub Actions workflow
- * that runs a small portable shell script on every push and pull request, failing
- * the run when the generated {@code CLAUDE.md} is missing or empty. Because the
- * adoption already targets GitHub repositories, a workflow is a guard every
- * adopted repository can run without introducing a build tool.
+ * no Maven or Gradle build to wire into: a GitHub Actions workflow that runs a
+ * small portable shell script on every push and pull request, failing the run when
+ * the generated {@code CLAUDE.md} is missing or empty. Because the adoption
+ * already targets GitHub repositories, a workflow is a guard every adopted
+ * repository can run without introducing a build tool.
  *
  * <p>Both files are committed, so the guard is shared with every contributor. The
  * script is the single source of truth: the workflow invokes it and
@@ -22,9 +22,8 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * adoption fails before the branch is pushed just as it would in CI.
  *
  * <p>The two are installed independently and neither is ever overwritten — the
- * rule {@link AssetInstaller} applies to every file the adoption writes — so the
- * install is idempotent and a checkout that kept the workflow but lost the script
- * has the script written back rather than failing verification on a missing file.
+ * rule {@link AssetInstaller} applies to every file the adoption writes — so a
+ * checkout that kept the workflow but lost the script has it written back.
  */
 public class WorkflowGuardInstaller {
 

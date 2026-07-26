@@ -34,16 +34,14 @@ import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
 /**
  * Wires an MCP server over one of four transports, selected with
- * {@code --transport.mode}: stdio (the default), a streamable HTTP transport
- * ({@code streamable-http}) registered at {@code /mcp}, a stateless HTTP transport
- * ({@code stateless-http}) also registered at {@code /mcp} that answers each
- * JSON-RPC request in isolation without keeping any session, or the legacy HTTP+SSE
- * transport ({@code sse}) registered at {@code /sse} (the event stream) and
- * {@code /mcp/message} (the JSON-RPC POST endpoint) for clients that predate
- * streamable HTTP. Concrete servers only supply their {@link #serverName() name}
- * and their {@link #tools() tools}; everything else is shared here. Subclasses are
- * the {@code @Configuration} beans, so the {@code @Bean} methods below are picked
- * up through them.
+ * {@code --transport.mode}: stdio (the default); a streamable HTTP transport
+ * ({@code streamable-http}) at {@code /mcp}; a stateless HTTP transport
+ * ({@code stateless-http}), also at {@code /mcp}, answering each JSON-RPC request
+ * in isolation without keeping any session; and the legacy HTTP+SSE transport
+ * ({@code sse}) at {@code /sse} and {@code /mcp/message} for clients that predate
+ * streamable HTTP. Concrete servers supply only their {@link #serverName() name}
+ * and their {@link #tools() tools}, and are the {@code @Configuration} beans
+ * through which the {@code @Bean} methods below are picked up.
  */
 public abstract class AbstractMcpConfiguration {
 

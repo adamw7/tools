@@ -13,28 +13,23 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 
 /**
  * Base for enforcer rules that validate a Markdown document follows an expected
- * structure: it must exist, be non-empty, start with a required title heading
- * (a leading UTF-8 BOM is tolerated), and contain every required section
- * heading as a real, non-empty heading.
+ * structure: it must exist, be non-empty, start with a required title heading (a
+ * leading UTF-8 BOM is tolerated), and contain every required section heading as a
+ * real, non-empty heading.
  * <p>
  * Headings are matched on whole lines outside fenced code blocks, so a heading
- * mentioned inside a {@code ```} fence or in prose does not satisfy a
- * requirement, and a partial match such as {@code # CLAUDE.md-extended} does
- * not satisfy {@code # CLAUDE.md}. All structural problems are collected and
- * reported together rather than one per build.
+ * mentioned inside a fence or in prose does not satisfy a requirement, and a
+ * partial match such as {@code # CLAUDE.md-extended} does not satisfy
+ * {@code # CLAUDE.md}. All structural problems are collected and reported
+ * together.
  * <p>
- * Beyond the mandatory structure, several optional checks can be switched on
- * from the rule configuration: a list of {@code forbiddenTokens} that must not
- * appear outside code fences, {@code enforceSectionOrder} to require the
- * sections in the configured order, a {@code maxLineLength} cap, and
- * {@code validateFileReferences} to confirm that Markdown links to local files
- * resolve to something on disk. Each is disabled by default, so existing
- * configurations are unaffected.
- * <p>
- * The title and required sections default to the subclass-provided values but
- * can be overridden from the rule configuration, so the rule is reusable across
- * projects without a recompile. Subclasses contribute the file, its name, the
- * required sections, and any document-specific checks.
+ * Several optional checks, each disabled by default, can be switched on from the
+ * rule configuration: {@code forbiddenTokens} that must not appear outside code
+ * fences, {@code enforceSectionOrder}, a {@code maxLineLength} cap, and
+ * {@code validateFileReferences} to confirm that links to local files resolve on
+ * disk. The title and required sections default to the subclass-provided values
+ * but can be overridden, so the rule is reusable across projects without a
+ * recompile.
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 

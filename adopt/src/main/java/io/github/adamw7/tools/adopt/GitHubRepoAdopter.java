@@ -29,25 +29,20 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
 /**
  * Runs the ordered pipeline that adopts Claude Code into a GitHub repository:
  * check the required tools are installed, clone, check the cloned project's own
- * build tool is installed too, create a feature branch, mark the checkout trusted
- * for Claude Code, generate {@code CLAUDE.md} with {@code claude init}, normalise
- * it and add a companion {@code AGENTS.md} so it satisfies the guard the adoption
- * is about to wire in, commit it, wire in the {@code claude-code-enforcer} and
- * commit that, verify the guard passes, then push the branch and open a pull
- * request. The toolchain check runs first so a missing {@code git},
- * {@code claude}, or {@code gh} fails before any expensive work, and the
- * build-tool check follows the clone — the first moment the project's build system
- * is known — so a missing {@code mvn} or {@code gradle} fails before the
- * {@code claude init} rather than at the verification. The adoption never writes
- * to the default branch. Steps and the command runner are injected so the pipeline
- * is easy to reconfigure and to test.
+ * build tool, create a feature branch, mark the checkout trusted for Claude Code,
+ * generate {@code CLAUDE.md} with {@code claude init}, conform it and commit,
+ * wire in the {@code claude-code-enforcer} and commit that, verify the guard
+ * passes, then push the branch and open a pull request. The default branch is
+ * never written to. Steps and the command runner are injected, so the pipeline is
+ * easy to reconfigure and to test.
  *
- * <p>Each run returns an {@link AdoptionReport} of the steps that completed and
- * the pull request's URL, so callers can act on the outcome without scraping logs.
- * A caller that needs the report of a run that <em>fails</em> supplies its own to
- * {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it after the
- * failure propagates. The default pipeline optionally includes an
- * {@link AssetsStep} that commits starter Claude Code configuration assets.
+ * <p>Both toolchain checks are placed to fail early: the pipeline's own tools
+ * before any expensive work, the project's build tool as soon as the clone
+ * reveals which one it is, rather than at the verification. Each run returns an
+ * {@link AdoptionReport} of the steps that completed and the pull request's URL;
+ * a caller that needs the report of a run that <em>fails</em> supplies its own to
+ * {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it afterwards.
+ * The default pipeline optionally includes an {@link AssetsStep}.
  */
 public class GitHubRepoAdopter {
 

@@ -13,11 +13,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 /**
  * Checks that the adopted project's own build tool is installed, as soon as the
  * clone has revealed which one it is. {@link ToolchainStep} can only probe the
- * pipeline's own {@code git}/{@code claude}/{@code gh} because the checkout does
- * not exist yet, but {@link VerifyStep} later shells out to {@code mvn} or
- * {@code gradle} — so without this step a machine missing that build tool fails at
- * verification, after a full {@code claude init} and two commits: exactly the late
- * failure the toolchain check exists to prevent.
+ * pipeline's own {@code git}/{@code claude}/{@code gh}, but {@link VerifyStep}
+ * later shells out to {@code mvn} or {@code gradle} — so without this step a
+ * machine missing that build tool fails at verification, after a full
+ * {@code claude init} and two commits.
  *
  * <p>The build system is detected through {@link AbstractBuildSystemStep} just as
  * {@link EnforcerStep} and {@link VerifyStep} detect it, so the tool probed is the

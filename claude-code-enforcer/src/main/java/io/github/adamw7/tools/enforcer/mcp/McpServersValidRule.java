@@ -12,24 +12,19 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when the project's {@code .mcp.json} is
- * missing, empty, or not valid JSON. Beyond that baseline it validates the shape
- * of every entry under the {@code mcpServers} object: each server must be a JSON
- * object whose transport is well formed. A {@code stdio} server (the default when
- * no {@code type} is declared) must carry a non-blank {@code command}; an
- * {@code sse} or {@code http} server must carry a non-blank {@code url}. An
- * explicit {@code type} outside the allowed set is reported, which catches a
- * mistyped {@code htttp}.
+ * empty, not valid JSON, or declares a malformed server. Every entry under
+ * {@code mcpServers} must be a JSON object whose transport is well formed: a
+ * {@code stdio} server (the default when no {@code type} is declared) must carry a
+ * non-blank {@code command}, an {@code sse} or {@code http} server a non-blank
+ * {@code url}, and an explicit {@code type} outside {@code allowedTypes} —
+ * {@code stdio}, {@code sse}, and {@code http} by default — is reported, which
+ * catches a mistyped {@code htttp}.
  * <p>
  * A project-level {@code .mcp.json} is optional in Claude Code, so an absent file
- * is treated as a pass; the rule only fails when the file is present and
- * malformed. The rule can also assert policy on the configured servers:
- * {@code requiredServers}
- * must all be present and {@code forbiddenServers} must all be absent, so a project
- * can mandate an MCP server it relies on or ban one it does not want committed. The
- * {@code allowedTypes} whitelist defaults to {@code stdio}, {@code sse}, and
- * {@code http} and can be overridden.
- * <p>
- * All problems found are reported together.
+ * is treated as a pass. The rule can also assert policy on the configured servers:
+ * {@code requiredServers} must all be present and {@code forbiddenServers} all
+ * absent, so a project can mandate an MCP server it relies on or ban one it does
+ * not want committed. All problems found are reported together.
  */
 @Named("mcpServersValid")
 public class McpServersValidRule extends JsonFileRule {

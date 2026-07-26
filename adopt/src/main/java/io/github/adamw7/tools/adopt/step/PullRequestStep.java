@@ -19,26 +19,21 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 /**
  * Opens a pull request for the adoption feature branch with the GitHub CLI
  * ({@code gh pr create}), targeting the repository's default branch as the base.
- * The pull request metadata — title, body, reviewers, labels, assignees, and
- * whether it is a draft — is supplied through {@link PullRequestOptions} because
- * it differs between projects; the defaults describe the Claude Code adoption
- * and request nobody.
+ * The metadata comes from {@link PullRequestOptions}; the defaults describe the
+ * Claude Code adoption and request nobody.
  *
  * <p>The step stays idempotent when re-run: it asks {@code gh pr list --state
- * open} whether an <em>open</em> pull request already exists for the branch and
- * skips creation when one does, rather than matching the wording of a failure.
- * Scoping the query to open pull requests matters because a branch whose earlier
- * pull request was closed or merged still needs a fresh one.
+ * open} whether an <em>open</em> pull request already exists for the branch rather
+ * than matching the wording of a failure. Scoping the query to open pull requests
+ * matters because a branch whose earlier one was closed or merged still needs a
+ * fresh one.
  *
  * <p>Both commands name the target repository with {@code --repo} rather than
  * letting {@code gh} infer it from the checkout's git remote, which an
  * {@code insteadOf} rewrite, an organisation mirror, or a proxied clone can leave
- * unreadable as a GitHub one — failing the very last step of an otherwise
- * complete adoption. A URL that names no owner leaves the flag off, so {@code gh}
- * falls back to its own inference.
- *
- * <p>The pull request's URL is recorded in the run's {@link AdoptionReport}, read
- * back with {@code gh pr list --json url} rather than scraped from {@code gh pr
+ * unreadable — failing the very last step of an otherwise complete adoption. A URL
+ * that names no owner leaves the flag off. The pull request's URL is read back
+ * with {@code gh pr list --json url} rather than scraped from {@code gh pr
  * create}'s human-oriented output, so both the fresh and the re-run case take one
  * structured path.
  */
@@ -168,13 +163,13 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * {@code gh pr list --json} writes a JSON array to stdout, but the captured
-	 * output may carry surrounding noise (update notices merged in from stderr), so
-	 * parsing starts at an opening bracket. Every bracket is tried rather than only
-	 * the first, because a diagnostic printed <em>before</em> the payload can itself
-	 * contain one; stopping there would parse the noise, conclude no pull request is
-	 * open, and make the step create a duplicate {@code gh} rejects — failing an
-	 * adoption that was only being re-run.
+	 * {@code gh pr list --json} writes a JSON array to stdout, but the captured output
+	 * may carry surrounding noise (update notices merged in from stderr), so parsing
+	 * starts at an opening bracket. Every bracket is tried rather than only the first,
+	 * because a diagnostic printed <em>before</em> the payload can itself contain one;
+	 * stopping there would parse the noise, conclude no pull request is open, and
+	 * create a duplicate {@code gh} rejects — failing an adoption that was only being
+	 * re-run.
 	 *
 	 * @return the first element's {@code url}, or empty when no bracket starts a
 	 *         JSON array, the array is empty, or it carries no textual URL

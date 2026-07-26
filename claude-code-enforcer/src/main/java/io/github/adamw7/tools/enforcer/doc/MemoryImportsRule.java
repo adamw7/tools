@@ -22,20 +22,19 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 
 /**
  * Enforcer rule that validates the {@code @path} memory imports of
- * {@code CLAUDE.md}. Claude Code loads every imported file into the session, so
- * an import that does not resolve on disk is silently missing context, and an
- * import cycle or a chain deeper than the loader's five-hop limit means part of
- * the memory is never loaded at all. The rule follows every import recursively
- * and reports a target that does not exist, a circular import, and an import
- * nested deeper than {@code maxDepth} hops.
+ * {@code CLAUDE.md}. Claude Code loads every imported file into the session, so an
+ * import that does not resolve on disk is silently missing context, and an import
+ * cycle or a chain deeper than the loader's five-hop limit means part of the
+ * memory is never loaded at all. The rule follows every import recursively and
+ * reports a target that does not exist, a circular import, and an import nested
+ * deeper than {@code maxDepth} hops.
  * <p>
- * Imports are recognised the way Claude Code evaluates them: an {@code @}
- * preceded by start-of-line or whitespace and followed by a path, outside fenced
- * code blocks and inline code spans, so {@code `@claude`} in prose is not an
- * import. A home-relative import ({@code @~/...}) is skipped because it points
- * at machine-specific state a build cannot see, and any import listed in
- * {@code ignoredImports} is skipped verbatim. Each file is scanned once; all
- * problems found are reported together.
+ * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
+ * by start-of-line or whitespace and followed by a path, outside fenced code
+ * blocks and inline code spans, so {@code `@claude`} in prose is not an import. A
+ * home-relative import ({@code @~/...}) points at machine-specific state a build
+ * cannot see and is skipped, as is any import listed in {@code ignoredImports}.
+ * Each file is scanned once; all problems found are reported together.
  */
 @Named("memoryImports")
 public class MemoryImportsRule extends ClaudeCodeEnforcerRule {

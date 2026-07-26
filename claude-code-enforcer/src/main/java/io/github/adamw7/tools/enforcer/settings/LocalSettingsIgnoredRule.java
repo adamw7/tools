@@ -16,15 +16,14 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * personal Claude Code settings file. {@code .claude/settings.local.json} holds
  * per-developer overrides — extra permissions, local hooks — and committing it
  * imposes one developer's choices on the whole team, so the durable guard is a
- * gitignore entry that keeps it out of the repository in the first place.
+ * gitignore entry.
  * <p>
- * The rule parses the configured {@code gitignoreFile} and verifies each path
- * in {@code ignoredPaths} (by default just
- * {@code .claude/settings.local.json}) is matched by it, honouring negations,
- * anchoring, directory patterns, and {@code *}/{@code ?}/{@code **} globs. A
- * path can be covered by any equivalent pattern — the exact path, a
- * {@code *.local.json} glob, or an ignored ancestor directory. All uncovered
- * paths are reported together.
+ * The rule parses the configured {@code gitignoreFile} and verifies each path in
+ * {@code ignoredPaths} (by default just {@code .claude/settings.local.json}) is
+ * matched by it, honouring negations, anchoring, directory patterns, and
+ * {@code *}/{@code ?}/{@code **} globs. Any equivalent pattern will do — the exact
+ * path, a {@code *.local.json} glob, or an ignored ancestor directory. All
+ * uncovered paths are reported together.
  */
 @Named("localSettingsIgnored")
 public class LocalSettingsIgnoredRule extends ClaudeCodeEnforcerRule {

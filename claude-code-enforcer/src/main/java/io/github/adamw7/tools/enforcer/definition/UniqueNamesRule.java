@@ -6,16 +6,15 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 /**
  * Enforcer rule that fails the build when two Claude Code definitions claim the
- * same name. A command's name is its {@code *.md} file name, a sub-agent's name
- * is its {@code *.md} file name, and a skill's name is its directory name, so a
- * command and a sub-agent both called {@code review}, or two skills called
- * {@code commit}, are a real source of confusion. The rule gathers the names
- * from every configured directory and reports each name that is used more than
- * once, naming every file or directory that uses it.
+ * same name. A command's and a sub-agent's name is its {@code *.md} file name and
+ * a skill's name is its directory name, so a command and a sub-agent both called
+ * {@code review}, or two skills called {@code commit}, are a real source of
+ * confusion.
  * <p>
- * Uniqueness is checked across every configured directory at once, so a clash
- * between a command and a skill is caught just like a clash between two commands.
- * All clashes found are reported together.
+ * Names are gathered from every configured directory and checked across all of
+ * them at once, so a clash between a command and a skill is caught just like one
+ * between two commands. Each name used more than once is reported together with
+ * every file or directory that uses it.
  */
 @Named("uniqueNames")
 public class UniqueNamesRule extends MultiDefinitionRule {

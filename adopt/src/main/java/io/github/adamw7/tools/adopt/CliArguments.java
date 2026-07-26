@@ -11,30 +11,23 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 /**
  * Parses the adoption command line. The first three non-flag arguments are the
  * positional repository URL, workspace directory, and feature-branch name the
- * entry point has always accepted, so existing invocations keep working; the
- * flags expose the rest of the pipeline's configuration: further repositories to
- * adopt in the same run (repeatable {@code --repo}, or {@code --repos <file>} for
- * a file naming one per line), the workspace and branch under their own names
- * ({@code --workspace}, {@code --branch}), the pull-request metadata of
- * {@link PullRequestOptions} ({@code --title}, {@code --body}, repeatable
- * {@code --reviewer}/{@code --label}/{@code --assignee}, and {@code --draft}),
- * the optional starter-assets step ({@code --assets}), the
- * {@code claude-code-enforcer} version to wire into an adopted Maven project
- * ({@code --rule-version}), and a JSON report of the run's outcome
- * ({@code --report <file>}). A blank workspace
- * or branch positional falls back to its default, matching the pre-flag
- * behaviour; an unknown flag or a flag missing its value fails with the usage
- * line rather than being silently ignored.
+ * entry point has always accepted; the flags expose the rest of the pipeline's
+ * configuration: further repositories for the same run (repeatable
+ * {@code --repo}, or {@code --repos <file>} for a file naming one per line), the
+ * workspace and branch under their own names, the {@link PullRequestOptions}
+ * metadata ({@code --title}, {@code --body}, repeatable
+ * {@code --reviewer}/{@code --label}/{@code --assignee}, {@code --draft}), the
+ * starter-assets step ({@code --assets}), the {@code claude-code-enforcer}
+ * version to wire in ({@code --rule-version}), and a JSON report of the outcome
+ * ({@code --report <file>}). A blank workspace or branch positional falls back to
+ * its default; an unknown flag, or one missing its value, fails with the usage
+ * line rather than being ignored.
  *
- * <p>The positional slots keep their meaning whatever else is on the command
- * line — the first is always a repository URL, never a workspace — so a run
- * driven entirely by {@code --repo}/{@code --repos} names its workspace and
- * branch with {@code --workspace} and {@code --branch} rather than positionally.
- * Both flags write the same value as their positional, so naming one twice is the
- * last one winning rather than an error. A first positional that names no
- * repository owner while those flags named repositories is rejected outright: it is
- * the workspace the reading above invites, and adopting it as a repository fails
- * far from the mistake.
+ * <p>The positional slots keep their meaning whatever else is on the command line
+ * — the first is always a repository URL, never a workspace — so a run driven
+ * entirely by {@code --repo}/{@code --repos} names its workspace and branch with
+ * {@code --workspace} and {@code --branch}. A flag and its positional write the
+ * same value, so naming one twice is the last one winning rather than an error.
  */
 public final class CliArguments {
 
@@ -213,19 +206,17 @@ public final class CliArguments {
 	}
 
 	/**
-	 * Rejects a first positional that names no repository owner when the flags
-	 * already named repositories — {@code --repos list.txt /tmp/workspace}, where the
-	 * operator meant the workspace the flags left unnamed. The positional slot keeps
-	 * its meaning whatever else is on the command line, so that path is read as a
+	 * Rejects a first positional that names no repository owner when the flags already
+	 * named repositories — {@code --repos list.txt /tmp/workspace}, where the operator
+	 * meant the workspace the flags left unnamed. The positional slot keeps its
+	 * meaning whatever else is on the command line, so that path is read as a
 	 * repository URL and fails several steps later on a clone of a directory that is
-	 * not a repository, or a push to an origin that does not exist. Saying so here
-	 * names the argument and the flag that was meant instead.
+	 * not a repository. Saying so here names the argument and the flag meant instead.
 	 *
 	 * <p>The check is only worth making when the flags supplied a repository, since a
 	 * run whose only repository is the positional has nothing else it could be. A
-	 * local path really is adoptable — {@link RepositoryUrl} accepts one, and only a
-	 * URL with a host names an owner — so a batch of local repositories names them all
-	 * with {@code --repo} rather than positionally.
+	 * local path really is adoptable — only a URL with a host names an owner — so a
+	 * batch of local repositories names them all with {@code --repo}.
 	 */
 	private void requirePositionalNamesARepository() {
 		if (positionalUrl != null && flaggedRepositories > 0 && namesNoOwner(positionalUrl)) {

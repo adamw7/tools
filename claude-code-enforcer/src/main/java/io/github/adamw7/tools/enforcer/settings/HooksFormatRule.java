@@ -21,28 +21,26 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
- * Enforcer rule that fails the build when a hook script under {@code .claude/hooks}
- * is not a well-formed executable, or when {@code .claude/settings.json} wires a
- * command hook to a script that should live in that directory but does not.
+ * Enforcer rule that fails the build when a hook script under
+ * {@code .claude/hooks} is not a well-formed executable, or when
+ * {@code .claude/settings.json} wires a command hook to a script that should live
+ * in that directory but does not.
  * <p>
  * Where {@link HookCommandsValidRule} validates the JSON shape of the
- * {@code hooks} section, this rule validates the scripts themselves: every
- * regular file directly under {@code hooksDir} must be non-empty, start with a
- * {@code #!} shebang line, and carry the executable bit, so a hook that Claude
- * Code would try to run cannot be committed broken. Each of the script checks can
- * be switched off ({@code requireShebang}, {@code requireExecutable}), and an
- * optional {@code allowedExtensions} whitelist rejects a stray file such as a
- * {@code .txt} note left in the hooks directory.
+ * {@code hooks} section, this rule validates the scripts themselves: every regular
+ * file directly under {@code hooksDir} must be non-empty, start with a {@code #!}
+ * shebang line, and carry the executable bit, so a hook Claude Code would try to
+ * run cannot be committed broken. Each script check can be switched off
+ * ({@code requireShebang}, {@code requireExecutable}), and an optional
+ * {@code allowedExtensions} whitelist rejects a stray file such as a {@code .txt}
+ * note left in the directory.
  * <p>
- * When {@code settingsFile} is configured, the rule cross-checks the wiring: any
- * command hook whose command resolves a {@code $CLAUDE_PROJECT_DIR} path into the
- * hooks directory must point at a script that exists there, catching a hook
- * renamed on disk but not in settings. With {@code reportUnreferencedScripts} a
- * script in the directory that no hook references is reported too.
- * <p>
- * The {@code hooksDir} parameter must be configured, but an absent directory is a
- * pass because hooks are optional in Claude Code. All problems found are reported
- * together.
+ * When {@code settingsFile} is configured, any command hook whose command resolves
+ * a {@code $CLAUDE_PROJECT_DIR} path into the hooks directory must point at a
+ * script that exists there, catching a hook renamed on disk but not in settings;
+ * {@code reportUnreferencedScripts} also reports a script no hook references. The
+ * {@code hooksDir} parameter must be configured, but an absent directory is a pass
+ * because hooks are optional. All problems found are reported together.
  */
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {

@@ -11,17 +11,17 @@ import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
- * Stages every change in the checkout and commits it with the configured
- * message. Whether there is anything to commit is decided by asking git
+ * Stages every change in the checkout and commits it with the configured message.
+ * Whether there is anything to commit is decided by asking git
  * ({@code git diff --cached --quiet}) rather than by matching the wording of a
  * failed commit's output, so an empty commit is a harmless no-op regardless of
- * git's locale or version and the pipeline stays idempotent when re-run.
+ * git's locale or version.
  *
  * <p>The adoption runs headless — on a CI runner or an MCP server — where git may
  * have no configured {@code user.name}/{@code user.email} and {@code git commit}
  * aborts with "Author identity unknown". Each missing identity is supplied for the
- * commit alone with a {@code -c} override, so the commit succeeds on a bare host
- * while an identity the checkout already configures stays in force.
+ * commit alone with a {@code -c} override, so an identity the checkout already
+ * configures stays in force.
  */
 public class CommitStep extends AbstractCommandStep {
 

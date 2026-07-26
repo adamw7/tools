@@ -11,19 +11,17 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * The character range every element of an XML document occupies in its source
  * text, in document order. {@link PomDocument} needs these ranges to splice an
  * edit into the bytes a {@code pom.xml} already holds: a DOM carries no record of
- * where its elements were read from, and re-serialising the whole document to get
- * the edit out reformats every line it touches — attributes that were spread over
- * several lines collapse onto one, {@code <rule />} becomes {@code <rule/>} — so
- * an adoption commit that adds a dozen lines shows up as a diff across the file.
+ * where its elements were read from, and re-serialising the whole document
+ * reformats every line it touches, turning a dozen added lines into a diff across
+ * the file.
  *
  * <p>The scan is deliberately lexical rather than a second parse: it only needs to
  * know where each element's start tag, content, and end tag begin, which the JAXP
- * parser does not report and a {@code Location}-based scan only reports to the
- * precision of the implementation. Comments, processing instructions, CDATA
- * sections, and the {@code >} characters that appear inside quoted attribute
- * values are recognised so they cannot be mistaken for markup. The document has
- * already been parsed by {@link PomDocument} before this runs, so it is known to
- * be well-formed and anything unbalanced here is a defect rather than bad input.
+ * parser does not report. Comments, processing instructions, CDATA sections, and
+ * the {@code >} characters inside quoted attribute values are recognised so they
+ * cannot be mistaken for markup. The document has already been parsed by
+ * {@link PomDocument}, so anything unbalanced here is a defect rather than bad
+ * input.
  */
 final class XmlElementSpans {
 

@@ -11,14 +11,12 @@ import java.util.stream.Collectors;
  * resolution step.
  *
  * <p>Resolution is by simple file name (a referenced {@code Foo} resolves to a
- * {@code Foo} source file of the configured {@link Language}). The containers are
- * indexed by file name once at construction, so each reference resolves in
- * constant time rather than by scanning every container. Comments, string and
- * character literals are stripped before matching so that class names mentioned
- * there are not reported as dependencies. Two source files sharing the same
- * simple name in different packages still cannot be told apart — that needs
- * package-aware resolution, which this name-based finder does not attempt (see
- * {@link PackageAwareFinder}); the first one encountered while indexing wins.
+ * {@code Foo} source file of the configured {@link Language}), with the containers
+ * indexed by file name once at construction so each reference resolves in constant
+ * time. Comments, string and character literals are stripped before matching, so
+ * class names mentioned there are not reported as dependencies. Two source files
+ * sharing a simple name in different packages cannot be told apart — the first one
+ * indexed wins; that needs the package-aware {@link PackageAwareFinder}.
  */
 public class Finder extends AbstractFinder {
 

@@ -26,6 +26,24 @@ public final class BuildSystems {
 	private BuildSystems() {
 	}
 
+	/**
+	 * The default set, each build system pinning an explicitly supplied
+	 * {@code claude-code-enforcer} version rather than resolving the version of the
+	 * {@code tools} build running the adoption. Which of them that changes is left to
+	 * {@link BuildSystem#withRuleVersion}: in practice only Maven wires a versioned
+	 * artifact in, and the others answer with themselves.
+	 *
+	 * @param ruleVersion the released rule version to pin, or empty to resolve the
+	 *                    running build's own
+	 */
+	public static List<BuildSystem> withRuleVersion(Optional<String> ruleVersion) {
+		return ruleVersion.map(BuildSystems::pinnedTo).orElse(DEFAULTS);
+	}
+
+	private static List<BuildSystem> pinnedTo(String ruleVersion) {
+		return DEFAULTS.stream().map(candidate -> candidate.withRuleVersion(ruleVersion)).toList();
+	}
+
 	public static Optional<BuildSystem> detect(List<BuildSystem> candidates, Path repositoryDirectory) {
 		return candidates.stream().filter(candidate -> candidate.matches(repositoryDirectory)).findFirst();
 	}

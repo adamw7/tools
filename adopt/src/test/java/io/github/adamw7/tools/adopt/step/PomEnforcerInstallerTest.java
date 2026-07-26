@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,68 @@ class PomEnforcerInstallerTest {
 	private static final String POM_NO_TRAILING_NEWLINE = "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n"
 			+ "  <artifactId>demo</artifactId>\n"
 			+ "</project>";
+
+	/**
+	 * Formatted the way a real project's POM is, with the details a DOM cannot
+	 * remember: a start tag broken over several lines, tab indentation, and empty
+	 * elements written with a space before the slash.
+	 */
+	private static final String POM_HAND_FORMATTED = "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n"
+			+ "\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
+			+ "\t<artifactId>demo</artifactId>\n"
+			+ "\t<build>\n"
+			+ "\t\t<plugins>\n"
+			+ "\t\t\t<plugin>\n"
+			+ "\t\t\t\t<artifactId>maven-enforcer-plugin</artifactId>\n"
+			+ "\t\t\t\t<executions>\n"
+			+ "\t\t\t\t\t<execution>\n"
+			+ "\t\t\t\t\t\t<configuration>\n"
+			+ "\t\t\t\t\t\t\t<rules>\n"
+			+ "\t\t\t\t\t\t\t\t<dependencyConvergence />\n"
+			+ "\t\t\t\t\t\t\t</rules>\n"
+			+ "\t\t\t\t\t\t</configuration>\n"
+			+ "\t\t\t\t\t</execution>\n"
+			+ "\t\t\t\t</executions>\n"
+			+ "\t\t\t</plugin>\n"
+			+ "\t\t</plugins>\n"
+			+ "\t</build>\n"
+			+ "</project>\n";
+
+	private static final String POM_SELF_CLOSING_PLUGINS = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			  <properties/>
+			  <build>
+			    <plugins/>
+			  </build>
+			</project>
+			""";
+
+	/** Wires the rule the way this repository does: behind an opt-in profile, not in the build. */
+	private static final String POM_WITH_RULE_IN_A_PROFILE = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			  <profiles>
+			    <profile>
+			      <id>claude-md-enforce</id>
+			      <build>
+			        <plugins>
+			          <plugin>
+			            <artifactId>maven-enforcer-plugin</artifactId>
+			            <dependencies>
+			              <dependency>
+			                <groupId>io.github.adamw7</groupId>
+			                <artifactId>tools.claude-code-enforcer</artifactId>
+			                <version>1.0.0</version>
+			              </dependency>
+			            </dependencies>
+			          </plugin>
+			        </plugins>
+			      </build>
+			    </profile>
+			  </profiles>
+			</project>
+			""";
 
 	private static final String POM_WITH_ENFORCER = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
@@ -201,6 +264,20 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains("maven-enforcer-plugin"));
 	}
 
+	/**
+	 * A project may well run the guard from somewhere other than its {@code build}:
+	 * behind an opt-in profile, most often, so ordinary builds are unaffected.
+	 * Looking only at {@code build/plugins} reports such a POM as unguarded and wires
+	 * in a second, always-on copy of a rule the project already runs on its own
+	 * terms.
+	 */
+	@Test
+	void leavesAPomThatWiresTheRuleInsideAProfileAlone(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_RULE_IN_A_PROFILE);
+		assertFalse(installer.install(pom), "the rule is already wired in, in the profile");
+		assertEquals(POM_WITH_RULE_IN_A_PROFILE, Files.readString(pom), "the POM must not have been touched");
+	}
+
 	@Test
 	void secondInstallIsIdempotent(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);
@@ -305,16 +382,17 @@ class PomEnforcerInstallerTest {
 	}
 
 	/**
-	 * A declaration sharing its line with the root element has no line terminator
-	 * to carry over, so one is supplied rather than running {@code <project>} onto
-	 * the declaration's line.
+	 * A declaration sharing its line with the root element keeps sharing it: the
+	 * edit is spliced into the text the file already held, so a region the adoption
+	 * has no business touching is not rewritten — not even to put the root element
+	 * on a line of its own.
 	 */
 	@Test
 	void preservesADeclarationThatSharesItsLineWithTheRootElement(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, "<?xml version=\"1.0\"?>" + POM_WITH_BUILD);
 		installer.install(pom);
 		String result = Files.readString(pom);
-		assertTrue(result.startsWith("<?xml version=\"1.0\"?>\n<project "), "unexpected start:\n" + result);
+		assertTrue(result.startsWith("<?xml version=\"1.0\"?><project "), "unexpected start:\n" + result);
 		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
 	}
 
@@ -370,6 +448,79 @@ class PomEnforcerInstallerTest {
 		assertFalse(result.endsWith("\n"), "a POM with no trailing newline must not gain one");
 	}
 
+	/**
+	 * The whole point of splicing rather than re-serialising: a start tag the project
+	 * spread over several lines, and an empty element it wrote {@code <rule />},
+	 * are details a DOM does not record, so writing the edited document out whole
+	 * normalises both and an adoption that adds one block arrives as a diff across
+	 * the file.
+	 */
+	@Test
+	void leavesAMultiLineStartTagAndSpacedEmptyElementsUntouched(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_HAND_FORMATTED);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n"
+				+ "\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"),
+				"the multi-line start tag must keep its own line breaks:\n" + result);
+		assertTrue(result.contains("<dependencyConvergence />"),
+				"an empty element the project spaced must not be rewritten as <x/>:\n" + result);
+	}
+
+	/**
+	 * The general statement of the same contract, and the one that fails for a
+	 * reformat anywhere in the file: every line the POM already held is still there,
+	 * in order and character for character, with only new lines in between. Stated
+	 * over lines rather than as a single untouched prefix and suffix because the
+	 * install legitimately writes in two places at once — the rule dependency onto
+	 * the plugin, the execution into its existing {@code <executions>}.
+	 */
+	@Test
+	void changesNothingOutsideTheAddedBlock(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_HAND_FORMATTED);
+		installer.install(pom);
+		assertEveryOriginalLineSurvives(POM_HAND_FORMATTED, Files.readString(pom));
+	}
+
+	/**
+	 * A {@code <plugins/>} element has no end tag for the block to be inserted
+	 * before, so it has to grow one rather than being left for the serialiser to
+	 * expand along with everything else.
+	 */
+	@Test
+	void wiresTheRuleIntoASelfClosingPluginsElement(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_SELF_CLOSING_PLUGINS);
+		assertTrue(installer.install(pom));
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<artifactId>tools.claude-code-enforcer</artifactId>"),
+				"the rule must be wired in:\n" + result);
+		assertFalse(result.contains("<plugins/>"), "the empty element must have been reopened:\n" + result);
+		assertTrue(result.contains("\n    </plugins>"),
+				"the end tag it grew must be indented to the element's own depth:\n" + result);
+		assertTrue(result.contains("\n  <properties/>"),
+				"an unrelated empty element must be left exactly as it was:\n" + result);
+	}
+
+	/**
+	 * Asserts the original's lines are still a subsequence of the result's: an edit
+	 * that only inserts leaves them all matchable in order, while any reformat
+	 * changes a line and leaves it unmatched.
+	 *
+	 * @param original what the file held before the install
+	 * @param result   what it holds after
+	 */
+	private void assertEveryOriginalLineSurvives(String original, String result) {
+		List<String> lines = result.lines().toList();
+		int next = 0;
+		for (String line : original.lines().toList()) {
+			int found = lines.subList(next, lines.size()).indexOf(line);
+			assertTrue(found >= 0, "the edit reformatted a line the adoption should not have touched: '" + line
+					+ "'\nresult:\n" + result);
+			next += found + 1;
+		}
+		assertTrue(result.lines().count() > original.lines().count(), "nothing was added:\n" + result);
+	}
+
 	@Test
 	void aReleaseRuleVersionIsPinnedIntoThePom(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);
@@ -377,6 +528,22 @@ class PomEnforcerInstallerTest {
 		String result = Files.readString(pom);
 		assertTrue(result.contains("tools.claude-code-enforcer"));
 		assertTrue(result.contains("<version>4.1.0</version>"), result);
+	}
+
+	/**
+	 * A version named on the command line is checked as it is supplied rather than at
+	 * the one step that edits a POM: asking for a snapshot on purpose does not make it
+	 * resolvable for the adopted project's CI, so there is nothing to gain by
+	 * discovering it after a clone and a {@code claude init}.
+	 */
+	@Test
+	void anExplicitSnapshotRuleVersionIsRejectedBeforeAnythingRuns() {
+		assertThrows(AdoptionException.class, () -> new PomEnforcerInstaller("2.6.0-SNAPSHOT"));
+	}
+
+	@Test
+	void aBlankExplicitRuleVersionIsRejected() {
+		assertThrows(AdoptionException.class, () -> new PomEnforcerInstaller("  "));
 	}
 
 	/**

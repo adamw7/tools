@@ -763,13 +763,22 @@ mvn -pl adopt exec:java \
     -Dexec.args="https://github.com/owner/repo.git [workspace-directory] [branch-name]"
 ```
 
+The `claude-code-enforcer` version a Maven project's `pom.xml` is made to depend
+on defaults to the version of the `tools` build running the adoption;
+`--rule-version <version>` pins a different one. A `-SNAPSHOT` is refused either
+way, because it resolves only from the adopting machine's own local repository:
+wiring one in would open a pull request that builds for whoever ran the adoption
+and fails for the adopted project's CI and every one of its contributors. A
+snapshot build of `tools` therefore cannot adopt a Maven project until a release
+of the rule is published.
+
 The pipeline is a list of ordered, independent `AdoptionStep`s, each acting on a
 shared immutable `AdoptionContext` (the repository URL, the workspace, the
 derived checkout directory, and the feature-branch name):
 
 ```java
 CommandRunner runner = new ProcessCommandRunner();
-GitHubRepoAdopter.withDefaultPipeline(runner)
+GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), false)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace));
 ```
 
@@ -820,7 +829,14 @@ The default pipeline runs these steps in order:
    carries — a repository with its own `claude-md-guard.yml` or its own
    `enforceClaudeMd` registration keeps it. Supporting a new build tool is a
    matter of adding a `BuildSystem` implementation rather than branching inside
-   the step.
+   the step. For Maven that already-declared check spans the whole POM rather than
+   only its `build/plugins`: a project running the rule behind an opt-in profile,
+   or declaring it in `pluginManagement`, is left alone instead of being given a
+   second, always-on copy. The POM edit is spliced into the bytes the file already
+   holds, so the adoption commit shows the added block and nothing else — writing
+   the edited DOM out whole would normalise details a DOM does not record,
+   collapsing a start tag spread over several lines and rewriting `<rule />` as
+   `<rule/>`, turning a fourteen-line addition into a diff across the file.
 9. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`).
 10. **`VerifyStep`** — runs the detected build system's verification (a
@@ -836,9 +852,15 @@ The default pipeline runs these steps in order:
    pull request metadata is supplied through `PullRequestOptions` — title, body,
    and optional reviewers, labels, and assignees to request, plus whether to open
    the pull request as a `--draft` — so the defaults can be overridden per
-   project. Like `CommitStep` it stays idempotent: a `gh` failure that only
-   reports an already-open pull request for the branch, or no commits between base
-   and head, is treated as a no-op rather than aborting the adoption.
+   project. Like `CommitStep` it stays idempotent: the branch's open pull requests
+   are read first (`gh pr list --state open`) and creation is skipped when one is
+   already open, and a `gh pr create` that fails only because a pull request for
+   the branch already exists, or because there are no commits between base and
+   head, is treated as a no-op rather than aborting the adoption. That tolerance is
+   what makes re-running an adoption safe even where the pre-check cannot run: `gh
+   pr list` needs a query a restricted token or a proxied host may refuse, and a
+   failed query is indistinguishable from "nothing is open" — so it is logged as a
+   warning and the create that follows is allowed to report the duplicate itself.
 
 External `git`/`claude`/`gh` invocations go through a `CommandRunner` abstraction,
 so the steps are unit-tested without spawning real processes. The default

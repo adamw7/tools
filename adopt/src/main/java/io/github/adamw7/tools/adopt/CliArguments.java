@@ -15,8 +15,10 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * flags expose the rest of the pipeline's configuration: the pull-request
  * metadata of {@link PullRequestOptions} ({@code --title}, {@code --body},
  * repeatable {@code --reviewer}/{@code --label}/{@code --assignee}, and
- * {@code --draft}), the optional starter-assets step ({@code --assets}), and a
- * JSON report of the run's outcome ({@code --report <file>}). A blank workspace
+ * {@code --draft}), the optional starter-assets step ({@code --assets}), the
+ * {@code claude-code-enforcer} version to wire into an adopted Maven project
+ * ({@code --rule-version}), and a JSON report of the run's outcome
+ * ({@code --report <file>}). A blank workspace
  * or branch positional falls back to its default, matching the pre-flag
  * behaviour; an unknown flag or a flag missing its value fails with the usage
  * line rather than being silently ignored.
@@ -25,7 +27,7 @@ public final class CliArguments {
 
 	static final String USAGE = "Usage: <github-repo-url> [workspace-directory] [branch-name]"
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
-			+ " [--assignee <user>]... [--draft] [--assets] [--report <file>]";
+			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>] [--report <file>]";
 
 	private String repositoryUrl;
 	private Path workspace;
@@ -37,6 +39,7 @@ public final class CliArguments {
 	private final List<String> assignees = new ArrayList<>();
 	private boolean draft;
 	private boolean assets;
+	private String ruleVersion;
 	private Path reportFile;
 	private int positionals;
 
@@ -77,6 +80,15 @@ public final class CliArguments {
 		return assets;
 	}
 
+	/**
+	 * @return the released {@code claude-code-enforcer} version to pin into an
+	 *         adopted Maven project's POM, or empty to resolve the version of the
+	 *         {@code tools} build running the adoption
+	 */
+	public Optional<String> ruleVersion() {
+		return Optional.ofNullable(ruleVersion);
+	}
+
 	public Optional<Path> reportFile() {
 		return Optional.ofNullable(reportFile);
 	}
@@ -98,6 +110,8 @@ public final class CliArguments {
 			case "--reviewer" -> consumeValue(args, index, reviewers::add);
 			case "--label" -> consumeValue(args, index, labels::add);
 			case "--assignee" -> consumeValue(args, index, assignees::add);
+			case "--rule-version" -> consumeValue(args, index,
+					value -> ruleVersion = Text.isPresent(value) ? value.strip() : null);
 			case "--report" -> consumeValue(args, index, value -> reportFile = Path.of(value));
 			case "--draft" -> {
 				draft = true;

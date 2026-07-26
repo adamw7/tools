@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,6 +11,8 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.AssetsStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
+import io.github.adamw7.tools.adopt.step.BuildSystem;
+import io.github.adamw7.tools.adopt.step.BuildSystems;
 import io.github.adamw7.tools.adopt.step.BuildToolchainStep;
 import io.github.adamw7.tools.adopt.step.ClaudeInitStep;
 import io.github.adamw7.tools.adopt.step.ClaudeMdConformanceStep;
@@ -60,26 +63,47 @@ public class GitHubRepoAdopter {
 
 	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
 			boolean includeAssets) {
-		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets));
+		return withDefaultPipeline(runner, options, includeAssets, Optional.empty());
+	}
+
+	/**
+	 * @param ruleVersion the released {@code claude-code-enforcer} version a Maven
+	 *                    project's POM should pin, or empty to resolve the version of
+	 *                    the {@code tools} build running the adoption
+	 */
+	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
+			boolean includeAssets, Optional<String> ruleVersion) {
+		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets, ruleVersion));
 	}
 
 	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets) {
+		return defaultSteps(options, includeAssets, Optional.empty());
+	}
+
+	/**
+	 * The three steps that act on the checkout's build system are given the same
+	 * build-system list, so the guard that is wired in is the guard that is verified
+	 * with the tool that was probed.
+	 */
+	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets,
+			Optional<String> ruleVersion) {
+		List<BuildSystem> buildSystems = BuildSystems.withRuleVersion(ruleVersion);
 		List<AdoptionStep> steps = new ArrayList<>(List.of(
 				new ToolchainStep(),
 				new CloneStep(),
-				new BuildToolchainStep(),
+				new BuildToolchainStep(buildSystems),
 				new BranchStep(),
 				new TrustStep(),
 				new ClaudeInitStep(),
 				new ClaudeMdConformanceStep(),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
-				new EnforcerStep(),
+				new EnforcerStep(buildSystems),
 				new CommitStep("Add claude-code-enforcer to the build")));
 		if (includeAssets) {
 			steps.add(new AssetsStep());
 			steps.add(new CommitStep("Add Claude Code configuration assets"));
 		}
-		steps.add(new VerifyStep());
+		steps.add(new VerifyStep(buildSystems));
 		steps.add(new PushStep());
 		steps.add(new PullRequestStep(options));
 		return List.copyOf(steps);

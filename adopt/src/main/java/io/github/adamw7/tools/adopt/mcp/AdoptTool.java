@@ -15,6 +15,7 @@ import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.AdoptionReportWriter;
 import io.github.adamw7.tools.adopt.AdoptionRun;
 import io.github.adamw7.tools.adopt.BatchAdoption;
+import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
 import io.github.adamw7.tools.adopt.Workspaces;
@@ -134,11 +135,7 @@ public class AdoptTool implements McpTool {
 
 	/** Every repository of a call is adopted into one workspace, on one branch name. */
 	private List<AdoptionContext> contextsFrom(Map<String, Object> arguments) {
-		Path workspace = workspace(arguments);
-		String branch = branch(arguments);
-		return repositoryUrls(arguments).stream()
-				.map(url -> new AdoptionContext(url, workspace, branch))
-				.toList();
+		return Checkouts.forRun(repositoryUrls(arguments), workspace(arguments), branch(arguments));
 	}
 
 	/**

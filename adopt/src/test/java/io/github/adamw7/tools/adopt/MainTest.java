@@ -90,6 +90,17 @@ class MainTest {
 		assertEquals(List.of(REPO_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
 	}
 
+	/**
+	 * Two owners' repositories of the same name would clone into one checkout, so the
+	 * run fails on its arguments rather than adopting the first repository twice.
+	 */
+	@Test
+	void rejectsARunWhoseRepositoriesShareACheckoutDirectory(@TempDir Path dir) {
+		CliArguments cli = CliArguments.parse(new String[] { "https://github.com/owner/tools.git",
+				"--repo", "https://github.com/other-owner/tools.git", "--workspace", dir.toString() });
+		assertThrows(IllegalArgumentException.class, () -> Main.contexts(cli));
+	}
+
 	@Test
 	void adoptsTheRepositoriesAListFileNames(@TempDir Path dir) throws IOException {
 		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n" + OTHER_URL + "\n");

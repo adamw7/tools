@@ -31,7 +31,10 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * driven entirely by {@code --repo}/{@code --repos} names its workspace and
  * branch with {@code --workspace} and {@code --branch} rather than positionally.
  * Both flags write the same value as their positional, so naming one twice is the
- * last one winning rather than an error.
+ * last one winning rather than an error. A first positional that names no
+ * repository owner while those flags named repositories is rejected outright: it is
+ * the workspace the reading above invites, and adopting it as a repository fails
+ * far from the mistake.
  */
 public final class CliArguments {
 
@@ -54,6 +57,8 @@ public final class CliArguments {
 	private String ruleVersion;
 	private Path reportFile;
 	private int positionals;
+	private String positionalUrl;
+	private int flaggedRepositories;
 
 	private CliArguments() {
 	}
@@ -65,6 +70,7 @@ public final class CliArguments {
 			index = cli.consume(args, index);
 		}
 		cli.requireRepositoryUrls();
+		cli.requirePositionalNamesARepository();
 		return cli;
 	}
 
@@ -122,8 +128,8 @@ public final class CliArguments {
 	private int consumeFlag(String[] args, int index) {
 		String flag = args[index];
 		return switch (flag) {
-			case "--repo" -> consumeValue(args, index, this::addRepository);
-			case "--repos" -> consumeValue(args, index, value -> repositoryUrls.addAll(readList(value)));
+			case "--repo" -> consumeValue(args, index, this::addFlaggedRepository);
+			case "--repos" -> consumeValue(args, index, value -> addFlaggedRepositories(readList(value)));
 			case "--workspace" -> consumeValue(args, index, value -> workspace = optionalPath(value));
 			case "--branch" -> consumeValue(args, index, value -> branchName = optionalText(value));
 			case "--title" -> consumeValue(args, index, value -> title = value);
@@ -162,12 +168,28 @@ public final class CliArguments {
 	 */
 	private void consumePositional(String argument) {
 		switch (positionals) {
-			case 0 -> addRepository(argument);
+			case 0 -> addPositionalRepository(argument);
 			case 1 -> workspace = optionalPath(argument);
 			case 2 -> branchName = optionalText(argument);
 			default -> throw new IllegalArgumentException("Unexpected argument " + argument + ". " + USAGE);
 		}
 		positionals++;
+	}
+
+	private void addPositionalRepository(String url) {
+		positionalUrl = optionalText(url);
+		addRepository(url);
+	}
+
+	private void addFlaggedRepositories(List<String> urls) {
+		urls.forEach(this::addFlaggedRepository);
+	}
+
+	private void addFlaggedRepository(String url) {
+		if (Text.isPresent(url)) {
+			flaggedRepositories++;
+		}
+		addRepository(url);
 	}
 
 	private void addRepository(String url) {
@@ -192,5 +214,32 @@ public final class CliArguments {
 		if (repositoryUrls.isEmpty()) {
 			throw new IllegalArgumentException(USAGE);
 		}
+	}
+
+	/**
+	 * Rejects a first positional that names no repository owner when the flags
+	 * already named repositories — {@code --repos list.txt /tmp/workspace}, where the
+	 * operator meant the workspace the flags left unnamed. The positional slot keeps
+	 * its meaning whatever else is on the command line, so that path is read as a
+	 * repository URL and fails several steps later on a clone of a directory that is
+	 * not a repository, or a push to an origin that does not exist. Saying so here
+	 * names the argument and the flag that was meant instead.
+	 *
+	 * <p>The check is only worth making when the flags supplied a repository, since a
+	 * run whose only repository is the positional has nothing else it could be. A
+	 * local path really is adoptable — {@link RepositoryUrl} accepts one, and only a
+	 * URL with a host names an owner — so a batch of local repositories names them all
+	 * with {@code --repo} rather than positionally.
+	 */
+	private void requirePositionalNamesARepository() {
+		if (positionalUrl != null && flaggedRepositories > 0 && namesNoOwner(positionalUrl)) {
+			throw new IllegalArgumentException("The first argument is read as a repository URL, but " + positionalUrl
+					+ " names no repository owner. Name the workspace with --workspace,"
+					+ " or the repository with --repo. " + USAGE);
+		}
+	}
+
+	private boolean namesNoOwner(String url) {
+		return RepositoryUrl.of(url).slug().isEmpty();
 	}
 }

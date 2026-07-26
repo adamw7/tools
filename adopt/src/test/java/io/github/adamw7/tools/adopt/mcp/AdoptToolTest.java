@@ -206,6 +206,18 @@ class AdoptToolTest {
 		assertThrows(IllegalArgumentException.class, () -> tool.apply(Map.of()));
 	}
 
+	/**
+	 * The collision is refused before anything is cloned, so no repository of the call
+	 * is adopted on the strength of another one's checkout.
+	 */
+	@Test
+	void rejectsAListWhoseRepositoriesShareACheckoutDirectory() {
+		Map<String, Object> arguments = Map.of("repository_urls",
+				List.of("https://github.com/owner/tools.git", "https://github.com/other-owner/tools.git"));
+		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
+		assertTrue(pipeline.contexts.isEmpty());
+	}
+
 	@Test
 	void ignoresBlankEntriesInTheRepositoryList() {
 		tool.apply(Map.of("repository_urls", List.of("  ", REPO_URL, "")));

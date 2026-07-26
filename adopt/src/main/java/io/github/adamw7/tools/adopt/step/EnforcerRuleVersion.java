@@ -42,6 +42,10 @@ final class EnforcerRuleVersion {
 	 * that into an immediate, explicable failure.
 	 */
 	static String requireRelease(String version) {
+		if (version == null || version.isBlank()) {
+			throw new AdoptionException("No " + RULE_VERSION_KEY + " to wire into the adopted project's pom.xml:"
+					+ " a blank version would leave the build with a dependency it cannot resolve.");
+		}
 		if (version.endsWith(SNAPSHOT_SUFFIX)) {
 			throw new AdoptionException("Refusing to wire the snapshot enforcer rule version " + version
 					+ " into the adopted project's pom.xml: a snapshot is not resolvable outside this machine's"

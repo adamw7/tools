@@ -67,7 +67,17 @@ Maven project. The notable capabilities are:
   denying reads of obvious secret files and wiring a
   `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a GitHub
   Actions workflow answering `@claude` mentions — never overwriting a file the
-  repository already has. Both `gh` invocations name the target repository with
+  repository already has. The `claude-code-enforcer` version wired into an
+  adopted Maven project defaults to the version of the `tools` build running the
+  adoption and can be overridden with `--rule-version` (`rule_version` on the MCP
+  tool); either way `EnforcerRuleVersion` refuses a `-SNAPSHOT`, which resolves
+  only from the adopting machine's local repository and would leave the adopted
+  project's CI and every contributor with a build that cannot resolve it — so a
+  snapshot build of `tools` cannot adopt a Maven project until a release is
+  published. Whether a POM already carries the guard is decided by scanning every
+  `plugin` it declares, wherever it sits — the build, `pluginManagement`, or a
+  profile — because a project that runs the rule behind an opt-in profile would
+  otherwise be given a second, always-on copy of it. Both `gh` invocations name the target repository with
   `--repo`, derived from the URL being adopted, rather than letting `gh` infer it
   from the checkout's git remote — a remote rewritten by `url.<base>.insteadOf`,
   a mirror, or a proxy is not readable as a GitHub one and would fail the last

@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -91,6 +93,25 @@ class BuildSystemsTest {
 		BuildSystem gradle = new GradleBuildSystem();
 		assertEquals(Optional.of(gradle.verifyCommand().get(0)), gradle.requiredTool());
 		assertEquals(Optional.of("gradle"), gradle.requiredTool());
+	}
+
+	@Test
+	void withNoRuleVersionTheDefaultsAreUsedAsIs() {
+		assertEquals(BuildSystems.DEFAULTS, BuildSystems.withRuleVersion(Optional.empty()));
+	}
+
+	/**
+	 * Only Maven wires a versioned artifact into the adopted project, so pinning a
+	 * version changes that entry and leaves the detection order — and the other two
+	 * build systems — as they were.
+	 */
+	@Test
+	void anExplicitRuleVersionReplacesOnlyTheMavenBuildSystem() {
+		List<BuildSystem> pinned = BuildSystems.withRuleVersion(Optional.of("2.6.0"));
+		assertEquals(BuildSystems.names(BuildSystems.DEFAULTS), BuildSystems.names(pinned));
+		assertNotSame(BuildSystems.DEFAULTS.get(0), pinned.get(0), "Maven must be rebuilt around the pinned version");
+		assertSame(BuildSystems.DEFAULTS.get(1), pinned.get(1), "Gradle needs no version and must be reused");
+		assertSame(BuildSystems.DEFAULTS.get(2), pinned.get(2), "the fallback needs no version and must be reused");
 	}
 
 	/**

@@ -207,6 +207,49 @@ class PullRequestStepTest {
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
 	}
 
+	/**
+	 * Re-adopting a repository that is already adopted leaves every step with its
+	 * work done and so the branch with no commits the base does not already have.
+	 * There is nothing to raise a pull request for, which is the run succeeding —
+	 * aborting the last step of a pipeline that found nothing left to do would make
+	 * the adoption impossible to re-run.
+	 */
+	@Test
+	void aBranchWithNoCommitsToProposeIsNotAFailure() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "pull request create failed: GraphQL: No commits between main and "
+						+ "claude/adopt-claude-code (createPullRequest)")
+				: new CommandResult(command, 0, "[]"));
+		step.execute(context, runner);
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")),
+				"the creation must have been attempted");
+	}
+
+	/**
+	 * The pre-check that would have caught this cannot always run: {@code gh pr
+	 * list} needs a query a restricted token or a proxied host may refuse, and its
+	 * failure is indistinguishable from "no pull request is open". The create that
+	 * follows then reports the pull request already exists, which is the same no-op
+	 * the pre-check would have made it.
+	 */
+	@Test
+	void anAlreadyOpenPullRequestIsNotAFailureEvenWhenTheQueryCouldNotRunFirst() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "a pull request for branch \"claude/adopt-claude-code\" into branch"
+						+ " \"main\" already exists:\n" + PR_URL)
+				: new CommandResult(command, 1, "HTTP 403: this GraphQL query is not enabled for this session"));
+		step.execute(context, runner);
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
+
+	@Test
+	void aCreationFailureThatIsNotBenignStillAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "gh: Resource not accessible by integration")
+				: new CommandResult(command, 0, "[]"));
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
 	private CommandResult noOpenPullRequest(List<String> command) {
 		if (command.contains("list")) {
 			return new CommandResult(command, 0, "[]");

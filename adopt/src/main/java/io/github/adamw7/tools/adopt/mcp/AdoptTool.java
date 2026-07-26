@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.mcp;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -32,7 +33,8 @@ public class AdoptTool implements McpTool {
 
 	/** The adoption run the tool delegates to once the arguments are mapped. */
 	public interface Pipeline {
-		AdoptionReport adopt(AdoptionContext context, PullRequestOptions options, boolean includeAssets);
+		AdoptionReport adopt(AdoptionContext context, PullRequestOptions options, boolean includeAssets,
+				Optional<String> ruleVersion);
 	}
 
 	private static final Logger log = LogManager.getLogger(AdoptTool.class);
@@ -47,22 +49,28 @@ public class AdoptTool implements McpTool {
 					+ "Returns a JSON report with the pull request URL and the completed steps.",
 			Map.of(
 					"type", "object",
-					"properties", Map.of(
-							"repository_url", Map.of("type", "string",
-									"description", "URL of the GitHub repository to adopt"),
-							"workspace", Map.of("type", "string",
-									"description", "directory to clone into; a temporary one is created when omitted"),
-							"branch", Map.of("type", "string",
-									"description", "feature branch to commit and open the pull request from"),
-							"title", Map.of("type", "string", "description", "pull request title"),
-							"body", Map.of("type", "string", "description", "pull request body"),
-							"reviewers", Map.of("type", "string",
-									"description", "comma-separated reviewers to request"),
-							"labels", Map.of("type", "string", "description", "comma-separated labels to apply"),
-							"assignees", Map.of("type", "string", "description", "comma-separated assignees"),
-							"draft", Map.of("type", "boolean", "description", "open the pull request as a draft"),
-							"assets", Map.of("type", "boolean",
+					"properties", Map.ofEntries(
+							Map.entry("repository_url", Map.of("type", "string",
+									"description", "URL of the GitHub repository to adopt")),
+							Map.entry("workspace", Map.of("type", "string",
+									"description", "directory to clone into; a temporary one is created when omitted")),
+							Map.entry("branch", Map.of("type", "string",
+									"description", "feature branch to commit and open the pull request from")),
+							Map.entry("title", Map.of("type", "string", "description", "pull request title")),
+							Map.entry("body", Map.of("type", "string", "description", "pull request body")),
+							Map.entry("reviewers", Map.of("type", "string",
+									"description", "comma-separated reviewers to request")),
+							Map.entry("labels", Map.of("type", "string",
+									"description", "comma-separated labels to apply")),
+							Map.entry("assignees", Map.of("type", "string",
+									"description", "comma-separated assignees")),
+							Map.entry("draft", Map.of("type", "boolean",
+									"description", "open the pull request as a draft")),
+							Map.entry("assets", Map.of("type", "boolean",
 									"description", "also commit starter Claude Code configuration assets")),
+							Map.entry("rule_version", Map.of("type", "string",
+									"description", "released claude-code-enforcer version to wire into an adopted "
+											+ "Maven project; defaults to the version of this build"))),
 					"required", List.of("repository_url")));
 
 	public AdoptTool() {
@@ -74,8 +82,8 @@ public class AdoptTool implements McpTool {
 	}
 
 	private static AdoptionReport runDefaultPipeline(AdoptionContext context, PullRequestOptions options,
-			boolean includeAssets) {
-		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(), options, includeAssets)
+			boolean includeAssets, Optional<String> ruleVersion) {
+		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(), options, includeAssets, ruleVersion)
 				.adopt(context);
 	}
 
@@ -89,7 +97,7 @@ public class AdoptTool implements McpTool {
 		log.info("Calling MCP adopt tool for {}", arguments);
 		AdoptionContext context = contextFrom(arguments);
 		AdoptionReport report = pipeline.adopt(context, optionsFrom(arguments),
-				ToolArguments.optionalBoolean(arguments, "assets", false));
+				ToolArguments.optionalBoolean(arguments, "assets", false), ruleVersion(arguments));
 		return ToolResult.success(reportWriter.toJson(context, report));
 	}
 
@@ -120,6 +128,15 @@ public class AdoptTool implements McpTool {
 				.titleIfPresent(text(arguments, "title"))
 				.bodyIfPresent(text(arguments, "body"))
 				.build();
+	}
+
+	/**
+	 * @return the rule version to pin, empty when the argument was not supplied or
+	 *         was blank — the same rule every other optional argument follows
+	 */
+	private Optional<String> ruleVersion(Map<String, Object> arguments) {
+		String supplied = text(arguments, "rule_version").strip();
+		return supplied.isEmpty() ? Optional.empty() : Optional.of(supplied);
 	}
 
 	/** @return the argument's text, empty when it was not supplied */

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -103,6 +104,28 @@ class CliArgumentsTest {
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> CliArguments.parse(new String[] { REPO_URL, "--title" }));
 		assertTrue(exception.getMessage().contains("--title"), exception.getMessage());
+	}
+
+	@Test
+	void parsesTheRuleVersionFlag() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--rule-version", "2.6.0" });
+		assertEquals(Optional.of("2.6.0"), cli.ruleVersion());
+	}
+
+	@Test
+	void noRuleVersionFlagLeavesTheRunningBuildsVersionToBeResolved() {
+		assertEquals(Optional.empty(), CliArguments.parse(new String[] { REPO_URL }).ruleVersion());
+	}
+
+	/**
+	 * A blank value counts as not supplied, the rule every other optional input
+	 * follows, so it falls back to the running build's version rather than pinning an
+	 * empty one the adopted project could not resolve.
+	 */
+	@Test
+	void aBlankRuleVersionFallsBackToTheDefault() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--rule-version", "  " });
+		assertEquals(Optional.empty(), cli.ruleVersion());
 	}
 
 	@Test

@@ -46,6 +46,13 @@ public class PullRequestStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(PullRequestStep.class);
 
+	/**
+	 * The conditions {@code gh pr create} reports as a failure that mean the pull
+	 * request need not — or cannot — be opened, matched against its own wording:
+	 * "a pull request for branch ... already exists" and "No commits between ...".
+	 */
+	static final List<String> TOLERATED_FAILURES = List.of("already exists", "no commits between");
+
 	private final PullRequestOptions options;
 	private final ObjectMapper mapper = new ObjectMapper();
 
@@ -79,10 +86,22 @@ public class PullRequestStep extends AbstractCommandStep {
 		}
 	}
 
+	/**
+	 * A {@code gh pr create} that fails only because there is nothing to open —
+	 * the branch already has an open pull request, or it carries no commits the base
+	 * does not — leaves the adoption complete rather than aborting it at its last
+	 * step. Both are the normal outcome of re-running an adoption that already
+	 * finished: the first is what {@link #openPullRequestUrl} would have caught had
+	 * {@code gh} been queryable, and the second is what an adoption of an
+	 * already-adopted repository produces, every step having found its work done.
+	 */
 	private void create(AdoptionContext context, CommandRunner runner) {
 		log.info("Opening pull request for branch {}", context.branchName());
-		CommandResult result = runOrFail(runner, context.repositoryDirectory(), createCommand(context));
-		log.info("Opened pull request: {}", result.output().strip());
+		runTolerating(runner, context.repositoryDirectory(), createCommand(context), TOLERATED_FAILURES)
+				.ifPresentOrElse(
+						result -> log.info("Opened pull request: {}", result.output().strip()),
+						() -> log.info("Nothing to open a pull request for on branch {}; left unchanged",
+								context.branchName()));
 	}
 
 	private List<String> createCommand(AdoptionContext context) {
@@ -107,12 +126,19 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	/**
+	 * A query that fails is reported rather than passed off as "no pull request is
+	 * open": the two are indistinguishable in the return value, and a caller reading
+	 * the log of an adoption that went on to create a duplicate needs to see which
+	 * of the two it was.
+	 *
 	 * @return the URL of the branch's open pull request, or empty when none is open
 	 *         or {@code gh} could not be queried
 	 */
 	private Optional<String> openPullRequestUrl(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(), listCommand(context));
 		if (!result.succeeded()) {
+			log.warn("Could not ask gh which pull requests are open for branch {} (exit {}): {}",
+					context.branchName(), result.exitCode(), result.output().strip());
 			return Optional.empty();
 		}
 		return extractUrl(result.output());

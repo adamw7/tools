@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -33,12 +34,15 @@ class AdoptToolTest {
 		private AdoptionContext context;
 		private PullRequestOptions options;
 		private boolean includeAssets;
+		private Optional<String> ruleVersion = Optional.empty();
 
 		@Override
-		public AdoptionReport adopt(AdoptionContext context, PullRequestOptions options, boolean includeAssets) {
+		public AdoptionReport adopt(AdoptionContext context, PullRequestOptions options, boolean includeAssets,
+				Optional<String> ruleVersion) {
 			this.context = context;
 			this.options = options;
 			this.includeAssets = includeAssets;
+			this.ruleVersion = ruleVersion;
 			AdoptionReport report = new AdoptionReport();
 			report.recordStep("pull-request");
 			report.recordPullRequestUrl(PR_URL);
@@ -93,6 +97,25 @@ class AdoptToolTest {
 		assertEquals(List.of("adamw7"), pipeline.options.assignees());
 		assertTrue(pipeline.options.draft());
 		assertTrue(pipeline.includeAssets);
+	}
+
+	@Test
+	void passesTheRuleVersionOnToThePipeline() {
+		tool.apply(Map.of("repository_url", REPO_URL, "rule_version", " 2.6.0 "));
+		assertEquals(Optional.of("2.6.0"), pipeline.ruleVersion);
+	}
+
+	@Test
+	void aBlankRuleVersionLeavesTheRunningBuildsVersionToBeResolved() {
+		tool.apply(Map.of("repository_url", REPO_URL, "rule_version", "  "));
+		assertEquals(Optional.empty(), pipeline.ruleVersion);
+	}
+
+	@Test
+	void declaresTheRuleVersionArgument() {
+		Object properties = tool.getToolDefinition().inputSchema().get("properties");
+		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("rule_version"),
+				"the version must be settable through the tool: " + properties);
 	}
 
 	@Test

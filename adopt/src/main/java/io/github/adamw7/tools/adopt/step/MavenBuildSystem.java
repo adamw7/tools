@@ -46,4 +46,13 @@ public class MavenBuildSystem implements BuildSystem {
 	public List<String> verifyCommand() {
 		return VERIFY_COMMAND;
 	}
+
+	/**
+	 * Maven is the one build system that wires a versioned artifact into the adopted
+	 * project, so it is the one that has a version to pin.
+	 */
+	@Override
+	public BuildSystem withRuleVersion(String ruleVersion) {
+		return new MavenBuildSystem(new PomEnforcerInstaller(ruleVersion));
+	}
 }

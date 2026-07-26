@@ -36,8 +36,18 @@ public class PomEnforcerInstaller {
 		this.ruleVersion = EnforcerRuleVersion::release;
 	}
 
+	/**
+	 * Pins an explicitly supplied version instead of the running build's. It is
+	 * checked here, before anything is cloned, because a version named on the command
+	 * line is worth rejecting immediately rather than at the one step that edits a
+	 * POM; the reason a snapshot cannot be wired in does not change for being asked
+	 * for on purpose.
+	 *
+	 * @param ruleVersion a released {@code claude-code-enforcer} version
+	 */
 	public PomEnforcerInstaller(String ruleVersion) {
-		this.ruleVersion = () -> ruleVersion;
+		String release = EnforcerRuleVersion.requireRelease(ruleVersion);
+		this.ruleVersion = () -> release;
 	}
 
 	/**
@@ -47,17 +57,22 @@ public class PomEnforcerInstaller {
 	 */
 	public boolean install(Path pomFile) {
 		PomDocument pom = PomDocument.read(pomFile);
-		Element plugins = pom.pluginsElement();
-		if (declaresClaudeRule(plugins)) {
+		if (declaresClaudeRule(pom)) {
 			return false;
 		}
-		wireEnforcer(pom, plugins);
+		wireEnforcer(pom, pom.pluginsElement());
 		pom.write();
 		return true;
 	}
 
-	private boolean declaresClaudeRule(Element plugins) {
-		return PomDocument.children(plugins, "plugin").stream().anyMatch(this::declaresRuleDependency);
+	/**
+	 * Asks the whole POM rather than only its {@code build/plugins}, because a
+	 * project that already runs the rule may well wire it somewhere else — behind an
+	 * opt-in profile, or in {@code pluginManagement}. Looking only at the build would
+	 * report such a POM as unguarded and wire in a second, duplicate declaration.
+	 */
+	private boolean declaresClaudeRule(PomDocument pom) {
+		return pom.plugins().stream().anyMatch(this::declaresRuleDependency);
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {

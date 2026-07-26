@@ -24,7 +24,7 @@ public class Main {
 		AdoptionContext context = new AdoptionContext(cli.repositoryUrl(), workspace(cli), cli.branchName());
 		CommandRunner runner = new ProcessCommandRunner();
 		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, cli.pullRequestOptions(),
-				cli.includeAssets());
+				cli.includeAssets(), cli.ruleVersion());
 		runAndReport(cli, context, adopter);
 	}
 

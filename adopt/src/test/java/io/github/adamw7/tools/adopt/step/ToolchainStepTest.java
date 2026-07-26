@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,8 +35,15 @@ class ToolchainStepTest {
 	void probesTheGitHubLoginOnceEveryToolIsPresent() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new ToolchainStep().execute(context, runner);
-		assertEquals(List.of("gh", "auth", "status"), runner.commandAt(3));
+		assertEquals(List.of("gh", "api", "user"), runner.commandAt(3));
 		assertEquals(context.workspace(), runner.invocations().get(3).workingDirectory());
+	}
+
+	@Test
+	void anAuthenticatedGitHubCliCompletesTheStep() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		assertDoesNotThrow(() -> new ToolchainStep().execute(context, runner));
+		assertEquals(4, runner.count());
 	}
 
 	/**
@@ -46,11 +54,49 @@ class ToolchainStepTest {
 	@Test
 	void anUnauthenticatedGitHubCliAbortsTheAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> command.contains("auth") ? new CommandResult(command, 1, "not logged in")
+				command -> command.contains("api") ? new CommandResult(command, 1, "HTTP 401")
 						: new CommandResult(command, 0, ""));
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("not authenticated"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("cannot authenticate"), thrown.getMessage());
+	}
+
+	/**
+	 * The failure the probe was changed for: a {@code gh} holding a token GitHub
+	 * rejects prints that the token is invalid and still exits <em>zero</em> from
+	 * {@code gh auth status}. A probe that read that stored credential state passed
+	 * for a CLI which could not open a pull request, and an adoption ran a clone, a
+	 * {@code claude init}, a build and a push before failing at {@code pull-request}
+	 * — the very outcome this step exists to prevent.
+	 */
+	@Test
+	void aGitHubCliWhoseTokenGitHubRejectsAbortsTheAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::rejectedByGitHub);
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ToolchainStep().execute(context, runner));
+		assertTrue(thrown.getMessage().contains("cannot authenticate"), thrown.getMessage());
+	}
+
+	/**
+	 * Pins the probe away from {@code gh auth status} by behaviour rather than by
+	 * name, so a change back to any command that only reports what {@code gh} has
+	 * stored fails here instead of at an adoption's last step.
+	 */
+	@Test
+	void neverAsksGhWhatCredentialsItHolds() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep().execute(context, runner);
+		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("auth")),
+				runner.invocations().toString());
+	}
+
+	/** A {@code gh} that is installed and holds a token GitHub answers 401 to. */
+	private CommandResult rejectedByGitHub(List<String> command) {
+		if (command.contains("auth")) {
+			return new CommandResult(command, 0, "X Failed to log in to github.com using token (GH_TOKEN)");
+		}
+		return command.contains("api") ? new CommandResult(command, 1, "HTTP 401: Bad credentials")
+				: new CommandResult(command, 0, "");
 	}
 
 	@Test

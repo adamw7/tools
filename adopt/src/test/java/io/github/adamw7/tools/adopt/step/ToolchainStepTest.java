@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,8 +35,21 @@ class ToolchainStepTest {
 	void probesTheGitHubLoginOnceEveryToolIsPresent() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new ToolchainStep().execute(context, runner);
-		assertEquals(List.of("gh", "auth", "status"), runner.commandAt(3));
+		assertEquals(List.of("gh", "api", "user"), runner.commandAt(3));
 		assertEquals(context.workspace(), runner.invocations().get(3).workingDirectory());
+	}
+
+	/**
+	 * The probe must call GitHub rather than read what {@code gh} has stored locally:
+	 * {@code gh auth status} prints that a rejected {@code GH_TOKEN} is invalid and
+	 * still exits zero, which passed the check for a CLI that could not open a pull
+	 * request at all.
+	 */
+	@Test
+	void probesTheGitHubLoginWithAnAuthenticatedCallRatherThanTheLocalCredentialState() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep().execute(context, runner);
+		assertFalse(runner.commandAt(3).contains("auth"), runner.commandAt(3).toString());
 	}
 
 	/**
@@ -46,11 +60,11 @@ class ToolchainStepTest {
 	@Test
 	void anUnauthenticatedGitHubCliAbortsTheAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> command.contains("auth") ? new CommandResult(command, 1, "not logged in")
+				command -> command.contains("api") ? new CommandResult(command, 1, "HTTP 401")
 						: new CommandResult(command, 0, ""));
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("not authenticated"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("cannot authenticate"), thrown.getMessage());
 	}
 
 	@Test

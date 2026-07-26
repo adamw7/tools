@@ -25,8 +25,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
  * for a GitHub CLI nobody is logged in to, which the adoption would only discover
  * at {@link PullRequestStep}, its very last step. The login is therefore probed
- * here too. The adopted project's own build tool only becomes known once the
- * repository is cloned, so {@link BuildToolchainStep} probes it there.
+ * here too, by asking GitHub who the credentials belong to rather than by asking
+ * {@code gh} what it has stored — see {@link #AUTHENTICATION_PROBE}. The adopted
+ * project's own build tool only becomes known once the repository is cloned, so
+ * {@link BuildToolchainStep} probes it there.
  */
 public class ToolchainStep implements AdoptionStep {
 
@@ -34,7 +36,17 @@ public class ToolchainStep implements AdoptionStep {
 
 	static final String GITHUB_CLI = "gh";
 	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", GITHUB_CLI);
-	static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "auth", "status");
+
+	/**
+	 * The smallest authenticated call to GitHub there is, used in preference to
+	 * {@code gh auth status} because that command reports on credentials it holds
+	 * without its exit code always following: a {@code GH_TOKEN} that GitHub rejects
+	 * makes it print that the token is invalid and still exit zero, so the probe
+	 * passed for a {@code gh} that could not open a pull request — the one thing it
+	 * is here to rule out. Making the call the pull request will need answers the
+	 * question the step is actually asking, and fails when the answer is no.
+	 */
+	static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "api", "user");
 
 	private final List<String> tools;
 	private final ToolProbe probe = new ToolProbe();
@@ -72,7 +84,7 @@ public class ToolchainStep implements AdoptionStep {
 			return;
 		}
 		throw new AdoptionException(name() + " failed: " + GITHUB_CLI
-				+ " is installed but not authenticated, so the pull request could not be opened."
+				+ " is installed but cannot authenticate to GitHub, so the pull request could not be opened."
 				+ " Run 'gh auth login', or set GH_TOKEN for a non-interactive host.");
 	}
 }

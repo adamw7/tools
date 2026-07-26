@@ -853,8 +853,10 @@ The default pipeline runs these steps in order:
    absent one instead of failing minutes later after a clone, a `claude init`,
    and a Maven build have already run. Being installed is not enough for `gh`:
    `gh --version` succeeds for a CLI nobody is logged in to, so the login is
-   probed too (`gh auth status`) and an unauthenticated `gh` fails here rather
-   than at the very last step.
+   probed too and an unauthenticated `gh` fails here rather than at the very last
+   step. The probe is `gh api user` — an authenticated call to GitHub — rather
+   than `gh auth status`, which reports a rejected `GH_TOKEN` as invalid and
+   still exits zero.
 2. **`CloneStep`** — clones the target repository into the workspace with
    `git clone`, giving the remaining steps a working checkout.
 3. **`BuildToolchainStep`** — probes the *adopted project's* build tool, now that

@@ -1,4 +1,4 @@
-name: MCP Integration Tests
+name: Integration Tests
 
 on:
   schedule:
@@ -17,5 +17,5 @@ jobs:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
-    - name: Run MCP streamable HTTP integration tests
+    - name: Run the integration tests (MCP over HTTP, adoption against real GitHub URLs)
       run: mvn -B -ntp verify -P integration-tests --file pom.xml

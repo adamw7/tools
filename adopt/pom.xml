@@ -58,6 +58,31 @@
 			</plugin>
 		</plugins>
 	</build>
+	<profiles>
+		<!-- Gates the *IT tests, which need real network: MultiRepoAdoptionIT
+		     clones real GitHub repositories to prove a batch gives each one its
+		     own checkout. Mirrors the data and code/context modules. -->
+		<profile>
+			<id>integration-tests</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.github.adamw7</groupId>

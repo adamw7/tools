@@ -2,7 +2,6 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -24,15 +23,9 @@ class PullRequestOptionsTest {
 	}
 
 	@Test
-	void builderSetsEveryField() {
-		PullRequestOptions options = PullRequestOptions.builder()
-				.title("Title")
-				.body("Body")
-				.reviewers(List.of("octocat"))
-				.labels(List.of("automation"))
-				.assignees(List.of("adamw7"))
-				.draft(true)
-				.build();
+	void carriesEverySuppliedField() {
+		PullRequestOptions options = new PullRequestOptions("Title", "Body", List.of("octocat"),
+				List.of("automation"), List.of("adamw7"), true);
 		assertEquals("Title", options.title());
 		assertEquals("Body", options.body());
 		assertEquals(List.of("octocat"), options.reviewers());
@@ -43,62 +36,33 @@ class PullRequestOptionsTest {
 
 	@Test
 	void trimsTitleAndBody() {
-		PullRequestOptions options = PullRequestOptions.builder().title("  Title  ").body("  Body  ").build();
+		PullRequestOptions options = options("  Title  ", "  Body  ");
 		assertEquals("Title", options.title());
 		assertEquals("Body", options.body());
-	}
-
-	@Test
-	void rejectsBlankTitle() {
-		PullRequestOptions.Builder builder = PullRequestOptions.builder().title(" ");
-		assertThrows(IllegalArgumentException.class, builder::build);
-	}
-
-	@Test
-	void rejectsBlankBody() {
-		PullRequestOptions.Builder builder = PullRequestOptions.builder().body("");
-		assertThrows(IllegalArgumentException.class, builder::build);
-	}
-
-	/** A caller clearing a field rather than leaving the default must not slip a null into gh's arguments. */
-	@Test
-	void rejectsANullTitleOrBody() {
-		PullRequestOptions.Builder withoutTitle = PullRequestOptions.builder().title(null);
-		assertThrows(IllegalArgumentException.class, withoutTitle::build);
-		PullRequestOptions.Builder withoutBody = PullRequestOptions.builder().body(null);
-		assertThrows(IllegalArgumentException.class, withoutBody::build);
 	}
 
 	/**
-	 * The command line and the MCP tool both map an optional input straight into the
-	 * builder, so an omitted title or body has to leave the adoption default in place
-	 * rather than blank out a field the record refuses.
+	 * The command line and the MCP tool both map an optional input straight in, so an
+	 * omitted — or explicitly blanked — title or body has to leave the adoption
+	 * default in place rather than reach {@code gh} as nothing at all.
 	 */
 	@Test
 	void keepsTheDefaultsWhenNoTitleOrBodyWasSupplied() {
-		PullRequestOptions options = PullRequestOptions.builder()
-				.titleIfPresent(null)
-				.bodyIfPresent("   ")
-				.build();
-		assertEquals(PullRequestOptions.DEFAULT_TITLE, options.title());
-		assertEquals(PullRequestOptions.DEFAULT_BODY, options.body());
-	}
-
-	@Test
-	void suppliedTitleAndBodyOverrideTheDefaults() {
-		PullRequestOptions options = PullRequestOptions.builder()
-				.titleIfPresent("Title")
-				.bodyIfPresent("Body")
-				.build();
-		assertEquals("Title", options.title());
-		assertEquals("Body", options.body());
+		assertEquals(PullRequestOptions.DEFAULT_TITLE, options(null, "   ").title());
+		assertEquals(PullRequestOptions.DEFAULT_BODY, options(null, "   ").body());
+		assertEquals(PullRequestOptions.DEFAULT_TITLE, options(" ", null).title());
+		assertEquals(PullRequestOptions.DEFAULT_BODY, options(" ", null).body());
 	}
 
 	@Test
 	void defensivelyCopiesReviewers() {
 		List<String> reviewers = new ArrayList<>(List.of("octocat"));
-		PullRequestOptions options = PullRequestOptions.builder().reviewers(reviewers).build();
+		PullRequestOptions options = new PullRequestOptions(null, null, reviewers, List.of(), List.of(), false);
 		reviewers.add("hubot");
 		assertEquals(List.of("octocat"), options.reviewers());
+	}
+
+	private PullRequestOptions options(String title, String body) {
+		return new PullRequestOptions(title, body, List.of(), List.of(), List.of(), false);
 	}
 }

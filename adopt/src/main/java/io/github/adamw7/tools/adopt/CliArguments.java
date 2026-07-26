@@ -92,11 +92,7 @@ public final class CliArguments {
 	}
 
 	public PullRequestOptions pullRequestOptions() {
-		return PullRequestOptions.builder()
-				.reviewers(reviewers).labels(labels).assignees(assignees).draft(draft)
-				.titleIfPresent(title)
-				.bodyIfPresent(body)
-				.build();
+		return new PullRequestOptions(title, body, reviewers, labels, assignees, draft);
 	}
 
 	public boolean includeAssets() {

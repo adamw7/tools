@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -16,10 +17,10 @@ import org.w3c.dom.Element;
  * untouched. A POM that already uses the {@code maven-enforcer-plugin} for other
  * rules is augmented in place rather than skipped, so the rule is still wired in.
  *
- * <p>{@link PomDocument} does the reading, appending, and verbatim writing, so
- * the existing document is preserved exactly and only the newly added elements
- * appear in the adoption commit. The rule version comes from
- * {@link EnforcerRuleVersion} and must be a release.
+ * <p>{@link PomDocument} does the reading, splicing, and verbatim writing, so the
+ * existing document is preserved exactly and only the newly added markup appears in
+ * the adoption commit. The rule version comes from {@link EnforcerRuleVersion} and
+ * must be a release.
  */
 public class PomEnforcerInstaller {
 
@@ -29,6 +30,30 @@ public class PomEnforcerInstaller {
 	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	static final String RULE_GROUP_ID = "io.github.adamw7";
 	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
+
+	/** Where a plugin belongs in a POM that does not declare the enforcer yet. */
+	private static final List<String> BUILD_PLUGINS = List.of("build", "plugins");
+
+	/**
+	 * The execution that runs the rule, bound to {@code validate} and not inherited
+	 * because {@code CLAUDE.md} lives only at the repository root.
+	 */
+	private static final String EXECUTION = """
+			<execution>
+			  <id>enforce-claude-md</id>
+			  <phase>validate</phase>
+			  <inherited>false</inherited>
+			  <goals>
+			    <goal>enforce</goal>
+			  </goals>
+			  <configuration>
+			    <rules>
+			      <claudeMdFormat>
+			        <claudeMdFile>%s</claudeMdFile>
+			      </claudeMdFormat>
+			    </rules>
+			  </configuration>
+			</execution>""".formatted(CLAUDE_MD_FILE);
 
 	private final Supplier<String> ruleVersion;
 
@@ -60,7 +85,9 @@ public class PomEnforcerInstaller {
 		if (declaresClaudeRule(pom)) {
 			return false;
 		}
-		wireEnforcer(pom, pom.pluginsElement());
+		enforcerPlugin(pom).ifPresentOrElse(
+				plugin -> augment(pom, plugin),
+				() -> pom.insertUnder(pom.root(), BUILD_PLUGINS, plugin()));
 		pom.write();
 		return true;
 	}
@@ -81,52 +108,41 @@ public class PomEnforcerInstaller {
 				.anyMatch(dependency -> PomDocument.hasArtifactId(dependency, RULE_ARTIFACT_ID));
 	}
 
-	/**
-	 * Adds the rule dependency and its {@code enforce} execution to the POM's
-	 * {@code maven-enforcer-plugin}, reusing an existing plugin declaration when
-	 * one is present so the project keeps a single enforcer plugin entry.
-	 */
-	private void wireEnforcer(PomDocument pom, Element plugins) {
-		Element plugin = findEnforcerPlugin(plugins).orElseGet(() -> createEnforcerPlugin(pom, plugins));
-		ruleDependency(pom, pom.childOrCreate(plugin, "dependencies"));
-		enforceExecution(pom, pom.childOrCreate(plugin, "executions"));
-	}
-
-	private Optional<Element> findEnforcerPlugin(Element plugins) {
-		return PomDocument.children(plugins, "plugin").stream()
+	private Optional<Element> enforcerPlugin(PomDocument pom) {
+		return pom.plugins().stream()
 				.filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
 				.findFirst();
 	}
 
-	private Element createEnforcerPlugin(PomDocument pom, Element plugins) {
-		Element plugin = pom.appendElement(plugins, "plugin");
-		pom.appendText(plugin, "groupId", ENFORCER_GROUP_ID);
-		pom.appendText(plugin, "artifactId", ENFORCER_ARTIFACT_ID);
-		pom.appendText(plugin, "version", ENFORCER_VERSION);
-		return plugin;
+	/**
+	 * Adds the rule dependency and the execution to a {@code maven-enforcer-plugin}
+	 * the project already declares — reusing its {@code dependencies} and
+	 * {@code executions} when it has them — so the project keeps a single enforcer
+	 * plugin entry and the rules it already ran keep running.
+	 */
+	private void augment(PomDocument pom, Element plugin) {
+		pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
+		pom.insertUnder(plugin, List.of("executions"), EXECUTION);
 	}
 
-	private void ruleDependency(PomDocument pom, Element dependencies) {
-		Element dependency = pom.appendElement(dependencies, "dependency");
-		pom.appendText(dependency, "groupId", RULE_GROUP_ID);
-		pom.appendText(dependency, "artifactId", RULE_ARTIFACT_ID);
-		pom.appendText(dependency, "version", ruleVersion.get());
+	/** A freshly declared enforcer plugin: pinned to a version, carrying the rule and its execution. */
+	private String plugin() {
+		return PomDocument.wrapped("plugin", String.join("\n",
+				element("groupId", ENFORCER_GROUP_ID),
+				element("artifactId", ENFORCER_ARTIFACT_ID),
+				element("version", ENFORCER_VERSION),
+				PomDocument.wrapped("dependencies", ruleDependency()),
+				PomDocument.wrapped("executions", EXECUTION)));
 	}
 
-	private void enforceExecution(PomDocument pom, Element executions) {
-		Element execution = pom.appendElement(executions, "execution");
-		pom.appendText(execution, "id", "enforce-claude-md");
-		pom.appendText(execution, "phase", "validate");
-		pom.appendText(execution, "inherited", "false");
-		Element goals = pom.appendElement(execution, "goals");
-		pom.appendText(goals, "goal", "enforce");
-		claudeMdConfiguration(pom, execution);
+	private String ruleDependency() {
+		return PomDocument.wrapped("dependency", String.join("\n",
+				element("groupId", RULE_GROUP_ID),
+				element("artifactId", RULE_ARTIFACT_ID),
+				element("version", ruleVersion.get())));
 	}
 
-	private void claudeMdConfiguration(PomDocument pom, Element execution) {
-		Element configuration = pom.appendElement(execution, "configuration");
-		Element rules = pom.appendElement(configuration, "rules");
-		Element claudeMdFormat = pom.appendElement(rules, "claudeMdFormat");
-		pom.appendText(claudeMdFormat, "claudeMdFile", CLAUDE_MD_FILE);
+	private String element(String name, String text) {
+		return "<" + name + ">" + text + "</" + name + ">";
 	}
 }

@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,12 +16,6 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -35,31 +28,33 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
 import io.github.adamw7.tools.adopt.step.XmlElementSpans.Span;
 
 /**
- * A {@code pom.xml} parsed for editing and written back without reformatting.
- * Callers append elements through {@link #appendElement} and {@link #appendText};
- * everything the file already held — every whitespace node, its XML declaration,
- * its trailing newline, and its line terminator — survives {@link #write()}
- * untouched, so the adoption commit shows only the block that was added rather
- * than a reformat of the whole file.
+ * A {@code pom.xml} read for editing and written back without reformatting.
+ * Callers find the element they want to extend with the query methods and add
+ * markup under it with {@link #insertUnder}; everything the file already held —
+ * every whitespace character, its XML declaration, its trailing newline, and its
+ * line terminator — survives {@link #write()} untouched, so the adoption commit
+ * shows only the block that was added rather than a reformat of the whole file.
  *
- * <p>Only the added elements are serialised, and their text is spliced into the
- * bytes the file already held. Writing the edited DOM out whole cannot keep that
- * promise however carefully the serialiser is configured, because the details it
- * would reformat are not in the DOM to begin with: a start tag spread over several
- * lines and an empty element written {@code <rule />} both come back normalised,
- * turning a fourteen-line addition into a diff that touches the whole file. The
- * source offsets the splice needs come from {@link XmlElementSpans}.
+ * <p>The DOM is only ever read: it answers which elements the POM declares and how
+ * they nest, while the edit itself is text spliced into the bytes the file already
+ * held. Writing an edited DOM out whole cannot keep the promise above however
+ * carefully the serialiser is configured, because the details it would reformat are
+ * not in the DOM to begin with: a start tag spread over several lines and an empty
+ * element written {@code <rule />} both come back normalised, turning a fourteen-line
+ * addition into a diff that touches the whole file. The source offsets the splice
+ * needs come from {@link XmlElementSpans}. Keeping the edit textual also means added
+ * elements simply inherit the POM's default namespace rather than having to be
+ * qualified — and a POM that declares none stays namespace-free.
  *
- * <p>Each appended element is preceded by a newline and an indentation matching
- * the document's own unit (detected from the file, defaulting to two spaces), and
- * is inserted after the parent's last child so the parent's own closing
- * indentation stays put. Every container is attached to its parent before its
- * children are added, so an element's depth — and therefore its indentation — is
- * known as soon as it is appended. The edit runs on the JDK's namespace-aware DOM,
- * so no third-party XML library is needed and new elements join the POM's default
- * namespace.
+ * <p>Added markup arrives one element per line, indented by {@link #FRAGMENT_INDENT}
+ * per nesting level, and is re-indented to the document's own unit (detected from
+ * the file, defaulting to two spaces) at the depth it lands at. It is inserted after
+ * the parent's last child, so the parent's own closing indentation stays put.
  */
 final class PomDocument {
+
+	/** The indentation one nesting level of a caller's fragment is written with. */
+	static final String FRAGMENT_INDENT = "  ";
 
 	private static final String DEFAULT_INDENT_UNIT = "  ";
 	private static final String DESCRIPTION = "POM";
@@ -71,22 +66,22 @@ final class PomDocument {
 	private final Path file;
 	private final String original;
 	private final Document document;
-	private final String namespace;
 	private final String indentUnit;
 
 	/**
-	 * Where each element the file already carried sits in it. An element absent from
-	 * this map is one the caller appended, which is what makes the added subtrees
-	 * identifiable at {@link #write()} time without the callers having to declare
-	 * them.
+	 * Where each element the file carries sits in it, so an edit can be spliced beside
+	 * it. Paired by document order: a pre-order DOM walk and the lexical scan visit the
+	 * same elements in the same sequence.
 	 */
 	private final Map<Element, Span> spans;
+
+	/** The markup to add inside each element, in fragment indentation, awaiting {@link #write()}. */
+	private final Map<Element, String> additions = new IdentityHashMap<>();
 
 	private PomDocument(Path file, String original, Document document) {
 		this.file = file;
 		this.original = original;
 		this.document = document;
-		this.namespace = document.getDocumentElement().getNamespaceURI();
 		this.indentUnit = detectIndentUnit(document.getDocumentElement());
 		this.spans = spansOf(document, original);
 	}
@@ -95,37 +90,20 @@ final class PomDocument {
 		return new PomDocument(file, AdoptionFiles.read(file, DESCRIPTION), parse(file));
 	}
 
-	/** The {@code build/plugins} element, creating either level when the POM lacks it. */
-	Element pluginsElement() {
-		Element build = childOrCreate(document.getDocumentElement(), "build");
-		return childOrCreate(build, "plugins");
+	Element root() {
+		return document.getDocumentElement();
 	}
 
 	/**
 	 * Every {@code plugin} the POM declares, wherever it sits: the build, plugin
-	 * management, or a profile. A project can wire a plugin somewhere other than
-	 * {@link #pluginsElement()} — behind an opt-in profile, most often — and a check
-	 * that only looked there would conclude the plugin is absent and add a second
-	 * declaration of it.
+	 * management, or a profile. A project can wire a plugin somewhere other than its
+	 * build — behind an opt-in profile, most often — and a check that only looked there
+	 * would conclude the plugin is absent and add a second declaration of it.
 	 */
 	List<Element> plugins() {
-		return preOrder(document.getDocumentElement()).stream()
+		return preOrder(root()).stream()
 				.filter(element -> "plugin".equals(element.getLocalName()))
 				.toList();
-	}
-
-	Element childOrCreate(Element parent, String name) {
-		return child(parent, name).orElseGet(() -> appendElement(parent, name));
-	}
-
-	Element appendElement(Element parent, String name) {
-		return appendChild(parent, create(name));
-	}
-
-	void appendText(Element parent, String name, String text) {
-		Element element = create(name);
-		element.setTextContent(text);
-		appendChild(parent, element);
 	}
 
 	static Optional<Element> child(Element parent, String name) {
@@ -139,7 +117,7 @@ final class PomDocument {
 				.toList();
 	}
 
-	/** @return the element's {@code artifactId} text, when it declares one */
+	/** @return whether the element declares exactly this {@code artifactId} */
 	static boolean hasArtifactId(Element element, String artifactId) {
 		return child(element, "artifactId")
 				.map(Element::getTextContent)
@@ -148,58 +126,73 @@ final class PomDocument {
 				.isPresent();
 	}
 
+	/** @return {@code body} wrapped in a {@code name} element, its lines indented one level deeper */
+	static String wrapped(String name, String body) {
+		return "<" + name + ">\n" + indented(body) + "\n</" + name + ">";
+	}
+
 	/**
-	 * Writes the original text back with the added subtrees spliced into it, so
-	 * every byte the file already held — its XML declaration, its attribute layout,
-	 * its empty-element style, its trailing newline — is preserved by construction
-	 * rather than by a serialiser that has to be talked out of reformatting. A POM
-	 * nothing was appended to is written back unchanged.
+	 * Adds {@code fragment} inside {@code parent}'s nested {@code path}, creating
+	 * whichever of those levels the POM does not carry yet — so a POM with no
+	 * {@code build} at all and one that already has {@code build/plugins} are the same
+	 * call. Nothing is written until {@link #write()}.
+	 */
+	void insertUnder(Element parent, List<String> path, String fragment) {
+		if (path.isEmpty()) {
+			additions.merge(parent, fragment, (existing, added) -> existing + "\n" + added);
+			return;
+		}
+		List<String> rest = path.subList(1, path.size());
+		child(parent, path.get(0)).ifPresentOrElse(
+				element -> insertUnder(element, rest, fragment),
+				() -> insertUnder(parent, List.of(), wrap(path, fragment)));
+	}
+
+	/**
+	 * Writes the original text back with the added markup spliced into it, so every
+	 * byte the file already held — its XML declaration, its attribute layout, its
+	 * empty-element style, its trailing newline — is preserved by construction rather
+	 * than by a serialiser that has to be talked out of reformatting. A POM nothing was
+	 * added to is written back unchanged.
 	 *
 	 * <p>The edits are applied last-first so that each one's offsets, taken from the
 	 * unmodified text, are still correct when it is applied.
 	 */
 	void write() {
 		StringBuilder content = new StringBuilder(original);
-		edits().stream()
+		additions.entrySet().stream()
+				.map(addition -> edit(addition.getKey(), addition.getValue()))
 				.sorted(Comparator.comparingInt(Edit::start).reversed())
 				.forEach(edit -> content.replace(edit.start(), edit.end(), edit.replacement()));
 		AdoptionFiles.write(file, content.toString(), DESCRIPTION);
 	}
 
-	/** One edit per element of the original document that was appended to. */
-	private List<Edit> edits() {
-		return preOrder(document.getDocumentElement()).stream()
-				.filter(spans::containsKey)
-				.map(this::editFor)
-				.flatMap(Optional::stream)
-				.toList();
-	}
-
-	private Optional<Edit> editFor(Element parent) {
-		List<Element> added = elementChildren(parent).stream().filter(child -> !spans.containsKey(child)).toList();
-		if (added.isEmpty()) {
-			return Optional.empty();
+	/** @return {@code fragment} wrapped in the named elements, outermost first */
+	private static String wrap(List<String> names, String fragment) {
+		String wrapped = fragment;
+		for (String name : names.reversed()) {
+			wrapped = wrapped(name, wrapped);
 		}
-		return Optional.of(edit(parent, added.stream().map(this::fragmentOf).collect(Collectors.joining())));
+		return wrapped;
 	}
 
-	/** The added subtree's text, indented to its own depth the way the DOM path indented it. */
-	private String fragmentOf(Element added) {
-		return newlineIndent(depthOf(added)) + serialize(added);
+	private static String indented(String fragment) {
+		return fragment.lines().map(line -> FRAGMENT_INDENT + line).collect(Collectors.joining("\n"));
 	}
 
 	/**
-	 * Where the fragment goes. An element that already had children takes it after
-	 * the last of them, leaving the whitespace before the end tag — and so that
-	 * tag's indentation — exactly as it was. An element that was empty or held only
-	 * whitespace has that content replaced instead, because there is no last child
-	 * to follow and its end tag needs indenting onto a line of its own; an element
-	 * written {@code <plugins/>} additionally has to grow an end tag to hold the
-	 * fragment at all.
+	 * Where the markup goes. An element that already had children takes it after the
+	 * last of them, leaving the whitespace before the end tag — and so that tag's
+	 * indentation — exactly as it was. An element that was empty or held only
+	 * whitespace has that content replaced instead, because there is no last child to
+	 * follow and its end tag needs indenting onto a line of its own; an element written
+	 * {@code <plugins/>} additionally has to grow an end tag to hold the markup at all.
 	 */
-	private Edit edit(Element parent, String fragment) {
+	private Edit edit(Element parent, String addition) {
 		Span span = spans.get(parent);
-		String closingIndent = newlineIndent(depthOf(parent));
+		int depth = depthOf(parent);
+		String fragment = fragment(addition, depth + 1);
+		String closingIndent = newlineIndent(depth);
 		if (span.selfClosing()) {
 			return edit(span.tagStart(), span.contentStart(),
 					reopened(span) + fragment + closingIndent + endTag(parent));
@@ -212,9 +205,24 @@ final class PomDocument {
 	}
 
 	/**
-	 * XML parsing normalises {@code \r\n} to {@code \n}, so a serialised fragment is
-	 * always LF; {@link LineTerminators} puts the file's own terminator back rather
-	 * than leaving LF lines in an otherwise CRLF POM.
+	 * The addition's lines, each on a line of its own indented to {@code depth} plus
+	 * its own nesting within the fragment, in the document's indentation unit rather
+	 * than the fragment's.
+	 */
+	private String fragment(String addition, int depth) {
+		return addition.lines()
+				.map(line -> newlineIndent(depth + levelOf(line)) + line.stripLeading())
+				.collect(Collectors.joining());
+	}
+
+	private int levelOf(String line) {
+		return (line.length() - line.stripLeading().length()) / FRAGMENT_INDENT.length();
+	}
+
+	/**
+	 * A fragment is always LF — XML parsing normalises {@code \r\n} to {@code \n} and
+	 * the templates are written with LF — so {@link LineTerminators} puts the file's own
+	 * terminator back rather than leaving LF lines in an otherwise CRLF POM.
 	 */
 	private Edit edit(int start, int end, String replacement) {
 		return new Edit(start, end, LineTerminators.matching(replacement, original));
@@ -238,12 +246,6 @@ final class PomDocument {
 		return end;
 	}
 
-	/**
-	 * Pairs each element the file carried with its place in the text by document
-	 * order: a pre-order DOM walk and the lexical scan visit the same elements in
-	 * the same sequence, so the two lists line up index for index without having to
-	 * match names or attributes.
-	 */
 	private static Map<Element, Span> spansOf(Document document, String original) {
 		List<Element> elements = preOrder(document.getDocumentElement());
 		List<Span> spans = XmlElementSpans.of(original);
@@ -276,31 +278,8 @@ final class PomDocument {
 		return IntStream.range(0, nodes.getLength()).mapToObj(nodes::item);
 	}
 
-	private Element appendChild(Element parent, Element child) {
-		Node closingIndent = trailingWhitespace(parent);
-		Node childIndent = document.createTextNode(newlineIndent(depthOf(parent) + 1));
-		if (closingIndent == null) {
-			parent.appendChild(childIndent);
-			parent.appendChild(child);
-			parent.appendChild(document.createTextNode(newlineIndent(depthOf(parent))));
-		} else {
-			parent.insertBefore(childIndent, closingIndent);
-			parent.insertBefore(child, closingIndent);
-		}
-		return child;
-	}
-
 	private String newlineIndent(int depth) {
 		return "\n" + indentUnit.repeat(depth);
-	}
-
-	private Element create(String name) {
-		return namespace == null ? document.createElement(name) : document.createElementNS(namespace, name);
-	}
-
-	private static Node trailingWhitespace(Element parent) {
-		Node last = parent.getLastChild();
-		return isWhitespaceText(last) ? last : null;
 	}
 
 	private static int depthOf(Node node) {
@@ -361,42 +340,6 @@ final class PomDocument {
 		} catch (ParserConfigurationException e) {
 			throw new AdoptionException("Could not configure XML parser", e);
 		}
-	}
-
-	private String serialize(Element element) {
-		try {
-			StringWriter writer = new StringWriter();
-			transformer().transform(new DOMSource(element), new StreamResult(writer));
-			return withoutRepeatedNamespace(writer.toString());
-		} catch (TransformerException e) {
-			throw new AdoptionException("Could not write POM: " + file, e);
-		}
-	}
-
-	/**
-	 * Serialising a subtree on its own leaves the serialiser no way to know the
-	 * POM's root already declares the default namespace, so it restates it and the
-	 * added block would read {@code <build xmlns="http://maven.apache.org/POM/4.0.0">}.
-	 * The fragment is spliced back under that root, which still carries the
-	 * declaration, so the repeat is dropped. Only the fragment's own root can carry
-	 * it — its descendants inherit it — so only the first occurrence is removed.
-	 */
-	private String withoutRepeatedNamespace(String fragment) {
-		if (namespace == null) {
-			return fragment;
-		}
-		String declaration = " xmlns=\"" + namespace + "\"";
-		int at = fragment.indexOf(declaration);
-		return at < 0 ? fragment : fragment.substring(0, at) + fragment.substring(at + declaration.length());
-	}
-
-	private static Transformer transformer() throws TransformerException {
-		TransformerFactory factory = TransformerFactory.newInstance();
-		factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-		Transformer transformer = factory.newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "no");
-		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-		return transformer;
 	}
 
 }

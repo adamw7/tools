@@ -61,11 +61,6 @@ public class GitHubRepoAdopter {
 		this.steps = List.copyOf(steps);
 	}
 
-	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
-			boolean includeAssets) {
-		return withDefaultPipeline(runner, options, includeAssets, Optional.empty());
-	}
-
 	/**
 	 * @param ruleVersion the released {@code claude-code-enforcer} version a Maven
 	 *                    project's POM should pin, or empty to resolve the version of
@@ -76,10 +71,6 @@ public class GitHubRepoAdopter {
 		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets, ruleVersion));
 	}
 
-	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets) {
-		return defaultSteps(options, includeAssets, Optional.empty());
-	}
-
 	/**
 	 * The three steps that act on the checkout's build system are given the same
 	 * build-system list, so the guard that is wired in is the guard that is verified
@@ -87,7 +78,7 @@ public class GitHubRepoAdopter {
 	 */
 	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets,
 			Optional<String> ruleVersion) {
-		List<BuildSystem> buildSystems = BuildSystems.withRuleVersion(ruleVersion);
+		List<BuildSystem> buildSystems = BuildSystems.defaults(ruleVersion);
 		List<AdoptionStep> steps = new ArrayList<>(List.of(
 				new ToolchainStep(),
 				new CloneStep(),
@@ -107,10 +98,6 @@ public class GitHubRepoAdopter {
 		steps.add(new PushStep());
 		steps.add(new PullRequestStep(options));
 		return List.copyOf(steps);
-	}
-
-	public AdoptionReport adopt(AdoptionContext context) {
-		return adopt(context, new AdoptionReport());
 	}
 
 	/**

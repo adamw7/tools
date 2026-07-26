@@ -1,8 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -13,6 +12,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import io.github.adamw7.tools.adopt.AdoptionException;
 
 class BuildSystemsTest {
 
@@ -95,23 +96,24 @@ class BuildSystemsTest {
 		assertEquals(Optional.of("gradle"), gradle.requiredTool());
 	}
 
+	/**
+	 * Pinning a version changes what Maven wires in, never which build systems are
+	 * probed or in which order.
+	 */
 	@Test
-	void withNoRuleVersionTheDefaultsAreUsedAsIs() {
-		assertEquals(BuildSystems.DEFAULTS, BuildSystems.withRuleVersion(Optional.empty()));
+	void theDetectionOrderIsTheSameWhateverTheRuleVersion() {
+		assertEquals(BuildSystems.names(BuildSystems.DEFAULTS),
+				BuildSystems.names(BuildSystems.defaults(Optional.of("2.6.0"))));
 	}
 
 	/**
-	 * Only Maven wires a versioned artifact into the adopted project, so pinning a
-	 * version changes that entry and leaves the detection order — and the other two
-	 * build systems — as they were.
+	 * A snapshot could not be resolved by the adopted project's CI, so it is refused
+	 * while the pipeline is still being assembled rather than after a clone and a
+	 * {@code claude init}.
 	 */
 	@Test
-	void anExplicitRuleVersionReplacesOnlyTheMavenBuildSystem() {
-		List<BuildSystem> pinned = BuildSystems.withRuleVersion(Optional.of("2.6.0"));
-		assertEquals(BuildSystems.names(BuildSystems.DEFAULTS), BuildSystems.names(pinned));
-		assertNotSame(BuildSystems.DEFAULTS.get(0), pinned.get(0), "Maven must be rebuilt around the pinned version");
-		assertSame(BuildSystems.DEFAULTS.get(1), pinned.get(1), "Gradle needs no version and must be reused");
-		assertSame(BuildSystems.DEFAULTS.get(2), pinned.get(2), "the fallback needs no version and must be reused");
+	void aSnapshotRuleVersionIsRejectedAsTheBuildSystemsAreBuilt() {
+		assertThrows(AdoptionException.class, () -> BuildSystems.defaults(Optional.of("2.6.0-SNAPSHOT")));
 	}
 
 	/**

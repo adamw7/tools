@@ -57,11 +57,11 @@ public class ClaudeMdConformer {
 	 */
 	public String conform(String content) {
 		List<String> lines = splitLines(content);
-		lines = closeUnterminatedFence(lines);
-		lines = ensureTitle(lines);
-		lines = canonicalizeHeadings(lines);
-		lines = ensureRequiredSections(lines);
-		lines = ensureAgentsReference(lines);
+		closeUnterminatedFence(lines);
+		ensureTitle(lines);
+		canonicalizeHeadings(lines);
+		ensureRequiredSections(lines);
+		ensureAgentsReference(lines);
 		return join(lines);
 	}
 
@@ -75,37 +75,27 @@ public class ClaudeMdConformer {
 	 * opened with — so everything appended below lands outside the block. A document
 	 * whose fences balance is returned untouched, keeping the reshape idempotent.
 	 */
-	private List<String> closeUnterminatedFence(List<String> lines) {
+	private void closeUnterminatedFence(List<String> lines) {
 		String open = scanFences(lines).openAtEnd();
-		if (open == null) {
-			return lines;
+		if (open != null) {
+			lines.add(open);
 		}
-		List<String> result = new ArrayList<>(lines);
-		result.add(open);
-		return result;
 	}
 
-	private List<String> ensureTitle(List<String> lines) {
-		if (TITLE.equals(firstNonBlank(lines))) {
-			return lines;
+	private void ensureTitle(List<String> lines) {
+		if (!TITLE.equals(firstNonBlank(lines))) {
+			lines.addAll(0, List.of(TITLE, ""));
 		}
-		List<String> result = new ArrayList<>(List.of(TITLE, ""));
-		result.addAll(lines);
-		return result;
 	}
 
 	private String firstNonBlank(List<String> lines) {
 		return lines.stream().map(String::strip).filter(line -> !line.isEmpty()).findFirst().orElse("");
 	}
 
-	private List<String> canonicalizeHeadings(List<String> lines) {
-		List<String> result = new ArrayList<>(lines);
-		boolean[] fence = fenceMask(result);
-		Set<Integer> claimed = reservedHeadings(result, fence);
-		for (String required : REQUIRED_SECTIONS) {
-			canonicalize(result, fence, required, claimed);
-		}
-		return result;
+	private void canonicalizeHeadings(List<String> lines) {
+		boolean[] fence = fenceMask(lines);
+		Set<Integer> claimed = reservedHeadings(lines, fence);
+		REQUIRED_SECTIONS.forEach(required -> canonicalize(lines, fence, required, claimed));
 	}
 
 	/**
@@ -155,12 +145,8 @@ public class ClaudeMdConformer {
 	 * near-miss renamed in place above — has one inserted beneath it. The rule fails
 	 * an empty section just as it fails a missing one, so both are settled here.
 	 */
-	private List<String> ensureRequiredSections(List<String> lines) {
-		List<String> result = new ArrayList<>(lines);
-		for (String required : REQUIRED_SECTIONS) {
-			ensureSection(result, required);
-		}
-		return result;
+	private void ensureRequiredSections(List<String> lines) {
+		REQUIRED_SECTIONS.forEach(required -> ensureSection(lines, required));
 	}
 
 	/**
@@ -201,14 +187,11 @@ public class ClaudeMdConformer {
 		return (int) heading.chars().takeWhile(character -> character == '#').count();
 	}
 
-	private List<String> ensureAgentsReference(List<String> lines) {
+	private void ensureAgentsReference(List<String> lines) {
 		boolean[] fence = fenceMask(lines);
-		if (matchesOutsideFences(lines, fence, line -> line.contains(AGENTS_REFERENCE)).findAny().isPresent()) {
-			return lines;
+		if (matchesOutsideFences(lines, fence, line -> line.contains(AGENTS_REFERENCE)).findAny().isEmpty()) {
+			lines.addAll(titleIndex(lines, fence) + 1, List.of("", AGENTS_REFERENCE_LINE, ""));
 		}
-		List<String> result = new ArrayList<>(lines);
-		result.addAll(titleIndex(result, fence) + 1, List.of("", AGENTS_REFERENCE_LINE, ""));
-		return result;
 	}
 
 	/**

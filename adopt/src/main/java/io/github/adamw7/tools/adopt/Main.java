@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -64,11 +63,7 @@ public class Main {
 
 	/** Every repository of a run is adopted into one workspace, on one branch name. */
 	static List<AdoptionContext> contexts(CliArguments cli) {
-		return Checkouts.forRun(cli.repositoryUrls(), workspace(cli), cli.branchName());
-	}
-
-	static Path workspace(CliArguments cli) {
-		return Workspaces.resolve(cli.workspace());
+		return Checkouts.forRun(cli.repositoryUrls(), Workspaces.resolve(cli.workspace()), cli.branchName());
 	}
 
 	/**

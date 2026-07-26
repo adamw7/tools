@@ -15,33 +15,24 @@ import java.util.stream.Collectors;
  */
 public final class BuildSystems {
 
-	/**
-	 * Maven first, then Gradle, then the catch-all fallback: the order the checkout
-	 * is probed in. The fallback stays last so a real build tool is always preferred
-	 * when its build file is present.
-	 */
-	public static final List<BuildSystem> DEFAULTS = List.of(new MavenBuildSystem(), new GradleBuildSystem(),
-			new FallbackBuildSystem());
+	/** The set every step falls back to, resolving the rule version of the running build. */
+	public static final List<BuildSystem> DEFAULTS = defaults(Optional.empty());
 
 	private BuildSystems() {
 	}
 
 	/**
-	 * The default set, each build system pinning an explicitly supplied
-	 * {@code claude-code-enforcer} version rather than resolving the version of the
-	 * {@code tools} build running the adoption. Which of them that changes is left to
-	 * {@link BuildSystem#withRuleVersion}: in practice only Maven wires a versioned
-	 * artifact in, and the others answer with themselves.
+	 * Maven first, then Gradle, then the catch-all fallback: the order the checkout
+	 * is probed in. The fallback stays last so a real build tool is always preferred
+	 * when its build file is present. Only Maven wires a versioned artifact into the
+	 * adopted project, so it is the only one the rule version reaches.
 	 *
-	 * @param ruleVersion the released rule version to pin, or empty to resolve the
-	 *                    running build's own
+	 * @param ruleVersion the released {@code claude-code-enforcer} version to pin, or
+	 *                    empty to resolve the version of the {@code tools} build
+	 *                    running the adoption
 	 */
-	public static List<BuildSystem> withRuleVersion(Optional<String> ruleVersion) {
-		return ruleVersion.map(BuildSystems::pinnedTo).orElse(DEFAULTS);
-	}
-
-	private static List<BuildSystem> pinnedTo(String ruleVersion) {
-		return DEFAULTS.stream().map(candidate -> candidate.withRuleVersion(ruleVersion)).toList();
+	public static List<BuildSystem> defaults(Optional<String> ruleVersion) {
+		return List.of(new MavenBuildSystem(ruleVersion), new GradleBuildSystem(), new FallbackBuildSystem());
 	}
 
 	public static Optional<BuildSystem> detect(List<BuildSystem> candidates, Path repositoryDirectory) {

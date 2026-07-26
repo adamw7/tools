@@ -49,11 +49,6 @@ class AssetInstallerTest {
 	}
 
 	@Test
-	void exposesItsRelativePath() {
-		assertEquals("a/file.txt", new AssetInstaller("a/file.txt", "content\n").relativePath());
-	}
-
-	@Test
 	void failsWithAdoptionExceptionWhenTheAssetCannotBeWritten(@TempDir Path checkout) throws IOException {
 		Files.createFile(checkout.resolve("blocking"));
 		AssetInstaller installer = new AssetInstaller("blocking/file.txt", "content\n");

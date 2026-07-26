@@ -20,15 +20,7 @@ public class FallbackBuildSystem implements BuildSystem {
 
 	static final List<String> VERIFY_COMMAND = List.of("sh", WorkflowGuardInstaller.SCRIPT_FILE);
 
-	private final WorkflowGuardInstaller installer;
-
-	public FallbackBuildSystem() {
-		this(new WorkflowGuardInstaller());
-	}
-
-	public FallbackBuildSystem(WorkflowGuardInstaller installer) {
-		this.installer = installer;
-	}
+	private final WorkflowGuardInstaller installer = new WorkflowGuardInstaller();
 
 	@Override
 	public String name() {

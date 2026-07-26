@@ -33,20 +33,6 @@ public interface BuildSystem {
 	List<String> verifyCommand();
 
 	/**
-	 * The same build system, pinning an explicitly supplied
-	 * {@code claude-code-enforcer} version into whatever it wires in. Only a build
-	 * system that wires in a versioned artifact of its own has anything to pin — the
-	 * Gradle and fallback guards are self-contained — so the default is to answer
-	 * with this build system unchanged, and a new implementation opts in by
-	 * overriding rather than by being named in a check elsewhere.
-	 *
-	 * @param ruleVersion a released rule version
-	 */
-	default BuildSystem withRuleVersion(String ruleVersion) {
-		return this;
-	}
-
-	/**
 	 * The program {@link #verifyCommand()} launches, so {@link BuildToolchainStep}
 	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
 	 * will not be able to verify. The verification launches the first word of its

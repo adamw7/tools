@@ -27,21 +27,12 @@ public class AdoptionReportWriter {
 
 	private final ObjectMapper mapper = new ObjectMapper();
 
-	/** Renders a single repository's outcome, the shape nested in a batch document. */
-	public String toJson(AdoptionContext context, AdoptionReport report) {
-		return toJson(List.of(new AdoptionRun(context, report)));
-	}
-
 	public String toJson(List<AdoptionRun> runs) {
 		try {
 			return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(toNode(runs));
 		} catch (JsonProcessingException e) {
 			throw new AdoptionException("Could not serialise the adoption report", e);
 		}
-	}
-
-	public void write(Path file, AdoptionContext context, AdoptionReport report) {
-		write(file, List.of(new AdoptionRun(context, report)));
 	}
 
 	public void write(Path file, List<AdoptionRun> runs) {

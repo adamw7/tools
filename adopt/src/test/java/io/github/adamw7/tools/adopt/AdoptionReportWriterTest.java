@@ -31,7 +31,7 @@ class AdoptionReportWriterTest {
 		report.recordStep("clone");
 		report.recordStep("pull-request");
 		report.recordPullRequestUrl(PR_URL);
-		JsonNode node = mapper.readTree(writer.toJson(context, report));
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context, report))));
 		assertEquals("https://github.com/owner/repo.git", node.get("repositoryUrl").asText());
 		assertEquals("claude/adopt-claude-code", node.get("branch").asText());
 		assertEquals(PR_URL, node.get("pullRequestUrl").asText());
@@ -41,7 +41,7 @@ class AdoptionReportWriterTest {
 
 	@Test
 	void serialisesAMissingPullRequestUrlAsNull() throws IOException {
-		JsonNode node = mapper.readTree(writer.toJson(context, new AdoptionReport()));
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context))));
 		assertTrue(node.get("pullRequestUrl").isNull());
 		assertTrue(node.get("completedSteps").isEmpty());
 	}
@@ -50,7 +50,7 @@ class AdoptionReportWriterTest {
 	void serialisesASuccessfulRunAsSucceededWithNoFailure() throws IOException {
 		AdoptionReport report = new AdoptionReport();
 		report.recordStep("clone");
-		JsonNode node = mapper.readTree(writer.toJson(context, report));
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context, report))));
 		assertTrue(node.get("succeeded").asBoolean());
 		assertTrue(node.get("failure").isNull());
 	}
@@ -65,7 +65,7 @@ class AdoptionReportWriterTest {
 		AdoptionReport report = new AdoptionReport();
 		report.recordStep("clone");
 		report.recordFailure("push: the requested URL returned error: 403");
-		JsonNode node = mapper.readTree(writer.toJson(context, report));
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context, report))));
 		assertFalse(node.get("succeeded").asBoolean());
 		assertEquals("push: the requested URL returned error: 403", node.get("failure").asText());
 		assertEquals("clone", node.get("completedSteps").get(0).asText());
@@ -117,7 +117,7 @@ class AdoptionReportWriterTest {
 		Path file = dir.resolve("nested/report.json");
 		AdoptionReport report = new AdoptionReport();
 		report.recordPullRequestUrl(PR_URL);
-		writer.write(file, context, report);
+		writer.write(file, List.of(run(context, report)));
 		JsonNode node = mapper.readTree(Files.readString(file));
 		assertEquals(PR_URL, node.get("pullRequestUrl").asText());
 	}
@@ -126,7 +126,7 @@ class AdoptionReportWriterTest {
 	void failsWithAdoptionExceptionWhenTheFileCannotBeWritten(@TempDir Path dir) throws IOException {
 		Path blockingFile = Files.createFile(dir.resolve("not-a-directory"));
 		Path file = blockingFile.resolve("report.json");
-		assertThrows(AdoptionException.class, () -> writer.write(file, context, new AdoptionReport()));
+		assertThrows(AdoptionException.class, () -> writer.write(file, List.of(run(context))));
 	}
 
 	private AdoptionContext other() {

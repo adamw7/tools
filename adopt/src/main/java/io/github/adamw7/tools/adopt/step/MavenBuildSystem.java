@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.step;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Maven support for the adoption: detects a {@code pom.xml}, wires the
@@ -21,6 +22,15 @@ public class MavenBuildSystem implements BuildSystem {
 
 	public MavenBuildSystem() {
 		this(new PomEnforcerInstaller());
+	}
+
+	/**
+	 * @param ruleVersion the released {@code claude-code-enforcer} version to pin into
+	 *                    the adopted POM, or empty to resolve the version of the
+	 *                    {@code tools} build running the adoption
+	 */
+	public MavenBuildSystem(Optional<String> ruleVersion) {
+		this(ruleVersion.<PomEnforcerInstaller>map(PomEnforcerInstaller::new).orElseGet(PomEnforcerInstaller::new));
 	}
 
 	public MavenBuildSystem(PomEnforcerInstaller installer) {
@@ -45,14 +55,5 @@ public class MavenBuildSystem implements BuildSystem {
 	@Override
 	public List<String> verifyCommand() {
 		return VERIFY_COMMAND;
-	}
-
-	/**
-	 * Maven is the one build system that wires a versioned artifact into the adopted
-	 * project, so it is the one that has a version to pin.
-	 */
-	@Override
-	public BuildSystem withRuleVersion(String ruleVersion) {
-		return new MavenBuildSystem(new PomEnforcerInstaller(ruleVersion));
 	}
 }

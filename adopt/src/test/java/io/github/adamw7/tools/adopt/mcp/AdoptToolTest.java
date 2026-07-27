@@ -207,15 +207,18 @@ class AdoptToolTest {
 	}
 
 	/**
-	 * The collision is refused before anything is cloned, so no repository of the call
-	 * is adopted on the strength of another one's checkout.
+	 * The second of two repositories that would share a checkout is refused, so
+	 * neither is adopted on the strength of the other's working tree. The refusal is
+	 * that repository's own — the first is adopted as asked — and the call answers
+	 * with an error result naming which of the two did not land.
 	 */
 	@Test
-	void rejectsAListWhoseRepositoriesShareACheckoutDirectory() {
-		Map<String, Object> arguments = Map.of("repository_urls",
-				List.of("https://github.com/owner/tools.git", "https://github.com/other-owner/tools.git"));
-		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
-		assertTrue(pipeline.contexts.isEmpty());
+	void rejectsTheSecondOfTwoRepositoriesSharingACheckoutDirectory() {
+		ToolResult result = tool.apply(Map.of("repository_urls",
+				List.of("https://github.com/owner/tools.git", "https://github.com/other-owner/tools.git")));
+		assertTrue(result.isError());
+		assertEquals(List.of("https://github.com/owner/tools.git"),
+				pipeline.contexts.stream().map(AdoptionContext::repositoryUrl).toList());
 	}
 
 	@Test

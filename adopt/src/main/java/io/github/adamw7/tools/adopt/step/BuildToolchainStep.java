@@ -44,19 +44,26 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 	@Override
 	protected void onDetected(BuildSystem buildSystem, AdoptionContext context, CommandRunner runner) {
 		Path repositoryDirectory = context.repositoryDirectory();
-		buildSystem.requiredTool().ifPresentOrElse(
-				tool -> requireInstalled(tool, buildSystem, repositoryDirectory, runner),
+		buildSystem.requiredTool(repositoryDirectory).ifPresentOrElse(
+				tool -> requireRunnable(tool, buildSystem, repositoryDirectory, runner),
 				() -> log.info("The {} guard needs no build tool of its own in {}", buildSystem.name(),
 						repositoryDirectory));
 	}
 
-	private void requireInstalled(String tool, BuildSystem buildSystem, Path repositoryDirectory,
+	/**
+	 * The tool probed is whatever the verification will launch, which for a checkout
+	 * shipping a build wrapper is that wrapper rather than a program on the
+	 * {@code PATH} — so the failure says the tool could not be run rather than that
+	 * it was not installed, which for a wrapper present but unusable would be wrong.
+	 */
+	private void requireRunnable(String tool, BuildSystem buildSystem, Path repositoryDirectory,
 			CommandRunner runner) {
 		if (probe.isInstalled(tool, repositoryDirectory, runner)) {
 			return;
 		}
 		throw new AdoptionException(name() + " failed: " + repositoryDirectory + " builds with "
-				+ buildSystem.name() + " but " + tool + " was not found on the PATH, so the CLAUDE.md guard"
-				+ " could not be verified.");
+				+ buildSystem.name() + " but " + tool + " could not be run, so the CLAUDE.md guard"
+				+ " could not be verified. Install " + buildSystem.name() + " on the PATH, or commit the"
+				+ " project's build wrapper.");
 	}
 }

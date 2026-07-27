@@ -92,7 +92,7 @@ class MultiRepoAdoptionIT {
 		CliArguments cli = parse("--repo", HELLO_WORLD, "--repo", SPOON_KNIFE,
 				"--workspace", workspace.toString(), "--branch", BRANCH, "--report", report.toString());
 
-		List<AdoptionRun> runs = Main.runAndReport(cli, Main.contexts(cli), cloneOnlyAdopter());
+		List<AdoptionRun> runs = Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter());
 
 		assertEquals(List.of(HELLO_WORLD, SPOON_KNIFE), runs.stream().map(AdoptionRun::repositoryUrl).toList());
 		assertTrue(runs.stream().allMatch(AdoptionRun::succeeded), () -> failures(runs));
@@ -113,10 +113,8 @@ class MultiRepoAdoptionIT {
 		Path report = reports.resolve("partial.json");
 		CliArguments cli = parse("--repos", listFile(HELLO_WORLD, MISSING, SPOON_KNIFE).toString(),
 				"--workspace", workspace.toString(), "--branch", BRANCH, "--report", report.toString());
-		List<AdoptionContext> contexts = Main.contexts(cli);
-
 		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, contexts, cloneOnlyAdopter()));
+				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
 
 		assertTrue(failure.getMessage().contains("1 of 3 repositories"), failure.getMessage());
 		assertTrue(failure.getMessage().contains(MISSING), failure.getMessage());
@@ -131,20 +129,42 @@ class MultiRepoAdoptionIT {
 	/**
 	 * GitHub offers a repository's HTTPS and SSH URLs side by side, so a list
 	 * assembled by pasting from both names one repository twice in two forms. They
-	 * are not duplicates as text, and they claim one checkout directory — the run
-	 * must be refused on its input rather than adopt the repository twice, with
-	 * nothing cloned by the time it is.
+	 * are not duplicates as text, and they claim one checkout directory — so the
+	 * second is refused rather than adopting the repository twice. The refusal costs
+	 * that URL alone: the first is cloned and adopted as asked.
 	 */
 	@Test
-	void refusesTwoRealUrlsForOneRepositoryBeforeCloningAnything() throws IOException {
+	void refusesTheSecondOfTwoRealUrlsForOneRepository() throws IOException {
 		CliArguments cli = parse("--repo", HELLO_WORLD, "--repo", HELLO_WORLD_OVER_SSH,
 				"--workspace", workspace.toString(), "--branch", BRANCH);
 
-		IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, () -> Main.contexts(cli));
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
 
+		assertTrue(failure.getMessage().contains("1 of 2 repositories"), failure.getMessage());
 		assertTrue(failure.getMessage().contains(HELLO_WORLD_OVER_SSH), failure.getMessage());
 		assertTrue(failure.getMessage().contains(workspace.resolve("Hello-World").toString()), failure.getMessage());
-		assertTrue(isEmpty(workspace), "nothing may be cloned when the run is refused on its input");
+		assertCheckedOut(HELLO_WORLD);
+	}
+
+	/**
+	 * A malformed URL in a list an operator assembled by hand is the other failure
+	 * they hit, and it used to abort the run before its first clone — leaving every
+	 * repository behind it unadopted and no report to say so.
+	 */
+	@Test
+	void adoptsTheRestOfTheListWhenOneUrlNamesNoRepository() throws IOException {
+		Path report = reports.resolve("malformed.json");
+		CliArguments cli = parse("--repos", listFile(HELLO_WORLD, "https://github.com/owner/.git", SPOON_KNIFE).toString(),
+				"--workspace", workspace.toString(), "--branch", BRANCH, "--report", report.toString());
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
+
+		assertTrue(failure.getMessage().contains("1 of 3 repositories"), failure.getMessage());
+		assertCheckedOut(HELLO_WORLD);
+		assertCheckedOut(SPOON_KNIFE);
+		assertBatchReport(report, false, List.of(HELLO_WORLD, "https://github.com/owner/.git", SPOON_KNIFE));
 	}
 
 	/**
@@ -218,12 +238,6 @@ class MultiRepoAdoptionIT {
 		CommandResult result = runner.run(directory, command);
 		assertTrue(result.succeeded(), () -> result.describe() + " failed: " + result.output());
 		return result.output().strip();
-	}
-
-	private boolean isEmpty(Path directory) throws IOException {
-		try (var entries = Files.list(directory)) {
-			return entries.findAny().isEmpty();
-		}
 	}
 
 	private String failures(List<AdoptionRun> runs) {

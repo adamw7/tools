@@ -51,7 +51,7 @@ public class AdoptionReportWriter {
 	private ObjectNode toNode(AdoptionRun run) {
 		ObjectNode node = mapper.createObjectNode();
 		node.put("repositoryUrl", run.repositoryUrl());
-		node.put("branch", run.context().branchName());
+		node.put("branch", run.branchName());
 		node.put("pullRequestUrl", run.report().pullRequestUrl().orElse(null));
 		node.put("succeeded", run.succeeded());
 		node.put("failure", run.failure().orElse(null));

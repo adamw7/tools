@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,12 +14,14 @@ class BatchAdoptionTest {
 
 	private static final String REPO_URL = "https://github.com/owner/repo.git";
 	private static final String OTHER_URL = "https://github.com/owner/other.git";
+	private static final String BRANCH = "claude/adopt-claude-code";
+	private static final Path WORKSPACE = Path.of("/tmp/workspace");
 
 	private final List<String> adopted = new ArrayList<>();
 
 	@Test
 	void adoptsEveryRepositoryInOrder() {
-		List<AdoptionRun> runs = new BatchAdoption(this::record).adoptAll(contexts(REPO_URL, OTHER_URL));
+		List<AdoptionRun> runs = adoptAll(this::record, REPO_URL, OTHER_URL);
 		assertEquals(List.of(REPO_URL, OTHER_URL), adopted);
 		assertEquals(List.of(REPO_URL, OTHER_URL), runs.stream().map(AdoptionRun::repositoryUrl).toList());
 		assertTrue(runs.stream().allMatch(AdoptionRun::succeeded));
@@ -28,8 +29,8 @@ class BatchAdoptionTest {
 
 	@Test
 	void givesEachRepositoryItsOwnReport() {
-		List<AdoptionRun> runs = new BatchAdoption((context, report) -> report.recordStep(context.repositoryUrl()))
-				.adoptAll(contexts(REPO_URL, OTHER_URL));
+		List<AdoptionRun> runs = adoptAll((context, report) -> report.recordStep(context.repositoryUrl()),
+				REPO_URL, OTHER_URL);
 		assertEquals(List.of(REPO_URL), runs.get(0).report().completedSteps());
 		assertEquals(List.of(OTHER_URL), runs.get(1).report().completedSteps());
 	}
@@ -40,7 +41,7 @@ class BatchAdoptionTest {
 	 */
 	@Test
 	void keepsGoingAfterARepositoryFails() {
-		List<AdoptionRun> runs = new BatchAdoption(this::failFirst).adoptAll(contexts(REPO_URL, OTHER_URL));
+		List<AdoptionRun> runs = adoptAll(this::failFirst, REPO_URL, OTHER_URL);
 		assertEquals(List.of(REPO_URL, OTHER_URL), adopted);
 		assertFalse(runs.get(0).succeeded());
 		assertEquals("boom", runs.get(0).failure().orElseThrow());
@@ -49,19 +50,19 @@ class BatchAdoptionTest {
 
 	@Test
 	void keepsTheStepThePipelineAlreadyBlamed() {
-		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+		List<AdoptionRun> runs = adoptAll((context, report) -> {
 			report.recordFailure("push: rejected");
 			throw new AdoptionException("boom");
-		}).adoptAll(contexts(REPO_URL));
+		}, REPO_URL);
 		assertEquals("push: rejected", runs.get(0).failure().orElseThrow());
 	}
 
 	/** A failure with no message would otherwise record a bare null as the reason. */
 	@Test
 	void fallsBackToTheFailuresTypeWhenItCarriesNoMessage() {
-		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+		List<AdoptionRun> runs = adoptAll((context, report) -> {
 			throw new IllegalStateException();
-		}).adoptAll(contexts(REPO_URL));
+		}, REPO_URL);
 		assertEquals("IllegalStateException", runs.get(0).failure().orElseThrow());
 	}
 
@@ -71,18 +72,17 @@ class BatchAdoptionTest {
 	 */
 	@Test
 	void keepsTheStepsARepositoryCompletedBeforeItFailed() {
-		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+		List<AdoptionRun> runs = adoptAll((context, report) -> {
 			report.recordStep("clone");
 			throw new AdoptionException("boom");
-		}).adoptAll(contexts(REPO_URL));
+		}, REPO_URL);
 		assertEquals(List.of("clone"), runs.get(0).report().completedSteps());
 	}
 
 	@Test
-	void answersWithTheContextEachRepositoryWasAdoptedWith() {
-		List<AdoptionContext> contexts = contexts(REPO_URL, OTHER_URL);
-		List<AdoptionRun> runs = new BatchAdoption(this::record).adoptAll(contexts);
-		assertEquals(contexts, runs.stream().map(AdoptionRun::context).toList());
+	void answersWithTheBranchEachRepositoryWasAdoptedOn() {
+		List<AdoptionRun> runs = adoptAll(this::record, REPO_URL, OTHER_URL);
+		assertEquals(List.of(BRANCH, BRANCH), runs.stream().map(AdoptionRun::branchName).toList());
 	}
 
 	/**
@@ -92,16 +92,64 @@ class BatchAdoptionTest {
 	 */
 	@Test
 	void recordsAFailureThePipelineNeverDescribed() {
-		List<AdoptionRun> runs = new BatchAdoption((context, report) -> {
+		List<AdoptionRun> runs = adoptAll((context, report) -> {
 			throw new IllegalArgumentException("workspace must not be null");
-		}).adoptAll(contexts(REPO_URL));
+		}, REPO_URL);
 		assertFalse(runs.get(0).succeeded());
 		assertEquals("workspace must not be null", runs.get(0).failure().orElseThrow());
 	}
 
+	/**
+	 * A URL that names no repository never reaches the pipeline, so before the claim
+	 * moved into the batch it aborted the whole run before its first clone — and left
+	 * no report to say which repositories had been asked for.
+	 */
+	@Test
+	void reportsAUrlThatNamesNoRepositoryWithoutStrandingTheRest() {
+		List<AdoptionRun> runs = adoptAll(this::record, "https://github.com/owner/.git", OTHER_URL);
+		assertEquals(2, runs.size());
+		assertFalse(runs.get(0).succeeded());
+		assertTrue(runs.get(0).failure().orElseThrow().contains("must end in a repository name"),
+				runs.get(0).failure().orElseThrow());
+		assertTrue(runs.get(1).succeeded());
+		assertEquals(List.of(OTHER_URL), adopted);
+	}
+
+	/** The repository that could not be placed is still named in its own run. */
+	@Test
+	void namesTheRepositoryWhoseClaimWasRefused() {
+		List<AdoptionRun> runs = adoptAll(this::record, "https://github.com/owner/.git");
+		assertEquals("https://github.com/owner/.git", runs.get(0).repositoryUrl());
+	}
+
+	/**
+	 * Two repositories that would clone into one checkout are the second one's
+	 * failure, so the first is adopted rather than both being refused.
+	 */
+	@Test
+	void reportsACollidingCheckoutAsTheSecondRepositorysFailure() {
+		List<AdoptionRun> runs = adoptAll(this::record, "https://github.com/owner/tools.git",
+				"https://github.com/other-owner/tools.git");
+		assertTrue(runs.get(0).succeeded());
+		assertFalse(runs.get(1).succeeded());
+		assertTrue(runs.get(1).failure().orElseThrow().contains("both would clone into"),
+				runs.get(1).failure().orElseThrow());
+	}
+
+	/** A run is written to the report file, so a credentialled URL must not reach it. */
+	@Test
+	void masksTheCredentialsOfAReportedUrl() {
+		List<AdoptionRun> runs = adoptAll(this::record, "https://x-access-token:secret@github.com/owner/repo.git");
+		assertEquals("https://***@github.com/owner/repo.git", runs.get(0).repositoryUrl());
+	}
+
 	@Test
 	void adoptsNothingWhenGivenNoRepositories() {
-		assertTrue(new BatchAdoption(this::record).adoptAll(List.of()).isEmpty());
+		assertTrue(adoptAll(this::record).isEmpty());
+	}
+
+	private List<AdoptionRun> adoptAll(BatchAdoption.Adoption adoption, String... repositoryUrls) {
+		return new BatchAdoption(adoption).adoptAll(List.of(repositoryUrls), new Checkouts(WORKSPACE, BRANCH));
 	}
 
 	private void record(AdoptionContext context, AdoptionReport report) {
@@ -113,9 +161,5 @@ class BatchAdoptionTest {
 		if (REPO_URL.equals(context.repositoryUrl())) {
 			throw new AdoptionException("boom");
 		}
-	}
-
-	private List<AdoptionContext> contexts(String... urls) {
-		return Stream.of(urls).map(url -> new AdoptionContext(url, Path.of("/tmp/workspace"))).toList();
 	}
 }

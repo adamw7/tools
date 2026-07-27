@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Path;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -12,8 +11,8 @@ import org.junit.jupiter.api.Test;
 class AdoptionRunTest {
 
 	private static final String REPO_URL = "https://github.com/owner/repo.git";
+	private static final String BRANCH = "claude/adopt-claude-code";
 
-	private final AdoptionContext context = new AdoptionContext(REPO_URL, Path.of("/tmp/workspace"));
 	private final AdoptionReport report = new AdoptionReport();
 
 	/**
@@ -22,28 +21,29 @@ class AdoptionRunTest {
 	 */
 	@Test
 	void namesTheRepositoryItsReportBelongsTo() {
-		assertEquals(REPO_URL, new AdoptionRun(context, report).repositoryUrl());
+		assertEquals(REPO_URL, run().repositoryUrl());
 	}
 
 	@Test
-	void keepsTheContextAndReportItWasGiven() {
-		AdoptionRun run = new AdoptionRun(context, report);
-		assertEquals(context, run.context());
-		assertEquals(report, run.report());
+	void keepsTheBranchAndReportItWasGiven() {
+		assertEquals(BRANCH, run().branchName());
+		assertEquals(report, run().report());
 	}
 
 	@Test
 	void succeedsWhileItsReportRecordsNoFailure() {
-		AdoptionRun run = new AdoptionRun(context, report);
-		assertTrue(run.succeeded());
-		assertEquals(Optional.empty(), run.failure());
+		assertTrue(run().succeeded());
+		assertEquals(Optional.empty(), run().failure());
 	}
 
 	@Test
 	void failsWithTheReasonItsReportRecorded() {
 		report.recordFailure("clone: repository not found");
-		AdoptionRun run = new AdoptionRun(context, report);
-		assertFalse(run.succeeded());
-		assertEquals("clone: repository not found", run.failure().orElseThrow());
+		assertFalse(run().succeeded());
+		assertEquals("clone: repository not found", run().failure().orElseThrow());
+	}
+
+	private AdoptionRun run() {
+		return new AdoptionRun(REPO_URL, BRANCH, report);
 	}
 }

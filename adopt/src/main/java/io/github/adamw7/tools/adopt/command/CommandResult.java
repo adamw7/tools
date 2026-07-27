@@ -2,6 +2,8 @@ package io.github.adamw7.tools.adopt.command;
 
 import java.util.List;
 
+import io.github.adamw7.tools.adopt.Redaction;
+
 /**
  * Outcome of running an external command: the exit code and the combined
  * standard-output/standard-error text the command produced. The originating
@@ -21,9 +23,11 @@ public record CommandResult(List<String> command, int exitCode, String output) {
 	/**
 	 * The command as it would be typed, for the failures raised before there is a
 	 * result to describe — a process that could not be started, or one destroyed on
-	 * its timeout — so every report of a command reads the same way.
+	 * its timeout — so every report of a command reads the same way. A clone URL's
+	 * credentials are masked here, at the one place a command is turned into text,
+	 * so no caller can report the arguments verbatim by forgetting to.
 	 */
 	public static String describe(List<String> command) {
-		return String.join(" ", command);
+		return Redaction.of(String.join(" ", command));
 	}
 }

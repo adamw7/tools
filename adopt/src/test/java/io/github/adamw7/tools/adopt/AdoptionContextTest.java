@@ -79,4 +79,13 @@ class AdoptionContextTest {
 	void aNamedBranchOverridesTheDefault() {
 		assertEquals("feature/adopt", AdoptionContext.branchOrDefault("  feature/adopt  "));
 	}
+
+	/** The clone needs the credentials; everything that reports the run must not carry them. */
+	@Test
+	void reportsTheRepositoryWithoutTheCredentialsItClonesWith() {
+		AdoptionContext context = new AdoptionContext("https://x-access-token:secret@github.com/owner/repo.git",
+				Path.of("/tmp/workspace"));
+		assertEquals("https://x-access-token:secret@github.com/owner/repo.git", context.repositoryUrl());
+		assertEquals("https://***@github.com/owner/repo.git", context.displayUrl());
+	}
 }

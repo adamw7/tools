@@ -20,11 +20,13 @@ public final class RepositoryUrl {
 	private static final String GIT_SUFFIX = ".git";
 
 	private final String value;
+	private final String redacted;
 	private final String name;
 	private final String slug;
 
 	private RepositoryUrl(String value) {
 		this.value = value;
+		this.redacted = Redaction.of(value);
 		this.name = repositoryName(value);
 		this.slug = repositorySlug(value);
 	}
@@ -37,9 +39,21 @@ public final class RepositoryUrl {
 		return new RepositoryUrl(Text.required(repositoryUrl, "repositoryUrl"));
 	}
 
-	/** The URL as given, stripped of surrounding whitespace. */
+	/**
+	 * The URL as given, stripped of surrounding whitespace — the one {@code git}
+	 * is handed, credentials included. Anything that outlives the run reports
+	 * {@link #redacted()} instead.
+	 */
 	public String value() {
 		return value;
+	}
+
+	/**
+	 * @return the URL with any clone credentials masked, for the logs, failure
+	 *         messages, and JSON report a secret must not reach
+	 */
+	public String redacted() {
+		return redacted;
 	}
 
 	/** The repository name the checkout directory is created under. */
@@ -72,7 +86,7 @@ public final class RepositoryUrl {
 	private static String requireName(String name, String repositoryUrl) {
 		if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
 			throw new IllegalArgumentException(
-					"repositoryUrl must end in a repository name but was: " + repositoryUrl);
+					"repositoryUrl must end in a repository name but was: " + Redaction.of(repositoryUrl));
 		}
 		return name;
 	}

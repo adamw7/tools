@@ -16,6 +16,13 @@ import org.apache.logging.log4j.Logger;
  * batch means. Repositories are adopted sequentially because every adoption
  * shells out to {@code git}, {@code claude}, and {@code gh}, whose output a
  * parallel batch would interleave.
+ *
+ * <p>Claiming a repository's checkout is part of its own adoption rather than a
+ * preparation the whole run shares, so a URL that names no repository, or one
+ * whose checkout directory another repository of the run already claimed, is that
+ * repository's recorded failure and not the batch's. Otherwise a single malformed
+ * line in a {@code --repos} file stopped every repository behind it before the
+ * first clone, and left the run with no report to say so.
  */
 public final class BatchAdoption {
 
@@ -37,20 +44,30 @@ public final class BatchAdoption {
 		this.adoption = adoption;
 	}
 
-	/** @return one run per repository, in the order the repositories were given */
-	public List<AdoptionRun> adoptAll(List<AdoptionContext> contexts) {
-		log.info("Adopting Claude Code into {} repositories", contexts.size());
-		return contexts.stream().map(this::adoptOne).toList();
+	/**
+	 * @param repositoryUrls the repositories to adopt, in the order they were given
+	 * @param checkouts      this run's workspace and branch, giving each repository
+	 *                       its own checkout directory
+	 * @return one run per repository, in the order the repositories were given
+	 */
+	public List<AdoptionRun> adoptAll(List<String> repositoryUrls, Checkouts checkouts) {
+		log.info("Adopting Claude Code into {} repositories", repositoryUrls.size());
+		return repositoryUrls.stream().map(url -> adoptOne(url, checkouts)).toList();
 	}
 
-	private AdoptionRun adoptOne(AdoptionContext context) {
+	/**
+	 * The URL is redacted up front so a repository that fails its claim — and so
+	 * never has a context to ask — is still reported without its credentials.
+	 */
+	private AdoptionRun adoptOne(String repositoryUrl, Checkouts checkouts) {
 		AdoptionReport report = new AdoptionReport();
+		String displayUrl = Redaction.of(repositoryUrl);
 		try {
-			adoption.adopt(context, report);
+			adoption.adopt(checkouts.claim(repositoryUrl), report);
 		} catch (RuntimeException e) {
-			recordFailure(context, report, e);
+			recordFailure(displayUrl, report, e);
 		}
-		return new AdoptionRun(context, report);
+		return new AdoptionRun(displayUrl, checkouts.branchName(), report);
 	}
 
 	/**
@@ -59,8 +76,8 @@ public final class BatchAdoption {
 	 * of it. A failure the pipeline already described — naming the step that raised
 	 * it — is left alone, since that reads better than the bare message.
 	 */
-	private void recordFailure(AdoptionContext context, AdoptionReport report, RuntimeException failure) {
-		log.error("Adoption failed for {}", context.repositoryUrl(), failure);
+	private void recordFailure(String displayUrl, AdoptionReport report, RuntimeException failure) {
+		log.error("Adoption failed for {}", displayUrl, failure);
 		if (report.failure().isEmpty()) {
 			report.recordFailure(Failures.describe(failure));
 		}

@@ -26,8 +26,8 @@ class FallbackBuildSystemTest {
 	}
 
 	@Test
-	void verifyCommandRunsTheGuardScript() {
-		assertEquals(List.of("sh", ".github/claude-md-guard.sh"), buildSystem.verifyCommand());
+	void verifyCommandRunsTheGuardScript(@TempDir Path directory) {
+		assertEquals(List.of("sh", ".github/claude-md-guard.sh"), buildSystem.verifyCommand(directory));
 	}
 
 	@Test

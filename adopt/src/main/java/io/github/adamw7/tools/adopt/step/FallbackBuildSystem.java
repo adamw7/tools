@@ -38,7 +38,7 @@ public class FallbackBuildSystem implements BuildSystem {
 	}
 
 	@Override
-	public List<String> verifyCommand() {
+	public List<String> verifyCommand(Path repositoryDirectory) {
 		return VERIFY_COMMAND;
 	}
 
@@ -48,7 +48,7 @@ public class FallbackBuildSystem implements BuildSystem {
 	 * nothing to check ahead of time.
 	 */
 	@Override
-	public Optional<String> requiredTool() {
+	public Optional<String> requiredTool(Path repositoryDirectory) {
 		return Optional.empty();
 	}
 }

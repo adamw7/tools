@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.Redaction;
 
 /**
  * {@link CommandRunner} backed by {@link ProcessBuilder}. Standard error is
@@ -85,7 +86,7 @@ public class ProcessCommandRunner implements CommandRunner {
 	private AdoptionException timedOut(Process process, List<String> command, StreamGobbler output) {
 		destroyTree(process);
 		return new AdoptionException("Timed out after " + timeout + " running: " + CommandResult.describe(command)
-				+ System.lineSeparator() + output.output());
+				+ System.lineSeparator() + Redaction.of(output.output()));
 	}
 
 	/**

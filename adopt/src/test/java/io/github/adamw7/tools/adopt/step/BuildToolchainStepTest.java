@@ -88,11 +88,48 @@ class BuildToolchainStepTest {
 		AdoptionContexts.write(context, "pom.xml", "<project/>");
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new BuildToolchainStep().execute(context, runner);
-		assertEquals(MavenBuildSystem.VERIFY_COMMAND.get(0), runner.commandAt(0).get(0));
+		assertEquals(new MavenBuildSystem().verifyCommand(context.repositoryDirectory()).get(0),
+				runner.commandAt(0).get(0));
 	}
 
 	@Test
 	void isNamedBuildToolchain() {
 		assertEquals("build-toolchain", new BuildToolchainStep().name());
+	}
+
+	/**
+	 * Most Gradle projects ship only the wrapper, so probing the PATH for a `gradle`
+	 * aborted the adoption of a repository the host could build perfectly well.
+	 */
+	@Test
+	void probesTheCheckoutsWrapperRatherThanThePathWhenOneIsShipped(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
+		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		Path wrapper = context.repositoryDirectory().resolve("gradlew").toAbsolutePath();
+
+		new BuildToolchainStep(List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
+				.execute(context, runner);
+
+		assertEquals(List.of(wrapper.toString(), "--version"), runner.commandAt(0));
+	}
+
+	/** A wrapper that cannot be run is named in the failure, not passed off as a missing PATH tool. */
+	@Test
+	void namesTheWrapperItCouldNotRun(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
+		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> new CommandResult(command, 126, "Permission denied"));
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> new BuildToolchainStep(
+						List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
+								.execute(context, runner));
+
+		assertTrue(failure.getMessage().contains("gradlew"), failure.getMessage());
+		assertTrue(failure.getMessage().contains("could not be run"), failure.getMessage());
 	}
 }

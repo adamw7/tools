@@ -66,4 +66,21 @@ class AbstractCommandStepTest {
 		assertTrue(message.contains("git push origin main"), message);
 		assertTrue(message.contains("fatal: rejected"), message);
 	}
+
+	/**
+	 * A tool that fails on a credentialled clone URL echoes it back, and this message
+	 * becomes the run's reported failure — so neither the command nor its transcript
+	 * may carry the secret out of the step.
+	 */
+	@Test
+	void failureMessageMasksCredentialsInTheCommandAndTheTranscript() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> new CommandResult(command, 128,
+				"fatal: could not read Username for 'https://x-access-token:secret@github.com'"));
+		AdoptionException exception = assertThrows(AdoptionException.class, () -> step.run(runner, workspace,
+				List.of("git", "clone", "https://x-access-token:secret@github.com/owner/repo.git")));
+		String message = exception.getMessage();
+		assertTrue(message.contains("git clone https://***@github.com/owner/repo.git"), message);
+		assertTrue(message.contains("Username for 'https://***@github.com'"), message);
+		assertTrue(!message.contains("secret"), message);
+	}
 }

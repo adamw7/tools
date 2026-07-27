@@ -139,6 +139,6 @@ class AdoptionReportWriterTest {
 	}
 
 	private AdoptionRun run(AdoptionContext context, AdoptionReport report) {
-		return new AdoptionRun(context, report);
+		return new AdoptionRun(context.displayUrl(), context.branchName(), report);
 	}
 }

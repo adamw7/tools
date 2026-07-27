@@ -29,19 +29,24 @@ public interface BuildSystem {
 	 */
 	boolean install(Path repositoryDirectory);
 
-	/** Command that runs the wired guard so a missing or malformed {@code CLAUDE.md} fails the build. */
-	List<String> verifyCommand();
+	/**
+	 * Command that runs the wired guard so a missing or malformed {@code CLAUDE.md}
+	 * fails the build. The checkout is a parameter because the command depends on
+	 * what the checkout itself ships: a project carrying a build wrapper is built
+	 * with that wrapper rather than with a build tool off the {@code PATH}.
+	 */
+	List<String> verifyCommand(Path repositoryDirectory);
 
 	/**
-	 * The program {@link #verifyCommand()} launches, so {@link BuildToolchainStep}
+	 * The program {@link #verifyCommand(Path)} launches, so {@link BuildToolchainStep}
 	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
 	 * will not be able to verify. The verification launches the first word of its
 	 * own command, so that is what the default probes.
 	 *
 	 * @return the program to probe, or empty when the verification needs nothing
-	 *         beyond the POSIX shell every supported platform already provides
+	 *         beyond the shell
 	 */
-	default Optional<String> requiredTool() {
-		return Optional.of(verifyCommand().get(0));
+	default Optional<String> requiredTool(Path repositoryDirectory) {
+		return Optional.of(verifyCommand(repositoryDirectory).get(0));
 	}
 }

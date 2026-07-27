@@ -57,7 +57,14 @@ Maven project. The notable capabilities are:
   verified by running that task; a repository with no recognised build file falls
   back to a GitHub Actions workflow and the portable `.github/claude-md-guard.sh`
   check it runs, verified by running that script — so a build-less repository
-  still keeps the guard. The pull request metadata — title, body,
+  still keeps the guard. A checkout that ships a build wrapper (`mvnw`, `gradlew`,
+  or their Windows `.cmd`/`.bat` forms) is verified with that wrapper rather than
+  with a build tool off the `PATH`, so the guard runs under the version the
+  project pinned; most Gradle projects ship only the wrapper, so probing the
+  `PATH` for a `gradle` used to abort the adoption of a repository the host could
+  build perfectly well. The wrapper is launched by its absolute path, since
+  `ProcessBuilder` resolves a relative program name against the JVM's working
+  directory rather than the command's. The pull request metadata — title, body,
   reviewers, labels, assignees, and draft flag — is supplied through
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
@@ -70,7 +77,12 @@ Maven project. The notable capabilities are:
   workspace. `BatchAdoption` runs the pipeline once per repository with a report
   each and does *not* stop at the first failure: the adoptions are independent, so
   a failed one is recorded and the batch runs to the end, with `Main` raising the
-  failures together afterwards so the process still exits non-zero. The MCP tool
+  failures together afterwards so the process still exits non-zero. That covers
+  the failures a repository's *inputs* raise too — `Checkouts` claims each
+  repository's checkout directory inside its own adoption, so a URL naming no
+  repository, or one colliding with a checkout another repository of the run
+  already claimed, is that repository's recorded failure rather than an abort of
+  the whole run before its first clone. The MCP tool
   takes the same list as `repository_urls` (a JSON array, or a comma-separated
   string) beside `repository_url`, and answers with an error result carrying the
   report — not a bare exception — when a repository fails.
@@ -97,7 +109,12 @@ Maven project. The notable capabilities are:
   (completed steps, the pull request URL read back with `gh pr list --json url`,
   and whether the run succeeded plus the failing step's message when it did not);
   `--report <file>` writes it as JSON for scripting, on the failure path too, so
-  an abandoned run still records how far it got. A run over several repositories
+  an abandoned run still records how far it got. Everything that outlives a run —
+  the log, a failing command's message, and that report — reports clone URLs
+  through `Redaction`, which masks the user information of a URL carrying a
+  scheme, so the `https://x-access-token:TOKEN@github.com/...` a CI runner hands
+  the adoption never reaches a file on disk or an MCP client; `git` is still
+  handed the URL as it was given. A run over several repositories
   writes the batch document instead — an overall `succeeded` and a `repositories`
   array of those same per-repository documents — while a single-repository run
   keeps writing its document unwrapped, so the shape existing consumers parse is

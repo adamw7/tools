@@ -38,6 +38,6 @@ public class VerifyStep extends AbstractBuildSystemStep {
 	protected void onDetected(BuildSystem buildSystem, AdoptionContext context, CommandRunner runner) {
 		log.info("Verifying the CLAUDE.md guard passes with {} in {}", buildSystem.name(),
 				context.repositoryDirectory());
-		runOrFail(runner, context.repositoryDirectory(), buildSystem.verifyCommand());
+		runOrFail(runner, context.repositoryDirectory(), buildSystem.verifyCommand(context.repositoryDirectory()));
 	}
 }

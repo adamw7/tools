@@ -29,7 +29,7 @@ class VerifyStepTest {
 		writePom(context);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
-		assertEquals(MavenBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
+		assertEquals(new MavenBuildSystem().verifyCommand(context.repositoryDirectory()), runner.commandAt(0));
 		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
 	}
 
@@ -39,7 +39,7 @@ class VerifyStepTest {
 		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new VerifyStep().execute(context, runner);
-		assertEquals(GradleBuildSystem.VERIFY_COMMAND, runner.commandAt(0));
+		assertEquals(new GradleBuildSystem().verifyCommand(context.repositoryDirectory()), runner.commandAt(0));
 	}
 
 	@Test
@@ -106,12 +106,12 @@ class VerifyStepTest {
 		}
 
 		@Override
-		public List<String> verifyCommand() {
+		public List<String> verifyCommand(Path repositoryDirectory) {
 			return verifyCommand;
 		}
 
 		@Override
-		public Optional<String> requiredTool() {
+		public Optional<String> requiredTool(Path repositoryDirectory) {
 			return Optional.empty();
 		}
 	}

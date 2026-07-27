@@ -11,22 +11,19 @@ import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
- * Creates and checks out the adoption feature branch in the fresh checkout with
- * {@code git checkout -B}, so every subsequent commit lands on that branch
- * rather than on the repository's default branch. The adoption pushes this
- * branch and opens a pull request from it, leaving the default branch untouched.
- *
- * <p>{@code -B} resets the branch to the current {@code HEAD} whether or not it
- * already exists, so re-running the adoption starts the feature branch afresh
- * rather than aborting on an "already exists" failure.
+ * Creates and checks out the adoption feature branch with
+ * {@code git checkout -B}, so every subsequent commit lands there rather than on
+ * the repository's default branch. {@code -B} resets the branch to the current
+ * {@code HEAD} whether or not it already exists, so re-running the adoption starts
+ * it afresh rather than aborting.
  *
  * <p>A checkout with no local branch yet but whose {@code origin} already
  * publishes one — a fresh clone re-adopting a repository an earlier run pushed,
- * which the default temporary workspace produces on every run — starts from that
- * published tip instead of {@code HEAD}. Otherwise the branch would restart at the
- * default branch and {@link PushStep} would be rejected as a non-fast-forward, so
- * a second adoption could never get past the push. An existing local branch is
- * left to the plain {@code -B}, so unpushed work is never reset onto the remote.
+ * which the default temporary workspace produces every time — starts from that
+ * published tip instead. Otherwise the branch would restart at the default branch
+ * and {@link PushStep} would be rejected as a non-fast-forward. An existing local
+ * branch is left to the plain {@code -B}, so unpushed work is never reset onto the
+ * remote.
  */
 public class BranchStep extends AbstractCommandStep {
 

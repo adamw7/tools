@@ -18,24 +18,20 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * Enforcer rule that validates the entries of the {@code permissions} lists in
  * {@code .claude/settings.json}. Where {@link SettingsJsonValidRule} asserts
  * policy (which entries must or must not be present), this rule validates the
- * entries themselves: every value in {@code allow}, {@code deny}, and
- * {@code ask} must be a non-blank string of the form {@code Tool} or
- * {@code Tool(specifier)}, because a malformed entry such as {@code Bash(mvn *}
- * grants nothing and fails silently at runtime. A duplicated entry within a
- * list and an entry that appears in both {@code allow} and {@code deny} are
- * reported too, since the contradiction means one of the two is not doing what
- * its author intended.
+ * entries themselves: every value in {@code allow}, {@code deny}, and {@code ask}
+ * must be a non-blank string of the form {@code Tool} or {@code Tool(specifier)},
+ * because a malformed entry such as {@code Bash(mvn *} grants nothing and fails
+ * silently at runtime. A duplicate within a list, and an entry that appears in
+ * both {@code allow} and {@code deny}, are reported too.
  * <p>
- * When {@code allowedTools} is configured, the tool-name part of every entry
- * must be in that list, so a typo such as {@code Bsah(mvn *)} cannot slip
- * through; entries naming MCP tools (prefixed {@code mcp__}) are exempt because
- * their names are defined by the project's servers, not by Claude Code. When
- * {@code forbiddenEntryPatterns} is configured, an {@code allow} entry matching
- * any of the regular expressions is reported, so an over-broad grant such as
- * {@code Bash(*)} can be banned by shape rather than by exact spelling.
- * <p>
- * A settings file without a {@code permissions} section passes, since there is
- * nothing to validate. All problems found are reported together.
+ * When {@code allowedTools} is configured, the tool-name part of every entry must
+ * be in that list, so a typo such as {@code Bsah(mvn *)} cannot slip through;
+ * entries naming MCP tools (prefixed {@code mcp__}) are exempt because their names
+ * are defined by the project's servers. When {@code forbiddenEntryPatterns} is
+ * configured, an {@code allow} entry matching any of the regular expressions is
+ * reported, so an over-broad grant such as {@code Bash(*)} can be banned by shape
+ * rather than by exact spelling. A file without a {@code permissions} section
+ * passes.
  */
 @Named("permissionsFormat")
 public class PermissionsFormatRule extends JsonFileRule {

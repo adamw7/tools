@@ -15,16 +15,13 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
 /**
  * Compares two documents against a list of single-group regular expressions and
  * reports where a captured value differs. Shared by
- * {@link CrossDocConsistencyRule} and {@link ReadmeConsistencyRule} so the
- * pattern validation and capture logic live in one place.
+ * {@link CrossDocConsistencyRule} and {@link ReadmeConsistencyRule} so the pattern
+ * validation and capture logic live in one place.
  * <p>
- * Each configured pattern must declare one capturing group; the value captured
- * from each document is compared and a mismatch becomes a violation message.
- * The two rules differ only in how they treat a fact that appears in one
- * document but not the other: mirror documents (CLAUDE.md and AGENTS.md) require
- * it in both, while a curated view (README.md against the agent docs) ignores a
- * fact the view simply chose not to repeat. That choice is the
- * {@code requireInBoth} flag.
+ * The two rules differ only in how they treat a fact that appears in one document
+ * but not the other: mirror documents (CLAUDE.md and AGENTS.md) require it in
+ * both, while a curated view (README.md against the agent docs) ignores a fact the
+ * view simply chose not to repeat. That choice is the {@code requireInBoth} flag.
  */
 final class DocumentConsistency {
 

@@ -7,9 +7,9 @@ import java.util.Optional;
 /**
  * The catch-all build system for the adoption: it matches every checkout, so a
  * repository with no Maven or Gradle build file still gets a {@code CLAUDE.md}
- * guard instead of being adopted with none. Because it matches unconditionally it
- * is listed last in {@link BuildSystems#DEFAULTS}, after the real build tools, so
- * it only wins when none of them detected a build file.
+ * guard. Because it matches unconditionally it is listed last in
+ * {@link BuildSystems#DEFAULTS}, and only wins when no real build tool detected a
+ * build file.
  *
  * <p>The guard is a GitHub Actions workflow and the portable shell script it runs,
  * installed with {@link WorkflowGuardInstaller}; the verification runs that same

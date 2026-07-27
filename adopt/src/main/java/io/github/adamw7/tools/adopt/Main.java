@@ -7,27 +7,21 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 
 /**
- * Command-line entry point: parses the arguments with {@link CliArguments} —
- * the repositories to adopt (the positional GitHub repository URL, plus any
- * named with {@code --repo} or listed in a {@code --repos} file), the optional
- * workspace directory, and optional feature-branch name, plus the flags for
- * pull-request metadata, the starter-assets step, and the JSON report — and runs
- * the default adoption pipeline against a real {@code git}/{@code claude}/{@code gh}
- * toolchain. A supplied workspace directory is created when it does not yet
- * exist; when omitted, a temporary one is created instead. Every repository of a
- * run shares that workspace and branch name: each clone lands in its own
- * directory under the workspace, named after the repository.
+ * Command-line entry point: parses the arguments with {@link CliArguments} and
+ * runs the default adoption pipeline against a real
+ * {@code git}/{@code claude}/{@code gh} toolchain. Every repository of a run
+ * shares one workspace — the one supplied, created when it does not exist, or a
+ * temporary one — and one branch name, each clone landing in its own directory
+ * under the workspace, named after the repository.
  *
  * <p>When {@code --report} names a file, the run's {@link AdoptionReport} is
- * written there as JSON — for a failed run as well as a successful one, so the
- * report can say how far the adoption got and why it stopped. A run that adopted
- * several repositories writes the batch document {@link AdoptionReportWriter}
- * describes, one entry per repository.
+ * written there as JSON, for a failed run as well as a successful one, so it can
+ * say how far the adoption got and why it stopped. A run over several
+ * repositories writes the batch document {@link AdoptionReportWriter} describes.
  *
- * <p>A repository whose adoption fails does not stop the ones behind it: the
- * batch runs to the end and the failures are raised together afterwards, so the
- * process still exits non-zero while the repositories that could be adopted have
- * been.
+ * <p>A repository whose adoption fails does not stop the ones behind it: the batch
+ * runs to the end and the failures are raised together afterwards, so the process
+ * still exits non-zero.
  */
 public class Main {
 

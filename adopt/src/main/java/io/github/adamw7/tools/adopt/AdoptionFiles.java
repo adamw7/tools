@@ -5,18 +5,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Reads and writes the text files an adoption touches — the checkout's POM or
- * Gradle script, the generated {@code CLAUDE.md}, the starter assets, the run's
- * JSON report — reporting a failure as an {@link AdoptionException} like every
- * other adoption failure rather than as a raw {@link IOException} each caller
- * has to wrap for itself.
- *
- * <p>Every write creates the file's parent directories first, so an asset nested
- * in a directory the checkout does not carry yet ({@code .claude/hooks/}) is
- * written rather than failing on the missing parent. The {@code description} names
- * the file in the failure message the way the operator thinks of it — "POM",
- * "CLAUDE.md", "the adoption report" — because a bare path does not say what the
- * adoption was trying to do with it.
+ * Reads and writes the text files an adoption touches — the checkout's build
+ * script, the generated {@code CLAUDE.md}, the starter assets, the run's JSON
+ * report — failing with an {@link AdoptionException} rather than a raw
+ * {@link IOException} every caller would have to wrap for itself. Writes create
+ * the parent directories first, so an asset under a directory the checkout does
+ * not carry yet ({@code .claude/hooks/}) still lands, and the
+ * {@code description} names the file in the failure message the way the operator
+ * thinks of it.
  */
 public final class AdoptionFiles {
 

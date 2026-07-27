@@ -15,19 +15,18 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 /**
  * Enforcer rule that validates a Claude Code plugin manifest, the
  * {@code .claude-plugin/plugin.json} of a plugin repository. The manifest names
- * the plugin in every marketplace listing, so a malformed one breaks
- * installation rather than the build that produced it. When present, the file
- * must be non-empty valid JSON declaring every required key ({@code name} by
- * default, overridable via {@code requiredKeys}); the {@code name} is held to
- * the Claude Code naming convention (lower-case kebab-case, at most
- * {@value NameConvention#MAX_LENGTH} characters), a {@code version} must be a
- * dotted number with optional pre-release and build-metadata suffixes, and a {@code description}
- * must be non-empty. When {@code allowedKeys} is configured, any key outside
- * that set is reported, which catches typos such as {@code descripton}.
+ * the plugin in every marketplace listing, so a malformed one breaks installation
+ * rather than the build that produced it.
  * <p>
- * Not every repository ships a plugin, so an absent manifest is a pass; the
- * rule only fails when the file is present and malformed. All problems found
- * are reported together.
+ * When present, the file must be non-empty valid JSON declaring every required key
+ * ({@code name} by default, overridable via {@code requiredKeys}). The
+ * {@code name} is held to the Claude Code naming convention (lower-case
+ * kebab-case, at most {@value NameConvention#MAX_LENGTH} characters), a
+ * {@code version} must be a dotted number with optional pre-release and
+ * build-metadata suffixes, and a {@code description} must be non-empty; a key
+ * outside a configured {@code allowedKeys} is reported, which catches typos such
+ * as {@code descripton}. Not every repository ships a plugin, so an absent
+ * manifest is a pass.
  */
 @Named("pluginFormat")
 public class PluginFormatRule extends JsonFileRule {

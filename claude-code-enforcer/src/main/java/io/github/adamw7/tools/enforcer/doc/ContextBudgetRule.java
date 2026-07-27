@@ -17,17 +17,16 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * Enforcer rule that keeps agent context files within a size budget.
  * {@code CLAUDE.md} is loaded into every Claude Code session, and each skill,
  * sub-agent, and command definition is loaded whenever it triggers, so an
- * unbounded file quietly taxes every conversation. The rule measures every
- * configured file (each must exist) and every {@code *.md} file under the
- * configured directories (an absent directory is skipped) against up to three
- * budgets: {@code maxBytes} (on-disk size), {@code maxLines}, and
- * {@code maxTokens} — the latter estimated with the common four-characters-per-
- * token heuristic, which is deliberately rough but stable enough for a budget.
+ * unbounded file quietly taxes every conversation.
  * <p>
- * A budget left at zero is disabled; at least one must be configured, because a
- * rule with no limits is a build-setup mistake. All files over budget are
- * reported together — the fix is to move detail into AGENTS.md or an
- * on-demand skill rather than the always-loaded context.
+ * Every configured file (each must exist) and every {@code *.md} file under the
+ * configured directories (an absent directory is skipped) is measured against up
+ * to three budgets: {@code maxBytes} (on-disk size), {@code maxLines}, and
+ * {@code maxTokens} — estimated with the common four-characters-per-token
+ * heuristic, deliberately rough but stable enough for a budget. A budget left at
+ * zero is disabled, and at least one must be configured. All files over budget are
+ * reported together; the fix is to move detail into AGENTS.md or an on-demand
+ * skill rather than the always-loaded context.
  */
 @Named("contextBudget")
 public class ContextBudgetRule extends ClaudeCodeEnforcerRule {

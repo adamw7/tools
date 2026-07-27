@@ -5,15 +5,14 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * A parsed {@code .gitignore}, able to answer whether a repository-relative
- * file path is ignored. It implements the subset of gitignore semantics the
+ * A parsed {@code .gitignore}, able to answer whether a repository-relative file
+ * path is ignored. It implements the subset of gitignore semantics the
  * {@link LocalSettingsIgnoredRule} needs: comments and blank lines are skipped,
  * {@code !} negates, a trailing {@code /} restricts a pattern to directories, a
  * pattern containing a {@code /} is anchored to the gitignore's directory while
- * one without matches at any depth, and {@code *}, {@code ?}, and {@code **}
- * glob within and across path segments respectively. Later lines override
- * earlier ones, and a file is also ignored when any of its ancestor directories
- * is.
+ * one without matches at any depth, and {@code *}, {@code ?}, and {@code **} glob
+ * within and across path segments respectively. Later lines override earlier ones,
+ * and a file is also ignored when any of its ancestor directories is.
  * <p>
  * Paths are matched with {@code /} separators and no leading slash, exactly as
  * they appear in {@code git status} output.

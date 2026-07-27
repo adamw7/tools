@@ -13,9 +13,8 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * Base for the steps that act on the checkout's build system: wiring the
  * {@code CLAUDE.md} guard into it ({@link EnforcerStep}), running that guard
  * ({@link VerifyStep}), and checking the build tool it needs is installed
- * ({@link BuildToolchainStep}). Detecting the build system in one place keeps
- * all three acting on the same build tool, so the guard that is wired in is the
- * guard that is verified with the tool that was probed.
+ * ({@link BuildToolchainStep}). Detecting the build system in one place keeps all
+ * three acting on the same one.
  *
  * <p>Detection only comes up empty for a step configured with a build-system list
  * that has no catch-all fallback ({@link BuildSystems#DEFAULTS} always matches),

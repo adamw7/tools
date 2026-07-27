@@ -11,13 +11,12 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 /**
  * Renders a self-contained HTML report of a rule's outcome and writes it to a
- * file. When there are violations the page shows a single numbered table with the
- * header plus a "What failed and why" column (one collected violation per row) and
- * a "How to fix" column (the remediation steps the rule supplies). The two lists
- * are independent, so rows run to the longer of the two and the shorter column is
- * left blank once it runs out. When there are no violations it renders a short
- * "passed" page, so a configured report file always reflects the latest run rather
- * than leaving a stale failure behind.
+ * file. When there are violations the page shows a single numbered table pairing a
+ * "What failed and why" column (one collected violation per row) with a "How to
+ * fix" column (the remediation steps the rule supplies); the two lists are
+ * independent, so rows run to the longer of the two. When there are none it
+ * renders a short "passed" page, so a configured report file never leaves a stale
+ * failure behind.
  * <p>
  * The document is inlined (styles included, no external assets) so it opens
  * anywhere, and every piece of rule-supplied text is HTML-escaped so a violation

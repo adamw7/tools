@@ -14,16 +14,15 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * Enforcer rule that fails the build when two Claude Code definitions share the
  * same {@code description}. Claude routes to a skill, sub-agent, or command by
  * matching the user's intent against these descriptions, so two definitions that
- * describe themselves identically are ambiguous and one will shadow the other.
- * The rule reads the {@code description} from the front matter of every
- * sub-agent ({@code *.md}), command ({@code *.md}), and skill ({@code SKILL.md})
- * in the configured directories and reports each description used more than once,
- * naming every file that uses it.
+ * describe themselves identically are ambiguous and one will shadow the other. The
+ * rule reads the {@code description} from the front matter of every sub-agent,
+ * command, and skill in the configured directories and reports each description
+ * used more than once, naming every file that uses it.
  * <p>
  * Comparison ignores case and runs of whitespace, so {@code Reviews code.} and
- * {@code reviews   code.} are treated as the same description. Definitions with
- * no description, or a blank one, are skipped here because the format rules
- * already report those. All clashes are reported together.
+ * {@code reviews   code.} are the same description. Definitions with no
+ * description, or a blank one, are skipped here because the format rules already
+ * report those.
  */
 @Named("uniqueDescriptions")
 public class UniqueDescriptionsRule extends MultiDefinitionRule {

@@ -7,23 +7,22 @@ import java.util.regex.Pattern;
 
 /**
  * Repairs the unambiguous ways a Claude Code front matter block is commonly
- * malformed, so an auto-fixing rule can rewrite the file rather than only fail
- * the build:
+ * malformed, so an auto-fixing rule can rewrite the file rather than only fail the
+ * build:
  * <ul>
  * <li>a delimiter written with too many dashes, such as {@code ----}, which
  * {@link FrontMatter} does not recognise as the canonical {@code ---};</li>
- * <li>an opening {@code ---} whose closing delimiter is missing, which leaves
- * the block unterminated; and</li>
+ * <li>an opening {@code ---} whose closing delimiter is missing; and</li>
  * <li>blank lines before the opening delimiter, which Claude Code does not
  * accept — the block must start on the first line.</li>
  * </ul>
  * <p>
  * The repair is deliberately conservative: it only acts when the document opens
- * (past any leading blank lines) with a dashes-only line and the region that
- * would become the block actually contains at least one {@code key: value}
- * entry, so a lone {@code ---} thematic break is never mistaken for front
- * matter. A document whose front matter already parses, or whose problem is not
- * one of the above, is left untouched and reported by the rule as before.
+ * (past any leading blank lines) with a dashes-only line and the region that would
+ * become the block actually contains at least one {@code key: value} entry, so a
+ * lone {@code ---} thematic break is never mistaken for front matter. A document
+ * whose front matter already parses, or whose problem is not one of the above, is
+ * left untouched.
  */
 public final class FrontMatterFixer {
 

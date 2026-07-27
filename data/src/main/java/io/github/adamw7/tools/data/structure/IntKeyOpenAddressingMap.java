@@ -8,20 +8,19 @@ import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
 
 /**
- * A primitive {@code int}-keyed sibling of {@link OpenAddressingMap}. It uses
- * the same double-hashing open-addressing strategy, but stores keys in an
- * {@code int[]} so that lookups and inserts never box the key. This makes it an
- * allocation-light choice for large, integer-keyed maps where the autoboxing of
- * a {@code Map<Integer, V>} would dominate.
+ * A primitive {@code int}-keyed sibling of {@link OpenAddressingMap}: the same
+ * double-hashing open-addressing strategy, but keys live in an {@code int[]} so
+ * lookups and inserts never box. That makes it an allocation-light choice for
+ * large, integer-keyed maps where the autoboxing of a {@code Map<Integer, V>}
+ * would dominate.
  *
- * <p>It deliberately does <em>not</em> implement {@link java.util.Map}, because
- * that interface is defined in terms of {@code Object} keys and would reintroduce
- * the boxing this class exists to avoid. The API mirrors the relevant map
- * operations with primitive {@code int} keys instead.
- *
- * <p>Like {@link OpenAddressingMap}, {@code null} values are stored faithfully
- * and reported by {@link #containsKey(int)}; only {@link #get(int)} cannot tell a
- * stored {@code null} from an absent key. The class is not thread-safe.
+ * <p>It deliberately does <em>not</em> implement {@link java.util.Map}, which is
+ * defined in terms of {@code Object} keys and would reintroduce the boxing this
+ * class exists to avoid; the API mirrors the relevant map operations with
+ * primitive keys instead. As in {@link OpenAddressingMap}, {@code null} values are
+ * stored faithfully and reported by {@link #containsKey(int)}; only
+ * {@link #get(int)} cannot tell a stored {@code null} from an absent key. Not
+ * thread-safe.
  */
 public class IntKeyOpenAddressingMap<V> {
 

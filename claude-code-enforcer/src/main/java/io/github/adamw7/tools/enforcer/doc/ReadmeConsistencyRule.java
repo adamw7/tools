@@ -13,17 +13,13 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * Enforcer rule that keeps the README from drifting away from the agent docs.
  * {@code README.md} is a curated, example-heavy view of the same project that
  * {@code AGENTS.md} (the single source of truth) describes, so any capability or
- * version it documents must match. Each configured pattern is a regular
- * expression with one capturing group; the rule captures that group from each
- * file and fails when the README's value disagrees with the agent docs.
+ * version it documents must match. Each configured pattern is a regular expression
+ * with one capturing group, captured from each file and compared.
  * <p>
- * Unlike {@link CrossDocConsistencyRule}, a fact the README simply does not
- * repeat is not a violation: the README is allowed to document a subset. Only a
- * value present in both files that disagrees fails the build. For example the
- * pattern {@code proto(\d)} pins the supported protobuf version: if the README
- * claims {@code proto3} support while the agent docs say {@code proto2}, the
- * build fails, but a fact the README omits is ignored. All mismatches are
- * reported together.
+ * Unlike {@link CrossDocConsistencyRule}, a fact the README simply does not repeat
+ * is not a violation: only a value present in both files that disagrees fails the
+ * build. For example the pattern {@code proto(\d)} pins the supported protobuf
+ * version. All mismatches are reported together.
  */
 @Named("readmeConsistency")
 public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {

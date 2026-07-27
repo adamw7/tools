@@ -11,17 +11,15 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 
 /**
  * Enforcer rule that keeps two documents from contradicting each other. Because
- * {@code CLAUDE.md} defers to {@code AGENTS.md} as the single source of truth,
- * any fact stated in both must agree. Each configured pattern is a regular
- * expression with one capturing group; the rule captures that group from each
- * file and fails when the captured values differ, or when the fact appears in
- * one file but not the other.
+ * {@code CLAUDE.md} defers to {@code AGENTS.md} as the single source of truth, any
+ * fact stated in both must agree.
  * <p>
- * For example the pattern {@code Java (\d+)} pins the Java version: if
- * {@code CLAUDE.md} says {@code Java 25} and {@code AGENTS.md} says
- * {@code Java 24}, the build fails. A pattern that matches in neither file is
- * ignored, so unrelated documents are unaffected. All mismatches are reported
- * together.
+ * Each configured pattern is a regular expression with one capturing group; the
+ * rule captures that group from each file and fails when the captured values
+ * differ, or when the fact appears in one file but not the other. For example the
+ * pattern {@code Java (\d+)} pins the Java version. A pattern that matches in
+ * neither file is ignored, so unrelated documents are unaffected; all mismatches
+ * are reported together.
  */
 @Named("crossDocConsistency")
 public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {

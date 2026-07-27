@@ -9,14 +9,14 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 /**
  * Base for the enforcer rules that check a property across <em>every</em> Claude
  * Code definition at once (currently uniqueness of names and of descriptions).
- * They all scan the same three optional directories - {@code commandsDir},
- * {@code agentsDir} and {@code skillsDir} - where a command and a sub-agent are
- * each a {@code *.md} file and a skill is a directory containing a
- * {@code SKILL.md}. This class owns that shared configuration and traversal so a
- * subclass only describes what it does with each definition.
+ * This class owns the shared configuration and traversal of the three optional
+ * directories - {@code commandsDir}, {@code agentsDir} and {@code skillsDir},
+ * where a command and a sub-agent are each a {@code *.md} file and a skill is a
+ * directory containing a {@code SKILL.md} - so a subclass only describes what it
+ * does with each definition.
  * <p>
- * The three directories are independent: each is optional and at least one must
- * be configured. A directory that is configured must exist, because that is a
+ * The directories are independent: each is optional and at least one must be
+ * configured. A directory that is configured must exist, because that is a
  * build-setup mistake rather than a content problem.
  */
 abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {

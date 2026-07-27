@@ -7,25 +7,24 @@ import java.util.stream.Collectors;
 import io.github.adamw7.tools.adopt.AdoptionFiles;
 
 /**
- * Appends a {@code CLAUDE.md} guard task to a Gradle build script so the adopted
+ * Appends a {@code CLAUDE.md} guard task to a Gradle build script, so the adopted
  * repository fails its build when the generated {@code CLAUDE.md} is missing or
  * empty. Gradle has no {@code claude-code-enforcer} equivalent, so the guard is a
  * dependency-free presence-and-non-empty check rather than the full format rule
  * the Maven path wires in.
  *
  * <p>The syntax is chosen from the script's extension, since the Kotlin
- * ({@code build.gradle.kts}) and Groovy ({@code build.gradle}) DSLs differ. The
- * block is appended rather than parsed in because Gradle scripts are code, not
- * data. The install is idempotent: a script that already declares the
- * {@value #GUARD_TASK} task is left untouched.
+ * ({@code build.gradle.kts}) and Groovy ({@code build.gradle}) DSLs differ, and
+ * the block is appended rather than parsed in because Gradle scripts are code, not
+ * data. A script that already declares the {@value #GUARD_TASK} task is left
+ * untouched.
  *
  * <p>The file to check is resolved while the task is being <em>configured</em> and
  * only read inside {@code doLast}, so the task body captures a plain
  * {@link java.io.File} rather than reaching back into the {@code Project} at
- * execution time. Gradle's configuration cache rejects a task that holds a script
- * or {@code Project} reference, which would abort the adoption at
- * {@link GradleBuildSystem#verifyCommand()} and break {@code check} for every
- * contributor afterwards.
+ * execution time: Gradle's configuration cache rejects a task holding a script or
+ * {@code Project} reference, which would break {@code check} for every contributor
+ * afterwards.
  */
 public class GradleGuardInstaller {
 

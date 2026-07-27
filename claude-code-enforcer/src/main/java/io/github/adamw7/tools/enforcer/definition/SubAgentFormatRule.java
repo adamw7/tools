@@ -22,11 +22,10 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * <p>
  * The required keys default to {@code name} and {@code description}, and a
  * declared {@code description} must be non-empty, because Claude routes to a
- * sub-agent by matching intent against its description. When
- * {@code allowedModels} is configured and a definition declares a {@code model},
- * that model must be one of the allowed values, so a typo such as
- * {@code claud-opus} cannot slip through. An agents directory with no
- * definitions is allowed; all problems found are reported together.
+ * sub-agent by matching intent against it. A declared {@code model} outside a
+ * configured {@code allowedModels} is reported, so a typo such as
+ * {@code claud-opus} cannot slip through. An agents directory with no definitions
+ * is allowed; all problems found are reported together.
  */
 @Named("subAgentFormat")
 public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {

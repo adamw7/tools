@@ -14,15 +14,10 @@ import org.w3c.dom.Element;
  * {@code CLAUDE.md} is missing or malformed.
  *
  * <p>The install is idempotent: a POM that already wires the rule is left
- * untouched. A POM whose {@code build} already uses the
- * {@code maven-enforcer-plugin} for other rules has that declaration augmented in
- * place rather than skipped, so the rule is still wired in and the project keeps a
- * single enforcer entry.
- *
- * <p>{@link PomDocument} does the reading, splicing, and verbatim writing, so the
- * existing document is preserved exactly and only the newly added markup appears in
- * the adoption commit. The rule version comes from {@link EnforcerRuleVersion} and
- * must be a release.
+ * untouched, and one whose {@code build} already uses the plugin for other rules
+ * has that declaration augmented in place, so the project keeps a single enforcer
+ * entry. {@link PomDocument} does the reading, splicing, and verbatim writing, and
+ * the rule version comes from {@link EnforcerRuleVersion} and must be a release.
  */
 public class PomEnforcerInstaller {
 
@@ -116,13 +111,11 @@ public class PomEnforcerInstaller {
 	 * {@link #declaresClaudeRule} — but where it is <em>added</em> cannot be: an
 	 * execution spliced into {@code pluginManagement} only configures a plugin the
 	 * build never runs, and one spliced into a profile runs only when that profile is
-	 * activated. Neither actually enforces anything, and neither shows up as a
-	 * failure: {@code install} would report the rule wired in, {@link VerifyStep}'s
-	 * {@code mvn -N validate} would pass without the rule ever executing, and the
-	 * adoption would open a pull request advertising a guard the project does not
-	 * have. A POM whose only enforcer sits somewhere else therefore gets its own
-	 * declaration in {@code build/plugins}, exactly as a POM with no enforcer at all
-	 * does.
+	 * activated. Neither enforces anything, and neither shows up as a failure —
+	 * {@link VerifyStep}'s {@code mvn -N validate} would pass without the rule ever
+	 * executing and the adoption would advertise a guard the project does not have. A
+	 * POM whose only enforcer sits somewhere else therefore gets its own declaration
+	 * in {@code build/plugins}.
 	 */
 	private Optional<Element> enforcerPluginOfTheBuild(PomDocument pom) {
 		return pom.at(BUILD_PLUGINS).stream()

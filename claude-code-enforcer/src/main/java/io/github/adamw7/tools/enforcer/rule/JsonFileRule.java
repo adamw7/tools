@@ -9,19 +9,18 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * Base for enforcer rules that validate a single JSON configuration file. It
- * owns the scaffolding every such rule repeats: the file parameter must be
- * configured, the file must exist (unless the subclass treats absence as a
- * pass), it must be non-empty, and it must parse as JSON. A parse failure is
- * collected as a violation rather than thrown, so it is reported through the
- * shared {@link #report} path alongside any structural problems.
+ * Base for enforcer rules that validate a single JSON configuration file. It owns
+ * the scaffolding every such rule repeats: the file parameter must be configured,
+ * the file must exist (unless the subclass treats absence as a pass), be non-empty,
+ * and parse as JSON. A parse failure is collected as a violation rather than
+ * thrown, so it is reported through the shared {@link #report} path alongside any
+ * structural problems.
  * <p>
- * Subclasses contribute the file, its parameter name, a human-readable
- * description used in messages, the report header, and the document-specific
- * checks against the parsed {@link JsonNode}. A misconfigured rule (missing
- * file parameter) or a missing or empty file always fails, because that is a
- * build-setup mistake; a rule whose file is optional overrides
- * {@link #handleMissingFile} to pass instead.
+ * Subclasses contribute the file, its parameter name, a human-readable description
+ * used in messages, the report header, and the document-specific checks against
+ * the parsed {@link JsonNode}. A misconfigured rule or a missing or empty file
+ * always fails, because that is a build-setup mistake; a rule whose file is
+ * optional overrides {@link #handleMissingFile} to pass instead.
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 

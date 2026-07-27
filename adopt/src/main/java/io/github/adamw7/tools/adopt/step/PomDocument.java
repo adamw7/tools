@@ -30,26 +30,26 @@ import io.github.adamw7.tools.adopt.step.XmlElementSpans.Span;
 /**
  * A {@code pom.xml} read for editing and written back without reformatting.
  * Callers find the element they want to extend with the query methods and add
- * markup under it with {@link #insertUnder}; everything the file already held —
- * every whitespace character, its XML declaration, its trailing newline, and its
- * line terminator — survives {@link #write()} untouched, so the adoption commit
- * shows only the block that was added rather than a reformat of the whole file.
+ * markup under it with {@link #insertUnder}; every whitespace character, the XML
+ * declaration, the trailing newline, and the line terminator survive
+ * {@link #write()} untouched, so the adoption commit shows only the block that was
+ * added.
  *
- * <p>The DOM is only ever read: it answers which elements the POM declares and how
- * they nest, while the edit itself is text spliced into the bytes the file already
- * held. Writing an edited DOM out whole cannot keep the promise above however
- * carefully the serialiser is configured, because the details it would reformat are
- * not in the DOM to begin with: a start tag spread over several lines and an empty
- * element written {@code <rule />} both come back normalised, turning a fourteen-line
- * addition into a diff that touches the whole file. The source offsets the splice
- * needs come from {@link XmlElementSpans}. Keeping the edit textual also means added
- * elements simply inherit the POM's default namespace rather than having to be
- * qualified — and a POM that declares none stays namespace-free.
+ * <p>The DOM is only ever read — it answers which elements the POM declares and
+ * how they nest — while the edit itself is text spliced into the bytes the file
+ * already held, at the source offsets {@link XmlElementSpans} reports. Writing an
+ * edited DOM out whole cannot keep that promise however carefully the serialiser
+ * is configured, because the details it reformats are not in the DOM to begin
+ * with: a start tag spread over several lines and an empty element written
+ * {@code <rule />} both come back normalised. Keeping the edit textual also means
+ * added elements inherit the POM's default namespace rather than having to be
+ * qualified.
  *
- * <p>Added markup arrives one element per line, indented by {@link #FRAGMENT_INDENT}
- * per nesting level, and is re-indented to the document's own unit (detected from
- * the file, defaulting to two spaces) at the depth it lands at. It is inserted after
- * the parent's last child, so the parent's own closing indentation stays put.
+ * <p>Added markup arrives one element per line, indented by
+ * {@link #FRAGMENT_INDENT} per nesting level, and is re-indented to the document's
+ * own unit (detected from the file, defaulting to two spaces) at the depth it
+ * lands at. It is inserted after the parent's last child, so the parent's own
+ * closing indentation stays put.
  */
 final class PomDocument {
 

@@ -14,21 +14,18 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 
 /**
  * Enforcer rule that keeps the module map in the agent docs from drifting away
- * from the real Maven reactor. {@link CrossDocConsistencyRule} pins scalar
- * facts with regular expressions, but a module added to the root {@code pom.xml}
- * and never documented is a structural gap no single pattern expresses: an
- * agent reading the docs simply never learns the module exists. This rule
- * extracts every {@code <module>} entry from the configured {@code pomFile}
- * (XML comments are ignored, so a commented-out module does not count) and
- * fails when a module's name — the last path segment, for a nested entry such
- * as {@code code/context} — does not appear in each configured doc file.
+ * from the real Maven reactor. {@link CrossDocConsistencyRule} pins scalar facts
+ * with regular expressions, but a module added to the root {@code pom.xml} and
+ * never documented is a structural gap no single pattern expresses: an agent
+ * reading the docs simply never learns the module exists.
  * <p>
- * The check is presence-only by design: how a doc arranges its module map is
- * prose, but every live module must at least be mentioned. Modules listed in
- * {@code ignoredModules} are exempt, e.g. an internal test-only module the docs
- * deliberately leave out. A pom with no {@code <module>} entries fails, because
- * pointing this rule at a non-aggregator pom is a build-setup mistake. All
- * missing mentions are reported together.
+ * The rule extracts every {@code <module>} entry from the configured
+ * {@code pomFile} (XML comments are ignored, so a commented-out module does not
+ * count) and fails when a module's name — the last path segment, for a nested
+ * entry such as {@code code/context} — does not appear in each configured doc
+ * file. The check is presence-only by design, since how a doc arranges its module
+ * map is prose. Modules listed in {@code ignoredModules} are exempt, and a pom
+ * with no {@code <module>} entries fails as a build-setup mistake.
  */
 @Named("moduleMapConsistency")
 public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {

@@ -14,10 +14,10 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when an {@code .mcp.json} server entry is
- * structurally well formed at the transport level but wrong in its details.
- * Where {@link McpServersValidRule} checks that a server declares the right
+ * structurally well formed at the transport level but wrong in its details. Where
+ * {@link McpServersValidRule} checks that a server declares the right
  * {@code command} or {@code url} for its transport, this rule validates the
- * optional fields around them so a subtle mistake cannot reach Claude Code:
+ * optional fields around them:
  * <ul>
  * <li>{@code args} must be an array of strings;</li>
  * <li>{@code env} and {@code headers} must be objects whose values are all
@@ -28,8 +28,7 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * mixes a stdio and a remote transport in one entry.</li>
  * </ul>
  * <p>
- * A project-level {@code .mcp.json} is optional, so an absent file is a pass; the
- * rule only fails when the file is present and a server entry is malformed. All
+ * A project-level {@code .mcp.json} is optional, so an absent file is a pass; all
  * problems found are reported together.
  */
 @Named("mcpConfigFormat")

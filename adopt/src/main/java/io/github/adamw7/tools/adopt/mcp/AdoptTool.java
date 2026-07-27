@@ -27,19 +27,17 @@ import io.github.adamw7.tools.mcp.ToolDefinition;
 import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
- * The MCP tool that runs the adoption pipeline: given one GitHub repository URL
- * or a list of them — plus optional workspace, branch, pull-request metadata, and
- * the starter-assets flag — it adopts Claude Code exactly as the command line
- * does and answers with the run's JSON {@link AdoptionReport}. The pipeline is
- * injected behind the {@link Pipeline} seam so tests exercise the argument
- * mapping without cloning anything; the default wiring runs it against a
- * {@link ProcessCommandRunner}.
+ * The MCP tool that runs the adoption pipeline: given one GitHub repository URL or
+ * a list of them — plus optional workspace, branch, pull-request metadata, and the
+ * starter-assets flag — it adopts Claude Code exactly as the command line does and
+ * answers with the run's JSON {@link AdoptionReport}. The pipeline is injected
+ * behind the {@link Pipeline} seam so tests exercise the argument mapping without
+ * cloning anything.
  *
  * <p>A repository whose adoption fails does not strand the rest of the list: the
- * batch runs to the end and the result carries every repository's report, marked
- * as an error result when any of them failed. That report is the answer even on
- * the failure path — a client that asked for five repositories needs to know
- * which two did not land, not only that something threw.
+ * result carries every repository's report, marked as an error result when any of
+ * them failed. A client that asked for five repositories needs to know which two
+ * did not land, not only that something threw.
  */
 public class AdoptTool implements McpTool {
 

@@ -12,24 +12,18 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
  * Enforcer rule that fails the build when the {@code hooks} section of
- * {@code .claude/settings.json} is malformed. The file must exist, be non-empty,
- * and parse as JSON. When a {@code hooks} object is present, every event must map
- * to an array of groups, every group must carry a {@code hooks} array, and every
- * hook in it must declare a non-blank {@code type}; a {@code command} hook must
- * also declare a non-blank {@code command}.
+ * {@code .claude/settings.json} is malformed. When a {@code hooks} object is
+ * present, every event must map to an array of groups, every group must carry a
+ * {@code hooks} array, and every hook in it must declare a non-blank {@code type};
+ * a {@code command} hook must also declare a non-blank {@code command}.
  * <p>
  * A command that points at a project-local script through the
- * {@code $CLAUDE_PROJECT_DIR} variable is resolved against {@code projectDir}
- * (the parent of the settings file's directory by default) and must exist on
- * disk, so a renamed or missing hook script such as
- * {@code $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh} is caught. This
- * check is on by default and can be switched off with
- * {@code validateScriptReferences}. When {@code allowedEvents} is configured, any
- * event name outside that set is reported, which catches a mistyped
- * {@code SessionSart}.
- * <p>
- * A settings file without a {@code hooks} object is allowed; all problems found
- * are reported together.
+ * {@code $CLAUDE_PROJECT_DIR} variable is resolved against {@code projectDir} (the
+ * parent of the settings file's directory by default) and must exist on disk, so a
+ * renamed or missing hook script is caught; the check is on by default and can be
+ * switched off with {@code validateScriptReferences}. An event name outside a
+ * configured {@code allowedEvents} is reported, which catches a mistyped
+ * {@code SessionSart}. A settings file without a {@code hooks} object is allowed.
  */
 @Named("hookCommandsValid")
 public class HookCommandsValidRule extends JsonFileRule {

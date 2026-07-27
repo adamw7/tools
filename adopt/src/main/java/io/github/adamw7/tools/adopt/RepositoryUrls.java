@@ -5,21 +5,16 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * Reads the list of repository URLs an adoption run works through, from the two
+ * Reads the list of repository URLs an adoption run works through, in the two
  * forms the entry points offer: a file naming one repository per line, and a list
- * already collected in memory (repeated command-line flags, or an MCP argument).
- * Both end in {@link #distinct(List)}, so the two cannot drift apart on what
- * counts as a repository worth adopting.
+ * already collected in memory. Both end in {@link #distinct(List)}, so the two
+ * cannot drift apart on what counts as a repository worth adopting.
  *
  * <p>A list file is written for people: blank lines are skipped and a line whose
  * first non-blank character is {@code #} is a comment, so a batch can be annotated
- * with why a repository is on it, and a repository can be commented out for a run
- * rather than deleted from the file.
- *
- * <p>Duplicates are dropped, keeping the order the URLs were given in. The same
- * URL twice would clone into one checkout directory and adopt it a second time,
- * which at best repeats the work and at worst pushes a branch built on a
- * half-adopted tree.
+ * and a repository commented out for a run rather than deleted. Duplicates are
+ * dropped, keeping the order the URLs were given in — the same URL twice would
+ * clone into one checkout directory and adopt it a second time.
  */
 public final class RepositoryUrls {
 

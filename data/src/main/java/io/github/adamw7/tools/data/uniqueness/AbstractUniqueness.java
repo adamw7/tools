@@ -115,17 +115,17 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	protected abstract Result checkSubset(String[] newCandidates);
 
 	/**
-	 * Runs the uniqueness check over the already-open {@link #dataSource}. The public
-	 * {@link #exec} opens the source before calling this; {@link #execForAllColumns}
-	 * opens the source to read its column names and then reuses that same open source,
-	 * so neither entry point opens the source twice &mdash; which the open-once
-	 * map-backed in-memory sources reject with {@code DataSource is already open}.
+	 * Runs the uniqueness check over the already-open {@link #dataSource}. Both public
+	 * entry points open the source exactly once before calling this — {@link #exec}
+	 * directly, {@link #execForAllColumns} while reading the column names — because
+	 * the open-once map-backed in-memory sources reject a second open with
+	 * {@code DataSource is already open}.
 	 *
 	 * <p>Implementations must not close the source: the subset search that follows a
 	 * successful check {@link IterableDataSource#reset() resets} it between passes,
-	 * and a source that owns its connection (the Parquet ones) cannot be reopened
-	 * once closed. The public entry points close the source exactly once, after the
-	 * whole check &mdash; subsets included &mdash; has finished.
+	 * and a source that owns its connection (the Parquet ones) cannot be reopened once
+	 * closed. The public entry points close it exactly once, after the whole check —
+	 * subsets included — has finished.
 	 */
 	protected abstract Result execOnOpenSource(String[] keyCandidates);
 

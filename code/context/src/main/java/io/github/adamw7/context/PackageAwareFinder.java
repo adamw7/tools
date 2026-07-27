@@ -11,20 +11,17 @@ import java.util.stream.Collectors;
  * A {@link Context} that resolves dependencies using each source's {@code package}
  * declaration and {@code import} statements, so two classes that share a simple
  * name in different packages can be told apart — the gap the name-based
- * {@link Finder} explicitly leaves open. A referenced {@code Foo} resolves, in
- * order of preference, to: an explicitly imported {@code a.b.Foo}; a {@code Foo}
- * in the referencing file's own package; a {@code Foo} reachable through a
- * wildcard import {@code a.b.*}; or, only when exactly one {@code Foo} exists in
- * the whole project, that sole candidate. An ambiguous reference with no import to
+ * {@link Finder} leaves open. A referenced {@code Foo} resolves, in order of
+ * preference, to an explicitly imported {@code a.b.Foo}, a {@code Foo} in the
+ * referencing file's own package, one reachable through a wildcard import
+ * {@code a.b.*}, or — only when exactly one {@code Foo} exists in the whole
+ * project — that sole candidate. An ambiguous reference with no import to
  * disambiguate it is left unresolved rather than guessed.
  *
- * <p>Like {@link Finder}, traversal is the depth-bounded breadth-first expansion
- * provided by {@link AbstractFinder} in which every class is visited once, so
- * cycles terminate and the root is never reported as its own dependency. Comments
- * and string or character literals are stripped before matching. The
- * package/import grammar this relies on ({@code package a.b;} and
- * {@code import a.b.C;}) is shared by Java, Kotlin and Scala, so it serves every
- * {@link Language} the finder supports.
+ * <p>Traversal is the depth-bounded breadth-first expansion of
+ * {@link AbstractFinder}, and comments and string or character literals are
+ * stripped before matching. The package/import grammar this relies on is shared by
+ * Java, Kotlin and Scala, so it serves every {@link Language} the finder supports.
  */
 public class PackageAwareFinder extends AbstractFinder {
 

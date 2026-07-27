@@ -15,20 +15,17 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
  * Enforcer rule that fails the build when any custom slash command under the
- * configured commands directory is malformed. Every {@code *.md} file directly
- * in {@code commandsDir} is treated as a slash command: it must be non-empty and
+ * configured commands directory is malformed. Every {@code *.md} file directly in
+ * {@code commandsDir} is treated as a slash command: it must be non-empty and
  * carry a file name that follows the Claude Code naming convention, because the
  * command's name is taken from its file name rather than from front matter.
  * <p>
- * Front matter is optional for a command. When a command does open with a YAML
- * front matter block, the optional checks apply: a present {@code description}
- * must be non-empty; a present {@code model} must be one of {@code allowedModels}
- * when that whitelist is configured; and when {@code allowedFrontMatterKeys} is
- * configured, any key outside that set is reported, which catches typos such as
- * {@code argument-hnt}.
- * <p>
- * A commands directory with no commands is allowed; all problems found are
- * reported together.
+ * Front matter is optional for a command. When one is present, a declared
+ * {@code description} must be non-empty, a declared {@code model} must be one of
+ * {@code allowedModels} when that whitelist is configured, and any key outside a
+ * configured {@code allowedFrontMatterKeys} is reported, which catches typos such
+ * as {@code argument-hnt}. A commands directory with no commands is allowed; all
+ * problems found are reported together.
  */
 @Named("commandFormat")
 public class CommandFormatRule extends ClaudeCodeEnforcerRule {

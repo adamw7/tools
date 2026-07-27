@@ -12,23 +12,19 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 /**
  * Verifies up front that every external tool the pipeline shells out to is
  * available — {@code git} to clone and commit, {@code claude} to generate the
- * {@code CLAUDE.md}, and {@code gh} to open the pull request. Probing the
- * toolchain before any real work begins turns a missing {@code gh} into an
- * immediate, self-explanatory failure instead of one that only surfaces at the
- * very end, after a full clone, a {@code claude init}, and a Maven build have
- * already run.
- *
- * <p>A tool counts as available when its {@code --version} probe starts and exits
- * zero. Every required tool is probed even after one is found missing, so a
- * single failure names all of the absent tools at once.
+ * {@code CLAUDE.md}, {@code gh} to open the pull request — so a missing one fails
+ * immediately instead of at the very end, after a full clone, a
+ * {@code claude init}, and a build have already run. A tool counts as available
+ * when its {@code --version} probe starts and exits zero, and every required tool
+ * is probed even after one is found missing, so a single failure names them all.
  *
  * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
  * for a GitHub CLI nobody is logged in to, which the adoption would only discover
- * at {@link PullRequestStep}, its very last step. The login is therefore probed
- * here too, by asking GitHub who the credentials belong to rather than by asking
- * {@code gh} what it has stored — see {@link #AUTHENTICATION_PROBE}. The adopted
- * project's own build tool only becomes known once the repository is cloned, so
- * {@link BuildToolchainStep} probes it there.
+ * at {@link PullRequestStep}. The login is therefore probed here too, by asking
+ * GitHub who the credentials belong to rather than {@code gh} what it has stored —
+ * see {@link #AUTHENTICATION_PROBE}. The adopted project's own build tool only
+ * becomes known once the repository is cloned, so {@link BuildToolchainStep}
+ * probes it there.
  */
 public class ToolchainStep implements AdoptionStep {
 

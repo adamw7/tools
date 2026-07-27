@@ -13,28 +13,25 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * share: turning a collected list of violations into either a build failure or a
  * build warning, depending on the configured {@link #severity}.
  * <p>
- * The default severity is {@code error}, which fails the build and preserves the
- * original behaviour. Setting {@code <severity>warn</severity>} in the rule
- * configuration downgrades the same violations to a logged warning, so a team can
- * adopt a rule gradually before it is allowed to break the build. Severity only
- * governs collected structural violations; a misconfigured rule (missing file or
- * directory parameter) always fails, because that is a build-setup mistake rather
- * than a document-quality problem.
+ * The default severity is {@code error}. Setting
+ * {@code <severity>warn</severity>} downgrades the same violations to a logged
+ * warning, so a team can adopt a rule gradually before it is allowed to break the
+ * build. Severity only governs collected structural violations; a misconfigured
+ * rule (missing file or directory parameter) always fails, because that is a
+ * build-setup mistake rather than a document-quality problem.
  * <p>
  * When {@code <reportFile>} is configured the same outcome is also written as a
- * self-contained HTML report — a single table pairing what failed and why with
- * the {@link #howToFix()} steps in a "How to fix" column — so a build can surface
- * the violations in a browser or CI artifact regardless of severity. The report is
- * written whether the check passes or fails, so it always reflects the latest run.
+ * self-contained HTML report — a single table pairing what failed and why with the
+ * {@link #howToFix()} steps — so a build can surface the violations in a browser
+ * or CI artifact. It is written whether the check passes or fails, so it always
+ * reflects the latest run.
  * <p>
  * When {@code <baselineFile>} is configured, a violation already recorded in that
- * file is suppressed and only a <em>new</em> violation drives the outcome, so a
- * rule can be turned into an error gate without first fixing every pre-existing
- * violation. Record the current violations once — set {@code <writeBaseline>true</writeBaseline>}
- * or run the build with {@code -Dclaude.enforcer.writeBaseline=true}, which writes
- * the baseline and passes — then commit the file; from then on the backlog is
- * grandfathered and any newly introduced violation still fails. The HTML report
- * and the failure message reflect only the un-suppressed violations.
+ * file is suppressed and only a <em>new</em> one drives the outcome. Record the
+ * current violations once — {@code <writeBaseline>true</writeBaseline>} or
+ * {@code -Dclaude.enforcer.writeBaseline=true}, which writes the baseline and
+ * passes — then commit the file. The HTML report and the failure message reflect
+ * only the un-suppressed violations.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 

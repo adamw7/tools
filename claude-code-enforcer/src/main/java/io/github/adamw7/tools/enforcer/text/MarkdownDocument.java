@@ -6,16 +6,15 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A parsed Markdown document: its lines plus a mask marking which lines belong
- * to a fenced code block. Parsing the fence mask once, at construction, lets the
- * structural checks share it instead of each rebuilding it.
+ * A parsed Markdown document: its lines plus a mask marking which lines belong to
+ * a fenced code block. Parsing the mask once, at construction, lets the structural
+ * checks share it instead of each rebuilding it.
  * <p>
- * Headings are recognised on whole lines outside fenced code blocks, so a
- * heading mentioned inside a {@code ```} or {@code ~~~} fence or in prose is not
- * treated as document structure. The fence mask includes the opening and closing
- * delimiters themselves, so heading detection and body detection agree on what is
- * code and what is structure. A fence opened with one delimiter is only closed by
- * the same delimiter, so a {@code ~~~} line inside a {@code ```} block stays code.
+ * Headings are recognised on whole lines outside fenced code blocks, so a heading
+ * mentioned inside a fence or in prose is not treated as document structure. The
+ * mask includes the opening and closing delimiters themselves, so heading and body
+ * detection agree on what is code; a fence is only closed by the delimiter that
+ * opened it, so a {@code ~~~} line inside a {@code ```} block stays code.
  */
 public final class MarkdownDocument {
 

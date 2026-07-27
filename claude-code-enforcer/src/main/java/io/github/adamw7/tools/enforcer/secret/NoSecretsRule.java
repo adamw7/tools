@@ -18,22 +18,19 @@ import io.github.adamw7.tools.enforcer.rule.ScanTargets;
  * Enforcer rule that fails the build when a configured file contains what looks
  * like a literal credential. Claude Code configuration is a natural place for a
  * key to leak — an API token pasted into a {@code .mcp.json} {@code env} or
- * {@code headers} block, a {@code settings.json} environment variable, or a
- * hook script — and once committed it must be rotated, so the cheapest fix is to
- * refuse the commit's build. The scanned targets are the configured
- * {@code files} plus every regular file under the configured
- * {@code directories}; an absent target is skipped, because most of these files
- * are optional.
+ * {@code headers} block, a {@code settings.json} environment variable, or a hook
+ * script — and once committed it must be rotated, so the cheapest fix is to refuse
+ * the commit's build.
  * <p>
- * Each match is reported with its file, line, and the kind of credential it
+ * The scanned targets are the configured {@code files} plus every regular file
+ * under the configured {@code directories}; an absent target is skipped, because
+ * most of these files are optional, and so is a file that cannot be decoded as
+ * text. Each match is reported with its file, line, and the kind of credential it
  * resembles, but only the first characters of the match itself, so the report
  * never republishes the secret it found. The default patterns cover common API
  * token formats (Anthropic, AWS, GitHub, Slack, private key blocks); custom
- * {@code secretPatterns} regular expressions are scanned in addition, or
- * instead when {@code useDefaultPatterns} is switched off. A file that cannot
- * be decoded as text (e.g. a binary asset) is skipped. All problems found are
- * reported together — the fix is to move the value into an environment variable
- * expansion such as {@code ${API_KEY}} and rotate the leaked credential.
+ * {@code secretPatterns} are scanned in addition, or instead when
+ * {@code useDefaultPatterns} is switched off.
  */
 @Named("noSecrets")
 public class NoSecretsRule extends ClaudeCodeEnforcerRule {

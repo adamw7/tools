@@ -157,7 +157,9 @@ paths.
 - **Architecture tests** (ArchUnit) live in each module's `.architecture` test
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend
-  on its MCP adapter, JDBC stays confined to the `source.db` package, loggers are
+  on its MCP adapter, JDBC stays confined to the `source.db` package, the
+  adoption spawns processes only in its `command` package and only its clone
+  step reads the credentialled clone URL, loggers are
   `private static final`, abstract types carry an `Abstract` prefix, public
   fields are `final`, mutable static state is `volatile`, fields are never
   `Optional`, date/time uses `java.time` (not the legacy `Date`/`Calendar` API),
@@ -166,7 +168,9 @@ paths.
   stay free of cycles. A companion `TestConventionsArchitectureTest` pins
   conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
   classes, no `@Disabled`, JUnit 5 only, no `System.out`/`err`, and no
-  `Thread.sleep`. Keep new code within these rules.
+  `Thread.sleep`; in `adopt` it also pins that step tests never spawn a real
+  process and the `*IT`s never push or open a pull request. Keep new code within
+  these rules.
 - **Integration tests** (`*IT`) are gated behind the `integration-tests` profile
   and cover what needs something real: the MCP servers over HTTP, and `adopt`'s
   `MultiRepoAdoptionIT`, which clones real GitHub sample repositories to prove a

@@ -90,13 +90,20 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Asks the whole POM rather than only its {@code build/plugins}, because a
-	 * project that already runs the rule may well wire it somewhere else — behind an
-	 * opt-in profile, or in {@code pluginManagement}. Looking only at the build would
-	 * report such a POM as unguarded and wire in a second, duplicate declaration.
+	 * Asks every plugin the POM <em>binds</em>, not only its {@code build/plugins},
+	 * because a project that already runs the rule may well wire it behind an opt-in
+	 * profile. Looking only at the build would report such a POM as unguarded and
+	 * wire in a second, always-on copy of a rule the project already runs on its own
+	 * terms.
+	 *
+	 * <p>What it does not ask is {@code pluginManagement}, which binds nothing: a
+	 * rule declared only there never runs, so treating it as a guard left the project
+	 * with none and the pull request still claiming one — the same silent outcome
+	 * {@link #enforcerPluginOfTheBuild} refuses to produce from the other direction,
+	 * since {@link VerifyStep}'s {@code mvn -N validate} passes either way.
 	 */
 	private boolean declaresClaudeRule(PomDocument pom) {
-		return pom.plugins().stream().anyMatch(this::declaresRuleDependency);
+		return pom.boundPlugins().stream().anyMatch(this::declaresRuleDependency);
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {
@@ -107,7 +114,7 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
-	 * one. Where the rule is <em>looked for</em> is the whole POM — see
+	 * one. Where the rule is <em>looked for</em> is every plugin the POM binds — see
 	 * {@link #declaresClaudeRule} — but where it is <em>added</em> cannot be: an
 	 * execution spliced into {@code pluginManagement} only configures a plugin the
 	 * build never runs, and one spliced into a profile runs only when that profile is

@@ -854,9 +854,13 @@ The default pipeline runs these steps in order:
    and a Maven build have already run. Being installed is not enough for `gh`:
    `gh --version` succeeds for a CLI nobody is logged in to, so the login is
    probed too and an unauthenticated `gh` fails here rather than at the very last
-   step. The probe is `gh api user` — an authenticated call to GitHub — rather
-   than `gh auth status`, which reports a rejected `GH_TOKEN` as invalid and
-   still exits zero.
+   step. The probe reads the repository being adopted, `gh api repos/<owner>/<repo>`
+   — the access the pull request will need — rather than `gh auth status`, which
+   reports a rejected `GH_TOKEN` as invalid and still exits zero, and rather than
+   the user-scoped `gh api user`, which a GitHub App installation token (a CI
+   run's `GITHUB_TOKEN`) is refused by even when it can open the pull request
+   perfectly well. A URL naming no owner has no repository to ask about and falls
+   back to `gh api user`.
 2. **`CloneStep`** — clones the target repository into the workspace with
    `git clone`, giving the remaining steps a working checkout.
 3. **`BuildToolchainStep`** — probes the *adopted project's* build tool, now that

@@ -35,8 +35,54 @@ class ToolchainStepTest {
 	void probesTheGitHubLoginOnceEveryToolIsPresent() {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new ToolchainStep().execute(context, runner);
-		assertEquals(List.of("gh", "api", "user"), runner.commandAt(3));
+		assertEquals(List.of("gh", "api", "repos/adamw7/demo"), runner.commandAt(3));
 		assertEquals(context.workspace(), runner.invocations().get(3).workingDirectory());
+	}
+
+	/**
+	 * The probe must not be the user-scoped {@code gh api user}. A GitHub App
+	 * installation token — what a CI run is handed, and the credential behind the
+	 * {@code x-access-token:TOKEN@github.com} clone URLs the adoption accepts — is
+	 * refused by that endpoint with "Resource not accessible by integration", so
+	 * probing with it aborted every CI-driven adoption on its very first step even
+	 * though {@code gh pr create} would have worked.
+	 */
+	@Test
+	void neverProbesTheTokensOwnerWhenTheUrlNamesTheRepository() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep().execute(context, runner);
+		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("user")),
+				runner.invocations().toString());
+	}
+
+	/** An installation token reads its own repository, which is the access the pull request needs. */
+	@Test
+	void anInstallationTokenThatCanReadTheRepositoryCompletesTheStep() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(ToolchainStepTest::installationToken);
+		assertDoesNotThrow(() -> new ToolchainStep().execute(context, runner));
+	}
+
+	/** A token GitHub answers, but not for this repository, cannot open the pull request either. */
+	@Test
+	void aTokenThatCannotSeeTheRepositoryAbortsTheAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(
+				command -> command.contains("repos/adamw7/demo") ? new CommandResult(command, 1, "HTTP 404")
+						: new CommandResult(command, 0, ""));
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ToolchainStep().execute(context, runner));
+		assertTrue(thrown.getMessage().contains("adamw7/demo"), thrown.getMessage());
+	}
+
+	/**
+	 * A URL naming no owner — a local path — leaves no repository to ask about, so
+	 * the weaker question is all there is.
+	 */
+	@Test
+	void asksWhoTheCredentialsBelongToWhenTheUrlNamesNoRepository() {
+		AdoptionContext local = new AdoptionContext("/srv/git/demo", Path.of("/tmp/workspace"));
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		new ToolchainStep().execute(local, runner);
+		assertEquals(List.of("gh", "api", "user"), runner.commandAt(3));
 	}
 
 	@Test
@@ -58,7 +104,7 @@ class ToolchainStepTest {
 						: new CommandResult(command, 0, ""));
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("cannot authenticate"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("cannot reach"), thrown.getMessage());
 	}
 
 	/**
@@ -74,7 +120,7 @@ class ToolchainStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::rejectedByGitHub);
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("cannot authenticate"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("cannot reach"), thrown.getMessage());
 	}
 
 	/**
@@ -88,6 +134,14 @@ class ToolchainStepTest {
 		new ToolchainStep().execute(context, runner);
 		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("auth")),
 				runner.invocations().toString());
+	}
+
+	/** A {@code gh} holding a GitHub App installation token: refused by {@code user}, fine on the repository. */
+	private static CommandResult installationToken(List<String> command) {
+		if (command.contains("user")) {
+			return new CommandResult(command, 1, "HTTP 403: Resource not accessible by integration");
+		}
+		return new CommandResult(command, 0, "");
 	}
 
 	/** A {@code gh} that is installed and holds a token GitHub answers 401 to. */

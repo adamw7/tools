@@ -99,9 +99,12 @@ Maven project. The notable capabilities are:
   project's CI and every contributor with a build that cannot resolve it — so a
   snapshot build of `tools` cannot adopt a Maven project until a release is
   published. Whether a POM already carries the guard is decided by scanning every
-  `plugin` it declares, wherever it sits — the build, `pluginManagement`, or a
-  profile — because a project that runs the rule behind an opt-in profile would
-  otherwise be given a second, always-on copy of it. Both `gh` invocations name the target repository with
+  `plugin` it *binds* — the build's or a profile's — because a project that runs
+  the rule behind an opt-in profile would otherwise be given a second, always-on
+  copy of it. A `pluginManagement` entry is deliberately not one of them: it pins
+  a version and binds nothing, so a rule declared only there never runs, and
+  counting it as a guard left the project with none while the pull request still
+  claimed one. Both `gh` invocations name the target repository with
   `--repo`, derived from the URL being adopted, rather than letting `gh` infer it
   from the checkout's git remote — a remote rewritten by `url.<base>.insteadOf`,
   a mirror, or a proxy is not readable as a GitHub one and would fail the last

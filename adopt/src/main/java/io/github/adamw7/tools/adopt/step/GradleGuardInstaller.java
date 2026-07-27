@@ -87,7 +87,7 @@ public class GradleGuardInstaller {
 	 * The task name only counts when it appears in a registration outside a comment,
 	 * so a script that merely mentions {@value #GUARD_TASK} — in a {@code // TODO},
 	 * or in a declaration someone commented out — is still given the task rather
-	 * than left without the one {@link GradleBuildSystem#verifyCommand()} runs.
+	 * than left without the one {@link GradleBuildSystem#verifyCommand(Path)} runs.
 	 */
 	private boolean declaresGuard(String script) {
 		return DECLARATION.matcher(withoutCommentLines(script)).find();

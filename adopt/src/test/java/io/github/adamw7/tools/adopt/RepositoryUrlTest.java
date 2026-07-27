@@ -97,4 +97,29 @@ class RepositoryUrlTest {
 		assertTrue(RepositoryUrl.of("file:///tmp/tools").slug().isEmpty());
 		assertTrue(RepositoryUrl.of("tools").slug().isEmpty());
 	}
+
+	/**
+	 * git is handed the URL as given, but everything that outlives the run — the log,
+	 * a failure message, the JSON report — reports the masked form.
+	 */
+	@Test
+	void keepsTheCredentialsGitNeedsAndMasksTheOnesItReports() {
+		RepositoryUrl url = RepositoryUrl.of("https://x-access-token:secret@github.com/owner/repo.git");
+		assertEquals("https://x-access-token:secret@github.com/owner/repo.git", url.value());
+		assertEquals("https://***@github.com/owner/repo.git", url.redacted());
+	}
+
+	@Test
+	void aUrlWithoutCredentialsReadsTheSameEitherWay() {
+		RepositoryUrl url = RepositoryUrl.of("https://github.com/owner/repo.git");
+		assertEquals(url.value(), url.redacted());
+	}
+
+	/** A URL refused on its input is quoted back, so it must be masked there too. */
+	@Test
+	void masksTheCredentialsOfARejectedUrl() {
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> RepositoryUrl.of("https://x-access-token:secret@github.com/owner/.git"));
+		assertTrue(exception.getMessage().contains("https://***@github.com/owner/.git"), exception.getMessage());
+	}
 }

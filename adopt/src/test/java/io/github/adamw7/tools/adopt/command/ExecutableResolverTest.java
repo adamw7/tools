@@ -70,11 +70,34 @@ class ExecutableResolverTest {
 		assertSame(command, resolver.resolve(command));
 	}
 
+	/** A path naming something that is not a batch script is started as it was given. */
 	@Test
 	void windowsLeavesAProgramCarryingABackslashPathUnchanged(@TempDir Path dir) throws IOException {
 		Files.createFile(dir.resolve("mvn.cmd"));
 		ExecutableResolver resolver = new ExecutableResolver(true, List.of(dir), EXTENSIONS);
 		List<String> command = List.of("C:\\tools\\mvn", "-N");
+		assertSame(command, resolver.resolve(command));
+	}
+
+	/**
+	 * A checkout's own build wrapper is launched by its absolute path, and on Windows
+	 * that path names a batch script CreateProcess refuses to start — so an explicit
+	 * path still has to go through cmd.exe.
+	 */
+	@Test
+	void windowsRewritesABatchScriptNamedByItsPathThroughCmd(@TempDir Path dir) throws IOException {
+		Path wrapper = Files.createFile(dir.resolve("gradlew.bat"));
+		ExecutableResolver resolver = new ExecutableResolver(true, List.of(), EXTENSIONS);
+		assertEquals(List.of("cmd.exe", "/c", wrapper.toString(), "-q", "enforceClaudeMd"),
+				resolver.resolve(List.of(wrapper.toString(), "-q", "enforceClaudeMd")));
+	}
+
+	/** A POSIX wrapper is started directly, so its path must reach ProcessBuilder as given. */
+	@Test
+	void posixLeavesAWrapperNamedByItsPathUnchanged(@TempDir Path dir) throws IOException {
+		Path wrapper = Files.createFile(dir.resolve("gradlew"));
+		ExecutableResolver resolver = new ExecutableResolver(false, List.of(), EXTENSIONS);
+		List<String> command = List.of(wrapper.toString(), "-q");
 		assertSame(command, resolver.resolve(command));
 	}
 

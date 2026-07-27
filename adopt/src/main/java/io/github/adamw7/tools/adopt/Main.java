@@ -19,9 +19,9 @@ import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
  * say how far the adoption got and why it stopped. A run over several
  * repositories writes the batch document {@link AdoptionReportWriter} describes.
  *
- * <p>A repository whose adoption fails does not stop the ones behind it: the batch
- * runs to the end and the failures are raised together afterwards, so the process
- * still exits non-zero.
+ * <p>A repository whose adoption fails does not stop the ones behind it — nor does
+ * one whose URL names no repository at all: the batch runs to the end and the
+ * failures are raised together afterwards, so the process still exits non-zero.
  */
 public class Main {
 
@@ -30,7 +30,7 @@ public class Main {
 		CommandRunner runner = new ProcessCommandRunner();
 		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, cli.pullRequestOptions(),
 				cli.includeAssets(), cli.ruleVersion());
-		runAndReport(cli, contexts(cli), adopter);
+		runAndReport(cli, checkouts(cli), adopter);
 	}
 
 	/**
@@ -42,9 +42,8 @@ public class Main {
 	 * @throws AdoptionException when any repository's adoption failed, naming each
 	 *                           one and why it stopped
 	 */
-	static List<AdoptionRun> runAndReport(CliArguments cli, List<AdoptionContext> contexts,
-			GitHubRepoAdopter adopter) {
-		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(contexts);
+	static List<AdoptionRun> runAndReport(CliArguments cli, Checkouts checkouts, GitHubRepoAdopter adopter) {
+		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(cli.repositoryUrls(), checkouts);
 		try {
 			requireEveryAdoptionSucceeded(runs);
 		} catch (RuntimeException e) {
@@ -56,8 +55,8 @@ public class Main {
 	}
 
 	/** Every repository of a run is adopted into one workspace, on one branch name. */
-	static List<AdoptionContext> contexts(CliArguments cli) {
-		return Checkouts.forRun(cli.repositoryUrls(), Workspaces.resolve(cli.workspace()), cli.branchName());
+	static Checkouts checkouts(CliArguments cli) {
+		return new Checkouts(Workspaces.resolve(cli.workspace()), cli.branchName());
 	}
 
 	/**

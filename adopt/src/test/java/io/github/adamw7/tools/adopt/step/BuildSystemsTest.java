@@ -64,18 +64,18 @@ class BuildSystemsTest {
 	}
 
 	@Test
-	void fallbackVerifyCommandRunsTheGuardScript() {
-		assertEquals(List.of("sh", ".github/claude-md-guard.sh"), new FallbackBuildSystem().verifyCommand());
+	void fallbackVerifyCommandRunsTheGuardScript(@TempDir Path directory) {
+		assertEquals(List.of("sh", ".github/claude-md-guard.sh"), new FallbackBuildSystem().verifyCommand(directory));
 	}
 
 	@Test
-	void mavenVerifyCommandIsANonRecursiveValidate() {
-		assertEquals(List.of("mvn", "-q", "-N", "validate"), new MavenBuildSystem().verifyCommand());
+	void mavenVerifyCommandIsANonRecursiveValidate(@TempDir Path directory) {
+		assertEquals(List.of("mvn", "-q", "-N", "validate"), new MavenBuildSystem().verifyCommand(directory));
 	}
 
 	@Test
-	void gradleVerifyCommandRunsTheGuardTask() {
-		assertEquals(List.of("gradle", "-q", "enforceClaudeMd"), new GradleBuildSystem().verifyCommand());
+	void gradleVerifyCommandRunsTheGuardTask(@TempDir Path directory) {
+		assertEquals(List.of("gradle", "-q", "enforceClaudeMd"), new GradleBuildSystem().verifyCommand(directory));
 	}
 
 	/**
@@ -83,17 +83,46 @@ class BuildSystemsTest {
 	 * launches, or the check passes for a tool the adoption never runs.
 	 */
 	@Test
-	void mavenRequiresTheToolItsVerificationLaunches() {
+	void mavenRequiresTheToolItsVerificationLaunches(@TempDir Path directory) {
 		BuildSystem maven = new MavenBuildSystem();
-		assertEquals(Optional.of(maven.verifyCommand().get(0)), maven.requiredTool());
-		assertEquals(Optional.of("mvn"), maven.requiredTool());
+		assertEquals(Optional.of(maven.verifyCommand(directory).get(0)), maven.requiredTool(directory));
+		assertEquals(Optional.of("mvn"), maven.requiredTool(directory));
 	}
 
 	@Test
-	void gradleRequiresTheToolItsVerificationLaunches() {
+	void gradleRequiresTheToolItsVerificationLaunches(@TempDir Path directory) {
 		BuildSystem gradle = new GradleBuildSystem();
-		assertEquals(Optional.of(gradle.verifyCommand().get(0)), gradle.requiredTool());
-		assertEquals(Optional.of("gradle"), gradle.requiredTool());
+		assertEquals(Optional.of(gradle.verifyCommand(directory).get(0)), gradle.requiredTool(directory));
+		assertEquals(Optional.of("gradle"), gradle.requiredTool(directory));
+	}
+
+	/**
+	 * Most Gradle projects ship only the wrapper, so probing the PATH for a `gradle`
+	 * aborted the adoption of a repository the host could build perfectly well.
+	 */
+	@Test
+	void gradleVerifiesWithTheCheckoutsWrapperWhenItShipsOne(@TempDir Path directory) throws IOException {
+		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
+		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
+		assertEquals(List.of(wrapper.toAbsolutePath().toString(), "-q", "enforceClaudeMd"),
+				gradle.verifyCommand(directory));
+	}
+
+	@Test
+	void mavenVerifiesWithTheCheckoutsWrapperWhenItShipsOne(@TempDir Path directory) throws IOException {
+		Path wrapper = Files.writeString(directory.resolve("mvnw"), "#!/bin/sh\n");
+		MavenBuildSystem maven = new MavenBuildSystem(new PomEnforcerInstaller("2.6.0"),
+				new BuildWrapper("mvnw", "mvnw.cmd", false));
+		assertEquals(List.of(wrapper.toAbsolutePath().toString(), "-q", "-N", "validate"),
+				maven.verifyCommand(directory));
+	}
+
+	/** The wrapper the verification launches is the one the toolchain step probes. */
+	@Test
+	void theWrapperIsWhatTheToolchainStepProbes(@TempDir Path directory) throws IOException {
+		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
+		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
+		assertEquals(Optional.of(wrapper.toAbsolutePath().toString()), gradle.requiredTool(directory));
 	}
 
 	/**
@@ -121,7 +150,7 @@ class BuildSystemsTest {
 	 * and which has no portable --version probe, so there is nothing to check.
 	 */
 	@Test
-	void theFallbackRequiresNoToolOfItsOwn() {
-		assertEquals(Optional.empty(), new FallbackBuildSystem().requiredTool());
+	void theFallbackRequiresNoToolOfItsOwn(@TempDir Path directory) {
+		assertEquals(Optional.empty(), new FallbackBuildSystem().requiredTool(directory));
 	}
 }

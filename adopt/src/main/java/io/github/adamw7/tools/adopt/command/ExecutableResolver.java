@@ -51,15 +51,26 @@ final class ExecutableResolver {
 		if (!windows || command.isEmpty()) {
 			return command;
 		}
-		return locate(command.get(0))
-				.map(executable -> rewrite(executable, command))
+		return executable(command.get(0))
+				.map(resolved -> rewrite(resolved, command))
 				.orElse(command);
 	}
 
+	private Optional<Path> executable(String program) {
+		return hasPathSeparator(program) ? given(program) : locate(program);
+	}
+
+	/**
+	 * A program named by its path needs no {@code PATH} search, but a batch script at
+	 * that path still has to go through {@code cmd.exe} — which is how a checkout's
+	 * own {@code gradlew.bat} or {@code mvnw.cmd} is launched. Anything else is left
+	 * for {@link ProcessBuilder} to start as it was given.
+	 */
+	private Optional<Path> given(String program) {
+		return toPath(program).filter(Files::isRegularFile).filter(this::isBatchScript);
+	}
+
 	private Optional<Path> locate(String program) {
-		if (hasPathSeparator(program)) {
-			return Optional.empty();
-		}
 		return pathDirectories.stream()
 				.flatMap(directory -> candidates(directory, program))
 				.filter(Files::isRegularFile)

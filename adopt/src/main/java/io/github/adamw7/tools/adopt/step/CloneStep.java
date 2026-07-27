@@ -32,7 +32,7 @@ public class CloneStep extends AbstractCommandStep {
 			log.info("{} already contains a checkout; skipping clone", context.repositoryDirectory());
 			return;
 		}
-		log.info("Cloning {} into {}", context.repositoryUrl(), context.repositoryDirectory());
+		log.info("Cloning {} into {}", context.displayUrl(), context.repositoryDirectory());
 		List<String> command = List.of("git", "clone", context.repositoryUrl(),
 				context.repositoryDirectory().toString());
 		runOrFail(runner, context.workspace(), command);

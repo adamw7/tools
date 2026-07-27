@@ -13,14 +13,30 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * guard task with {@link GradleGuardInstaller}, and verifies it by running that
  * task. Gradle has no {@code claude-code-enforcer} equivalent, so the guard is a
  * presence-and-non-empty check rather than the full Maven format rule.
+ *
+ * <p>A checkout that ships a {@code gradlew} is verified with that wrapper rather
+ * than with a {@code gradle} off the {@code PATH}. Most Gradle projects ship only
+ * the wrapper, so this is the ordinary case rather than the exception: without it
+ * {@link BuildToolchainStep} found no {@code gradle} to probe and aborted the
+ * adoption. See {@link BuildWrapper}.
  */
 public class GradleBuildSystem implements BuildSystem {
 
-	static final List<String> VERIFY_COMMAND = List.of("gradle", "-q", GradleGuardInstaller.GUARD_TASK);
+	static final String GRADLE = "gradle";
+	static final List<String> VERIFY_ARGUMENTS = List.of("-q", GradleGuardInstaller.GUARD_TASK);
 	static final String GROOVY_BUILD_FILE = "build.gradle";
 	static final String KOTLIN_BUILD_FILE = "build.gradle.kts";
 
 	private final GradleGuardInstaller installer = new GradleGuardInstaller();
+	private final BuildWrapper wrapper;
+
+	public GradleBuildSystem() {
+		this(new BuildWrapper("gradlew", "gradlew.bat"));
+	}
+
+	GradleBuildSystem(BuildWrapper wrapper) {
+		this.wrapper = wrapper;
+	}
 
 	@Override
 	public String name() {
@@ -40,8 +56,8 @@ public class GradleBuildSystem implements BuildSystem {
 	}
 
 	@Override
-	public List<String> verifyCommand() {
-		return VERIFY_COMMAND;
+	public List<String> verifyCommand(Path repositoryDirectory) {
+		return wrapper.commandIn(repositoryDirectory, GRADLE, VERIFY_ARGUMENTS);
 	}
 
 	/**

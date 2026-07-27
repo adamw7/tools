@@ -118,7 +118,7 @@ public class AdoptTool implements McpTool {
 		Optional<String> ruleVersion = ruleVersion(arguments);
 		BatchAdoption batch = new BatchAdoption(
 				(context, report) -> pipeline.adopt(context, report, options, includeAssets, ruleVersion));
-		return result(batch.adoptAll(contextsFrom(arguments)));
+		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
 	}
 
 	/**
@@ -132,8 +132,8 @@ public class AdoptTool implements McpTool {
 	}
 
 	/** Every repository of a call is adopted into one workspace, on one branch name. */
-	private List<AdoptionContext> contextsFrom(Map<String, Object> arguments) {
-		return Checkouts.forRun(repositoryUrls(arguments), workspace(arguments), branch(arguments));
+	private Checkouts checkoutsFrom(Map<String, Object> arguments) {
+		return new Checkouts(workspace(arguments), branch(arguments));
 	}
 
 	/**

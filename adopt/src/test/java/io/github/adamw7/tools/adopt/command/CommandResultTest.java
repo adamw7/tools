@@ -33,4 +33,16 @@ class CommandResultTest {
 	void describesACommandWithoutAResult() {
 		assertEquals("gh pr create", CommandResult.describe(List.of("gh", "pr", "create")));
 	}
+
+	/**
+	 * Every failure message quotes the command that raised it, and those messages are
+	 * logged and written to the run's report, so a clone URL's credentials must not
+	 * survive the one place a command is turned into text.
+	 */
+	@Test
+	void masksTheCredentialsOfAClonedUrl() {
+		String described = CommandResult.describe(
+				List.of("git", "clone", "https://x-access-token:secret@github.com/owner/repo.git", "/tmp/repo"));
+		assertEquals("git clone https://***@github.com/owner/repo.git /tmp/repo", described);
+	}
 }

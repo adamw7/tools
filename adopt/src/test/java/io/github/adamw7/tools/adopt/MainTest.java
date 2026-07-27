@@ -53,8 +53,9 @@ class MainTest {
 	 */
 	@Test
 	void buildsAContextPerRepository(@TempDir Path dir) {
-		List<AdoptionContext> contexts = Main.contexts(CliArguments.parse(
-				new String[] { REPO_URL, "--repo", OTHER_URL, "--workspace", dir.toString(), "--branch", "feature/x" }));
+		CliArguments cli = CliArguments.parse(
+				new String[] { REPO_URL, "--repo", OTHER_URL, "--workspace", dir.toString(), "--branch", "feature/x" });
+		List<AdoptionContext> contexts = claimAll(cli);
 		assertEquals(List.of(REPO_URL, OTHER_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
 		assertEquals(List.of(dir, dir), contexts.stream().map(AdoptionContext::workspace).toList());
 		assertEquals(List.of(dir.resolve("repo"), dir.resolve("other")),
@@ -64,28 +65,29 @@ class MainTest {
 
 	@Test
 	void adoptsARepositoryNamedTwiceOnlyOnce(@TempDir Path dir) {
-		List<AdoptionContext> contexts = Main.contexts(CliArguments
-				.parse(new String[] { REPO_URL, "--repo", REPO_URL, "--workspace", dir.toString() }));
-		assertEquals(List.of(REPO_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+		CliArguments cli = CliArguments
+				.parse(new String[] { REPO_URL, "--repo", REPO_URL, "--workspace", dir.toString() });
+		assertEquals(List.of(REPO_URL), cli.repositoryUrls());
 	}
 
 	/**
 	 * Two owners' repositories of the same name would clone into one checkout, so the
-	 * run fails on its arguments rather than adopting the first repository twice.
+	 * second is refused — as its own failure, leaving the first adopted.
 	 */
 	@Test
 	void rejectsARunWhoseRepositoriesShareACheckoutDirectory(@TempDir Path dir) {
 		CliArguments cli = CliArguments.parse(new String[] { "https://github.com/owner/tools.git",
 				"--repo", "https://github.com/other-owner/tools.git", "--workspace", dir.toString() });
-		assertThrows(IllegalArgumentException.class, () -> Main.contexts(cli));
+		assertThrows(IllegalArgumentException.class, () -> claimAll(cli));
 	}
 
 	@Test
 	void adoptsTheRepositoriesAListFileNames(@TempDir Path dir) throws IOException {
 		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n" + OTHER_URL + "\n");
-		List<AdoptionContext> contexts = Main.contexts(CliArguments
-				.parse(new String[] { "--repos", list.toString(), "--workspace", dir.toString() }));
-		assertEquals(List.of(REPO_URL, OTHER_URL), contexts.stream().map(AdoptionContext::repositoryUrl).toList());
+		CliArguments cli = CliArguments
+				.parse(new String[] { "--repos", list.toString(), "--workspace", dir.toString() });
+		assertEquals(List.of(REPO_URL, OTHER_URL),
+				claimAll(cli).stream().map(AdoptionContext::repositoryUrl).toList());
 	}
 
 	/**
@@ -94,8 +96,7 @@ class MainTest {
 	 */
 	@Test
 	void createsOneTemporaryWorkspaceForTheWholeBatch() {
-		List<AdoptionContext> contexts = Main
-				.contexts(CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL }));
+		List<AdoptionContext> contexts = claimAll(CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL }));
 		assertEquals(contexts.get(0).workspace(), contexts.get(1).workspace());
 		assertTrue(Files.isDirectory(contexts.get(0).workspace()));
 	}
@@ -105,7 +106,7 @@ class MainTest {
 		Path file = dir.resolve("report.json");
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL,
 				"--workspace", dir.toString(), "--report", file.toString() });
-		List<AdoptionRun> runs = Main.runAndReport(cli, Main.contexts(cli),
+		List<AdoptionRun> runs = Main.runAndReport(cli, Main.checkouts(cli),
 				new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
 		assertEquals(List.of(REPO_URL, OTHER_URL), runs.stream().map(AdoptionRun::repositoryUrl).toList());
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
@@ -122,7 +123,7 @@ class MainTest {
 	void writesTheReportWhenTheAdoptionFails(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("report.json");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli(dir, file), contexts(dir), failingAdopter()));
+				() -> Main.runAndReport(cli(dir, file), checkouts(dir), failingAdopter()));
 		assertTrue(thrown.getMessage().contains(REPO_URL + ": explode: boom"), thrown.getMessage());
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertFalse(node.get("succeeded").asBoolean());
@@ -132,7 +133,8 @@ class MainTest {
 	@Test
 	void writesTheReportWhenTheAdoptionSucceeds(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("report.json");
-		Main.runAndReport(cli(dir, file), contexts(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
+		Main.runAndReport(cli(dir, file), checkouts(dir),
+				new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertTrue(node.get("succeeded").asBoolean());
 		assertTrue(node.get("failure").isNull());
@@ -148,7 +150,7 @@ class MainTest {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL,
 				"--workspace", dir.toString(), "--report", file.toString() });
 		assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.contexts(cli), failingFor(REPO_URL)));
+				() -> Main.runAndReport(cli, Main.checkouts(cli), failingFor(REPO_URL)));
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertFalse(node.get("succeeded").asBoolean());
 		assertEquals(REPO_URL, node.get("repositories").get(0).get("repositoryUrl").asText());
@@ -161,7 +163,7 @@ class MainTest {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL, "--workspace",
 				dir.toString() });
 		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.contexts(cli), failingFor(REPO_URL)));
+				() -> Main.runAndReport(cli, Main.checkouts(cli), failingFor(REPO_URL)));
 		assertTrue(thrown.getMessage().startsWith("Adoption failed for 1 of 2 repositories"), thrown.getMessage());
 	}
 
@@ -173,7 +175,7 @@ class MainTest {
 	void anUnwritableReportDoesNotReplaceTheAdoptionFailure(@TempDir Path dir) throws IOException {
 		Path blockingFile = Files.createFile(dir.resolve("not-a-directory"));
 		AdoptionException thrown = assertThrows(AdoptionException.class, () -> Main
-				.runAndReport(cli(dir, blockingFile.resolve("report.json")), contexts(dir), failingAdopter()));
+				.runAndReport(cli(dir, blockingFile.resolve("report.json")), checkouts(dir), failingAdopter()));
 		assertTrue(thrown.getMessage().contains("explode: boom"), thrown.getMessage());
 		assertEquals(1, thrown.getSuppressed().length);
 	}
@@ -181,7 +183,7 @@ class MainTest {
 	@Test
 	void writesNoReportWhenNoneWasRequested(@TempDir Path dir) {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, dir.toString() });
-		Main.runAndReport(cli, contexts(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
+		Main.runAndReport(cli, checkouts(dir), new GitHubRepoAdopter(new RecordingCommandRunner(), List.of()));
 		assertTrue(cli.reportFile().isEmpty());
 	}
 
@@ -189,8 +191,14 @@ class MainTest {
 		return CliArguments.parse(new String[] { REPO_URL, workspace.toString(), "--report", reportFile.toString() });
 	}
 
-	private List<AdoptionContext> contexts(Path workspace) {
-		return List.of(new AdoptionContext(REPO_URL, workspace));
+	private Checkouts checkouts(Path workspace) {
+		return new Checkouts(workspace, AdoptionContext.DEFAULT_BRANCH);
+	}
+
+	/** The contexts a run would claim, in order, as the batch claims them one at a time. */
+	private List<AdoptionContext> claimAll(CliArguments cli) {
+		Checkouts checkouts = Main.checkouts(cli);
+		return cli.repositoryUrls().stream().map(checkouts::claim).toList();
 	}
 
 	private GitHubRepoAdopter failingAdopter() {

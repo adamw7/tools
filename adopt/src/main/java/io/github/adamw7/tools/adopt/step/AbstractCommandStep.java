@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -54,8 +55,14 @@ public abstract class AbstractCommandStep implements AdoptionStep {
 		return toleratedFailures.stream().map(tolerated -> tolerated.toLowerCase(Locale.ROOT)).anyMatch(output::contains);
 	}
 
+	/**
+	 * The transcript is redacted as well as the command, because a tool that fails
+	 * on a credentialled clone URL echoes it back — {@code fatal: could not read
+	 * Username for 'https://...@github.com'} — and this message becomes the run's
+	 * reported failure.
+	 */
 	private AdoptionException failure(CommandResult result) {
 		return new AdoptionException(name() + " failed (exit " + result.exitCode() + ") running: " + result.describe()
-				+ System.lineSeparator() + result.output());
+				+ System.lineSeparator() + Redaction.of(result.output()));
 	}
 }

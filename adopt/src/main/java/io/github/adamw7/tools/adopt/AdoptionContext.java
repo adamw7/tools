@@ -32,8 +32,14 @@ public final class AdoptionContext {
 		this.branchName = Text.required(branchName, "branchName");
 	}
 
+	/** The clone URL as given, credentials included, for the commands that need it. */
 	public String repositoryUrl() {
 		return repository.value();
+	}
+
+	/** @see RepositoryUrl#redacted() */
+	public String displayUrl() {
+		return repository.redacted();
 	}
 
 	/** @see RepositoryUrl#slug() */

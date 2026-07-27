@@ -106,11 +106,11 @@ public class GitHubRepoAdopter {
 	 * @return the same report, once every step has completed
 	 */
 	public AdoptionReport adopt(AdoptionContext context, AdoptionReport report) {
-		log.info("Adopting Claude Code into {}", context.repositoryUrl());
+		log.info("Adopting Claude Code into {}", context.displayUrl());
 		for (AdoptionStep step : steps) {
 			runStep(step, context, report);
 		}
-		log.info("Adoption complete for {}", context.repositoryUrl());
+		log.info("Adoption complete for {}", context.displayUrl());
 		return report;
 	}
 

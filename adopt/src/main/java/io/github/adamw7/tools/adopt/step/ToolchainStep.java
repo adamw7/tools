@@ -20,11 +20,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
  * for a GitHub CLI nobody is logged in to, which the adoption would only discover
- * at {@link PullRequestStep}. The login is therefore probed here too, by asking
- * GitHub who the credentials belong to rather than {@code gh} what it has stored —
- * see {@link #AUTHENTICATION_PROBE}. The adopted project's own build tool only
- * becomes known once the repository is cloned, so {@link BuildToolchainStep}
- * probes it there.
+ * at {@link PullRequestStep}. The login is therefore probed here too, by making a
+ * call to GitHub rather than by asking {@code gh} what it has stored — see
+ * {@link #authenticationProbe}. The adopted project's own build tool only becomes
+ * known once the repository is cloned, so {@link BuildToolchainStep} probes it
+ * there.
  */
 public class ToolchainStep implements AdoptionStep {
 
@@ -34,13 +34,9 @@ public class ToolchainStep implements AdoptionStep {
 	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", GITHUB_CLI);
 
 	/**
-	 * The smallest authenticated call to GitHub there is, used in preference to
-	 * {@code gh auth status} because that command reports on credentials it holds
-	 * without its exit code always following: a {@code GH_TOKEN} that GitHub rejects
-	 * makes it print that the token is invalid and still exit zero, so the probe
-	 * passed for a {@code gh} that could not open a pull request — the one thing it
-	 * is here to rule out. Making the call the pull request will need answers the
-	 * question the step is actually asking, and fails when the answer is no.
+	 * The probe for a run whose URL names no owner, and so no repository to ask
+	 * about. It answers the weaker question — whether the credentials belong to
+	 * anyone — because there is nothing better to ask.
 	 */
 	static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "api", "user");
 
@@ -76,11 +72,35 @@ public class ToolchainStep implements AdoptionStep {
 	}
 
 	private void requireGitHubLogin(AdoptionContext context, CommandRunner runner) {
-		if (!tools.contains(GITHUB_CLI) || probe.succeeds(AUTHENTICATION_PROBE, context.workspace(), runner)) {
+		if (!tools.contains(GITHUB_CLI)
+				|| probe.succeeds(authenticationProbe(context), context.workspace(), runner)) {
 			return;
 		}
-		throw new AdoptionException(name() + " failed: " + GITHUB_CLI
-				+ " is installed but cannot authenticate to GitHub, so the pull request could not be opened."
-				+ " Run 'gh auth login', or set GH_TOKEN for a non-interactive host.");
+		throw new AdoptionException(name() + " failed: " + GITHUB_CLI + " is installed but cannot reach "
+				+ context.repositorySlug().orElse("GitHub")
+				+ " with the credentials it holds, so the pull request could not be opened."
+				+ " Run 'gh auth login', or set GH_TOKEN to a token that can write to the repository.");
+	}
+
+	/**
+	 * Asks about the repository the run is going to open a pull request on, rather
+	 * than about the token's owner. {@code gh api user} is a user-scoped call, and a
+	 * GitHub App installation token — what a CI run is handed, and the credential
+	 * behind the {@code x-access-token:TOKEN@github.com} clone URLs the adoption is
+	 * built to accept — is refused by it with "Resource not accessible by
+	 * integration". Probing with it therefore aborted, on its very first step, every
+	 * adoption driven by the CI credential that would have opened the pull request
+	 * perfectly well.
+	 *
+	 * <p>Reading the repository is also the stronger question: it covers a token
+	 * GitHub rejects outright and one that is valid but cannot see this repository,
+	 * both of which stop {@link PullRequestStep}. {@code gh auth status} answers
+	 * neither — it reports the credentials {@code gh} has stored and exits zero even
+	 * while printing that GitHub rejected them.
+	 */
+	private List<String> authenticationProbe(AdoptionContext context) {
+		return context.repositorySlug()
+				.map(slug -> List.of(GITHUB_CLI, "api", "repos/" + slug))
+				.orElse(AUTHENTICATION_PROBE);
 	}
 }

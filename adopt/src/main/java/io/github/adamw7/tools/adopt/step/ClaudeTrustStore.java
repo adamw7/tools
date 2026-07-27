@@ -1,8 +1,10 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +22,8 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * <p>The whole configuration document is read, updated, and written back through
  * Jackson's tree model, so every unrelated field the file already carries is
  * preserved. A missing configuration file is created, and a directory that is
- * already trusted is left untouched.
+ * already trusted is left untouched. The write itself goes through a temporary
+ * file and a move, so the configuration is never seen half-written.
  */
 public class ClaudeTrustStore {
 
@@ -95,12 +98,55 @@ public class ClaudeTrustStore {
 				+ root.getNodeType() + ": " + configFile);
 	}
 
+	/**
+	 * Writes the document to a sibling temporary file and moves it over the
+	 * configuration, so a reader only ever sees the old file or the new one.
+	 * Truncating {@code ~/.claude.json} in place risked the whole of Claude Code's
+	 * per-user state — its project list, history, and onboarding — on the write
+	 * completing: a crash part-way through left a truncated document behind, and
+	 * this is a live file that an interactive session, or the {@code claude init}
+	 * the adoption is about to run, may be writing at the same moment.
+	 */
 	private void write(ObjectNode root) {
+		Path target = configFile.toAbsolutePath();
 		try {
-			Files.createDirectories(configFile.toAbsolutePath().getParent());
-			mapper.writerWithDefaultPrettyPrinter().writeValue(configFile.toFile(), root);
+			Files.createDirectories(target.getParent());
+			replaceWith(root, temporaryBeside(target), target);
 		} catch (IOException e) {
 			throw new AdoptionException("Could not write Claude config: " + configFile, e);
+		}
+	}
+
+	/** A sibling, so the move stays within one filesystem and can be atomic. */
+	private Path temporaryBeside(Path target) throws IOException {
+		return Files.createTempFile(target.getParent(), ".claude-adopt-", ".json");
+	}
+
+	/**
+	 * The temporary file is removed on every path the move does not take it, so a
+	 * write that fails leaves the configuration directory as it found it rather than
+	 * scattering half-written documents beside the file {@code claude} reads.
+	 */
+	private void replaceWith(ObjectNode root, Path temporary, Path target) throws IOException {
+		try {
+			mapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), root);
+			replace(temporary, target);
+		} catch (IOException | RuntimeException e) {
+			Files.deleteIfExists(temporary);
+			throw e;
+		}
+	}
+
+	/**
+	 * Falls back to a plain replacing move where the filesystem cannot do an atomic
+	 * one, which still beats writing the configuration in place: the document is
+	 * complete on disk before anything of the old one is touched.
+	 */
+	private void replace(Path temporary, Path target) throws IOException {
+		try {
+			Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+		} catch (AtomicMoveNotSupportedException e) {
+			Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 }

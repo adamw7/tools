@@ -172,6 +172,29 @@ class PomEnforcerInstallerTest {
 			</project>
 			""".formatted(PROFILED_ENFORCER, MANAGED_ENFORCER);
 
+	/** The rule pinned where nothing runs it: {@code pluginManagement} binds no plugin to any phase. */
+	private static final String POM_WITH_RULE_ONLY_MANAGED = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			  <build>
+			    <pluginManagement>
+			      <plugins>
+			        <plugin>
+			          <artifactId>maven-enforcer-plugin</artifactId>
+			          <dependencies>
+			            <dependency>
+			              <groupId>io.github.adamw7</groupId>
+			              <artifactId>tools.claude-code-enforcer</artifactId>
+			              <version>1.0.0</version>
+			            </dependency>
+			          </dependencies>
+			        </plugin>
+			      </plugins>
+			    </pluginManagement>
+			  </build>
+			</project>
+			""";
+
 	/** Wires the rule the way this repository does: behind an opt-in profile, not in the build. */
 	private static final String POM_WITH_RULE_IN_A_PROFILE = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
@@ -354,6 +377,23 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_RULE_IN_A_PROFILE);
 		assertFalse(installer.install(pom), "the rule is already wired in, in the profile");
 		assertEquals(POM_WITH_RULE_IN_A_PROFILE, Files.readString(pom), "the POM must not have been touched");
+	}
+
+	/**
+	 * A profile binds the rule on its own terms and is therefore respected;
+	 * {@code pluginManagement} binds nothing at all. Counting a managed declaration as
+	 * a guard left the project with none, silently: nothing was added, and
+	 * {@link VerifyStep}'s {@code mvn -N validate} passed because the rule never ran,
+	 * so the pull request advertised a guard that did not exist.
+	 */
+	@Test
+	void wiresTheRuleInWhenTheOnlyDeclarationIsManaged(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_RULE_ONLY_MANAGED);
+		assertTrue(installer.install(pom), "a managed rule binds to no phase, so the build still needs one");
+		String result = Files.readString(pom);
+		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired into the build that runs");
+		assertEquals(2, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+				"the build needs its own enforcer declaration alongside the managed one");
 	}
 
 	/**

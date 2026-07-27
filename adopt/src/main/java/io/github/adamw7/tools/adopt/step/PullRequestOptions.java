@@ -14,6 +14,13 @@ import io.github.adamw7.tools.adopt.Text;
  * and the lists are defensively copied and never {@code null}, so the command line
  * and the MCP tool map their arguments straight in and no {@code null} can reach
  * {@code gh}'s arguments.
+ *
+ * @param title     the pull request's title, or blank for {@value #DEFAULT_TITLE}
+ * @param body      the pull request's body, or blank for the adoption's own
+ * @param reviewers the users to request a review from, empty to request nobody
+ * @param labels    the labels to apply, empty to apply none
+ * @param assignees the users to assign, empty to assign nobody
+ * @param draft     whether the pull request is opened as a draft
  */
 public record PullRequestOptions(String title, String body, List<String> reviewers, List<String> labels,
 		List<String> assignees, boolean draft) {

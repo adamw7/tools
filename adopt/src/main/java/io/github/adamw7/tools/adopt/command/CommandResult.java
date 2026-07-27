@@ -9,6 +9,13 @@ import io.github.adamw7.tools.adopt.Redaction;
  * standard-output/standard-error text the command produced. The originating
  * command is kept so failures can be reported without the caller having to
  * remember what it asked for.
+ *
+ * @param command  the command that was run, program first, as it was handed to
+ *                 the runner — credentials included, so anything reporting it
+ *                 goes through {@link #describe()}
+ * @param exitCode the code the command exited with, zero meaning success
+ * @param output   the command's standard output and standard error, merged into
+ *                 one ordered transcript
  */
 public record CommandResult(List<String> command, int exitCode, String output) {
 

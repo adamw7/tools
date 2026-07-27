@@ -339,14 +339,38 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   `Date`/`Calendar` API); and production code logs through log4j2 (never
   `System.out`/`err`, `java.util.logging`, `java.lang.System.Logger`,
   `printStackTrace`, or `System.exit`), with packages kept free of cycles. New
-  code must satisfy these rules or the module's test suite fails. A companion
+  code must satisfy these rules or the module's test suite fails.
+  `AdoptArchitectureTest` adds the rules that keep the adoption pipeline a plain,
+  testable library: the `command` package is the only place a process is spawned
+  (`ProcessBuilder`, `Process`, `ProcessHandle`, `Runtime`) and everything else
+  goes through the `CommandRunner` contract, which is also all a step may know of
+  it — never `ProcessCommandRunner` itself; a step never reaches back to the
+  `GitHubRepoAdopter`, `BatchAdoption`, `CliArguments` or `Main` that assemble and
+  run it, and holds no mutable field, since one step instance adopts every
+  repository of a batch; `AdoptionContext.repositoryUrl()`, which answers the
+  clone URL with its credentials intact, is called by `CloneStep` alone —
+  everything else reads the redacted `displayUrl()`; the adoption speaks no
+  network protocol of its own (`java.net`/`javax.net` are out of bounds outside
+  the MCP delivery package) because it shells out to `git` and `gh`; the `mcp`
+  package is a delivery mechanism nothing else depends on, and the only place
+  that knows the shared MCP scaffolding or Spring; implementations are pinned to
+  their contracts by name (`*Step` to `AdoptionStep`, `*BuildSystem` to
+  `BuildSystem`, `*CommandRunner` to `CommandRunner`, `*Tool` to `McpTool`); the
+  only public `static void main` methods are the two `Main` entry points the pom
+  names; and no public method declares a checked `IOException`, since the
+  pipeline reports failure with the unchecked `AdoptionException`. A companion
   `TestConventionsArchitectureTest` in the same `...architecture` package
   analyses only the *test* classes (via `ImportOption.OnlyIncludeTests`) and pins
   conventions on the tests themselves: every `@Testable` method must live in a
   `*Test` or `*IT` class so surefire/failsafe actually runs it, no test is
   `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), no test
   writes to `System.out`/`err` (assert on the value instead), and no test
-  calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition).
+  calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition). In
+  `adopt` it pins two more, both about what the tests are allowed to touch: a
+  step test drives its step through the recording `CommandRunner` rather than
+  spawning a real `git`, `claude` or `gh`, and no `*IT` may depend on `PushStep`
+  or `PullRequestStep` — the integration tests run against real GitHub
+  repositories, so their pipeline stops at the branch step.
 - **Integration tests** are gated behind the `integration-tests` profile
   (defined in `data`, `code/context`, and `adopt`) and are the tests that need
   something real: `mvn -P integration-tests verify`. Test classes ending in `IT`

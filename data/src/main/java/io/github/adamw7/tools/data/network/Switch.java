@@ -73,7 +73,7 @@ public class Switch {
 	 * that covers every {@code new Socket(...)} in the JVM; the {@code isOff}
 	 * guard ensures the one-shot {@code setSocketImplFactory} is called once.
 	 */
-	@SuppressWarnings({ "deprecation", "removal" })
+	@SuppressWarnings("deprecation")
 	private static void blockClientSockets() {
 		try {
 			Socket.setSocketImplFactory(new BlockingSocketImplFactory());

@@ -27,7 +27,7 @@ abstract class AbstractClassContextTool implements ContextTool {
 	protected static final int DEFAULT_DEPTH = 1;
 	protected static final int MAX_DEPTH = 10;
 
-	private final Logger log = LogManager.getLogger(getClass());
+	private static final Logger log = LogManager.getLogger(AbstractClassContextTool.class);
 
 	protected final PathPolicy pathPolicy;
 

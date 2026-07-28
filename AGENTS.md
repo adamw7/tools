@@ -157,6 +157,7 @@ validation from runtime to compile time.
 ```
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer        # custom maven-enforcer rule validating CLAUDE.md
+├── test-common                 # shared ArchUnit rule libraries, published as a test-jar
 ├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
@@ -170,8 +171,8 @@ tools (root pom, packaging=pom)
 └── data-test                   # standalone test module for the data module
 ```
 
-Root reactor modules are `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-`adopt`, `grpc-example`, and `assembly`.
+Root reactor modules are `claude-code-enforcer`, `test-common`, `mcp-common`,
+`data`, `code`, `adopt`, `grpc-example`, and `assembly`.
 The `data-test` module is built separately (it is not in the root `<modules>`
 list).
 
@@ -383,6 +384,19 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   spawning a real `git`, `claude` or `gh`, and no `*IT` may depend on `PushStep`
   or `PullRequestStep` — the integration tests run against real GitHub
   repositories, so their pipeline stops at the branch step.
+- **Shared rule libraries.** The rules above that hold for *every* module are
+  declared once in the `test-common` module and imported with ArchUnit's
+  `ArchTests.in(...)`, so each module's architecture test states only what is
+  specific to that module. `CommonCodingConventions` carries the universal
+  production rules (loggers, public/static/`Optional` fields, `java.time`, log4j2
+  logging, no `System.exit`, no standard streams, no generic exceptions, no Joda
+  Time); `CommonTestConventions` carries the test-side conventions; and
+  `CommonNamingConventions` carries the `Abstract` prefix rule, kept separate
+  because `claude-code-enforcer` is exempt — its abstract rule bases
+  (`ClaudeCodeEnforcerRule`, `MarkdownFormatRule`, `JsonFileRule`) are public API
+  that poms configure by name. Adding a repository-wide convention means editing
+  one library, not six tests; an exemption means a module not importing a
+  library, which stays visible in that module's test.
 - **Integration tests** are gated behind the `integration-tests` profile
   (defined in `data`, `code/context`, and `adopt`) and are the tests that need
   something real: `mvn -P integration-tests verify`. Test classes ending in `IT`

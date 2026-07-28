@@ -52,12 +52,14 @@ run `mvn install` from the repository root. The main capabilities are:
   `--report <file>`, and an MCP server exposes the pipeline as an `adopt_repo`
   tool.
 
-Module map (root reactor: `claude-code-enforcer`, `mcp-common`, `data`, `code`,
-`adopt`, `grpc-example`, `assembly`; `data-test` is built separately):
+Module map (root reactor: `claude-code-enforcer`, `test-common`, `mcp-common`,
+`data`, `code`, `adopt`, `grpc-example`, `assembly`; `data-test` is built
+separately):
 
 ```
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer   # custom maven-enforcer rules validating CLAUDE.md/AGENTS.md & agent config
+├── test-common            # shared ArchUnit rule libraries (test-jar), reused by every module's architecture tests
 ├── mcp-common             # shared MCP server scaffolding
 ├── data                   # data sources, uniqueness checks, structures, MCP server
 ├── code
@@ -177,8 +179,11 @@ paths.
   conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
   classes, no `@Disabled`, JUnit 5 only, no `System.out`/`err`, and no
   `Thread.sleep`; in `adopt` it also pins that step tests never spawn a real
-  process and the `*IT`s never push or open a pull request. Keep new code within
-  these rules.
+  process and the `*IT`s never push or open a pull request. The rules that apply
+  to every module live once in `test-common` (`CommonCodingConventions`,
+  `CommonNamingConventions`, `CommonTestConventions`) and are pulled in with
+  `ArchTests.in(...)`, so a module's own test states only what is specific to it.
+  Keep new code within these rules.
 - **Integration tests** (`*IT`) are gated behind the `integration-tests` profile
   and cover what needs something real: the MCP servers over HTTP, and `adopt`'s
   `MultiRepoAdoptionIT`, which clones real GitHub sample repositories to prove a

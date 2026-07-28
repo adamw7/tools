@@ -88,6 +88,7 @@
 	</developers>
 	<modules>
 		<module>claude-code-enforcer</module>
+		<module>test-common</module>
 		<module>mcp-common</module>
 		<module>data</module>
 		<module>code</module>

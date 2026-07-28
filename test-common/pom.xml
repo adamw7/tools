@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.github.adamw7</groupId>
+		<artifactId>tools</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>tools.test-common</artifactId>
+	<packaging>jar</packaging>
+	<name>Shared test scaffolding</name>
+	<description>Shared ArchUnit rule libraries reused by every module's architecture tests.</description>
+	<url>https://github.com/adamw7/tools</url>
+	<properties>
+		<!-- This module carries no production code, only the rule libraries the
+		     other modules' architecture tests import, so keep it out of the
+		     GitHub Packages deployment that maven-deploy-plugin performs on
+		     `mvn deploy`. (The Maven Central release profile excludes it via the
+		     central-publishing plugin's skipPublishing flag below.) -->
+		<maven.deploy.skip>true</maven.deploy.skip>
+	</properties>
+	<build>
+		<plugins>
+			<!-- The rules live in src/test/java so archunit-junit5 can stay
+			     test-scoped as the root pom declares it. Attaching a test-jar is
+			     what makes them reachable from the other modules' test
+			     classpaths. The main jar this module also produces is empty by
+			     design; nothing depends on it and it is never published. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-test-jar</id>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+	<profiles>
+		<profile>
+			<!-- This module is test scaffolding for the reactor, not a reusable
+			     library, so keep it out of the Maven Central bundle that the
+			     release profile publishes. skipPublishing is honoured per module
+			     by the central-publishing-maven-plugin. -->
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<configuration>
+							<skipPublishing>true</skipPublishing>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>

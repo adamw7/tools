@@ -191,6 +191,24 @@ class AdoptToolTest {
 		assertEquals(List.of("octocat"), pipeline.options.reviewers());
 	}
 
+	/**
+	 * A JSON array is the natural shape for a list, and the one this very tool takes
+	 * for {@code repository_urls}. Read as plain text it became the list's own
+	 * {@code toString()} split on its commas, and reached gh as
+	 * {@code --reviewer "[octocat"} — failing the last step of an otherwise complete
+	 * adoption.
+	 */
+	@Test
+	void readsPullRequestListsSentAsJsonArrays() {
+		tool.apply(Map.of("repository_url", REPO_URL,
+				"reviewers", List.of("octocat", "hubot"),
+				"labels", List.of("automation"),
+				"assignees", List.of(" adamw7 ", "  ")));
+		assertEquals(List.of("octocat", "hubot"), pipeline.options.reviewers());
+		assertEquals(List.of("automation"), pipeline.options.labels());
+		assertEquals(List.of("adamw7"), pipeline.options.assignees());
+	}
+
 	@Test
 	void answersWithTheJsonReport() throws IOException {
 		ToolResult result = tool.apply(Map.of("repository_url", REPO_URL));

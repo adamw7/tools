@@ -44,6 +44,18 @@ class RedactionTest {
 		assertFalse(masked.contains("pw"), masked);
 	}
 
+	/**
+	 * git ends the user information at the last '@' before the host, so a password
+	 * carrying an unencoded one is a single credential. Masking only as far as the
+	 * first '@' left the rest of it in the log, the failure message, and the report.
+	 */
+	@Test
+	void masksAPasswordThatCarriesAnAtSign() {
+		String masked = Redaction.of("https://user:p@ss@github.com/owner/repo.git");
+		assertEquals("https://***@github.com/owner/repo.git", masked);
+		assertFalse(masked.contains("ss@github"), masked);
+	}
+
 	@Test
 	void masksEveryUrlOfATextThatCarriesSeveral() {
 		assertEquals("https://***@github.com/a.git and https://***@github.com/b.git",

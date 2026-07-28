@@ -71,9 +71,22 @@ public final class RepositoryUrl {
 	}
 
 	private static String repositoryName(String repositoryUrl) {
-		String withoutTrailingSlash = stripTrailingSlash(repositoryUrl);
-		String lastSegment = withoutTrailingSlash.substring(withoutTrailingSlash.lastIndexOf('/') + 1);
+		String lastSegment = lastSegment(stripTrailingSlash(repositoryUrl));
 		return requireName(stripGitSuffix(lastSegment), repositoryUrl);
+	}
+
+	/**
+	 * The URL's final path segment, ended by either separator git accepts — so the
+	 * scp-like {@code git@host:repo}, whose {@code ':'} is the path separator it is,
+	 * names the checkout directory {@code repo} rather than {@code git@host:repo}.
+	 * This is the same reading of {@code ':'} that {@link #repositorySlug} already
+	 * takes; the scheme is dropped first so its own {@code "://"} is never mistaken
+	 * for that separator.
+	 */
+	private static String lastSegment(String url) {
+		String withoutScheme = url.replaceFirst(SCHEME, "");
+		int separator = Math.max(withoutScheme.lastIndexOf('/'), withoutScheme.lastIndexOf(':'));
+		return withoutScheme.substring(separator + 1);
 	}
 
 	/**
@@ -84,11 +97,22 @@ public final class RepositoryUrl {
 	 * rather than several steps later on a checkout directory nobody intended.
 	 */
 	private static String requireName(String name, String repositoryUrl) {
-		if (name.isEmpty() || ".".equals(name) || "..".equals(name)) {
+		if (name.isEmpty() || ".".equals(name) || "..".equals(name) || isPath(name)) {
 			throw new IllegalArgumentException(
 					"repositoryUrl must end in a repository name but was: " + Redaction.of(repositoryUrl));
 		}
 		return name;
+	}
+
+	/**
+	 * A repository name never carries a backslash, so a last segment that does is a
+	 * path rather than a name — a Windows-style {@code C:\repos\tools}, or a segment
+	 * carrying a {@code ..} traversal. Resolving one against the workspace would put
+	 * the checkout outside it on a platform that reads {@code '\'} as a separator, so
+	 * it is refused for the same reason an empty or alias segment is.
+	 */
+	private static boolean isPath(String name) {
+		return name.indexOf('\\') >= 0;
 	}
 
 	/**
@@ -126,7 +150,19 @@ public final class RepositoryUrl {
 		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
 
+	/**
+	 * The suffix is matched case-insensitively, because git clones
+	 * {@code .../repo.GIT} as readily as {@code .../repo.git} and both name the one
+	 * repository. Keeping the case would name the checkout {@code repo.GIT} and ask
+	 * GitHub about {@code owner/repo.GIT}, which answers 404 and stops the adoption
+	 * on its very first step.
+	 */
 	private static String stripGitSuffix(String segment) {
-		return segment.endsWith(GIT_SUFFIX) ? segment.substring(0, segment.length() - GIT_SUFFIX.length()) : segment;
+		int suffixStart = segment.length() - GIT_SUFFIX.length();
+		return endsWithGitSuffix(segment, suffixStart) ? segment.substring(0, suffixStart) : segment;
+	}
+
+	private static boolean endsWithGitSuffix(String segment, int suffixStart) {
+		return suffixStart >= 0 && segment.regionMatches(true, suffixStart, GIT_SUFFIX, 0, GIT_SUFFIX.length());
 	}
 }

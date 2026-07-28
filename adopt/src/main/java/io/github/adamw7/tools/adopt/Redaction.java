@@ -19,8 +19,15 @@ public final class Redaction {
 
 	static final String MASK = "***";
 
-	/** The user information between a URL's {@code ://} and its {@code @}. */
-	private static final Pattern CREDENTIALS = Pattern.compile("(?<=://)[^/@\\s]+(?=@)");
+	/**
+	 * The user information between a URL's {@code ://} and its {@code @}. The match
+	 * runs to the <em>last</em> {@code @} before the path, because that is where git
+	 * itself ends the user information: a password carrying an unencoded {@code @} —
+	 * {@code https://user:p@ss@host/owner/repo.git} — is one credential, not a
+	 * credential followed by a host. Stopping at the first {@code @} left the rest of
+	 * the password in the text this class exists to keep it out of.
+	 */
+	private static final Pattern CREDENTIALS = Pattern.compile("(?<=://)[^/\\s]+(?=@)");
 
 	private Redaction() {
 	}

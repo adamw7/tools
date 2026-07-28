@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.inject.Named;
@@ -134,11 +135,13 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void addReferencedScript(String command, Set<Path> referenced, List<String> violations) {
-		Path script = scriptInHooksDir(command);
-		if (script == null) {
-			return;
+		for (Path script : scriptsInHooksDir(command)) {
+			referenced.add(script);
+			collectMissingScriptViolation(script, violations);
 		}
-		referenced.add(script);
+	}
+
+	private void collectMissingScriptViolation(Path script, List<String> violations) {
 		if (!script.toFile().exists()) {
 			violations.add("settings.json references a missing hook script: " + script);
 		}
@@ -155,17 +158,19 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	/** The absolute path a command's {@code $CLAUDE_PROJECT_DIR} token resolves to when it lands in the hooks directory, else null. */
-	private Path scriptInHooksDir(String command) {
+	/**
+	 * The absolute paths every {@code $CLAUDE_PROJECT_DIR} token of a command
+	 * resolves to that land inside the hooks directory. A command chaining two
+	 * scripts references both, so stopping at the first would leave the second
+	 * unchecked and then report it as an orphan.
+	 */
+	private List<Path> scriptsInHooksDir(String command) {
 		Path hooks = canonical(hooksDir.toPath());
 		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
-		for (String token : command.split("\\s+")) {
-			Path resolved = resolveInHooks(projectDirs, token, hooks);
-			if (resolved != null) {
-				return resolved;
-			}
-		}
-		return null;
+		return CommandTokens.of(command).stream()
+				.map(token -> resolveInHooks(projectDirs, token, hooks))
+				.filter(Objects::nonNull)
+				.toList();
 	}
 
 	private Path resolveInHooks(ClaudeProjectDir projectDirs, String token, Path hooks) {

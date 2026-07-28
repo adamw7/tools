@@ -139,6 +139,34 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void treatsEveryScriptAChainedCommandReferencesAsReferenced() {
+		writeScript("first.sh", "#!/bin/sh\n", true);
+		writeScript("second.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh"
+				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		// Both references count. Stopping at the first one left second.sh looking
+		// like an orphan even though the very same command runs it.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenTheSecondScriptOfAChainedCommandIsMissing() {
+		writeScript("first.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh"
+				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing hook script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
+	@Test
 	void doesNotTreatASymlinkedScriptPointingOutsideAsInsideTheHooksDirectory() {
 		Path outside = tempDir.resolve("outside.sh");
 		writeString(outside, "#!/bin/sh\n");
@@ -152,6 +180,54 @@ class HooksFormatRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("not referenced"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenTheExtensionIsOnTheAllowedList() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setAllowedExtensions(List.of("sh", "py"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenAScriptHasNoExtensionAtAll() {
+		writeScript("session-start", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setAllowedExtensions(List.of("sh"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("disallowed extension"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheConfiguredSettingsFileDoesNotExist() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("settings.json does not exist"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheSettingsFileIsNotValidJson() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		Path settings = tempDir.resolve(".claude/settings.json");
+		writeString(settings, "{ not json");
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settings.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+	}
+
+	@Test
+	void namesTheHooksDirectoryInItsDescription() {
+		HooksFormatRule rule = ruleFor();
+
+		assertTrue(rule.toString().contains("hooks"), rule.toString());
 	}
 
 	@Test

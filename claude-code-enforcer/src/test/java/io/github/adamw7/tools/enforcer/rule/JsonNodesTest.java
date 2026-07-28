@@ -144,6 +144,32 @@ class JsonNodesTest {
 		assertEquals(List.of(), JsonNodes.fieldNames(parse("{}")));
 	}
 
+	@Test
+	void parseObjectRejectsContentAfterTheClosingBrace() {
+		List<String> violations = new ArrayList<>();
+
+		// Jackson stops at the first complete value by default, so this used to
+		// parse clean and the trailing text was never seen.
+		JsonNode root = JsonNodes.parseObject("{\"a\":1} and then some", "settings.json", violations);
+
+		assertNull(root);
+		assertEquals(1, violations.size());
+		assertTrue(violations.get(0).startsWith("settings.json is not valid JSON:"), violations.toString());
+	}
+
+	@Test
+	void parseObjectRejectsADuplicatedKey() {
+		List<String> violations = new ArrayList<>();
+
+		// The second definition silently won before, which is exactly the kind of
+		// shadowing these rules exist to catch.
+		JsonNode root = JsonNodes.parseObject("{\"a\":{\"x\":1},\"a\":{\"x\":2}}", "settings.json", violations);
+
+		assertNull(root);
+		assertEquals(1, violations.size());
+		assertTrue(violations.get(0).contains("Duplicate field 'a'"), violations.toString());
+	}
+
 	private static JsonNode parse(String json) {
 		try {
 			return MAPPER.readTree(json);

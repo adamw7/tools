@@ -14,6 +14,8 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
+
 class MemoryImportsRuleTest {
 
 	@TempDir
@@ -120,6 +122,83 @@ class MemoryImportsRuleTest {
 		writeString(nested.resolve("inner.md"), "See @sibling.md\n");
 		writeString(nested.resolve("sibling.md"), "# Sibling\n");
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nSee @docs/inner.md\n")::execute);
+	}
+
+	@Test
+	void passesWhenALongChainReachesAFileThatIsAlsoImportedDirectly() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @shallow.md and @a.md\n");
+		rule.setMaxDepth(5);
+
+		// leaf.md is two hops away down the direct chain, so Claude Code loads it;
+		// the fact that the a-b-c-d chain also reaches it six hops out does not
+		// make it unloadable.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void reportsADeepChainWhateverOrderTheImportsAreWrittenIn() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @a.md\n");
+		rule.setMaxDepth(5);
+
+		// Same files, but nothing imports shallow.md directly any more, so its
+		// only chain is six hops long and leaf.md really is out of reach.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("nested deeper than 5 hops"), exception.getMessage());
+	}
+
+	@Test
+	void countsDepthAlongTheShortestChainRegardlessOfImportOrder() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @a.md and @shallow.md\n");
+		rule.setMaxDepth(5);
+
+		// The long chain is written first here and the direct import second; the
+		// verdict must not depend on which one the traversal walks into first.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillChecksAnImportThatIsNotOnTheIgnoreList() {
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n");
+		rule.setIgnoredImports(List.of("something/else.md"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("imports a missing file"), exception.getMessage());
+	}
+
+	@Test
+	void acceptsAnImportTargetThatIsNotText() throws IOException {
+		Files.write(tempDir.resolve("logo.md"), new byte[] { (byte) 0xC3, (byte) 0x28, (byte) 0xA0 });
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @logo.md\n");
+		rule.setLog(new CapturingLogger());
+
+		// An imported file may be any format, so an unreadable one is a leaf that
+		// is noted in the debug log rather than a violation.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void namesTheFileInItsDescription() {
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n");
+
+		assertTrue(rule.toString().contains("CLAUDE.md"), rule.toString());
 	}
 
 	private MemoryImportsRule ruleFor(String content) {

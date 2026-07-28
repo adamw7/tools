@@ -137,6 +137,71 @@ class McpConfigFormatRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("args")), logger.warnings().toString());
 	}
 
+	@Test
+	void failsWhenMcpServersIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": [ { \"command\": \"npx\", \"url\": \"nonsense\" } ] }")::execute);
+
+		// An 'mcpServers' of the wrong shape used to look exactly like an absent
+		// one, so every server inside it went unvalidated.
+		assertTrue(exception.getMessage().contains("'mcpServers' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenThereAreNoMcpServersAtAll() {
+		assertDoesNotThrow(ruleFor("{ \"other\": true }")::execute);
+	}
+
+	@Test
+	void leavesAServerEntryThatIsNotAnObjectToTheTransportRule() {
+		// This rule validates the fields around a transport; whether an entry is
+		// an object at all is McpServersValidRule's call, so it is not reported
+		// twice.
+		assertDoesNotThrow(ruleFor("{ \"mcpServers\": { \"fs\": \"npx\" } }")::execute);
+	}
+
+	@Test
+	void ignoresAUrlThatIsNotAString() {
+		assertDoesNotThrow(ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"sse\", \"url\": 8080 } } }")::execute);
+	}
+
+	@Test
+	void failsWhenAUrlHasNoScheme() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"example.com/sse\" } } }")::execute);
+		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAUrlHasNoHost() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"http:///sse\" } } }")::execute);
+		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAUrlUsesASchemeThatIsNotHttp() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"ftp://example.com/sse\" } } }")::execute);
+		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+	}
+
+	@Test
+	void acceptsAnUppercaseUrlScheme() {
+		McpConfigFormatRule rule = ruleFor(
+				"{ \"mcpServers\": { \"remote\": { \"url\": \"HTTPS://example.com/sse\" } } }");
+		rule.setRequireHttps(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void namesTheMcpFileInItsDescription() {
+		McpConfigFormatRule rule = ruleFor(VALID_MCP);
+
+		assertTrue(rule.toString().contains(".mcp.json"), rule.toString());
+	}
+
 	private McpConfigFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve(".mcp.json");
 		writeString(file, content);

@@ -172,6 +172,93 @@ class HookCommandsValidRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("gone.sh")), logger.warnings().toString());
 	}
 
+	@Test
+	void failsWhenHooksIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": [ { \"SessionStart\": [] } ] }")::execute);
+
+		// A 'hooks' of the wrong shape used to look exactly like an absent one, so
+		// the whole section went unvalidated instead of being reported.
+		assertTrue(exception.getMessage().contains("'hooks' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenHooksIsAString() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": \"SessionStart\" }")::execute);
+		assertTrue(exception.getMessage().contains("'hooks' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheSecondOfTwoChainedScriptsIsMissing() {
+		writeString(tempDir.resolve("first.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/first.sh && $CLAUDE_PROJECT_DIR/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// Every reference in the command is checked, not just the first one.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("second.sh"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenAQuotedScriptPathContainsASpace() {
+		writeString(tempDir.resolve("my hook.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/my hook.sh\\\""));
+		rule.setProjectDir(tempDir.toFile());
+
+		// The quotes hold the path together, so it is not split at the space and
+		// then reported as two missing scripts.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenAnEventDoesNotMapToAnArray() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": { \"type\": \"command\" } } }")::execute);
+		assertTrue(exception.getMessage().contains("must be a JSON array"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAGroupIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ \"not-a-group\" ] } }")::execute);
+		assertTrue(exception.getMessage().contains("entry that is not a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAHookEntryIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ { \"hooks\": [ \"echo hi\" ] } ] } }")::execute);
+		assertTrue(exception.getMessage().contains("hook that is not a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenTheEventIsOnTheAllowedList() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("echo hi"));
+		rule.setAllowedEvents(List.of("SessionStart", "PreToolUse"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void leavesAHookOfAnotherTypeAlone() {
+		String content = """
+				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "output" } ] } ] } }
+				""";
+
+		// Only a command hook carries a 'command', so a hook of another type must
+		// not be held to that requirement.
+		assertDoesNotThrow(ruleFor(content)::execute);
+	}
+
+	@Test
+	void namesTheSettingsFileInItsDescription() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("echo hi"));
+
+		assertTrue(rule.toString().contains("settings.json"), rule.toString());
+	}
+
 	private String hooksReferencing(String command) {
 		return """
 				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "%s" } ] } ] } }

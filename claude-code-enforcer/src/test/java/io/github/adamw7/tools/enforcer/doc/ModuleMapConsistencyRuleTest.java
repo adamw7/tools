@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -92,6 +93,48 @@ class ModuleMapConsistencyRuleTest {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("README.md"), exception.getMessage());
 		assertTrue(exception.getMessage().contains("'context'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAModuleNameOnlyAppearsInsideALongerWord() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor(POM, "The context module stores metadata somewhere.\n")::execute);
+
+		// "metadata" is not a mention of the module called 'data'.
+		assertTrue(exception.getMessage().contains("does not mention module 'data'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAModuleNameOnlyAppearsInsideAHyphenatedName() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("<project><modules><module>code</module></modules></project>",
+						"The claude-code-enforcer module.\n")::execute);
+		assertTrue(exception.getMessage().contains("does not mention module 'code'"), exception.getMessage());
+	}
+
+	@Test
+	void acceptsAModuleNamedInsideMarkdownPunctuation() {
+		assertDoesNotThrow(ruleFor(POM, "Modules: `data`, and `code/context` for the finder.\n")::execute);
+	}
+
+	@Test
+	void writesAnHtmlReportExplainingHowToFixTheModuleMap() throws IOException {
+		ModuleMapConsistencyRule rule = ruleFor(POM, "Only the data module.\n");
+		File report = tempDir.resolve("report.html").toFile();
+		rule.setReportFile(report);
+
+		assertThrows(EnforcerRuleException.class, rule::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("does not mention module &#39;context&#39;"), html);
+		assertTrue(html.contains("ignoredModules"), html);
+	}
+
+	@Test
+	void namesThePomAndDocsInItsDescription() {
+		ModuleMapConsistencyRule rule = ruleFor(POM, "The data module and the context module.\n");
+
+		assertTrue(rule.toString().contains("pom.xml"), rule.toString());
+		assertTrue(rule.toString().contains("CLAUDE.md"), rule.toString());
 	}
 
 	private ModuleMapConsistencyRule ruleFor(String pomContent, String docContent) {

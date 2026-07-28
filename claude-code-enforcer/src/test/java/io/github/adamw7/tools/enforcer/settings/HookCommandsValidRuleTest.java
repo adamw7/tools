@@ -212,6 +212,53 @@ class HookCommandsValidRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	@Test
+	void failsWhenAnEventDoesNotMapToAnArray() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": { \"type\": \"command\" } } }")::execute);
+		assertTrue(exception.getMessage().contains("must be a JSON array"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAGroupIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ \"not-a-group\" ] } }")::execute);
+		assertTrue(exception.getMessage().contains("entry that is not a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAHookEntryIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ { \"hooks\": [ \"echo hi\" ] } ] } }")::execute);
+		assertTrue(exception.getMessage().contains("hook that is not a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenTheEventIsOnTheAllowedList() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("echo hi"));
+		rule.setAllowedEvents(List.of("SessionStart", "PreToolUse"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void leavesAHookOfAnotherTypeAlone() {
+		String content = """
+				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "output" } ] } ] } }
+				""";
+
+		// Only a command hook carries a 'command', so a hook of another type must
+		// not be held to that requirement.
+		assertDoesNotThrow(ruleFor(content)::execute);
+	}
+
+	@Test
+	void namesTheSettingsFileInItsDescription() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("echo hi"));
+
+		assertTrue(rule.toString().contains("settings.json"), rule.toString());
+	}
+
 	private String hooksReferencing(String command) {
 		return """
 				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "%s" } ] } ] } }

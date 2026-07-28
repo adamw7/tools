@@ -183,6 +183,54 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void passesWhenTheExtensionIsOnTheAllowedList() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setAllowedExtensions(List.of("sh", "py"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenAScriptHasNoExtensionAtAll() {
+		writeScript("session-start", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setAllowedExtensions(List.of("sh"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("disallowed extension"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheConfiguredSettingsFileDoesNotExist() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("settings.json does not exist"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheSettingsFileIsNotValidJson() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		Path settings = tempDir.resolve(".claude/settings.json");
+		writeString(settings, "{ not json");
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settings.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+	}
+
+	@Test
+	void namesTheHooksDirectoryInItsDescription() {
+		HooksFormatRule rule = ruleFor();
+
+		assertTrue(rule.toString().contains("hooks"), rule.toString());
+	}
+
+	@Test
 	void warnSeverityLogsInsteadOfFailing() {
 		writeScript("session-start.sh", "echo hi\n", true);
 		HooksFormatRule rule = ruleFor();

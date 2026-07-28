@@ -14,6 +14,8 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
+
 class MemoryImportsRuleTest {
 
 	@TempDir
@@ -170,6 +172,33 @@ class MemoryImportsRuleTest {
 		// The long chain is written first here and the direct import second; the
 		// verdict must not depend on which one the traversal walks into first.
 		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillChecksAnImportThatIsNotOnTheIgnoreList() {
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n");
+		rule.setIgnoredImports(List.of("something/else.md"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("imports a missing file"), exception.getMessage());
+	}
+
+	@Test
+	void acceptsAnImportTargetThatIsNotText() throws IOException {
+		Files.write(tempDir.resolve("logo.md"), new byte[] { (byte) 0xC3, (byte) 0x28, (byte) 0xA0 });
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @logo.md\n");
+		rule.setLog(new CapturingLogger());
+
+		// An imported file may be any format, so an unreadable one is a leaf that
+		// is noted in the debug log rather than a violation.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void namesTheFileInItsDescription() {
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n");
+
+		assertTrue(rule.toString().contains("CLAUDE.md"), rule.toString());
 	}
 
 	private MemoryImportsRule ruleFor(String content) {

@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.adamw7.tools.data.source.file.PathValidator;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
@@ -106,35 +105,6 @@ public class McpConfigurationTest {
         McpConfiguration config = new McpConfiguration();
         HttpServletStreamableServerTransportProvider transport = config.streamableServerTransport();
         McpSyncServer server = config.mcpSyncServerStreamable(transport);
-        assertNotNull(server.getServerCapabilities().tools());
-        server.close();
-    }
-
-    @Test
-    public void sseTransportIsNotNull() {
-        McpConfiguration config = new McpConfiguration();
-        assertNotNull(config.sseServerTransport());
-    }
-
-    @Test
-    public void sseServletRegistrationIsNotNull() {
-        McpConfiguration config = new McpConfiguration();
-        HttpServletSseServerTransportProvider transport = config.sseServerTransport();
-        assertNotNull(config.sseServletRegistration(transport));
-    }
-
-    @Test
-    public void sseServletRegistrationServesBothEndpoints() {
-        McpConfiguration config = new McpConfiguration();
-        HttpServletSseServerTransportProvider transport = config.sseServerTransport();
-        assertTrue(config.sseServletRegistration(transport).getUrlMappings()
-                .containsAll(java.util.List.of("/sse", "/mcp/message")));
-    }
-
-    @Test
-    public void mcpSyncServerWiresSseTransport() {
-        McpConfiguration config = new McpConfiguration();
-        McpSyncServer server = config.mcpSyncServer(config.sseServerTransport());
         assertNotNull(server.getServerCapabilities().tools());
         server.close();
     }

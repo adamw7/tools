@@ -75,7 +75,7 @@ module, `io.github.adamw7.tools.*` elsewhere).
 
 Three MCP servers ship here (`data` uniqueness, `code/context`, `adopt`), each a
 Spring Boot app with a `Main.java` entry point supporting stdio (default),
-streamable HTTP, stateless HTTP, or HTTP+SSE; each has its own `MCP_USAGE.md`
+streamable HTTP, or stateless HTTP; each has its own `MCP_USAGE.md`
 next to its `mcp` package.
 
 Further reading: [README.md](README.md) for worked examples,

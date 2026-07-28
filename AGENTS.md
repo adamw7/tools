@@ -24,8 +24,8 @@ Maven project. The notable capabilities are:
   that scans a whole Java project into a tree of folders, files and
   dependencies, to assemble context for gen-AI agents working with Java code. An
   **MCP server** (in the `io.github.adamw7.context.mcp` package) exposes the
-  project-tree and context-finder tools over stdio, streamable HTTP, stateless
-  HTTP or HTTP+SSE.
+  project-tree and context-finder tools over stdio, streamable HTTP or stateless
+  HTTP.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet; in-memory and
   iterative loading). Parquet files are read through an in-process DuckDB engine,
   so they expose their columns and rows like any other JDBC-backed source.
@@ -166,10 +166,8 @@ context module, `io.github.adamw7.tools.*` elsewhere).
 
 The repository ships three MCP servers, each a Spring Boot app whose entry point
 is `Main.java` and which supports stdio (default), streamable HTTP
-(`--transport.mode=streamable-http`, served at `/mcp`), stateless HTTP
-(`--transport.mode=stateless-http`, session-less, also served at `/mcp`), or the
-legacy HTTP+SSE transport (`--transport.mode=sse`, event stream at `/sse`,
-messages at `/mcp/message`):
+(`--transport.mode=streamable-http`, served at `/mcp`), or stateless HTTP
+(`--transport.mode=stateless-http`, session-less, also served at `/mcp`):
 
 - The uniqueness-checker server in
   `data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/`; see its

@@ -16,7 +16,7 @@ Two capabilities are exposed to AI assistants as MCP servers: the uniqueness
 checker in `data`, and `project_tree` / `find_context` / `estimate_tokens` in
 `code/context`. Both need the same plumbing — process/lifecycle management,
 dependency injection to assemble tool handlers, and multiple MCP transports
-(stdio, streamable HTTP, stateless HTTP, HTTP+SSE), including HTTPS with a pinned
+(stdio, streamable HTTP, stateless HTTP), including HTTPS with a pinned
 TLS policy ([ADR 0003](0003-require-tls-1.3.md)). Writing that plumbing by hand,
 twice, would be duplicative and error-prone; the servers need a common runtime.
 

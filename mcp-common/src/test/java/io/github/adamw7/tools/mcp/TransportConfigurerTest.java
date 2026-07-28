@@ -34,7 +34,8 @@ public class TransportConfigurerTest {
 
 	@Test
 	public void readsExplicitTransportMode() {
-		assertEquals("sse", TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=sse" }));
+		assertEquals("stateless-http",
+				TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=stateless-http" }));
 	}
 
 	@Test
@@ -96,16 +97,6 @@ public class TransportConfigurerTest {
 		// The stateless HTTP transport exposes the /mcp servlet, so it needs a web
 		// server and must not be forced to "none".
 		assertEquals("stateless-http", System.getProperty(TRANSPORT_MODE));
-		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
-	}
-
-	@Test
-	public void configureKeepsWebApplicationForSseMode() {
-		TransportConfigurer.configure(new String[] { "--transport.mode=sse" });
-
-		// The SSE transport exposes the /sse and /mcp/message servlets, so it
-		// likewise needs a web server and must not be forced to "none".
-		assertEquals("sse", System.getProperty(TRANSPORT_MODE));
 		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
 	}
 }

@@ -5,8 +5,8 @@ package io.github.adamw7.tools.mcp;
  * before the application context starts. The transport is read from
  * {@code --transport.mode} (defaulting to stdio). In stdio mode the web server is
  * disabled so nothing but JSON-RPC reaches the channel; every HTTP transport
- * ({@code streamable-http}, {@code stateless-http} and {@code sse}) keeps the web
- * server so its servlet can be exposed. The banner is always suppressed because it
+ * ({@code streamable-http} and {@code stateless-http}) keeps the web server so its
+ * servlet can be exposed. The banner is always suppressed because it
  * would otherwise corrupt the stdio stream. Both MCP servers share this so their
  * {@code Main} entry points stay trivial.
  */

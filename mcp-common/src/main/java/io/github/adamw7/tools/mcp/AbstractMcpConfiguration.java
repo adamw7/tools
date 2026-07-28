@@ -21,7 +21,6 @@ import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
@@ -33,21 +32,16 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerTransportProvider;
 
 /**
- * Wires an MCP server over one of four transports, selected with
+ * Wires an MCP server over one of three transports, selected with
  * {@code --transport.mode}: stdio (the default); a streamable HTTP transport
- * ({@code streamable-http}) at {@code /mcp}; a stateless HTTP transport
+ * ({@code streamable-http}) at {@code /mcp}; and a stateless HTTP transport
  * ({@code stateless-http}), also at {@code /mcp}, answering each JSON-RPC request
- * in isolation without keeping any session; and the legacy HTTP+SSE transport
- * ({@code sse}) at {@code /sse} and {@code /mcp/message} for clients that predate
- * streamable HTTP. Concrete servers supply only their {@link #serverName() name}
- * and their {@link #tools() tools}, and are the {@code @Configuration} beans
- * through which the {@code @Bean} methods below are picked up.
+ * in isolation without keeping any session. Concrete servers supply only their
+ * {@link #serverName() name} and their {@link #tools() tools}, and are the
+ * {@code @Configuration} beans through which the {@code @Bean} methods below are
+ * picked up.
  */
 public abstract class AbstractMcpConfiguration {
-
-	protected static final String SSE_ENDPOINT = "/sse";
-
-	protected static final String SSE_MESSAGE_ENDPOINT = "/mcp/message";
 
 	protected static final String MCP_ENDPOINT = "/mcp";
 
@@ -99,24 +93,6 @@ public abstract class AbstractMcpConfiguration {
 	public ServletRegistrationBean<HttpServletStatelessServerTransport> statelessServletRegistration(
 			HttpServletStatelessServerTransport transport) {
 		return asyncRegistration(transport, MCP_ENDPOINT);
-	}
-
-	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
-	public HttpServletSseServerTransportProvider sseServerTransport() {
-		log.info("Creating HttpServletSseServerTransport");
-		return HttpServletSseServerTransportProvider.builder()
-				.jsonMapper(new JacksonMcpJsonMapper(objectMapper()))
-				.sseEndpoint(SSE_ENDPOINT)
-				.messageEndpoint(SSE_MESSAGE_ENDPOINT)
-				.build();
-	}
-
-	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
-	public ServletRegistrationBean<HttpServletSseServerTransportProvider> sseServletRegistration(
-			HttpServletSseServerTransportProvider transport) {
-		return asyncRegistration(transport, SSE_ENDPOINT, SSE_MESSAGE_ENDPOINT);
 	}
 
 	/**

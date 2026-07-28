@@ -44,6 +44,6 @@ class McpConfigurationTest {
 	void supportsTheSharedTransports() {
 		assertNotNull(config.stdioServerTransport());
 		assertNotNull(config.streamableServerTransport());
-		assertNotNull(config.sseServerTransport());
+		assertNotNull(config.statelessServerTransport());
 	}
 }

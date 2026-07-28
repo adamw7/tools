@@ -18,7 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
@@ -96,19 +95,6 @@ public class AbstractMcpConfigurationTest {
 	}
 
 	@Test
-	public void sseTransportIsNotNull() {
-		assertNotNull(new TestMcpConfiguration().sseServerTransport());
-	}
-
-	@Test
-	public void sseServletRegistrationServesBothEndpoints() {
-		TestMcpConfiguration config = new TestMcpConfiguration();
-		HttpServletSseServerTransportProvider transport = config.sseServerTransport();
-		assertTrue(config.sseServletRegistration(transport).getUrlMappings()
-				.containsAll(List.of("/sse", "/mcp/message")));
-	}
-
-	@Test
 	public void mcpSyncServerRegistersToolsOverStdio() throws Exception {
 		TestMcpConfiguration config = new TestMcpConfiguration();
 		// Drive the stdio server from a controllable pipe instead of System.in. The
@@ -122,14 +108,6 @@ public class AbstractMcpConfigurationTest {
 		assertNotNull(server.getServerCapabilities().tools());
 		server.close();
 		inputWriter.close();
-	}
-
-	@Test
-	public void mcpSyncServerWiresSseTransport() {
-		TestMcpConfiguration config = new TestMcpConfiguration();
-		McpSyncServer server = config.mcpSyncServer(config.sseServerTransport());
-		assertNotNull(server.getServerCapabilities().tools());
-		server.close();
 	}
 
 	@Test

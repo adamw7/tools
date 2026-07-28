@@ -35,10 +35,8 @@ The server uses:
 
 - **Transport**: stdio (default), streamable HTTP
   (`--transport.mode=streamable-http`), which serves the MCP endpoint at `/mcp`,
-  stateless HTTP (`--transport.mode=stateless-http`), which serves the same
-  `/mcp` endpoint without keeping a session, or the legacy HTTP+SSE transport
-  (`--transport.mode=sse`), which serves the event stream at `/sse` and accepts
-  JSON-RPC messages at `/mcp/message`.
+  or stateless HTTP (`--transport.mode=stateless-http`), which serves the same
+  `/mcp` endpoint without keeping a session.
 - **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
@@ -156,18 +154,6 @@ JSON-RPC call is handled in isolation. This suits horizontally scaled or
 serverless deployments where requests may land on different instances. Clients
 connect with the same streamable HTTP configuration shown below.
 
-### HTTP+SSE (legacy)
-
-```bash
-java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=sse
-```
-
-This is the legacy HTTP+SSE transport (MCP protocol revision 2024-11-05),
-kept for clients that predate streamable HTTP. The server opens the event
-stream at `http://localhost:8082/sse` and accepts JSON-RPC messages POSTed to
-`http://localhost:8082/mcp/message`. Prefer `streamable-http` for new clients;
-this transport is deprecated in the current MCP specification.
-
 ### HTTPS (TLS 1.3)
 
 To serve the streamable HTTP transport over HTTPS, point the standard Spring
@@ -213,11 +199,10 @@ The tools read source files from disk, so access is constrained by design:
   context.allowed-roots=/home/me/projects:/srv/code
   ```
 
-- **Loopback binding.** The HTTP transports (streamable HTTP, stateless HTTP and
-  HTTP+SSE) bind to `127.0.0.1` by default (`server.address`). The `/mcp`, `/sse`
-  and `/mcp/message` endpoints have **no authentication**, so they must not be
-  exposed on a routable interface. Change `server.address` only after putting
-  authentication in front of them.
+- **Loopback binding.** The HTTP transports (streamable HTTP and stateless HTTP)
+  bind to `127.0.0.1` by default (`server.address`). The `/mcp` endpoint has
+  **no authentication**, so it must not be exposed on a routable interface.
+  Change `server.address` only after putting authentication in front of it.
 
 - **Bounded depth.** The `depth` argument is capped at `10` to bound the cost of
   transitive dependency resolution.
@@ -248,19 +233,6 @@ The tools read source files from disk, so access is constrained by design:
     "context-engineering": {
       "type": "http",
       "url": "http://localhost:8082/mcp"
-    }
-  }
-}
-```
-
-### HTTP+SSE client (legacy)
-
-```json
-{
-  "mcpServers": {
-    "context-engineering": {
-      "type": "sse",
-      "url": "http://localhost:8082/sse"
     }
   }
 }

@@ -77,8 +77,8 @@ Capabilities that are useful to AI assistants are exposed through **MCP servers*
 (Spring Boot apps) rather than bespoke integrations: the uniqueness checker in
 `data`, and `project_tree` / `find_context` / `estimate_tokens` in `code/context`.
 Shared server scaffolding — transport wiring and the tool SPI — is factored into
-`mcp-common`, and each server supports stdio, streamable HTTP, stateless HTTP, and
-HTTP+SSE transports. This keeps the tool logic decoupled from transport concerns
+`mcp-common`, and each server supports stdio, streamable HTTP and stateless HTTP
+transports. This keeps the tool logic decoupled from transport concerns
 and consistent across servers. The choice of Spring Boot as the server runtime is
 recorded and justified in [ADR 0009](0009-mcp-servers-on-spring-boot.md).
 

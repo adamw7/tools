@@ -53,6 +53,41 @@ class RepositoryUrlTest {
 		assertEquals("tools", RepositoryUrl.of("git@github.com:adamw7/tools.git").name());
 	}
 
+	/**
+	 * The scp-like form's ':' is a path separator, so a host-only URL ends at it. A
+	 * name taken from the last '/' alone read the whole URL as the repository and
+	 * named the checkout directory {@code git@host:tools}, which a filesystem that
+	 * reserves ':' cannot even resolve.
+	 */
+	@Test
+	void derivesTheNameFromAnSshUrlThatNamesNoOwner() {
+		assertEquals("tools", RepositoryUrl.of("git@host:tools.git").name());
+		assertEquals("tools", RepositoryUrl.of("git@host:tools").name());
+	}
+
+	/**
+	 * git clones {@code .../tools.GIT} as readily as {@code .../tools.git}, and both
+	 * name the one repository — so keeping the case would name the checkout
+	 * {@code tools.GIT} and ask GitHub about a repository that answers 404.
+	 */
+	@Test
+	void stripsTheGitSuffixWhateverItsCase() {
+		assertEquals("tools", RepositoryUrl.of("https://github.com/adamw7/tools.GIT").name());
+		assertEquals("adamw7/tools", RepositoryUrl.of("https://github.com/adamw7/tools.GIT").slug().orElseThrow());
+	}
+
+	/**
+	 * A last segment carrying a backslash is a path rather than a name, and resolving
+	 * one against the workspace would put the checkout outside it wherever '\' is a
+	 * separator.
+	 */
+	@Test
+	void aUrlWhoseNameIsAPathIsRejected() {
+		assertThrows(IllegalArgumentException.class,
+				() -> RepositoryUrl.of("https://github.com/adamw7/a\\..\\..\\evil"));
+		assertThrows(IllegalArgumentException.class, () -> RepositoryUrl.of("C:\\repos\\tools"));
+	}
+
 	@Test
 	void derivesTheNameFromANestedGroupUrl() {
 		assertEquals("tools", RepositoryUrl.of("https://gitlab.com/group/subgroup/tools.git").name());

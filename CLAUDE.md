@@ -84,6 +84,9 @@ Further reading: [README.md](README.md) for worked examples,
 builder walkthrough, and [docs/adr](docs/adr) for the architecture decision
 records behind the standing choices (DuckDB, log4j2, MCP on Spring Boot,
 documentation as an enforced contract, and the security posture).
+[k8s/README.md](k8s/README.md) covers running `SampleApp` on minikube as a
+run-to-completion Job, and [SECURITY.md](SECURITY.md) the private disclosure
+process.
 
 ## Java version
 
@@ -125,6 +128,11 @@ never fetches it from GitHub and needs no `shellcheck` installed, working
 offline. The plugin default instead downloads the binary from GitHub releases,
 which fails where that host is blocked. Skip the lint with `mvn install
 -Dskip.shellcheck=true`. See *Build, test, and run* in AGENTS.md.
+
+Those scripts are developer-environment helpers outside the Maven build, kept as
+parallel `scripts/linux` (`*.sh`) and `scripts/windows` (`*.bat`/`*.ps1`)
+variants: JDK 25 install, dependency/plugin update reports, and Claude Code and
+git updates. See *Helper scripts* in AGENTS.md.
 
 ## Principles for Java Development
 
@@ -177,6 +185,21 @@ paths.
   batch gives each repository its own checkout. It stops at the branch step, so
   it never pushes or opens a pull request. See *Testing* in AGENTS.md.
 
+## Continuous integration and commits
+
+Three workflows gate pull requests to `main`: `maven.yml` (`mvn -B package
+-DenforceClaudeMd`, the only one that runs the doc checks), `docker.yml` (builds
+the `assembly` image but never runs it), and `codeql.yml`. The rest are
+scheduled — `integration-tests.yml` daily, `coverage.yml` and `pitest.yml`
+weekly — and `maven-publish.yml` / `central-publish.yml` fire on a GitHub
+release. Every workflow builds on JDK 25 (Temurin). See *Continuous integration*
+and *Releasing* in AGENTS.md.
+
+Use clear, conventional commit messages — the `git-commit` skill writes them
+with this repository's real module scopes — keep changes focused, and add or
+update tests alongside the code. **Do not open a pull request unless explicitly
+asked.**
+
 ## Agent configuration
 
 - `.claude/skills/` holds seven project skills that carry the detail this file
@@ -209,8 +232,11 @@ editing them:
   README against AGENTS.md (the protobuf major version).
 - `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
   `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
-  `hookCommandsValid`, `hooksFormat`, `mcpServersValid`, and `mcpConfigFormat`
-  cover the rest of the agent configuration.
+  `hookCommandsValid`, `hooksFormat`, `mcpServersValid`, `mcpConfigFormat`, and
+  `pluginFormat` cover the rest of the agent configuration. The last three
+  validate `.mcp.json` and `.claude-plugin/plugin.json`, which this repository
+  does not ship — they pass on the absent file and start enforcing the moment
+  one is added.
 
 The check is opt-in via the `claude-md-enforce` profile and needs a two-phase
 build, since a maven-enforcer rule must be resolvable as a JAR before the build

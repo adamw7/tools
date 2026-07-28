@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.adopt;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -19,16 +21,26 @@ public final class RepositoryUrl {
 	private static final int SEGMENTS_WITH_A_HOST = 3;
 	private static final String GIT_SUFFIX = ".git";
 
+	/**
+	 * The user information a URL carries before its host, ended by the last
+	 * {@code @} that precedes the path — the same reading {@link Redaction} takes,
+	 * but applied once the scheme is gone, so the scp-like {@code git@host:owner/repo}
+	 * loses its {@code git@} too. It names no repository either way.
+	 */
+	private static final Pattern USER_INFO = Pattern.compile("^[^/]*@");
+
 	private final String value;
 	private final String redacted;
 	private final String name;
 	private final String slug;
+	private final String identity;
 
 	private RepositoryUrl(String value) {
 		this.value = value;
 		this.redacted = Redaction.of(value);
 		this.name = repositoryName(value);
 		this.slug = repositorySlug(value);
+		this.identity = identity(value);
 	}
 
 	/**
@@ -68,6 +80,44 @@ public final class RepositoryUrl {
 	 */
 	public Optional<String> slug() {
 		return Optional.ofNullable(slug);
+	}
+
+	/**
+	 * Whether another clone URL names this same repository, comparing the two
+	 * without the parts that vary between the forms one repository is cloned by:
+	 * the scheme, the credentials, the {@code .git} suffix, a trailing slash, and
+	 * letter case — and reading the scp-like form's {@code ':'} as the path
+	 * separator it is. So {@code https://token@github.com/Octocat/Hello-World.git}
+	 * and {@code git@github.com:octocat/hello-world} are one repository, while
+	 * {@code .../alice/tools} and {@code .../bob/tools} are two.
+	 *
+	 * <p>Anything that does not reduce to the same text is answered as a different
+	 * repository. The comparison is deliberately conservative in that direction,
+	 * because the caller is deciding whether a checkout it found is the one it was
+	 * asked to adopt: refusing a checkout that was in fact the right one costs a
+	 * clone, while accepting the wrong one commits to it, pushes it, and opens its
+	 * pull request.
+	 *
+	 * @param otherUrl the URL to compare against, typically a checkout's recorded
+	 *                 {@code origin}; blank or {@code null} names no repository and
+	 *                 so matches none
+	 */
+	public boolean isSameRepositoryAs(String otherUrl) {
+		return identity.equals(identity(otherUrl));
+	}
+
+	/**
+	 * @return the comparable form of a clone URL, or the empty string for text that
+	 *         names no repository at all — which never equals the identity of a
+	 *         parsed URL, since {@link #of} rejects a blank one
+	 */
+	private static String identity(String repositoryUrl) {
+		if (!Text.isPresent(repositoryUrl)) {
+			return "";
+		}
+		String withoutScheme = repositoryUrl.strip().replaceFirst(SCHEME, "");
+		String path = USER_INFO.matcher(withoutScheme).replaceFirst("").replace(':', '/');
+		return stripGitSuffix(stripTrailingSlash(path)).toLowerCase(Locale.ROOT);
 	}
 
 	private static String repositoryName(String repositoryUrl) {

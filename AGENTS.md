@@ -82,7 +82,21 @@ Maven project. The notable capabilities are:
   repository's checkout directory inside its own adoption, so a URL naming no
   repository, or one colliding with a checkout another repository of the run
   already claimed, is that repository's recorded failure rather than an abort of
-  the whole run before its first clone. The MCP tool
+  the whole run before its first clone. Two runs into one named `--workspace`
+  never meet, though, so `CloneStep` guards the other half of that collision: a
+  checkout it reuses instead of cloning is first confirmed to be the repository
+  under adoption, by comparing the repository its `origin` names with the one the
+  run was given. Two URLs name one repository when they agree once their scheme,
+  credentials, `.git` suffix, trailing slash, and letter case are set aside — so a
+  checkout cloned over SSH is reused by a run given the HTTPS URL — and anything
+  else is refused, because re-cloning costs a clone while adopting the wrong
+  repository branches, commits, and pushes its working tree and opens a pull
+  request against it. A checkout with no `origin` at all is refused for the same
+  reason, and would have nowhere to push to besides. The reused checkout is then
+  refreshed with a `git fetch`: `BranchStep` decides where to start the feature
+  branch from the remote-tracking refs, so a stale checkout would restart a branch
+  an earlier run had already published and leave `PushStep` refused as a
+  non-fast-forward. The MCP tool
   takes the same list as `repository_urls` (a JSON array, or a comma-separated
   string) beside `repository_url`, and answers with an error result carrying the
   report — not a bare exception — when a repository fails.
@@ -377,8 +391,10 @@ CLAUDE.md check; the other workflows build normally and are unaffected.
   adoption against real GitHub URLs, cloning GitHub's `octocat/Hello-World` and
   `octocat/Spoon-Knife` samples with the real `git`, to prove that a batch gives
   each repository its own checkout, that a repository which cannot be cloned
-  costs only itself, and that two real URLs for one repository are refused
-  before anything is cloned. That IT stops the pipeline at the branch step, so
+  costs only itself, that two real URLs for one repository are refused before
+  anything is cloned, and that a checkout directory already holding a *different*
+  repository is refused rather than adopted. That IT stops the pipeline at the
+  branch step, so
   it stays read-only towards GitHub: it never runs `claude`, never pushes, and
   never opens a pull request, and it needs no `gh` login. Because it clones
   over the network, a host with a git `url.<base>.insteadOf` rewrite records the

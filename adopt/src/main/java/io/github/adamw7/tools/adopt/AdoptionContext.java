@@ -47,6 +47,17 @@ public final class AdoptionContext {
 		return repository.slug();
 	}
 
+	/**
+	 * Asks the question a step has about a checkout it found — is this the
+	 * repository I was asked to adopt? — without handing it the credentialled clone
+	 * URL to compare for itself.
+	 *
+	 * @see RepositoryUrl#isSameRepositoryAs(String)
+	 */
+	public boolean isSameRepository(String otherUrl) {
+		return repository.isSameRepositoryAs(otherUrl);
+	}
+
 	public Path workspace() {
 		return workspace;
 	}

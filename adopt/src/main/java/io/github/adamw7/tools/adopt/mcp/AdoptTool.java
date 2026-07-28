@@ -77,11 +77,11 @@ public class AdoptTool implements McpTool {
 							Map.entry("title", Map.of("type", "string", "description", "pull request title")),
 							Map.entry("body", Map.of("type", "string", "description", "pull request body")),
 							Map.entry("reviewers", Map.of("type", "string",
-									"description", "comma-separated reviewers to request")),
+									"description", "comma-separated reviewers to request; an array is accepted too")),
 							Map.entry("labels", Map.of("type", "string",
-									"description", "comma-separated labels to apply")),
+									"description", "comma-separated labels to apply; an array is accepted too")),
 							Map.entry("assignees", Map.of("type", "string",
-									"description", "comma-separated assignees")),
+									"description", "comma-separated assignees; an array is accepted too")),
 							Map.entry("draft", Map.of("type", "boolean",
 									"description", "open the pull request as a draft")),
 							Map.entry("assets", Map.of("type", "boolean",
@@ -157,12 +157,14 @@ public class AdoptTool implements McpTool {
 
 	/**
 	 * @return a list argument's entries, read from a real JSON array or from the
-	 *         comma-separated string a loosely-typed client sends instead
+	 *         comma-separated string a loosely-typed client sends instead. Both
+	 *         shapes are stripped and their blank entries dropped, so which one the
+	 *         client chose cannot change the list the pipeline is handed.
 	 */
 	private List<String> textList(Map<String, Object> arguments, String key) {
 		Object value = arguments.get(key);
 		if (value instanceof Collection<?> entries) {
-			return entries.stream().map(String::valueOf).toList();
+			return texts(entries.stream().map(String::valueOf));
 		}
 		return commaSeparated(arguments, key);
 	}
@@ -180,10 +182,18 @@ public class AdoptTool implements McpTool {
 		return Workspaces.resolveNamed(text(arguments, "workspace"));
 	}
 
+	/**
+	 * The three list arguments are read through {@link #textList} rather than as
+	 * plain text, because a client that sends a JSON array — the natural shape, and
+	 * the one {@code repository_urls} takes on this very tool — would otherwise have
+	 * the list's {@code toString()} split on its commas and reach {@code gh} as
+	 * {@code --reviewer "[octocat"}, failing the last step of an otherwise complete
+	 * adoption.
+	 */
 	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {
 		return new PullRequestOptions(text(arguments, "title"), text(arguments, "body"),
-				commaSeparated(arguments, "reviewers"), commaSeparated(arguments, "labels"),
-				commaSeparated(arguments, "assignees"), ToolArguments.optionalBoolean(arguments, "draft", false));
+				textList(arguments, "reviewers"), textList(arguments, "labels"),
+				textList(arguments, "assignees"), ToolArguments.optionalBoolean(arguments, "draft", false));
 	}
 
 	/**
@@ -201,6 +211,10 @@ public class AdoptTool implements McpTool {
 	}
 
 	private List<String> commaSeparated(Map<String, Object> arguments, String key) {
-		return Stream.of(text(arguments, key).split(",")).map(String::strip).filter(entry -> !entry.isEmpty()).toList();
+		return texts(Stream.of(text(arguments, key).split(",")));
+	}
+
+	private List<String> texts(Stream<String> entries) {
+		return entries.map(String::strip).filter(entry -> !entry.isEmpty()).toList();
 	}
 }

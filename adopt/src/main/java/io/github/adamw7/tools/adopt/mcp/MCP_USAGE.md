@@ -65,8 +65,8 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 - `branch` (string, optional): feature branch name; defaults to
   `claude/adopt-claude-code`
 - `title` / `body` (string, optional): pull request title and body
-- `reviewers` / `labels` / `assignees` (string, optional): comma-separated
-  values applied to the pull request
+- `reviewers` / `labels` / `assignees` (comma-separated string, or an array of
+  strings, optional): values applied to the pull request
 - `draft` (boolean, optional): open the pull request as a draft
 - `assets` (boolean, optional): also commit starter Claude Code configuration
   assets (`AGENTS.md`, `.claude/settings.json`, a session-start hook,

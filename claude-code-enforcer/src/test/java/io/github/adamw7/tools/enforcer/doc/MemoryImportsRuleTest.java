@@ -122,6 +122,56 @@ class MemoryImportsRuleTest {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nSee @docs/inner.md\n")::execute);
 	}
 
+	@Test
+	void passesWhenALongChainReachesAFileThatIsAlsoImportedDirectly() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @shallow.md and @a.md\n");
+		rule.setMaxDepth(5);
+
+		// leaf.md is two hops away down the direct chain, so Claude Code loads it;
+		// the fact that the a-b-c-d chain also reaches it six hops out does not
+		// make it unloadable.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void reportsADeepChainWhateverOrderTheImportsAreWrittenIn() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @a.md\n");
+		rule.setMaxDepth(5);
+
+		// Same files, but nothing imports shallow.md directly any more, so its
+		// only chain is six hops long and leaf.md really is out of reach.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("nested deeper than 5 hops"), exception.getMessage());
+	}
+
+	@Test
+	void countsDepthAlongTheShortestChainRegardlessOfImportOrder() {
+		writeString(tempDir.resolve("shallow.md"), "See @leaf.md\n");
+		writeString(tempDir.resolve("leaf.md"), "# Leaf\n");
+		writeString(tempDir.resolve("a.md"), "See @b.md\n");
+		writeString(tempDir.resolve("b.md"), "See @c.md\n");
+		writeString(tempDir.resolve("c.md"), "See @d.md\n");
+		writeString(tempDir.resolve("d.md"), "See @shallow.md\n");
+		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @a.md and @shallow.md\n");
+		rule.setMaxDepth(5);
+
+		// The long chain is written first here and the direct import second; the
+		// verdict must not depend on which one the traversal walks into first.
+		assertDoesNotThrow(rule::execute);
+	}
+
 	private MemoryImportsRule ruleFor(String content) {
 		Path file = tempDir.resolve("CLAUDE.md");
 		writeString(file, content);

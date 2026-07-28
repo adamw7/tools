@@ -172,6 +172,46 @@ class HookCommandsValidRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("gone.sh")), logger.warnings().toString());
 	}
 
+	@Test
+	void failsWhenHooksIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": [ { \"SessionStart\": [] } ] }")::execute);
+
+		// A 'hooks' of the wrong shape used to look exactly like an absent one, so
+		// the whole section went unvalidated instead of being reported.
+		assertTrue(exception.getMessage().contains("'hooks' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenHooksIsAString() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": \"SessionStart\" }")::execute);
+		assertTrue(exception.getMessage().contains("'hooks' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheSecondOfTwoChainedScriptsIsMissing() {
+		writeString(tempDir.resolve("first.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/first.sh && $CLAUDE_PROJECT_DIR/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// Every reference in the command is checked, not just the first one.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("second.sh"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenAQuotedScriptPathContainsASpace() {
+		writeString(tempDir.resolve("my hook.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/my hook.sh\\\""));
+		rule.setProjectDir(tempDir.toFile());
+
+		// The quotes hold the path together, so it is not split at the space and
+		// then reported as two missing scripts.
+		assertDoesNotThrow(rule::execute);
+	}
+
 	private String hooksReferencing(String command) {
 		return """
 				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "%s" } ] } ] } }

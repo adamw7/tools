@@ -137,6 +137,21 @@ class McpConfigFormatRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("args")), logger.warnings().toString());
 	}
 
+	@Test
+	void failsWhenMcpServersIsNotAnObject() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": [ { \"command\": \"npx\", \"url\": \"nonsense\" } ] }")::execute);
+
+		// An 'mcpServers' of the wrong shape used to look exactly like an absent
+		// one, so every server inside it went unvalidated.
+		assertTrue(exception.getMessage().contains("'mcpServers' must be a JSON object"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenThereAreNoMcpServersAtAll() {
+		assertDoesNotThrow(ruleFor("{ \"other\": true }")::execute);
+	}
+
 	private McpConfigFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve(".mcp.json");
 		writeString(file, content);

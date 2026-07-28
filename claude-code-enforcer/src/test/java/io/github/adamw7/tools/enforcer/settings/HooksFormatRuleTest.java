@@ -139,6 +139,34 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void treatsEveryScriptAChainedCommandReferencesAsReferenced() {
+		writeScript("first.sh", "#!/bin/sh\n", true);
+		writeScript("second.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh"
+				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		// Both references count. Stopping at the first one left second.sh looking
+		// like an orphan even though the very same command runs it.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenTheSecondScriptOfAChainedCommandIsMissing() {
+		writeScript("first.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh"
+				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing hook script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
+	@Test
 	void doesNotTreatASymlinkedScriptPointingOutsideAsInsideTheHooksDirectory() {
 		Path outside = tempDir.resolve("outside.sh");
 		writeString(outside, "#!/bin/sh\n");

@@ -4,8 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 /**
  * Null-safe accessors over Jackson {@link JsonNode} that mirror the optional
@@ -15,7 +18,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public final class JsonNodes {
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+	/**
+	 * Parses strictly, because these rules exist to catch a hand-edited
+	 * configuration file that Claude Code will not read the way its author meant.
+	 * Jackson's defaults stop at the first complete value and let a later
+	 * definition of a key silently win, so content after the closing brace, and a
+	 * duplicated key, would both parse clean; both are rejected here instead.
+	 */
+	private static final ObjectMapper MAPPER = JsonMapper.builder()
+			.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+			.enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+			.build();
 
 	private JsonNodes() {
 	}

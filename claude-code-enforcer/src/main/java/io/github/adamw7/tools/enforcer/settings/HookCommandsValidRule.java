@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 
 import javax.inject.Named;
 
@@ -23,7 +24,9 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * renamed or missing hook script is caught; the check is on by default and can be
  * switched off with {@code validateScriptReferences}. An event name outside a
  * configured {@code allowedEvents} is reported, which catches a mistyped
- * {@code SessionSart}. A settings file without a {@code hooks} object is allowed.
+ * {@code SessionSart}. A settings file without a {@code hooks} key is allowed, but
+ * a {@code hooks} that is present and is not an object is reported rather than
+ * skipped, so a mistyped section cannot pass unvalidated.
  */
 @Named("hookCommandsValid")
 public class HookCommandsValidRule extends JsonFileRule {
@@ -67,8 +70,12 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) {
+		if (!settings.has(HOOKS_KEY)) {
+			return;
+		}
 		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
 		if (hooks == null) {
+			violations.add("settings.json 'hooks' must be a JSON object");
 			return;
 		}
 		for (String event : JsonNodes.fieldNames(hooks)) {
@@ -125,8 +132,13 @@ public class HookCommandsValidRule extends JsonFileRule {
 			add(event, "has a command hook with an empty 'command'", violations);
 			return;
 		}
-		String script = validateScriptReferences ? localScriptPath(command) : null;
-		if (script != null && !new File(script).exists()) {
+		for (String script : localScriptPaths(command)) {
+			collectMissingScriptViolation(event, script, violations);
+		}
+	}
+
+	private void collectMissingScriptViolation(String event, String script, List<String> violations) {
+		if (!new File(script).exists()) {
 			add(event, "references a missing script: " + script, violations);
 		}
 	}
@@ -136,16 +148,18 @@ public class HookCommandsValidRule extends JsonFileRule {
 		violations.add("hook event '" + event + "' " + problem);
 	}
 
-	/** The resolved on-disk path of a {@code $CLAUDE_PROJECT_DIR}-rooted token, or null when none is referenced. */
-	private String localScriptPath(String command) {
-		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
-		for (String token : command.split("\\s+")) {
-			String expanded = projectDirs.expand(token);
-			if (expanded != null) {
-				return expanded;
-			}
+	/**
+	 * The resolved on-disk paths of every {@code $CLAUDE_PROJECT_DIR}-rooted token
+	 * in the command. A command chains more than one script often enough — an
+	 * {@code &&} between two hooks — that stopping at the first reference would
+	 * leave the rest unchecked.
+	 */
+	private List<String> localScriptPaths(String command) {
+		if (!validateScriptReferences) {
+			return List.of();
 		}
-		return null;
+		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
+		return CommandTokens.of(command).stream().map(projectDirs::expand).filter(Objects::nonNull).toList();
 	}
 
 	void setSettingsFile(File settingsFile) {

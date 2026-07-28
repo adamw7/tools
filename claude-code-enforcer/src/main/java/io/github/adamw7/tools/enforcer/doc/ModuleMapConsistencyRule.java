@@ -23,15 +23,20 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * {@code pomFile} (XML comments are ignored, so a commented-out module does not
  * count) and fails when a module's name — the last path segment, for a nested
  * entry such as {@code code/context} — does not appear in each configured doc
- * file. The check is presence-only by design, since how a doc arranges its module
- * map is prose. Modules listed in {@code ignoredModules} are exempt, and a pom
- * with no {@code <module>} entries fails as a build-setup mistake.
+ * file as a whole identifier. The check is presence-only by design, since how a
+ * doc arranges its module map is prose; matching whole identifiers rather than
+ * bare substrings is what keeps "presence-only" from degenerating into "any word
+ * that happens to contain the name". Modules listed in {@code ignoredModules} are
+ * exempt, and a pom with no {@code <module>} entries fails as a build-setup
+ * mistake.
  */
 @Named("moduleMapConsistency")
 public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	private static final Pattern XML_COMMENT = Pattern.compile("(?s)<!--.*?-->");
 	private static final Pattern MODULE = Pattern.compile("<module>\\s*([^<]+?)\\s*</module>");
+	private static final String IDENTIFIER_BOUNDARY_BEFORE = "(?<![A-Za-z0-9_-])";
+	private static final String IDENTIFIER_BOUNDARY_AFTER = "(?![A-Za-z0-9_-])";
 
 	/** The aggregator {@code pom.xml} whose {@code <module>} entries are the source of truth. */
 	private File pomFile;
@@ -92,10 +97,24 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 		String content = requireContent(docFile, docFile.getName());
 		for (String module : modules) {
 			String name = moduleName(module);
-			if (!isIgnored(name) && !content.contains(name)) {
+			if (!isIgnored(name) && !mentions(content, name)) {
 				violations.add(docFile + " does not mention module '" + name + "' declared in " + pomFile);
 			}
 		}
+	}
+
+	/**
+	 * True when {@code name} appears as a whole identifier rather than as a bare
+	 * substring, so the word "metadata" no longer documents a module called
+	 * {@code data} and "claude-code-enforcer" no longer documents one called
+	 * {@code code}. A neighbouring character that could continue an identifier —
+	 * a letter, a digit, an underscore, or the hyphen these names are written
+	 * with — disqualifies the match; punctuation around it, such as the backticks
+	 * and slashes of {@code `code/context`}, does not.
+	 */
+	private boolean mentions(String content, String name) {
+		return Pattern.compile(IDENTIFIER_BOUNDARY_BEFORE + Pattern.quote(name) + IDENTIFIER_BOUNDARY_AFTER)
+				.matcher(content).find();
 	}
 
 	/** The last path segment, so a nested reactor entry such as {@code code/context} is looked up as {@code context}. */

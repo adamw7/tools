@@ -28,8 +28,10 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * mixes a stdio and a remote transport in one entry.</li>
  * </ul>
  * <p>
- * A project-level {@code .mcp.json} is optional, so an absent file is a pass; all
- * problems found are reported together.
+ * A project-level {@code .mcp.json} is optional, so an absent file is a pass, as is
+ * one that declares no {@code mcpServers}; an {@code mcpServers} that is present
+ * and is not an object is reported rather than skipped, so a mistyped section
+ * cannot pass unvalidated. All problems found are reported together.
  */
 @Named("mcpConfigFormat")
 public class McpConfigFormatRule extends JsonFileRule {
@@ -76,8 +78,12 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode mcp, List<String> violations) {
+		if (!mcp.has(MCP_SERVERS_KEY)) {
+			return;
+		}
 		JsonNode servers = JsonNodes.objectAt(mcp, MCP_SERVERS_KEY);
 		if (servers == null) {
+			violations.add("mcp.json 'mcpServers' must be a JSON object");
 			return;
 		}
 		for (String name : JsonNodes.fieldNames(servers)) {

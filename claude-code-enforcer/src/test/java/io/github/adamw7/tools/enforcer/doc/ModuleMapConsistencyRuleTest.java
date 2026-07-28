@@ -94,6 +94,28 @@ class ModuleMapConsistencyRuleTest {
 		assertTrue(exception.getMessage().contains("'context'"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenAModuleNameOnlyAppearsInsideALongerWord() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor(POM, "The context module stores metadata somewhere.\n")::execute);
+
+		// "metadata" is not a mention of the module called 'data'.
+		assertTrue(exception.getMessage().contains("does not mention module 'data'"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenAModuleNameOnlyAppearsInsideAHyphenatedName() {
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+				ruleFor("<project><modules><module>code</module></modules></project>",
+						"The claude-code-enforcer module.\n")::execute);
+		assertTrue(exception.getMessage().contains("does not mention module 'code'"), exception.getMessage());
+	}
+
+	@Test
+	void acceptsAModuleNamedInsideMarkdownPunctuation() {
+		assertDoesNotThrow(ruleFor(POM, "Modules: `data`, and `code/context` for the finder.\n")::execute);
+	}
+
 	private ModuleMapConsistencyRule ruleFor(String pomContent, String docContent) {
 		ModuleMapConsistencyRule rule = new ModuleMapConsistencyRule();
 		rule.setPomFile(write("pom.xml", pomContent).toFile());

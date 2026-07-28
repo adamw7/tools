@@ -84,7 +84,7 @@ class MultiRepoAdoptionIT {
 	 * independent checkouts. Asserting each checkout's {@code origin} — rather than
 	 * only that two directories exist — is what catches a second adoption that
 	 * silently reused the first repository's working tree, since the clone step
-	 * reuses an existing checkout by design and would report success either way.
+	 * reuses an existing checkout by design.
 	 */
 	@Test
 	void adoptsTwoRealRepositoriesIntoTheirOwnCheckouts() throws IOException {
@@ -165,6 +165,33 @@ class MultiRepoAdoptionIT {
 		assertCheckedOut(HELLO_WORLD);
 		assertCheckedOut(SPOON_KNIFE);
 		assertBatchReport(report, false, List.of(HELLO_WORLD, "https://github.com/owner/.git", SPOON_KNIFE));
+	}
+
+	/**
+	 * Within one run {@link Checkouts} refuses the second claim on a checkout
+	 * directory, but two runs into one named workspace never meet — and a checkout
+	 * directory is named after the repository alone, while one repository name
+	 * belongs to many owners. Only the clone step's own check then stands between
+	 * the operator and an adoption that branches, commits, and pushes a repository
+	 * nobody asked it to touch, so the collision is staged the way it arises: a real
+	 * checkout of one repository sitting under the directory name the next run's
+	 * repository claims.
+	 */
+	@Test
+	void refusesACheckoutDirectoryHoldingADifferentRepository() {
+		Path checkout = workspace.resolve("Spoon-Knife");
+		git(workspace, "clone", HELLO_WORLD, checkout.toString());
+		CliArguments cli = parse("--repo", SPOON_KNIFE, "--workspace", workspace.toString(), "--branch", BRANCH);
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
+
+		assertTrue(failure.getMessage().contains(checkout.toString()), failure.getMessage());
+		assertTrue(failure.getMessage().contains("Hello-World"), failure.getMessage());
+		assertTrue(git(checkout, "remote", "get-url", "origin").endsWith("Hello-World.git"),
+				"the checkout of another repository must be left as it was found");
+		assertFalse(BRANCH.equals(git(checkout, "rev-parse", "--abbrev-ref", "HEAD")),
+				"the adoption branch must never be created in another repository's checkout");
 	}
 
 	/**

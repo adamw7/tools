@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 
@@ -87,5 +89,18 @@ class AdoptionContextTest {
 				Path.of("/tmp/workspace"));
 		assertEquals("https://x-access-token:secret@github.com/owner/repo.git", context.repositoryUrl());
 		assertEquals("https://***@github.com/owner/repo.git", context.displayUrl());
+	}
+
+	/**
+	 * A step deciding whether a checkout it found is the repository under adoption
+	 * asks the context, so the credentialled clone URL stays where only the clone
+	 * command sees it.
+	 */
+	@Test
+	void answersWhetherAnotherUrlNamesTheRepositoryUnderAdoption() {
+		AdoptionContext context = new AdoptionContext("https://x-access-token:secret@github.com/owner/repo.git",
+				Path.of("/tmp/workspace"));
+		assertTrue(context.isSameRepository("git@github.com:owner/repo.git"));
+		assertFalse(context.isSameRepository("https://github.com/someone-else/repo.git"));
 	}
 }

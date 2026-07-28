@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -156,5 +157,44 @@ class RepositoryUrlTest {
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> RepositoryUrl.of("https://x-access-token:secret@github.com/owner/.git"));
 		assertTrue(exception.getMessage().contains("https://***@github.com/owner/.git"), exception.getMessage());
+	}
+
+	/**
+	 * The forms one repository is cloned by: GitHub offers its HTTPS and SSH URLs
+	 * side by side, CI adds a token, and a checkout's recorded {@code origin} may be
+	 * any of them. All name the repository the adoption was asked for.
+	 */
+	@Test
+	void everyFormOfOneRepositoryIsTheSameRepository() {
+		RepositoryUrl url = RepositoryUrl.of("https://github.com/octocat/Hello-World.git");
+		assertTrue(url.isSameRepositoryAs("https://github.com/octocat/Hello-World.git"));
+		assertTrue(url.isSameRepositoryAs("https://github.com/octocat/Hello-World"));
+		assertTrue(url.isSameRepositoryAs("https://github.com/octocat/hello-world.GIT"));
+		assertTrue(url.isSameRepositoryAs("https://github.com/octocat/Hello-World/"));
+		assertTrue(url.isSameRepositoryAs("git@github.com:octocat/Hello-World.git"));
+		assertTrue(url.isSameRepositoryAs("ssh://git@github.com/octocat/Hello-World"));
+		assertTrue(url.isSameRepositoryAs("https://x-access-token:secret@github.com/octocat/Hello-World.git"));
+	}
+
+	/**
+	 * A checkout directory is named after the repository alone, so these are the
+	 * URLs that claim one directory while naming different repositories — the
+	 * collision the reuse of an existing checkout has to catch.
+	 */
+	@Test
+	void twoOwnersOfOneRepositoryNameAreDifferentRepositories() {
+		RepositoryUrl url = RepositoryUrl.of("https://github.com/alice/tools.git");
+		assertFalse(url.isSameRepositoryAs("https://github.com/bob/tools.git"));
+		assertFalse(url.isSameRepositoryAs("https://gitlab.com/alice/tools.git"));
+		assertFalse(url.isSameRepositoryAs("/tmp/workspace/tools"));
+	}
+
+	/** Text that names no repository matches none, rather than every URL or the last one asked. */
+	@Test
+	void noUrlAtAllIsNoRepository() {
+		RepositoryUrl url = RepositoryUrl.of("https://github.com/alice/tools.git");
+		assertFalse(url.isSameRepositoryAs(null));
+		assertFalse(url.isSameRepositoryAs(""));
+		assertFalse(url.isSameRepositoryAs("  "));
 	}
 }

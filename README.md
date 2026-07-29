@@ -762,6 +762,27 @@ mvn -pl adopt exec:java \
     -Dexec.args="https://github.com/owner/repo.git [workspace-directory] [branch-name]"
 ```
 
+`--help` (or `-h`) prints the usage line and adopts nothing, so the arguments can
+be asked for without naming a repository.
+
+Before letting a run write to GitHub, `--dry-run` rehearses it: the repository is
+cloned, branched, and committed on, and the guard is wired in and verified, but
+the branch is never pushed and no pull request is opened. The pipeline is
+assembled *without* those two steps rather than with steps that decide to do
+nothing, so the report's `completedSteps` ends at `verify` and says what really
+happened. The checkout is left in the workspace for the adoption's commits to be
+read before any of it is published:
+
+```bash
+mvn -pl adopt exec:java \
+    -Dexec.args="https://github.com/owner/repo.git --workspace /tmp/adoptions --dry-run"
+```
+
+Every external command is bounded by a timeout — 10 minutes by default —
+overridable with `--timeout <minutes>`, for a repository whose `claude init` or
+whose first Maven build against a cold `~/.m2` needs longer, or for a batch that
+should fail fast instead.
+
 One run can adopt **a list of repositories** rather than a single one: repeat
 `--repo <url>` for each, or point `--repos <file>` at a file naming one
 repository per line (blank lines are skipped and a `#` line is a comment, so a
@@ -824,10 +845,17 @@ shared immutable `AdoptionContext` (the repository URL, the workspace, the
 derived checkout directory, and the feature-branch name):
 
 ```java
-CommandRunner runner = new ProcessCommandRunner();
-GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(), false, Optional.empty())
+AdoptionOptions options = AdoptionOptions.defaults();
+CommandRunner runner = new ProcessCommandRunner(options.commandTimeout());
+GitHubRepoAdopter.withDefaultPipeline(runner, options)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace), new AdoptionReport());
 ```
+
+`AdoptionOptions` is how a run is configured — the pull request's metadata, the
+starter assets, the rule version to pin, whether it is a dry run, and how long
+one command may take. Both entry points build one, so the command line and the
+MCP tool cannot drift apart on what an omitted option means, and the pipeline
+factory does not grow a parameter per switch.
 
 The report is a parameter rather than a return value alone, so a run that fails
 part-way still leaves the caller holding the steps that did complete and the
@@ -839,8 +867,7 @@ its report) per repository — a failing repository is recorded rather than
 allowed to abandon the rest:
 
 ```java
-GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(
-    runner, PullRequestOptions.defaults(), false, Optional.empty());
+GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, AdoptionOptions.defaults());
 List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(contexts);
 ```
 
@@ -914,7 +941,8 @@ The default pipeline runs these steps in order:
    failing the adoption locally if the file is missing or malformed rather than
    after the pull request lands.
 11. **`PushStep`** — pushes the feature branch to origin and sets its upstream
-    (`git push -u origin <branch>`).
+    (`git push -u origin <branch>`). Left out of a `--dry-run` pipeline, together
+    with the step below it.
 12. **`PullRequestStep`** — opens a pull request from the branch with
    `gh pr create`, targeting the repository's default branch as the base. The
    pull request metadata is supplied through `PullRequestOptions` — title, body,
@@ -934,8 +962,9 @@ External `git`/`claude`/`gh` invocations go through a `CommandRunner` abstractio
 so the steps are unit-tested without spawning real processes. The default
 `ProcessCommandRunner` merges standard error into standard output for a single
 ordered transcript, and **bounds every command with a configurable timeout**
-(10 minutes by default) so a stalled clone or a stuck `claude` run cannot hang
-the adoption — on expiry the child process is destroyed and the failure is
+(10 minutes by default, `--timeout <minutes>` on the command line and
+`timeout_minutes` on the MCP tool) so a stalled clone or a stuck `claude` run
+cannot hang the adoption — on expiry the child process is destroyed and the failure is
 reported with whatever output was captured so far. A step whose command exits
 non-zero aborts the pipeline with an `AdoptionException` carrying the command
 transcript.

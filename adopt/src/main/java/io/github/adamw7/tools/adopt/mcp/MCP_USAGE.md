@@ -71,6 +71,17 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 - `assets` (boolean, optional): also commit starter Claude Code configuration
   assets (`AGENTS.md`, `.claude/settings.json`, a session-start hook,
   `.mcp.json`, and an `@claude`-mention GitHub Actions workflow)
+- `rule_version` (string, optional): the released `claude-code-enforcer` version
+  to wire into an adopted Maven project; defaults to the version of the `tools`
+  build running the server, and a `-SNAPSHOT` is refused either way
+- `dry_run` (boolean, optional): rehearse the adoption — clone, branch, commit,
+  wire in the guard, and verify it, but push nothing and open no pull request.
+  The pipeline is assembled without those two steps, so `completedSteps` ends at
+  `verify` and the checkout is left in the workspace to be read. Worth reaching
+  for before letting a call write to GitHub
+- `timeout_minutes` (integer, optional): how long any one `git`/`claude`/`gh`/build
+  command may run before it is killed. Defaults to 10, and is bounded to a day —
+  this server is long-lived, so a command it could never reclaim is refused
 
 **Returns** a JSON report:
 

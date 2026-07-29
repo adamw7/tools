@@ -1,16 +1,17 @@
 package io.github.adamw7.tools.adopt.mcp;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionOptions;
 import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.AdoptionReportWriter;
 import io.github.adamw7.tools.adopt.AdoptionRun;
@@ -18,7 +19,6 @@ import io.github.adamw7.tools.adopt.BatchAdoption;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
-import io.github.adamw7.tools.adopt.Text;
 import io.github.adamw7.tools.adopt.Workspaces;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
@@ -29,11 +29,16 @@ import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * The MCP tool that runs the adoption pipeline: given one GitHub repository URL or
- * a list of them — plus optional workspace, branch, pull-request metadata, and the
- * starter-assets flag — it adopts Claude Code exactly as the command line does and
- * answers with the run's JSON {@link AdoptionReport}. The pipeline is injected
- * behind the {@link Pipeline} seam so tests exercise the argument mapping without
- * cloning anything.
+ * a list of them — plus the optional workspace, branch, and {@link AdoptionOptions}
+ * the call configures the run with — it adopts Claude Code exactly as the command
+ * line does and answers with the run's JSON {@link AdoptionReport}. The pipeline is
+ * injected behind the {@link Pipeline} seam so tests exercise the argument mapping
+ * without cloning anything.
+ *
+ * <p>A {@code dry_run} call is the one an agent should reach for first: it clones,
+ * branches, and commits into the workspace, but pushes nothing and opens no pull
+ * request, so what the adoption would do can be read off the report and the
+ * checkout before any of it reaches GitHub.
  *
  * <p>A repository whose adoption fails does not strand the rest of the list: the
  * result carries every repository's report, marked as an error result when any of
@@ -51,10 +56,15 @@ public class AdoptTool implements McpTool {
 	 * adoption and clone nothing.
 	 */
 	public interface Pipeline {
-		BatchAdoption.Adoption create(PullRequestOptions options, boolean includeAssets, Optional<String> ruleVersion);
+		BatchAdoption.Adoption create(AdoptionOptions options);
 	}
 
 	private static final Logger log = LogManager.getLogger(AdoptTool.class);
+
+	private static final int DEFAULT_TIMEOUT_MINUTES = (int) ProcessCommandRunner.DEFAULT_TIMEOUT.toMinutes();
+
+	/** A day, past which a stuck command is a stuck server rather than a slow adoption. */
+	private static final int MAX_TIMEOUT_MINUTES = 24 * 60;
 
 	private final Pipeline pipeline;
 	private final AdoptionReportWriter reportWriter = new AdoptionReportWriter();
@@ -92,7 +102,13 @@ public class AdoptTool implements McpTool {
 									"description", "also commit starter Claude Code configuration assets")),
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
-											+ "Maven project; defaults to the version of this build"))),
+											+ "Maven project; defaults to the version of this build")),
+							Map.entry("dry_run", Map.of("type", "boolean",
+									"description", "rehearse the adoption: clone, branch, and commit in the "
+											+ "workspace, but push nothing and open no pull request")),
+							Map.entry("timeout_minutes", Map.of("type", "integer",
+									"description", "how long any one git/claude/gh/build command may run before it "
+											+ "is killed; defaults to " + DEFAULT_TIMEOUT_MINUTES))),
 					"required", List.of()));
 
 	public AdoptTool() {
@@ -103,10 +119,9 @@ public class AdoptTool implements McpTool {
 		this.pipeline = pipeline;
 	}
 
-	private static BatchAdoption.Adoption runDefaultPipeline(PullRequestOptions options, boolean includeAssets,
-			Optional<String> ruleVersion) {
-		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(), options, includeAssets,
-				ruleVersion)::adopt;
+	private static BatchAdoption.Adoption runDefaultPipeline(AdoptionOptions options) {
+		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(options.commandTimeout()),
+				options)::adopt;
 	}
 
 	@Override
@@ -117,8 +132,7 @@ public class AdoptTool implements McpTool {
 	@Override
 	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP adopt tool for {}", arguments);
-		BatchAdoption batch = new BatchAdoption(pipeline.create(optionsFrom(arguments),
-				ToolArguments.optionalBoolean(arguments, "assets", false), ruleVersion(arguments)));
+		BatchAdoption batch = new BatchAdoption(pipeline.create(adoptionOptionsFrom(arguments)));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
 	}
 
@@ -191,19 +205,32 @@ public class AdoptTool implements McpTool {
 	 * {@code --reviewer "[octocat"}, failing the last step of an otherwise complete
 	 * adoption.
 	 */
-	private PullRequestOptions optionsFrom(Map<String, Object> arguments) {
+	private PullRequestOptions pullRequestOptionsFrom(Map<String, Object> arguments) {
 		return new PullRequestOptions(text(arguments, "title"), text(arguments, "body"),
 				textList(arguments, "reviewers"), textList(arguments, "labels"),
 				textList(arguments, "assignees"), ToolArguments.optionalBoolean(arguments, "draft", false));
 	}
 
 	/**
-	 * @return the rule version to pin, empty when the argument was not supplied or
-	 *         was blank — the same rule every other optional argument follows
+	 * The call's whole configuration, in the shape the command line builds too, so
+	 * the two entry points cannot drift apart on what an omitted argument means. A
+	 * blank {@code rule_version} is normalised to "not supplied" by
+	 * {@link AdoptionOptions} itself, as every other optional argument is.
 	 */
-	private Optional<String> ruleVersion(Map<String, Object> arguments) {
-		String supplied = text(arguments, "rule_version");
-		return Text.isPresent(supplied) ? Optional.of(supplied.strip()) : Optional.empty();
+	private AdoptionOptions adoptionOptionsFrom(Map<String, Object> arguments) {
+		return new AdoptionOptions(pullRequestOptionsFrom(arguments),
+				ToolArguments.optionalBoolean(arguments, "assets", false), text(arguments, "rule_version"),
+				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments));
+	}
+
+	/**
+	 * The timeout is bounded rather than merely positive: this tool runs inside a
+	 * long-lived server, where a client asking for a week-long timeout would hand it
+	 * a command it can never reclaim.
+	 */
+	private Duration commandTimeout(Map<String, Object> arguments) {
+		return Duration.ofMinutes(ToolArguments.optionalBoundedInt(arguments, "timeout_minutes",
+				DEFAULT_TIMEOUT_MINUTES, 1, MAX_TIMEOUT_MINUTES));
 	}
 
 	/** @return the argument's text, empty when it was not supplied */

@@ -38,9 +38,14 @@ run `mvn install` from the repository root. The main capabilities are:
   GitHub Actions workflow plus `.github/claude-md-guard.sh` check as the
   build-tool-agnostic fallback) and commit that, verify the guard passes on the
   generated file, then push the branch and open a pull request (`gh pr create`)
-  with metadata from `PullRequestOptions` (exposed as CLI flags such as
-  `--title`, `--reviewer`, and `--draft`); the default branch is never written to
-  directly. One run adopts a list of repositories — repeatable `--repo <url>` or
+  with metadata from `PullRequestOptions` (which, with the rest of a run's
+  configuration, is grouped into an `AdoptionOptions` both entry points build and
+  hand to the pipeline factory; exposed as CLI flags such as `--title`,
+  `--reviewer`, `--draft`, and `--timeout <minutes>`); the default branch is never
+  written to directly. `--dry-run` (`dry_run` on the MCP tool) assembles the
+  pipeline without the push and pull-request steps, so a run can be rehearsed into
+  the workspace without writing to GitHub, and `--help` answers with the usage
+  line. One run adopts a list of repositories — repeatable `--repo <url>` or
   `--repos <file>` on the command line, `repository_urls` on the MCP tool — each
   with its own report, and a repository that fails does not stop the rest — a
   malformed URL included, since each checkout is claimed inside its own

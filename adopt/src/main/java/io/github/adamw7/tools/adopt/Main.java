@@ -3,6 +3,9 @@ package io.github.adamw7.tools.adopt;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 
@@ -19,18 +22,28 @@ import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
  * say how far the adoption got and why it stopped. A run over several
  * repositories writes the batch document {@link AdoptionReportWriter} describes.
  *
+ * <p>{@code --help} is answered with the usage line and nothing is adopted, so the
+ * flag every operator reaches for first is not refused as an unknown option. The
+ * line goes to the log, which the console appender writes to standard error: the
+ * same jar is the adoption MCP server, whose stdio transport owns standard output.
+ *
  * <p>A repository whose adoption fails does not stop the ones behind it — nor does
  * one whose URL names no repository at all: the batch runs to the end and the
  * failures are raised together afterwards, so the process still exits non-zero.
  */
 public class Main {
 
+	private static final Logger log = LogManager.getLogger(Main.class);
+
 	public static void main(String[] args) {
 		CliArguments cli = CliArguments.parse(args);
-		CommandRunner runner = new ProcessCommandRunner();
-		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, cli.pullRequestOptions(),
-				cli.includeAssets(), cli.ruleVersion());
-		runAndReport(cli, checkouts(cli), adopter);
+		if (cli.helpRequested()) {
+			log.info(CliArguments.USAGE);
+			return;
+		}
+		AdoptionOptions options = cli.adoptionOptions();
+		CommandRunner runner = new ProcessCommandRunner(options.commandTimeout());
+		runAndReport(cli, checkouts(cli), GitHubRepoAdopter.withDefaultPipeline(runner, options));
 	}
 
 	/**

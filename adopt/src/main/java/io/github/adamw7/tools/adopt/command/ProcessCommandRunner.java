@@ -23,7 +23,14 @@ import io.github.adamw7.tools.adopt.Redaction;
  */
 public class ProcessCommandRunner implements CommandRunner {
 
-	private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
+	/**
+	 * How long a command may run when the caller names no timeout of its own. Sized
+	 * for the longest command the pipeline runs — a {@code claude init} over a whole
+	 * repository — rather than for a {@code git rev-parse}. Public because the run's
+	 * {@link io.github.adamw7.tools.adopt.AdoptionOptions} answers it as the default
+	 * an operator's {@code --timeout} overrides.
+	 */
+	public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
 
 	private final Duration timeout;
 	private final ExecutableResolver resolver;

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +19,13 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * metadata ({@code --title}, {@code --body}, repeatable
  * {@code --reviewer}/{@code --label}/{@code --assignee}, {@code --draft}), the
  * starter-assets step ({@code --assets}), the {@code claude-code-enforcer}
- * version to wire in ({@code --rule-version}), and a JSON report of the outcome
+ * version to wire in ({@code --rule-version}), a rehearsal that publishes nothing
+ * ({@code --dry-run}), how long any one external command may take
+ * ({@code --timeout <minutes>}), and a JSON report of the outcome
  * ({@code --report <file>}). A blank workspace or branch positional falls back to
  * its default; an unknown flag, or one missing its value, fails with the usage
- * line rather than being ignored.
+ * line rather than being ignored — as does {@code --help}, which asks for that
+ * line and so is answered with it instead.
  *
  * <p>The positional slots keep their meaning whatever else is on the command line
  * — the first is always a repository URL, never a workspace — so a run driven
@@ -35,7 +39,13 @@ public final class CliArguments {
 			+ " [--repo <github-repo-url>]... [--repos <file>]"
 			+ " [--workspace <directory>] [--branch <name>]"
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
-			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>] [--report <file>]";
+			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
+			+ " [--dry-run] [--timeout <minutes>] [--report <file>] [--help]";
+
+	static final String HELP_FLAG = "--help";
+	static final String HELP_SHORTHAND = "-h";
+
+	private static final String TIMEOUT_FLAG = "--timeout";
 
 	private final List<String> repositoryUrls = new ArrayList<>();
 	private Path workspace;
@@ -48,7 +58,10 @@ public final class CliArguments {
 	private boolean draft;
 	private boolean assets;
 	private String ruleVersion;
+	private boolean dryRun;
+	private Duration commandTimeout;
 	private Path reportFile;
+	private boolean help;
 	private int positionals;
 	private String positionalUrl;
 	private boolean flagsNamedARepository;
@@ -62,9 +75,16 @@ public final class CliArguments {
 		while (args != null && index < args.length) {
 			index = cli.consume(args, index);
 		}
-		cli.requireRepositoryUrls();
-		cli.requirePositionalNamesARepository();
+		cli.requireSomethingToAdopt();
 		return cli;
+	}
+
+	/**
+	 * @return whether the run asked for the usage line rather than for an adoption,
+	 *         with {@code --help} or {@code -h}
+	 */
+	public boolean helpRequested() {
+		return help;
 	}
 
 	/**
@@ -88,25 +108,26 @@ public final class CliArguments {
 		return new PullRequestOptions(title, body, reviewers, labels, assignees, draft);
 	}
 
-	public boolean includeAssets() {
-		return assets;
-	}
-
-	/**
-	 * @return the released {@code claude-code-enforcer} version to pin into an
-	 *         adopted Maven project's POM, or empty to resolve the version of the
-	 *         {@code tools} build running the adoption
-	 */
-	public Optional<String> ruleVersion() {
-		return Optional.ofNullable(ruleVersion);
+	/** How this run is configured, as the pipeline and the command runner read it. */
+	public AdoptionOptions adoptionOptions() {
+		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout);
 	}
 
 	public Optional<Path> reportFile() {
 		return Optional.ofNullable(reportFile);
 	}
 
+	/**
+	 * {@code -h} is tested before the {@code --} prefix, since it carries none and
+	 * would otherwise be read as the run's first positional — a repository URL,
+	 * which is the one reading of it nobody means.
+	 */
 	private int consume(String[] args, int index) {
 		String argument = args[index];
+		if (HELP_FLAG.equals(argument) || HELP_SHORTHAND.equals(argument)) {
+			help = true;
+			return index + 1;
+		}
 		if (argument.startsWith("--")) {
 			return consumeFlag(args, index);
 		}
@@ -127,6 +148,7 @@ public final class CliArguments {
 			case "--label" -> consumeValue(args, index, labels::add);
 			case "--assignee" -> consumeValue(args, index, assignees::add);
 			case "--rule-version" -> consumeValue(args, index, value -> ruleVersion = optionalText(value));
+			case TIMEOUT_FLAG -> consumeValue(args, index, value -> commandTimeout = optionalTimeout(value));
 			case "--report" -> consumeValue(args, index, value -> reportFile = optionalPath(value));
 			case "--draft" -> {
 				draft = true;
@@ -134,6 +156,10 @@ public final class CliArguments {
 			}
 			case "--assets" -> {
 				assets = true;
+				yield index + 1;
+			}
+			case "--dry-run" -> {
+				dryRun = true;
 				yield index + 1;
 			}
 			default -> throw new IllegalArgumentException("Unknown option " + flag + ". " + USAGE);
@@ -196,6 +222,47 @@ public final class CliArguments {
 
 	private String optionalText(String value) {
 		return Text.isPresent(value) ? value.strip() : null;
+	}
+
+	/**
+	 * The timeout is read as whole minutes rather than as an ISO-8601 duration,
+	 * because it is set in the units the operator is reasoning about — how long a
+	 * {@code claude init} over their largest repository takes. A blank value counts
+	 * as not supplied, like every other optional flag's, and falls back to the
+	 * pipeline's default.
+	 */
+	private Duration optionalTimeout(String value) {
+		return Text.isPresent(value) ? Duration.ofMinutes(minutes(value.strip())) : null;
+	}
+
+	private long minutes(String value) {
+		long parsed = parseMinutes(value);
+		if (parsed <= 0) {
+			throw new IllegalArgumentException(
+					TIMEOUT_FLAG + " must be a positive number of minutes, but was " + value + ". " + USAGE);
+		}
+		return parsed;
+	}
+
+	private long parseMinutes(String value) {
+		try {
+			return Long.parseLong(value);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException(
+					TIMEOUT_FLAG + " must be a whole number of minutes, but was " + value + ". " + USAGE, e);
+		}
+	}
+
+	/**
+	 * A run that asked for the usage line is not asked to adopt anything, so the
+	 * repository requirements are not applied to it: {@code --help} on its own would
+	 * otherwise be refused with the very line it asked to be shown.
+	 */
+	private void requireSomethingToAdopt() {
+		if (!help) {
+			requireRepositoryUrls();
+			requirePositionalNamesARepository();
+		}
 	}
 
 	private void requireRepositoryUrls() {

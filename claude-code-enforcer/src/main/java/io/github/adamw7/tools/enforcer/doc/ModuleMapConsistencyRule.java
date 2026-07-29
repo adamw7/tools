@@ -3,7 +3,6 @@ package io.github.adamw7.tools.enforcer.doc;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.inject.Named;
@@ -83,12 +82,10 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private List<String> modules(String pomContent) {
-		Matcher matcher = MODULE.matcher(XML_COMMENT.matcher(pomContent).replaceAll(""));
-		List<String> modules = new ArrayList<>();
-		while (matcher.find()) {
-			modules.add(matcher.group(1));
-		}
-		return modules;
+		return MODULE.matcher(XML_COMMENT.matcher(pomContent).replaceAll(""))
+				.results()
+				.map(module -> module.group(1))
+				.toList();
 	}
 
 	private void collectDocViolations(File docFile, List<String> modules, List<String> violations)

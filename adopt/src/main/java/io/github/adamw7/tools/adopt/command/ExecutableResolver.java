@@ -4,7 +4,6 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -86,14 +85,11 @@ final class ExecutableResolver {
 	}
 
 	private List<String> rewrite(Path executable, List<String> command) {
-		List<String> rewritten = new ArrayList<>();
-		if (isBatchScript(executable)) {
-			rewritten.add("cmd.exe");
-			rewritten.add("/c");
-		}
-		rewritten.add(executable.toString());
-		rewritten.addAll(command.subList(1, command.size()));
-		return rewritten;
+		return CommandLine.of()
+				.addIf(isBatchScript(executable), "cmd.exe", "/c")
+				.add(executable.toString())
+				.addAll(command.subList(1, command.size()))
+				.toList();
 	}
 
 	private boolean isBatchScript(Path executable) {

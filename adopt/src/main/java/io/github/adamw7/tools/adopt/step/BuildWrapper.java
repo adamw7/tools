@@ -2,11 +2,11 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import io.github.adamw7.tools.adopt.Platform;
+import io.github.adamw7.tools.adopt.command.CommandLine;
 
 /**
  * Finds the build wrapper script a checkout ships with — {@code mvnw} for Maven,
@@ -42,10 +42,7 @@ final class BuildWrapper {
 	 * system's "wrapper, else the PATH tool" from being written out again.
 	 */
 	List<String> commandIn(Path repositoryDirectory, String fallback, List<String> arguments) {
-		List<String> command = new ArrayList<>();
-		command.add(in(repositoryDirectory).orElse(fallback));
-		command.addAll(arguments);
-		return List.copyOf(command);
+		return CommandLine.of(in(repositoryDirectory).orElse(fallback)).addAll(arguments).toList();
 	}
 
 	/**

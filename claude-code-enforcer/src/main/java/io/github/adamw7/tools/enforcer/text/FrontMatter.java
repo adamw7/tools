@@ -1,9 +1,9 @@
 package io.github.adamw7.tools.enforcer.text;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The YAML front matter block at the top of a Markdown document: the lines
@@ -139,22 +139,15 @@ public final class FrontMatter {
 	 * lines inside it are kept as separators and dropped from the result.
 	 */
 	private String folded(int from) {
-		List<String> content = new ArrayList<>();
-		for (int i = from; i < lines.size() && isContinuation(lines.get(i)); i++) {
-			addContent(lines.get(i), content);
-		}
-		return String.join(" ", content);
+		return lines.subList(from, lines.size()).stream()
+				.takeWhile(this::isContinuation)
+				.map(String::strip)
+				.filter(line -> !line.isEmpty())
+				.collect(Collectors.joining(" "));
 	}
 
 	private boolean isContinuation(String line) {
 		return line.isBlank() || isIndented(line);
-	}
-
-	private void addContent(String line, List<String> content) {
-		String stripped = line.strip();
-		if (!stripped.isEmpty()) {
-			content.add(stripped);
-		}
 	}
 
 	private String valueOf(String line, String key) {

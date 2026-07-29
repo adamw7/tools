@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.enforcer.settings;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -25,39 +27,29 @@ final class HookCommands {
 	}
 
 	static List<String> from(JsonNode settings) {
-		List<String> commands = new ArrayList<>();
 		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
 		if (hooks == null) {
-			return commands;
+			return List.of();
 		}
-		for (String event : JsonNodes.fieldNames(hooks)) {
-			collectGroups(JsonNodes.arrayAt(hooks, event), commands);
-		}
-		return commands;
+		return JsonNodes.fieldNames(hooks).stream()
+				.flatMap(event -> objects(JsonNodes.arrayAt(hooks, event)))
+				.flatMap(group -> objects(JsonNodes.arrayAt(group, HOOKS_KEY)))
+				.filter(HookCommands::isCommandHook)
+				.map(entry -> JsonNodes.textAt(entry, COMMAND_KEY, "").strip())
+				.toList();
 	}
 
-	private static void collectGroups(JsonNode groups, List<String> commands) {
-		if (groups == null) {
-			return;
+	/** The object elements of an array node, skipping an absent array and any element of another shape. */
+	private static Stream<JsonNode> objects(JsonNode array) {
+		if (array == null) {
+			return Stream.empty();
 		}
-		for (int i = 0; i < groups.size(); i++) {
-			collectEntries(JsonNodes.objectAt(groups, i), commands);
-		}
+		return IntStream.range(0, array.size())
+				.mapToObj(index -> JsonNodes.objectAt(array, index))
+				.filter(Objects::nonNull);
 	}
 
-	private static void collectEntries(JsonNode group, List<String> commands) {
-		JsonNode entries = group != null ? JsonNodes.arrayAt(group, HOOKS_KEY) : null;
-		if (entries == null) {
-			return;
-		}
-		for (int i = 0; i < entries.size(); i++) {
-			collectCommand(JsonNodes.objectAt(entries, i), commands);
-		}
-	}
-
-	private static void collectCommand(JsonNode entry, List<String> commands) {
-		if (entry != null && COMMAND_TYPE.equals(JsonNodes.textAt(entry, TYPE_KEY, "").strip())) {
-			commands.add(JsonNodes.textAt(entry, COMMAND_KEY, "").strip());
-		}
+	private static boolean isCommandHook(JsonNode entry) {
+		return COMMAND_TYPE.equals(JsonNodes.textAt(entry, TYPE_KEY, "").strip());
 	}
 }

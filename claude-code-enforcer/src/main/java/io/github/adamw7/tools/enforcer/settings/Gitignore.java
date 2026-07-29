@@ -1,8 +1,9 @@
 package io.github.adamw7.tools.enforcer.settings;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * A parsed {@code .gitignore}, able to answer whether a repository-relative file
@@ -26,22 +27,19 @@ final class Gitignore {
 	}
 
 	static Gitignore parse(String content) {
-		List<Line> lines = new ArrayList<>();
-		for (String raw : content.lines().toList()) {
-			parseLine(raw.strip(), lines);
-		}
-		return new Gitignore(lines);
+		return new Gitignore(content.lines()
+				.map(String::strip)
+				.filter(line -> !line.isEmpty() && !line.startsWith("#"))
+				.map(Gitignore::parseLine)
+				.toList());
 	}
 
-	private static void parseLine(String line, List<Line> lines) {
-		if (line.isEmpty() || line.startsWith("#")) {
-			return;
-		}
+	private static Line parseLine(String line) {
 		boolean negated = line.startsWith("!");
 		String pattern = negated ? line.substring(1) : line;
 		boolean directoryOnly = pattern.endsWith("/");
 		String body = directoryOnly ? pattern.substring(0, pattern.length() - 1) : pattern;
-		lines.add(new Line(negated, directoryOnly, compile(body)));
+		return new Line(negated, directoryOnly, compile(body));
 	}
 
 	private static Pattern compile(String body) {
@@ -89,8 +87,7 @@ final class Gitignore {
 	 * one of its ancestor directories is.
 	 */
 	boolean covers(String path) {
-		return isIgnored(path, false)
-				|| ancestorsOf(path).stream().anyMatch(ancestor -> isIgnored(ancestor, true));
+		return isIgnored(path, false) || ancestorsOf(path).anyMatch(ancestor -> isIgnored(ancestor, true));
 	}
 
 	/** The verdict of the last matching line, honouring negations; directory-only lines match directories alone. */
@@ -102,14 +99,11 @@ final class Gitignore {
 		return ignored;
 	}
 
-	private List<String> ancestorsOf(String path) {
-		List<String> ancestors = new ArrayList<>();
-		int slash = path.indexOf('/');
-		while (slash >= 0) {
-			ancestors.add(path.substring(0, slash));
-			slash = path.indexOf('/', slash + 1);
-		}
-		return ancestors;
+	/** The directory prefixes of {@code path}, shallowest first: {@code a/b/c.json} yields {@code a} and {@code a/b}. */
+	private Stream<String> ancestorsOf(String path) {
+		return IntStream.range(0, path.length())
+				.filter(index -> path.charAt(index) == '/')
+				.mapToObj(index -> path.substring(0, index));
 	}
 
 	private record Line(boolean negated, boolean directoryOnly, Pattern pattern) {

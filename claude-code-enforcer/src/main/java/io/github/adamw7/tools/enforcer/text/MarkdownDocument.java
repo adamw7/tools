@@ -5,6 +5,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A parsed Markdown document: its lines plus a mask marking which lines belong to
@@ -71,26 +73,22 @@ public final class MarkdownDocument {
 		return MarkdownText.firstNonBlankLine(lines.stream());
 	}
 
+	/** The indices of the lines outside fenced code blocks, in document order. */
+	private IntStream outsideFences() {
+		return IntStream.range(0, lines.size()).filter(index -> !insideFence[index]);
+	}
+
 	/** True when {@code token} appears on a line outside a fenced code block. */
 	public boolean containsOutsideFences(String token) {
-		for (int i = 0; i < lines.size(); i++) {
-			if (!insideFence[i] && lines.get(i).contains(token)) {
-				return true;
-			}
-		}
-		return false;
+		return outsideFences().anyMatch(index -> lines.get(index).contains(token));
 	}
 
 	/** The heading lines outside fenced code blocks, in document order. */
 	public Set<String> headings() {
-		Set<String> headings = new LinkedHashSet<>();
-		for (int i = 0; i < lines.size(); i++) {
-			String trimmed = lines.get(i).strip();
-			if (!insideFence[i] && isHeading(trimmed)) {
-				headings.add(trimmed);
-			}
-		}
-		return headings;
+		return outsideFences()
+				.mapToObj(index -> lines.get(index).strip())
+				.filter(MarkdownDocument::isHeading)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
 	/** True when {@code heading} appears as a real heading outside code fences. */
@@ -119,21 +117,14 @@ public final class MarkdownDocument {
 	public List<String> headingsInOrder(List<String> wanted) {
 		Set<String> required = new LinkedHashSet<>(wanted);
 		List<String> ordered = new ArrayList<>();
-		for (int i = 0; i < lines.size(); i++) {
-			if (!insideFence[i] && required.remove(lines.get(i).strip())) {
-				ordered.add(lines.get(i).strip());
-			}
-		}
+		outsideFences().mapToObj(index -> lines.get(index).strip())
+				.filter(required::remove)
+				.forEach(ordered::add);
 		return ordered;
 	}
 
 	private int headingIndex(String section) {
-		for (int i = 0; i < lines.size(); i++) {
-			if (!insideFence[i] && lines.get(i).strip().equals(section)) {
-				return i;
-			}
-		}
-		return -1;
+		return outsideFences().filter(index -> lines.get(index).strip().equals(section)).findFirst().orElse(-1);
 	}
 
 	private boolean hasBodyAt(int headingIndex) {

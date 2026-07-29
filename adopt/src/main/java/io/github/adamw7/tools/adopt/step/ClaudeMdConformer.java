@@ -64,8 +64,7 @@ public class ClaudeMdConformer {
 	}
 
 	private List<String> splitLines(String content) {
-		String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
-		return new ArrayList<>(List.of(normalized.split("\n", -1)));
+		return new ArrayList<>(List.of(LineTerminators.normalized(content).split("\n", -1)));
 	}
 
 	/**
@@ -90,10 +89,15 @@ public class ClaudeMdConformer {
 		return lines.stream().map(String::strip).filter(line -> !line.isEmpty()).findFirst().orElse("");
 	}
 
+	/**
+	 * Renaming a heading in place leaves the line count untouched, so one outline
+	 * serves every required section here — unlike {@link #ensureSection}, which
+	 * inserts lines and has to read the document afresh each time.
+	 */
 	private void canonicalizeHeadings(List<String> lines) {
-		boolean[] fence = fenceMask(lines);
-		Set<Integer> claimed = reservedHeadings(lines, fence);
-		REQUIRED_SECTIONS.forEach(required -> canonicalize(lines, fence, required, claimed));
+		Outline outline = Outline.of(lines);
+		Set<Integer> claimed = reservedHeadings(outline);
+		REQUIRED_SECTIONS.forEach(required -> canonicalize(outline, required, claimed));
 	}
 
 	/**
@@ -101,25 +105,25 @@ public class ClaudeMdConformer {
 	 * a near-match search never renames a heading that is already serving another
 	 * required section.
 	 */
-	private Set<Integer> reservedHeadings(List<String> lines, boolean[] fence) {
-		return matchesOutsideFences(lines, fence, line -> REQUIRED_SECTIONS.contains(line.strip()))
+	private Set<Integer> reservedHeadings(Outline outline) {
+		return outline.matching(line -> REQUIRED_SECTIONS.contains(line.strip()))
 				.boxed()
 				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
-	private void canonicalize(List<String> lines, boolean[] fence, String required, Set<Integer> claimed) {
-		if (indexOfHeading(lines, fence, required) >= 0) {
+	private void canonicalize(Outline outline, String required, Set<Integer> claimed) {
+		if (outline.indexOfHeading(required) >= 0) {
 			return;
 		}
-		int index = firstNearMatch(lines, fence, required, claimed);
+		int index = firstNearMatch(outline, required, claimed);
 		if (index >= 0) {
-			lines.set(index, required);
+			outline.lines().set(index, required);
 			claimed.add(index);
 		}
 	}
 
-	private int firstNearMatch(List<String> lines, boolean[] fence, String required, Set<Integer> claimed) {
-		return matchesOutsideFences(lines, fence, line -> isNearMatch(line.strip(), required))
+	private int firstNearMatch(Outline outline, String required, Set<Integer> claimed) {
+		return outline.matching(line -> isNearMatch(line.strip(), required))
 				.filter(index -> !claimed.contains(index))
 				.findFirst()
 				.orElse(-1);
@@ -131,7 +135,7 @@ public class ClaudeMdConformer {
 	 * ({@code ## Project purpose} for {@code ## Project}). The trailing space keeps
 	 * {@code ## Maven} from matching an unrelated {@code ## Mavenish} heading.
 	 */
-	private boolean isNearMatch(String stripped, String required) {
+	private static boolean isNearMatch(String stripped, String required) {
 		String actual = stripped.toLowerCase(Locale.ROOT);
 		String wanted = required.toLowerCase(Locale.ROOT);
 		return isHeading(stripped) && (actual.equals(wanted) || actual.startsWith(wanted + " "));
@@ -148,75 +152,88 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * The fence mask is rebuilt per section because appending a section or
+	 * The outline is taken afresh per section because appending a section or
 	 * inserting a stub shifts the lines the next one is found at, and the sections
 	 * are few enough for that to stay cheap.
 	 */
 	private void ensureSection(List<String> lines, String required) {
-		boolean[] fence = fenceMask(lines);
-		int index = indexOfHeading(lines, fence, required);
+		Outline outline = Outline.of(lines);
+		int index = outline.indexOfHeading(required);
 		if (index < 0) {
 			lines.addAll(List.of("", required, "", STUB_BODY));
-		} else if (!hasBody(lines, fence, index)) {
+		} else if (!outline.hasBody(index)) {
 			lines.addAll(index + 1, List.of("", STUB_BODY));
 		}
 	}
 
-	/**
-	 * Mirrors how the rule decides a section is non-empty: before the next heading
-	 * at its own level or shallower, the section must carry prose, a code block, or
-	 * a deeper sub-heading. Blank lines are neither, so the scan looks past them and
-	 * the first line that decides settles the section.
-	 */
-	private boolean hasBody(List<String> lines, boolean[] fence, int headingIndex) {
-		int level = headingLevel(lines.get(headingIndex).strip());
-		return IntStream.range(headingIndex + 1, lines.size())
-				.filter(index -> fence[index] || !lines.get(index).isBlank())
-				.limit(1)
-				.anyMatch(index -> fence[index] || isBodyLine(lines.get(index).strip(), level));
-	}
-
 	/** A deeper sub-heading continues the section; one at its level or shallower ends it. */
-	private boolean isBodyLine(String line, int level) {
+	private static boolean isBodyLine(String line, int level) {
 		return !isHeading(line) || headingLevel(line) > level;
 	}
 
-	private int headingLevel(String heading) {
+	private static int headingLevel(String heading) {
 		return (int) heading.chars().takeWhile(character -> character == '#').count();
 	}
 
 	private void ensureAgentsReference(List<String> lines) {
-		boolean[] fence = fenceMask(lines);
-		if (matchesOutsideFences(lines, fence, line -> line.contains(AGENTS_REFERENCE)).findAny().isEmpty()) {
-			lines.addAll(titleIndex(lines, fence) + 1, List.of("", AGENTS_REFERENCE_LINE, ""));
+		Outline outline = Outline.of(lines);
+		if (outline.matching(line -> line.contains(AGENTS_REFERENCE)).findAny().isEmpty()) {
+			lines.addAll(outline.titleIndex() + 1, List.of("", AGENTS_REFERENCE_LINE, ""));
 		}
 	}
 
-	/**
-	 * The title is the first non-blank line by the time this runs, and a fence marker
-	 * would itself be a non-blank line before it, so the title can never be one the
-	 * mask covers. A document with no title line at all falls back to the top.
-	 */
-	private int titleIndex(List<String> lines, boolean[] fence) {
-		return Math.max(indexOfHeading(lines, fence, TITLE), 0);
-	}
-
-	/** @return the index of the heading outside code fences, or {@code -1} when absent */
-	private int indexOfHeading(List<String> lines, boolean[] fence, String heading) {
-		return matchesOutsideFences(lines, fence, line -> line.strip().equals(heading)).findFirst().orElse(-1);
-	}
-
-	/** The indices of the lines outside code fences whose text matches, in document order. */
-	private IntStream matchesOutsideFences(List<String> lines, boolean[] fence, Predicate<String> match) {
-		return IntStream.range(0, lines.size()).filter(index -> !fence[index] && match.test(lines.get(index)));
-	}
-
-	private boolean isHeading(String stripped) {
+	private static boolean isHeading(String stripped) {
 		return stripped.startsWith("#");
 	}
 
-	private boolean[] fenceMask(List<String> lines) {
-		return scanFences(lines).mask();
+	/**
+	 * The document as the reshape reads it: the lines themselves, and which of them
+	 * sit inside a code fence. The two travel together because every search the
+	 * reshape makes is "outside fences", and a mask taken from lines other than the
+	 * ones it is applied to would quietly mis-answer — so a reshape that inserts or
+	 * removes lines takes a fresh outline rather than carrying this one on.
+	 *
+	 * <p>Renaming a line in place keeps the outline valid, since the mask is indexed
+	 * by line number and the count has not moved.
+	 */
+	private record Outline(List<String> lines, boolean[] fence) {
+
+		static Outline of(List<String> lines) {
+			return new Outline(lines, scanFences(lines).mask());
+		}
+
+		/** The indices of the lines outside code fences whose text matches, in document order. */
+		IntStream matching(Predicate<String> match) {
+			return IntStream.range(0, lines.size()).filter(index -> !fence[index] && match.test(lines.get(index)));
+		}
+
+		/** @return the index of the heading outside code fences, or {@code -1} when absent */
+		int indexOfHeading(String heading) {
+			return matching(line -> line.strip().equals(heading)).findFirst().orElse(-1);
+		}
+
+		/**
+		 * The title is the first non-blank line by the time this is asked, and a fence
+		 * marker would itself be a non-blank line before it, so the title can never be
+		 * one the mask covers. A document with no title line at all falls back to the top.
+		 */
+		int titleIndex() {
+			return Math.max(indexOfHeading(TITLE), 0);
+		}
+
+		/**
+		 * Mirrors how the rule decides a section is non-empty: before the next heading
+		 * at its own level or shallower, the section must carry prose, a code block, or
+		 * a deeper sub-heading. Blank lines are neither, so the scan looks past them and
+		 * the first line that decides settles the section.
+		 */
+		boolean hasBody(int headingIndex) {
+			int level = headingLevel(lines.get(headingIndex).strip());
+			return IntStream.range(headingIndex + 1, lines.size())
+					.filter(index -> fence[index] || !lines.get(index).isBlank())
+					.limit(1)
+					.anyMatch(index -> fence[index] || isBodyLine(lines.get(index).strip(), level));
+		}
 	}
 
 	/**
@@ -229,7 +246,7 @@ public class ClaudeMdConformer {
 	private record Fences(boolean[] mask, String openAtEnd) {
 	}
 
-	private Fences scanFences(List<String> lines) {
+	private static Fences scanFences(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
 		String open = null;
 		for (int index = 0; index < lines.size(); index++) {
@@ -243,7 +260,7 @@ public class ClaudeMdConformer {
 	 * it. A fence is closed only by the marker it was opened with, so a {@code ~~~}
 	 * line inside a {@code ```} block stays content.
 	 */
-	private String applyFence(String line, String open, boolean[] mask, int index) {
+	private static String applyFence(String line, String open, boolean[] mask, int index) {
 		String marker = fenceMarker(line);
 		if (open == null) {
 			mask[index] = marker != null;
@@ -253,7 +270,7 @@ public class ClaudeMdConformer {
 		return open.equals(marker) ? null : open;
 	}
 
-	private String fenceMarker(String line) {
+	private static String fenceMarker(String line) {
 		if (line.startsWith(BACKTICK_FENCE)) {
 			return BACKTICK_FENCE;
 		}

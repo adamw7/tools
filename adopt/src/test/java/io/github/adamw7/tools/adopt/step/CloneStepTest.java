@@ -89,8 +89,7 @@ class CloneStepTest {
 	@Test
 	void refusesCheckoutWithNoOriginRemote(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 2, "error: No such remote 'origin'"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(2, "error: No such remote 'origin'");
 		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
 		assertTrue(failure.getMessage().contains("no 'origin' remote"), failure.getMessage());
 	}
@@ -106,8 +105,7 @@ class CloneStepTest {
 
 	@Test
 	void failedCloneAbortsAdoption() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 128, "fatal: repository not found"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(128, "fatal: repository not found");
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
 	}
 

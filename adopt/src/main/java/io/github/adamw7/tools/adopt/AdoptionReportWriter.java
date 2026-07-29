@@ -42,7 +42,7 @@ public class AdoptionReportWriter {
 
 	private ObjectNode toBatchNode(List<AdoptionRun> runs) {
 		ObjectNode node = mapper.createObjectNode();
-		node.put("succeeded", runs.stream().allMatch(AdoptionRun::succeeded));
+		node.put("succeeded", AdoptionRun.allSucceeded(runs));
 		ArrayNode repositories = node.putArray("repositories");
 		runs.stream().map(this::toNode).forEach(repositories::add);
 		return node;

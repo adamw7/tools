@@ -52,8 +52,7 @@ class EnforcerStepTest {
 	@Test
 	void wiresGuardIntoAGroovyGradleBuild(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
-		Path buildFile = context.repositoryDirectory().resolve("build.gradle");
-		Files.writeString(buildFile, "plugins { id 'java' }\n");
+		Path buildFile = AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		new EnforcerStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.readString(buildFile).contains("enforceClaudeMd"));
 	}
@@ -61,8 +60,7 @@ class EnforcerStepTest {
 	@Test
 	void wiresGuardIntoAKotlinGradleBuild(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
-		Path buildFile = context.repositoryDirectory().resolve("build.gradle.kts");
-		Files.writeString(buildFile, "plugins { java }\n");
+		Path buildFile = AdoptionContexts.write(context, "build.gradle.kts", "plugins { java }\n");
 		new EnforcerStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.readString(buildFile).contains("enforceClaudeMd"));
 	}
@@ -86,8 +84,7 @@ class EnforcerStepTest {
 	@Test
 	void leavesAnAlreadyWiredPomByteForByteUnchanged(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
-		Path pom = context.repositoryDirectory().resolve("pom.xml");
-		Files.writeString(pom, POM);
+		Path pom = AdoptionContexts.write(context, "pom.xml", POM);
 		EnforcerStep step = mavenStep();
 		step.execute(context, new RecordingCommandRunner());
 		String afterFirstWiring = Files.readString(pom);

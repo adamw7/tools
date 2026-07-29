@@ -18,6 +18,7 @@ import io.github.adamw7.tools.adopt.BatchAdoption;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
+import io.github.adamw7.tools.adopt.Text;
 import io.github.adamw7.tools.adopt.Workspaces;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
@@ -42,12 +43,15 @@ import io.github.adamw7.tools.mcp.ToolResult;
 public class AdoptTool implements McpTool {
 
 	/**
-	 * The adoption run the tool delegates to once the arguments are mapped, filling
-	 * in the report it is handed so a failed repository still reports how far it got.
+	 * Builds the adoption a call runs, from the arguments that call supplied. The
+	 * seam is a factory rather than the adoption itself so the pipeline — and the
+	 * command runner behind it — is assembled once and then adopts every repository
+	 * of the batch, exactly as the command line does; assembling it per repository
+	 * would hand each one its own step instances. Tests substitute a recording
+	 * adoption and clone nothing.
 	 */
 	public interface Pipeline {
-		void adopt(AdoptionContext context, AdoptionReport report, PullRequestOptions options, boolean includeAssets,
-				Optional<String> ruleVersion);
+		BatchAdoption.Adoption create(PullRequestOptions options, boolean includeAssets, Optional<String> ruleVersion);
 	}
 
 	private static final Logger log = LogManager.getLogger(AdoptTool.class);
@@ -99,10 +103,10 @@ public class AdoptTool implements McpTool {
 		this.pipeline = pipeline;
 	}
 
-	private static void runDefaultPipeline(AdoptionContext context, AdoptionReport report, PullRequestOptions options,
-			boolean includeAssets, Optional<String> ruleVersion) {
-		GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(), options, includeAssets, ruleVersion)
-				.adopt(context, report);
+	private static BatchAdoption.Adoption runDefaultPipeline(PullRequestOptions options, boolean includeAssets,
+			Optional<String> ruleVersion) {
+		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(), options, includeAssets,
+				ruleVersion)::adopt;
 	}
 
 	@Override
@@ -113,11 +117,8 @@ public class AdoptTool implements McpTool {
 	@Override
 	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP adopt tool for {}", arguments);
-		PullRequestOptions options = optionsFrom(arguments);
-		boolean includeAssets = ToolArguments.optionalBoolean(arguments, "assets", false);
-		Optional<String> ruleVersion = ruleVersion(arguments);
-		BatchAdoption batch = new BatchAdoption(
-				(context, report) -> pipeline.adopt(context, report, options, includeAssets, ruleVersion));
+		BatchAdoption batch = new BatchAdoption(pipeline.create(optionsFrom(arguments),
+				ToolArguments.optionalBoolean(arguments, "assets", false), ruleVersion(arguments)));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
 	}
 
@@ -128,7 +129,7 @@ public class AdoptTool implements McpTool {
 	 */
 	private ToolResult result(List<AdoptionRun> runs) {
 		String report = reportWriter.toJson(runs);
-		return runs.stream().allMatch(AdoptionRun::succeeded) ? ToolResult.success(report) : ToolResult.error(report);
+		return AdoptionRun.allSucceeded(runs) ? ToolResult.success(report) : ToolResult.error(report);
 	}
 
 	/** Every repository of a call is adopted into one workspace, on one branch name. */
@@ -201,8 +202,8 @@ public class AdoptTool implements McpTool {
 	 *         was blank — the same rule every other optional argument follows
 	 */
 	private Optional<String> ruleVersion(Map<String, Object> arguments) {
-		String supplied = text(arguments, "rule_version").strip();
-		return supplied.isEmpty() ? Optional.empty() : Optional.of(supplied);
+		String supplied = text(arguments, "rule_version");
+		return Text.isPresent(supplied) ? Optional.of(supplied.strip()) : Optional.empty();
 	}
 
 	/** @return the argument's text, empty when it was not supplied */

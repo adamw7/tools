@@ -74,8 +74,7 @@ class ToolProbeTest {
 
 	@Test
 	void succeedsIsFalseForANonZeroExit() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "not logged in"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "not logged in");
 		assertFalse(probe.succeeds(List.of("gh", "auth", "status"), directory, runner));
 	}
 

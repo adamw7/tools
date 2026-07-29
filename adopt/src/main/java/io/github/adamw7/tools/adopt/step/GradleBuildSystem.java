@@ -23,7 +23,7 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 public class GradleBuildSystem implements BuildSystem {
 
 	static final String GRADLE = "gradle";
-	static final List<String> VERIFY_ARGUMENTS = List.of("-q", GradleGuardInstaller.GUARD_TASK);
+	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", GradleGuardInstaller.GUARD_TASK);
 	static final String GROOVY_BUILD_FILE = "build.gradle";
 	static final String KOTLIN_BUILD_FILE = "build.gradle.kts";
 

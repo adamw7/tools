@@ -16,6 +16,14 @@ public final class AdoptionContext {
 	/** Feature branch the adoption commits, pushes, and raises a pull request from. */
 	public static final String DEFAULT_BRANCH = "claude/adopt-claude-code";
 
+	/**
+	 * The remote the adoption fetches from, starts an already-published branch at,
+	 * and pushes to. Named once here because the clone, the branch, and the push must
+	 * agree on it: a branch started from one remote and pushed to another is rejected
+	 * as a non-fast-forward.
+	 */
+	public static final String REMOTE = "origin";
+
 	private final RepositoryUrl repository;
 	private final Path workspace;
 	private final Path repositoryDirectory;

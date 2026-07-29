@@ -156,8 +156,7 @@ class PullRequestStepTest {
 
 	@Test
 	void leavesUrlAbsentWhenListOutputIsNotJson() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 0, "not json at all"));
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("not json at all");
 		AdoptionReport report = new AdoptionReport();
 		step.execute(context, runner, report);
 		assertTrue(report.pullRequestUrl().isEmpty());
@@ -165,8 +164,7 @@ class PullRequestStepTest {
 
 	@Test
 	void leavesUrlAbsentWhenUrlFieldIsMissing() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 0, "[{\"number\": 1}]"));
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("[{\"number\": 1}]");
 		AdoptionReport report = new AdoptionReport();
 		step.execute(context, runner, report);
 		assertTrue(report.pullRequestUrl().isEmpty());
@@ -188,8 +186,7 @@ class PullRequestStepTest {
 	/** Output cut short mid-document — a killed {@code gh}, a truncated pipe. */
 	@Test
 	void leavesUrlAbsentWhenListOutputIsTruncatedJson() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 0, "[{\"url\": "));
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("[{\"url\": ");
 		AdoptionReport report = new AdoptionReport();
 		step.execute(context, runner, report);
 		assertTrue(report.pullRequestUrl().isEmpty());

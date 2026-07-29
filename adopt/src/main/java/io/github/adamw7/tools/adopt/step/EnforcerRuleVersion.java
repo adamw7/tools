@@ -19,7 +19,7 @@ final class EnforcerRuleVersion {
 
 	static final String BUILD_PROPERTIES = "/adopt-build.properties";
 	static final String RULE_VERSION_KEY = "enforcer.rule.version";
-	static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
+	private static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
 
 	private EnforcerRuleVersion() {
 	}

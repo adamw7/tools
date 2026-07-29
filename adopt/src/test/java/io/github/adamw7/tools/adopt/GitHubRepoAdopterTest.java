@@ -12,7 +12,6 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
@@ -137,8 +136,7 @@ class GitHubRepoAdopterTest {
 	 */
 	@Test
 	void withDefaultPipelineHonoursPullRequestOptionsAndTheAssetsFlag() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "missing"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "missing");
 		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(),
 				true, Optional.empty());
 		assertThrows(AdoptionException.class, () -> adopter.adopt(context, new AdoptionReport()));

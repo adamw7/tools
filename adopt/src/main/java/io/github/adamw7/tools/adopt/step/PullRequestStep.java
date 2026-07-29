@@ -46,7 +46,7 @@ public class PullRequestStep extends AbstractCommandStep {
 	 * request need not — or cannot — be opened, matched against its own wording:
 	 * "a pull request for branch ... already exists" and "No commits between ...".
 	 */
-	static final List<String> TOLERATED_FAILURES = List.of("already exists", "no commits between");
+	private static final List<String> TOLERATED_FAILURES = List.of("already exists", "no commits between");
 
 	private final PullRequestOptions options;
 	private final ObjectMapper mapper = new ObjectMapper();

@@ -28,7 +28,7 @@ class GradleGuardInstallerTest {
 	@Test
 	void theGroovyGuardResolvesTheFileBeforeDoLast(@TempDir Path dir) throws IOException {
 		Path buildFile = write(dir, "build.gradle", "plugins { id 'java' }\n");
-		new GradleGuardInstaller().install(buildFile);
+		installer.install(buildFile);
 		String script = Files.readString(buildFile);
 		assertTrue(script.indexOf("project.file('CLAUDE.md')") < script.indexOf("doLast"),
 				"the file must be resolved at configuration time, before doLast: " + script);
@@ -39,7 +39,7 @@ class GradleGuardInstallerTest {
 	@Test
 	void theKotlinGuardResolvesTheFileBeforeDoLast(@TempDir Path dir) throws IOException {
 		Path buildFile = write(dir, "build.gradle.kts", "plugins { java }\n");
-		new GradleGuardInstaller().install(buildFile);
+		installer.install(buildFile);
 		String script = Files.readString(buildFile);
 		assertTrue(script.indexOf("project.file(\"CLAUDE.md\")") < script.indexOf("doLast"),
 				"the file must be resolved at configuration time, before doLast: " + script);
@@ -55,8 +55,7 @@ class GradleGuardInstallerTest {
 
 	@Test
 	void appendsGroovyGuardToBuildGradle(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle");
-		Files.writeString(buildFile, "plugins { id 'java' }\n");
+		Path buildFile = write(directory, "build.gradle", "plugins { id 'java' }\n");
 		assertTrue(installer.install(buildFile));
 		String content = Files.readString(buildFile);
 		assertTrue(content.contains("tasks.register('enforceClaudeMd')"));
@@ -66,8 +65,7 @@ class GradleGuardInstallerTest {
 
 	@Test
 	void appendsKotlinGuardToBuildGradleKts(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle.kts");
-		Files.writeString(buildFile, "plugins { java }\n");
+		Path buildFile = write(directory, "build.gradle.kts", "plugins { java }\n");
 		assertTrue(installer.install(buildFile));
 		String content = Files.readString(buildFile);
 		assertTrue(content.contains("tasks.register(\"enforceClaudeMd\")"));
@@ -76,8 +74,7 @@ class GradleGuardInstallerTest {
 
 	@Test
 	void matchesCarriageReturnLineEndingsWhenAppendingTheGuard(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle");
-		Files.writeString(buildFile, "plugins { id 'java' }\r\n");
+		Path buildFile = write(directory, "build.gradle", "plugins { id 'java' }\r\n");
 		assertTrue(installer.install(buildFile));
 		String content = Files.readString(buildFile);
 		assertTrue(content.contains("tasks.register('enforceClaudeMd')"), "the guard must be appended");
@@ -94,8 +91,7 @@ class GradleGuardInstallerTest {
 
 	@Test
 	void leavesAnAlreadyGuardedBuildUnchanged(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle");
-		Files.writeString(buildFile, "plugins { id 'java' }\n");
+		Path buildFile = write(directory, "build.gradle", "plugins { id 'java' }\n");
 		installer.install(buildFile);
 		String afterFirstInstall = Files.readString(buildFile);
 		assertFalse(installer.install(buildFile));
@@ -109,16 +105,16 @@ class GradleGuardInstallerTest {
 	 */
 	@Test
 	void installsTheGuardWhenTheScriptOnlyMentionsTheTaskInAComment(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle");
-		Files.writeString(buildFile, "// TODO: one day add an enforceClaudeMd task\nplugins { id 'java' }\n");
+		Path buildFile = write(directory, "build.gradle",
+				"// TODO: one day add an enforceClaudeMd task\nplugins { id 'java' }\n");
 		assertTrue(installer.install(buildFile));
 		assertTrue(Files.readString(buildFile).contains("tasks.register('enforceClaudeMd')"));
 	}
 
 	@Test
 	void installsTheGuardWhenAnEarlierDeclarationWasCommentedOut(@TempDir Path directory) throws IOException {
-		Path buildFile = directory.resolve("build.gradle.kts");
-		Files.writeString(buildFile, "// tasks.register(\"enforceClaudeMd\") { }\nplugins { java }\n");
+		Path buildFile = write(directory, "build.gradle.kts",
+				"// tasks.register(\"enforceClaudeMd\") { }\nplugins { java }\n");
 		assertTrue(installer.install(buildFile));
 		assertTrue(Files.readString(buildFile).contains("tasks.register(\"enforceClaudeMd\")"));
 	}

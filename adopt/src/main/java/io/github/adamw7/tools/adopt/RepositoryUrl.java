@@ -16,8 +16,8 @@ import java.util.stream.Stream;
  */
 public final class RepositoryUrl {
 
-	private static final String SCHEME = "^[a-zA-Z][a-zA-Z0-9+.-]*://";
-	private static final String SEGMENT_SEPARATORS = "[/:]";
+	private static final Pattern SCHEME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://");
+	private static final Pattern SEGMENT_SEPARATORS = Pattern.compile("[/:]");
 	private static final int SEGMENTS_WITH_A_HOST = 3;
 	private static final String GIT_SUFFIX = ".git";
 
@@ -115,7 +115,7 @@ public final class RepositoryUrl {
 		if (!Text.isPresent(repositoryUrl)) {
 			return "";
 		}
-		String withoutScheme = repositoryUrl.strip().replaceFirst(SCHEME, "");
+		String withoutScheme = SCHEME.matcher(repositoryUrl.strip()).replaceFirst("");
 		String path = USER_INFO.matcher(withoutScheme).replaceFirst("").replace(':', '/');
 		return stripGitSuffix(stripTrailingSlash(path)).toLowerCase(Locale.ROOT);
 	}
@@ -134,7 +134,7 @@ public final class RepositoryUrl {
 	 * for that separator.
 	 */
 	private static String lastSegment(String url) {
-		String withoutScheme = url.replaceFirst(SCHEME, "");
+		String withoutScheme = SCHEME.matcher(url).replaceFirst("");
 		int separator = Math.max(withoutScheme.lastIndexOf('/'), withoutScheme.lastIndexOf(':'));
 		return withoutScheme.substring(separator + 1);
 	}
@@ -187,7 +187,7 @@ public final class RepositoryUrl {
 	}
 
 	private static List<String> segments(String url) {
-		return Stream.of(url.replaceFirst(SCHEME, "").split(SEGMENT_SEPARATORS))
+		return Stream.of(SEGMENT_SEPARATORS.split(SCHEME.matcher(url).replaceFirst("")))
 				.filter(segment -> !segment.isBlank())
 				.toList();
 	}

@@ -29,7 +29,6 @@ public class BranchStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(BranchStep.class);
 
-	private static final String REMOTE = "origin";
 
 	@Override
 	public String name() {
@@ -70,7 +69,7 @@ public class BranchStep extends AbstractCommandStep {
 	}
 
 	private String remoteBranch(AdoptionContext context) {
-		return REMOTE + "/" + context.branchName();
+		return AdoptionContext.REMOTE + "/" + context.branchName();
 	}
 
 	private boolean hasRef(AdoptionContext context, CommandRunner runner, String ref) {

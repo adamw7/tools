@@ -28,7 +28,7 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 
 	private static final Logger log = LogManager.getLogger(ClaudeMdConformanceStep.class);
 
-	static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
+	private static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
 
 	private final ClaudeMdConformer conformer;
 	private final AssetInstaller agentsMdInstaller;

@@ -3,20 +3,18 @@ package io.github.adamw7.tools.adopt.step;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class PushStepTest {
 
-	private final AdoptionContext context = new AdoptionContext("https://github.com/adamw7/tools.git",
-			Path.of("/tmp/workspace"), "claude/adopt-claude-code");
+	private final AdoptionContext context = AdoptionContexts.of();
 	private final PushStep step = new PushStep();
 
 	@Test
@@ -29,8 +27,7 @@ class PushStepTest {
 
 	@Test
 	void rejectedPushAborts() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "rejected"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "rejected");
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
 	}
 }

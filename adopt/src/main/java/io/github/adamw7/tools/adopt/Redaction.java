@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  */
 public final class Redaction {
 
-	static final String MASK = "***";
+	private static final String MASK = "***";
 
 	/**
 	 * The user information between a URL's {@code ://} and its {@code @}. The match

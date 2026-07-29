@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.AdoptionReport;
+import io.github.adamw7.tools.adopt.BatchAdoption;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.mcp.ToolResult;
 
@@ -36,22 +37,33 @@ class AdoptToolTest {
 
 		private final List<AdoptionContext> contexts = new ArrayList<>();
 		private final List<PullRequestOptions> optionsPerRepository = new ArrayList<>();
-		private AdoptionContext context;
-		private PullRequestOptions options;
 		private boolean includeAssets;
 		private Optional<String> ruleVersion = Optional.empty();
+		private int pipelinesCreated;
 
 		@Override
-		public void adopt(AdoptionContext context, AdoptionReport report, PullRequestOptions options,
-				boolean includeAssets, Optional<String> ruleVersion) {
-			this.contexts.add(context);
-			this.optionsPerRepository.add(options);
-			this.context = context;
-			this.options = options;
+		public BatchAdoption.Adoption create(PullRequestOptions options, boolean includeAssets,
+				Optional<String> ruleVersion) {
 			this.includeAssets = includeAssets;
 			this.ruleVersion = ruleVersion;
+			pipelinesCreated++;
+			return (context, report) -> adopt(context, options, report);
+		}
+
+		private void adopt(AdoptionContext context, PullRequestOptions options, AdoptionReport report) {
+			contexts.add(context);
+			optionsPerRepository.add(options);
 			report.recordStep("pull-request");
 			report.recordPullRequestUrl(PR_URL);
+		}
+
+		/** The last repository's, which for a single-repository call is the only one. */
+		AdoptionContext context() {
+			return contexts.getLast();
+		}
+
+		PullRequestOptions options() {
+			return optionsPerRepository.getLast();
 		}
 	}
 
@@ -114,7 +126,7 @@ class AdoptToolTest {
 	 */
 	@Test
 	void answersWithAnErrorResultCarryingTheReportWhenARepositoryFails() throws IOException {
-		AdoptTool failing = new AdoptTool((context, report, options, includeAssets, ruleVersion) -> {
+		AdoptTool failing = new AdoptTool((options, includeAssets, ruleVersion) -> (context, report) -> {
 			report.recordStep("clone");
 			throw new AdoptionException("boom");
 		});
@@ -129,26 +141,26 @@ class AdoptToolTest {
 	@Test
 	void adoptsWithDefaultsWhenOnlyTheUrlIsGiven() {
 		tool.apply(Map.of("repository_url", REPO_URL));
-		assertEquals(REPO_URL, pipeline.context.repositoryUrl());
-		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context.branchName());
-		assertEquals(PullRequestOptions.defaults(), pipeline.options);
+		assertEquals(REPO_URL, pipeline.context().repositoryUrl());
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context().branchName());
+		assertEquals(PullRequestOptions.defaults(), pipeline.options());
 		assertFalse(pipeline.includeAssets);
-		assertTrue(Files.isDirectory(pipeline.context.workspace()));
+		assertTrue(Files.isDirectory(pipeline.context().workspace()));
 	}
 
 	@Test
 	void usesTheSuppliedWorkspaceAndBranch(@TempDir Path dir) {
 		Path workspace = dir.resolve("workspace");
 		tool.apply(Map.of("repository_url", REPO_URL, "workspace", workspace.toString(), "branch", "feature/x"));
-		assertEquals(workspace, pipeline.context.workspace());
+		assertEquals(workspace, pipeline.context().workspace());
 		assertTrue(Files.isDirectory(workspace));
-		assertEquals("feature/x", pipeline.context.branchName());
+		assertEquals("feature/x", pipeline.context().branchName());
 	}
 
 	@Test
 	void fallsBackToTheDefaultBranchWhenBlank() {
 		tool.apply(Map.of("repository_url", REPO_URL, "branch", "  "));
-		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context.branchName());
+		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context().branchName());
 	}
 
 	@Test
@@ -157,12 +169,12 @@ class AdoptToolTest {
 				"title", "My title", "body", "My body",
 				"reviewers", "octocat, hubot", "labels", "automation", "assignees", "adamw7",
 				"draft", true, "assets", true));
-		assertEquals("My title", pipeline.options.title());
-		assertEquals("My body", pipeline.options.body());
-		assertEquals(List.of("octocat", "hubot"), pipeline.options.reviewers());
-		assertEquals(List.of("automation"), pipeline.options.labels());
-		assertEquals(List.of("adamw7"), pipeline.options.assignees());
-		assertTrue(pipeline.options.draft());
+		assertEquals("My title", pipeline.options().title());
+		assertEquals("My body", pipeline.options().body());
+		assertEquals(List.of("octocat", "hubot"), pipeline.options().reviewers());
+		assertEquals(List.of("automation"), pipeline.options().labels());
+		assertEquals(List.of("adamw7"), pipeline.options().assignees());
+		assertTrue(pipeline.options().draft());
 		assertTrue(pipeline.includeAssets);
 	}
 
@@ -188,7 +200,7 @@ class AdoptToolTest {
 	@Test
 	void ignoresBlankCommaSeparatedEntries() {
 		tool.apply(Map.of("repository_url", REPO_URL, "reviewers", " , octocat ,, "));
-		assertEquals(List.of("octocat"), pipeline.options.reviewers());
+		assertEquals(List.of("octocat"), pipeline.options().reviewers());
 	}
 
 	/**
@@ -204,9 +216,9 @@ class AdoptToolTest {
 				"reviewers", List.of("octocat", "hubot"),
 				"labels", List.of("automation"),
 				"assignees", List.of(" adamw7 ", "  ")));
-		assertEquals(List.of("octocat", "hubot"), pipeline.options.reviewers());
-		assertEquals(List.of("automation"), pipeline.options.labels());
-		assertEquals(List.of("adamw7"), pipeline.options.assignees());
+		assertEquals(List.of("octocat", "hubot"), pipeline.options().reviewers());
+		assertEquals(List.of("automation"), pipeline.options().labels());
+		assertEquals(List.of("adamw7"), pipeline.options().assignees());
 	}
 
 	@Test
@@ -262,7 +274,7 @@ class AdoptToolTest {
 	 */
 	@Test
 	void adoptsTheRestOfTheListAfterARepositoryFails() throws IOException {
-		AdoptTool failing = new AdoptTool((context, report, options, includeAssets, ruleVersion) -> {
+		AdoptTool failing = new AdoptTool((options, includeAssets, ruleVersion) -> (context, report) -> {
 			if (REPO_URL.equals(context.repositoryUrl())) {
 				throw new AdoptionException("boom");
 			}
@@ -274,6 +286,18 @@ class AdoptToolTest {
 		assertEquals("boom", node.get("repositories").get(0).get("failure").asText());
 		assertTrue(node.get("repositories").get(1).get("succeeded").asBoolean());
 		assertEquals(PR_URL, node.get("repositories").get(1).get("pullRequestUrl").asText());
+	}
+
+	/**
+	 * The pipeline is assembled once and adopts the whole batch, as the command line
+	 * does; building it per repository would hand each its own step instances and its
+	 * own command runner.
+	 */
+	@Test
+	void buildsOnePipelineForTheWholeBatch() {
+		tool.apply(Map.of("repository_urls", List.of(REPO_URL, OTHER_URL)));
+		assertEquals(1, pipeline.pipelinesCreated);
+		assertEquals(2, pipeline.contexts.size());
 	}
 
 	/** The metadata is the call's, not the first repository's: every adoption gets it. */

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,6 +22,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
@@ -86,8 +88,14 @@ final class PomDocument {
 		this.spans = spansOf(document, original);
 	}
 
+	/**
+	 * The file is read once and the DOM parsed from that same text, so the parsed
+	 * elements and the lexical spans they are paired with can never come from two
+	 * different reads of a file that changed in between.
+	 */
 	static PomDocument read(Path file) {
-		return new PomDocument(file, AdoptionFiles.read(file, DESCRIPTION), parse(file));
+		String original = AdoptionFiles.read(file, DESCRIPTION);
+		return new PomDocument(file, original, parse(file, original));
 	}
 
 	Element root() {
@@ -349,9 +357,9 @@ final class PomDocument {
 		return node != null && node.getNodeType() == Node.TEXT_NODE && node.getTextContent().isBlank();
 	}
 
-	private static Document parse(Path file) {
+	private static Document parse(Path file, String original) {
 		try {
-			return builder().parse(file.toFile());
+			return builder().parse(new InputSource(new StringReader(original)));
 		} catch (IOException | SAXException e) {
 			throw new AdoptionException("Could not read POM: " + file, e);
 		}

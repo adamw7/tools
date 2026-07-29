@@ -15,6 +15,7 @@ import java.nio.file.Path;
 public final class AdoptionContexts {
 
 	private static final String REPOSITORY_URL = "https://github.com/adamw7/demo.git";
+	private static final Path WORKSPACE = Path.of("/tmp/workspace");
 
 	private AdoptionContexts() {
 	}
@@ -24,6 +25,16 @@ public final class AdoptionContexts {
 		AdoptionContext context = new AdoptionContext(REPOSITORY_URL, workspace);
 		Files.createDirectories(context.repositoryDirectory());
 		return context;
+	}
+
+	/**
+	 * A context that touches no filesystem, for the steps that only shell out and
+	 * never read the checkout — the branch, the commit, the push, the pull request.
+	 * Their tests care about the command that was run, not about a directory
+	 * existing.
+	 */
+	public static AdoptionContext of() {
+		return new AdoptionContext(REPOSITORY_URL, WORKSPACE);
 	}
 
 	/**

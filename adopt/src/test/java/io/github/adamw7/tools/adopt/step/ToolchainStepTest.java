@@ -65,9 +65,7 @@ class ToolchainStepTest {
 	/** A token GitHub answers, but not for this repository, cannot open the pull request either. */
 	@Test
 	void aTokenThatCannotSeeTheRepositoryAbortsTheAdoption() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> command.contains("repos/adamw7/demo") ? new CommandResult(command, 1, "HTTP 404")
-						: new CommandResult(command, 0, ""));
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("repos/adamw7/demo", 1, "HTTP 404");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
 		assertTrue(thrown.getMessage().contains("adamw7/demo"), thrown.getMessage());
@@ -99,9 +97,7 @@ class ToolchainStepTest {
 	 */
 	@Test
 	void anUnauthenticatedGitHubCliAbortsTheAdoption() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> command.contains("api") ? new CommandResult(command, 1, "HTTP 401")
-						: new CommandResult(command, 0, ""));
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("api", 1, "HTTP 401");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
 		assertTrue(thrown.getMessage().contains("cannot reach"), thrown.getMessage());
@@ -162,8 +158,7 @@ class ToolchainStepTest {
 
 	@Test
 	void reportsAMissingToolWithoutProbingTheGitHubLogin() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "missing"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "missing");
 		assertThrows(AdoptionException.class, () -> new ToolchainStep().execute(context, runner));
 		assertEquals(3, runner.count());
 	}
@@ -178,9 +173,7 @@ class ToolchainStepTest {
 
 	@Test
 	void aToolThatExitsNonZeroAbortsTheAdoption() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> command.contains("gh") ? new CommandResult(command, 127, "gh: not found")
-						: new CommandResult(command, 0, ""));
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep().execute(context, runner));
 		assertTrue(thrown.getMessage().contains("gh"), thrown.getMessage());
@@ -207,8 +200,7 @@ class ToolchainStepTest {
 
 	@Test
 	void reportsMissingToolsInDeclarationOrder() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "missing"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "missing");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new ToolchainStep(List.of("git", "gh")).execute(context, runner));
 		assertTrue(thrown.getMessage().contains("git, gh"), thrown.getMessage());

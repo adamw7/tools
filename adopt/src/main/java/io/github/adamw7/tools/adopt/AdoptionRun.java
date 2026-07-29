@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,6 +24,19 @@ public record AdoptionRun(String repositoryUrl, String branchName, AdoptionRepor
 
 	public boolean succeeded() {
 		return report.succeeded();
+	}
+
+	/**
+	 * Whether a whole run landed. The fold lives here because the answer is read in
+	 * three places that must agree — the CLI's exit status, the MCP result's
+	 * success flag, and the {@code succeeded} field of the report itself — and a
+	 * report that contradicted the exit code would be the worst of the three to
+	 * debug.
+	 *
+	 * @param runs the runs of one batch, which succeeds only when every one of them did
+	 */
+	public static boolean allSucceeded(List<AdoptionRun> runs) {
+		return runs.stream().allMatch(AdoptionRun::succeeded);
 	}
 
 	/** @return why this repository's adoption stopped, or empty when it completed */

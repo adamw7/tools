@@ -19,8 +19,8 @@ import java.util.Optional;
  */
 public class MavenBuildSystem implements BuildSystem {
 
-	static final String MAVEN = "mvn";
-	static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
+	private static final String MAVEN = "mvn";
+	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
 
 	private static final String POM = "pom.xml";
 
@@ -28,7 +28,7 @@ public class MavenBuildSystem implements BuildSystem {
 	private final BuildWrapper wrapper;
 
 	public MavenBuildSystem() {
-		this(new PomEnforcerInstaller());
+		this(Optional.empty());
 	}
 
 	/**
@@ -37,7 +37,7 @@ public class MavenBuildSystem implements BuildSystem {
 	 *                    {@code tools} build running the adoption
 	 */
 	public MavenBuildSystem(Optional<String> ruleVersion) {
-		this(ruleVersion.<PomEnforcerInstaller>map(PomEnforcerInstaller::new).orElseGet(PomEnforcerInstaller::new));
+		this(PomEnforcerInstaller.pinning(ruleVersion));
 	}
 
 	public MavenBuildSystem(PomEnforcerInstaller installer) {

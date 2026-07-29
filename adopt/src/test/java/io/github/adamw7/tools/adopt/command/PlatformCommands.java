@@ -1,8 +1,9 @@
 package io.github.adamw7.tools.adopt.command;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
+
+import io.github.adamw7.tools.adopt.Platform;
 
 /**
  * Platform-appropriate command lines for the {@link ProcessCommandRunner}
@@ -17,8 +18,7 @@ import java.util.stream.Stream;
  */
 final class PlatformCommands {
 
-	private static final boolean WINDOWS = System.getProperty("os.name", "")
-			.toLowerCase(Locale.ROOT).startsWith("windows");
+	private static final boolean WINDOWS = Platform.isWindows();
 
 	private PlatformCommands() {
 	}

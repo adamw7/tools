@@ -277,6 +277,17 @@ class PomEnforcerInstallerTest {
 		return pom;
 	}
 
+	/**
+	 * Writes the POM, wires the rule into it, and answers the rewritten text — the
+	 * three lines almost every test here opens with. The few that assert on the
+	 * install's own answer, or install a second time, keep using {@link #write}.
+	 */
+	private String install(Path dir, String content) throws IOException {
+		Path pom = write(dir, content);
+		installer.install(pom);
+		return Files.readString(pom);
+	}
+
 	@Test
 	void addsEnforcerPluginToExistingBuild(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);
@@ -290,27 +301,21 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void pinsEnforcerPluginVersionWhenCreatingIt(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD);
 		assertTrue(result.contains("<version>" + PomEnforcerInstaller.ENFORCER_VERSION + "</version>"),
 				"a freshly created maven-enforcer-plugin must declare a version so the adopted build validates");
 	}
 
 	@Test
 	void bindsExecutionToTheRootModuleOnly(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD);
 		assertTrue(result.contains("<inherited>false</inherited>"),
 				"CLAUDE.md lives only at the repository root, so child modules must not inherit the execution");
 	}
 
 	@Test
 	void configuresClaudeMdFileForTheRule(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD);
 		assertTrue(result.contains("<claudeMdFile>"));
 		assertTrue(result.contains("${project.basedir}/CLAUDE.md"));
 	}
@@ -327,9 +332,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void keepsExistingEnforcerExecution(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_ENFORCER);
-		installer.install(pom);
-		assertTrue(Files.readString(pom).contains("requireMavenVersion"));
+		assertTrue(install(dir, POM_WITH_ENFORCER).contains("requireMavenVersion"));
 	}
 
 	@Test
@@ -351,9 +354,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void keepsExistingCompilerPlugin(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		assertTrue(Files.readString(pom).contains("maven-compiler-plugin"));
+		assertTrue(install(dir, POM_WITH_BUILD).contains("maven-compiler-plugin"));
 	}
 
 	@Test
@@ -454,16 +455,12 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void preservesDefaultPomNamespace(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		assertTrue(Files.readString(pom).contains("http://maven.apache.org/POM/4.0.0"));
+		assertTrue(install(dir, POM_WITH_BUILD).contains("http://maven.apache.org/POM/4.0.0"));
 	}
 
 	@Test
 	void leavesExistingFormattingUntouchedAndOnlyIndentsTheNewBlock(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD);
 		assertTrue(result.contains(
 				"      <plugin>\n"
 						+ "        <groupId>org.apache.maven.plugins</groupId>\n"
@@ -482,9 +479,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void preservesAnExistingXmlDeclarationOnItsOwnLine(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + POM_WITH_BUILD);
 		assertTrue(result.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project "),
 				"the original declaration must be kept verbatim on its own line, not rewritten");
 		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
@@ -492,9 +487,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void preservesCarriageReturnLineEndingsRatherThanReformattingToLf(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD.replace("\n", "\r\n"));
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD.replace("\n", "\r\n"));
 		assertTrue(result.contains("tools.claude-code-enforcer"), "the rule must still be wired in");
 		assertFalse(stripCrlf(result).contains("\n"),
 				"a CRLF POM must stay CRLF; no line may be left with a bare LF ending");
@@ -514,9 +507,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void indentsTheAddedBlockToTheDocumentsOwnIndentationUnit(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_FOUR_SPACE_INDENT);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_FOUR_SPACE_INDENT);
 		assertTrue(result.contains("\n    <modelVersion>4.0.0</modelVersion>\n"),
 				"the four-space original lines must be preserved");
 		assertTrue(result.contains("\n    <build>\n"),
@@ -542,9 +533,7 @@ class PomEnforcerInstallerTest {
 
 	@Test
 	void doesNotAddATrailingNewlineToAPomThatHadNone(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITH_BUILD.stripTrailing());
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITH_BUILD.stripTrailing());
 		assertTrue(result.endsWith("</project>"), "the file must end exactly as it did:\n" + result);
 	}
 
@@ -556,18 +545,14 @@ class PomEnforcerInstallerTest {
 	 */
 	@Test
 	void preservesADeclarationThatSharesItsLineWithTheRootElement(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, "<?xml version=\"1.0\"?>" + POM_WITH_BUILD);
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, "<?xml version=\"1.0\"?>" + POM_WITH_BUILD);
 		assertTrue(result.startsWith("<?xml version=\"1.0\"?><project "), "unexpected start:\n" + result);
 		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
 	}
 
 	@Test
 	void fallsBackToATwoSpaceUnitForAPomWithNoIndentation(@TempDir Path dir) throws IOException {
-		Path pom = write(dir, POM_WITHOUT_BUILD.replace("\n  ", "\n"));
-		installer.install(pom);
-		String result = Files.readString(pom);
+		String result = install(dir, POM_WITHOUT_BUILD.replace("\n  ", "\n"));
 		assertTrue(result.contains("\n  <build>\n"),
 				"a POM carrying no indentation of its own must get the two-space default:\n" + result);
 		assertTrue(result.contains("\n    <plugins>\n"), "nesting must scale by the default unit:\n" + result);

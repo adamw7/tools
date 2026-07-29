@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Test {@link CommandRunner} that records every invocation and answers each one
@@ -24,6 +25,39 @@ public class RecordingCommandRunner implements CommandRunner {
 
 	public RecordingCommandRunner(Function<List<String>, CommandResult> strategy) {
 		this.strategy = strategy;
+	}
+
+	/** A runner whose every command succeeds, answering the transcript a test wants read back. */
+	public static RecordingCommandRunner answering(String output) {
+		return answering(0, output);
+	}
+
+	/**
+	 * A runner whose every command fails the same way — the shape a test takes when
+	 * it is about how a step reports a failure rather than about which command failed.
+	 */
+	public static RecordingCommandRunner failing(int exitCode, String output) {
+		return answering(exitCode, output);
+	}
+
+	private static RecordingCommandRunner answering(int exitCode, String output) {
+		return new RecordingCommandRunner(command -> new CommandResult(command, exitCode, output));
+	}
+
+	/**
+	 * A runner that succeeds except for the commands the predicate picks out, so a
+	 * test can fail exactly the one step it is about and let the rest of the pipeline
+	 * run.
+	 */
+	public static RecordingCommandRunner failingWhen(Predicate<List<String>> failing, int exitCode, String output) {
+		return new RecordingCommandRunner(command -> failing.test(command)
+				? new CommandResult(command, exitCode, output)
+				: new CommandResult(command, 0, ""));
+	}
+
+	/** The common case of {@link #failingWhen}: the command contains this word. */
+	public static RecordingCommandRunner failingOn(String word, int exitCode, String output) {
+		return failingWhen(command -> command.contains(word), exitCode, output);
 	}
 
 	@Override

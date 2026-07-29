@@ -29,7 +29,15 @@ public final class FrontMatterFixer {
 	private static final char DASH = '-';
 	private static final int MIN_DELIMITER_DASHES = 3;
 	private static final String CANONICAL_DELIMITER = "---";
-	private static final Pattern KEY_ENTRY = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_. -]*:(\\s.*)?");
+	/**
+	 * A {@code key:} or {@code key: value} entry. The key is a single identifier —
+	 * {@code name}, {@code description}, {@code allowed-tools} — with no spaces in
+	 * it, which is the shape every Claude Code front matter key takes. Allowing a
+	 * space would make ordinary prose such as {@code Some notes: here.} look like an
+	 * entry, and a document opening with a thematic break followed by that prose
+	 * would then be repaired into front matter it never had.
+	 */
+	private static final Pattern KEY_ENTRY = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_.-]*:(\\s.*)?");
 
 	private FrontMatterFixer() {
 	}

@@ -30,6 +30,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 		requireConfigured(file, fileParameter());
 		if (!file.isFile()) {
 			handleMissingFile(file);
+			report(header(), List.of());
 			return;
 		}
 		List<String> violations = new ArrayList<>();
@@ -72,7 +73,9 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	/**
 	 * How to react when the file is absent. The default fails the build, because a
 	 * missing required file is a build-setup mistake. A rule whose file is optional
-	 * overrides this to return without reporting.
+	 * overrides this to return, and the absent file is then reported as a pass — so
+	 * a configured HTML report reflects that run rather than keeping the previous
+	 * one's failure.
 	 */
 	protected void handleMissingFile(File file) throws EnforcerRuleException {
 		requireExists(file, description());

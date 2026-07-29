@@ -51,8 +51,18 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	private boolean writeBaseline;
 
 	/**
+	 * The directory a baseline's {@code ${basedir}} token stands for, normally
+	 * configured as {@code ${project.basedir}}. When null it falls back to the
+	 * build's working directory, which is only the same thing when Maven was
+	 * invoked from that project's own directory.
+	 */
+	private File baseDir;
+
+	/**
 	 * Reports the violations as a single grouped message. In write-baseline mode it
-	 * records every violation to {@link #baselineFile} and passes. Otherwise it drops
+	 * records every violation to {@link #baselineFile} and passes, writing the HTML
+	 * report as the pass it is — the report always shows the un-suppressed
+	 * violations, and that mode suppresses all of them. Otherwise it drops
 	 * the violations already accepted by the baseline, writes the HTML report when
 	 * {@link #reportFile} is configured, then throws when severity is {@code error}
 	 * and a new violation remains, logs a warning when severity is {@code warn}, or
@@ -61,9 +71,10 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	protected final void report(String header, List<String> violations) throws EnforcerRuleException {
 		if (isWriteBaselineRequested()) {
 			recordBaseline(violations);
+			writeReport(header, List.of());
 			return;
 		}
-		Baseline baseline = Baseline.read(baselineFile);
+		Baseline baseline = Baseline.read(baselineFile, baseDir);
 		List<String> newViolations = baseline.newViolations(violations);
 		writeReport(header, newViolations);
 		logSuppressed(violations.size() - newViolations.size());
@@ -84,7 +95,7 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	}
 
 	private void recordBaseline(List<String> violations) throws EnforcerRuleException {
-		Baseline.write(baselineFile, violations);
+		Baseline.write(baselineFile, violations, baseDir);
 		getLog().info("Recorded " + violations.size() + " violation(s) to the baseline " + baselineFile);
 	}
 
@@ -190,5 +201,9 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	public void setWriteBaseline(boolean writeBaseline) {
 		this.writeBaseline = writeBaseline;
+	}
+
+	public void setBaseDir(File baseDir) {
+		this.baseDir = baseDir;
 	}
 }

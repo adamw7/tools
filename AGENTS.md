@@ -633,7 +633,12 @@ violations. Record the current violations once — set `<writeBaseline>true</wri
 or run the build with `-Dclaude.enforcer.writeBaseline=true`, which writes the file
 and passes — then commit it; each stored signature has the absolute project base
 directory normalised to `${basedir}` so a checked-in baseline stays portable
-between a developer's clone and CI.
+between a developer's clone and CI. Configure `<baseDir>${project.basedir}</baseDir>`
+alongside the baseline so that token stands for the project itself: Maven runs
+every module of a reactor from wherever it was invoked, so without it the token
+falls back to the working directory and a baseline recorded from the repository
+root would suppress nothing when the build is started from a module directory or
+an IDE.
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
 also accept an `autoFix` option (off by default). When enabled and a definition's

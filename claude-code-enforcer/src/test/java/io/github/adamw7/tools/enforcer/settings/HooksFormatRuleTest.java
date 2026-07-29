@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -242,10 +244,60 @@ class HooksFormatRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("shebang")), logger.warnings().toString());
 	}
 
+	@Test
+	void reportsAFileThatCannotBeDecodedAsTextInsteadOfFailingTheBuildOutright() {
+		writeBytes("logo.png", new byte[] { (byte) 0x89, 0x50, 0x4E, 0x47, (byte) 0xFF, (byte) 0xFE });
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as a text script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("logo.png"), exception.getMessage());
+		assertFalse(exception.getMessage().contains("is empty"), exception.getMessage());
+	}
+
+	@Test
+	void keepsCheckingTheOtherScriptsAfterAFileThatIsNotText() {
+		writeBytes("logo.png", new byte[] { (byte) 0xFF, (byte) 0xFE, (byte) 0x00 });
+		writeScript("session-start.sh", "echo hi\n", true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
+		// Both are reported: the undecodable file no longer aborts the run before
+		// the script after it is looked at.
+		assertTrue(exception.getMessage().contains("logo.png"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("shebang"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("session-start.sh"), exception.getMessage());
+	}
+
+	@Test
+	void reportsScriptsInASortedOrderRatherThanTheFilesystemOrder() {
+		for (String name : List.of("zeta.sh", "alpha.sh", "mid.sh", "beta.sh")) {
+			writeScript(name, "echo hi\n", true);
+		}
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
+		assertEquals(List.of("alpha.sh", "beta.sh", "mid.sh", "zeta.sh"), reportedScripts(exception.getMessage()));
+	}
+
+	/** The script names named by the shebang violations, in the order the rule reported them. */
+	private List<String> reportedScripts(String message) {
+		return message.lines()
+				.filter(line -> line.contains("shebang"))
+				.map(line -> line.substring(line.lastIndexOf(File.separatorChar) + 1))
+				.toList();
+	}
+
 	private HooksFormatRule ruleFor() {
 		HooksFormatRule rule = new HooksFormatRule();
 		rule.setHooksDir(hooksDir().toFile());
 		return rule;
+	}
+
+	private void writeBytes(String name, byte[] content) {
+		Path file = hooksDir().resolve(name);
+		try {
+			Files.write(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
 	}
 
 	private File settingsReferencing(String command) {

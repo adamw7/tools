@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.rule;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -121,6 +122,27 @@ class JsonFileRuleTest {
 		assertDoesNotThrow(rule::execute);
 		String html = Files.readString(report.toPath());
 		assertTrue(html.contains("Check passed"), html);
+	}
+
+	@Test
+	void anAbsentOptionalFileRefreshesTheReportRatherThanLeavingTheLastFailure() throws IOException {
+		File report = tempDir.resolve("report.html").toFile();
+		TestJsonRule failing = ruleFor("{ }");
+		failing.addViolation("something is wrong");
+		failing.setReportFile(report);
+		assertThrows(EnforcerRuleException.class, failing::execute);
+
+		Files.delete(tempDir.resolve("test.json"));
+		TestJsonRule optional = new TestJsonRule();
+		optional.setOptional(true);
+		optional.setFile(tempDir.resolve("test.json").toFile());
+		optional.setReportFile(report);
+
+		assertDoesNotThrow(optional::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check passed"), html);
+		assertFalse(html.contains("Check failed"), html);
+		assertFalse(html.contains("something is wrong"), html);
 	}
 
 	private TestJsonRule ruleFor(String content) {

@@ -232,6 +232,37 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void treatsAnAnnotatedBacktickLineInsideABacktickFenceAsCode() {
+		// ```java is an opening delimiter, not a closing one. Ending the block on it
+		// would leave the real ``` to open a fresh fence that swallows the rest of
+		// the document, so every heading below would be reported missing.
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing",
+				"```\nexample:\n```java\nint x;\n```\n\n## Testing"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void treatsAShorterFenceInsideALongerOneAsCode() {
+		// The four-backtick wrapper is how a document shows a fenced example, so the
+		// inner three-backtick delimiters and everything they wrap stay code.
+		ClaudeMdFormatRule rule = ruleFor(
+				VALID_CONTENT + "\n````markdown\n```java\nTODO in an example\n```\n````\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void scansTheContentThatFollowsANestedFence() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\n```java\n```\n\nTODO left behind\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
+	}
+
+	@Test
 	void passesWhenSectionsAreInConfiguredOrder() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setEnforceSectionOrder(true);

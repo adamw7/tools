@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,35 @@ class FrontMatterFixerTest {
 				""";
 
 		assertTrue(FrontMatterFixer.repair(content).isEmpty());
+	}
+
+	@Test
+	void doesNotMistakeAThematicBreakFollowedByProseContainingAColonForFrontMatter() {
+		String content = """
+				---
+
+				Some notes: here is what the colon is doing.
+				More prose.
+				""";
+
+		assertTrue(FrontMatterFixer.repair(content).isEmpty(), () -> FrontMatterFixer.repair(content).toString());
+	}
+
+	@Test
+	void doesNotSwallowBodyProseContainingAColonIntoAnUnclosedBlock() {
+		String content = """
+				---
+				name: reviewer
+
+				Use this skill when: you need a review.
+				""";
+
+		Optional<String> repaired = FrontMatterFixer.repair(content);
+
+		assertTrue(repaired.isPresent());
+		assertEquals("---\nname: reviewer\n\n---\nUse this skill when: you need a review.\n", repaired.get());
+		assertEquals(Optional.of("reviewer"), FrontMatter.parse(repaired.get()).flatMap(fm -> fm.value("name")));
+		assertEquals(List.of("name"), FrontMatter.parse(repaired.get()).orElseThrow().keys());
 	}
 
 	@Test

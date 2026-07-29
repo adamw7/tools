@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -29,6 +30,21 @@ public final class MarkdownText {
 			return stripByteOrderMark(Files.readString(file.toPath()));
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not read " + description + " at " + file, e);
+		}
+	}
+
+	/**
+	 * Reads {@code file} the way {@link #read} does, but yields empty instead of
+	 * throwing when it cannot be decoded as text. A rule that scans a directory it
+	 * does not control meets binary and non-UTF-8 files, and an
+	 * {@link UncheckedIOException} escaping a rule aborts the build as an internal
+	 * error rather than as the violation the rule exists to report.
+	 */
+	public static Optional<String> readIfText(File file) {
+		try {
+			return Optional.of(stripByteOrderMark(Files.readString(file.toPath())));
+		} catch (IOException e) {
+			return Optional.empty();
 		}
 	}
 

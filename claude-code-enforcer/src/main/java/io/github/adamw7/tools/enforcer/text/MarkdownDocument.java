@@ -13,13 +13,22 @@ import java.util.Set;
  * Headings are recognised on whole lines outside fenced code blocks, so a heading
  * mentioned inside a fence or in prose is not treated as document structure. The
  * mask includes the opening and closing delimiters themselves, so heading and body
- * detection agree on what is code; a fence is only closed by the delimiter that
- * opened it, so a {@code ~~~} line inside a {@code ```} block stays code.
+ * detection agree on what is code.
+ * <p>
+ * A fence is closed only by a run of the <em>same</em> character, at least as long
+ * as the one that opened it, carrying no info string. All three conditions matter,
+ * because documentation about Markdown nests one fence inside another: a
+ * {@code ~~~} line inside a {@code ```} block, the {@code ```java} line of an
+ * example inside a {@code ````} wrapper, and a {@code ```} example inside a
+ * {@code ````} wrapper all stay content. Closing on the first character alone would
+ * end the block early and then treat the real closing delimiter as a fresh opening
+ * one, silently masking the rest of the document as code.
  */
 public final class MarkdownDocument {
 
-	private static final String BACKTICK_FENCE = "```";
-	private static final String TILDE_FENCE = "~~~";
+	private static final char BACKTICK = '`';
+	private static final char TILDE = '~';
+	private static final int MIN_FENCE_LENGTH = 3;
 	private static final String HEADING_PREFIX = "#";
 	private static final char HEADING_CHAR = '#';
 
@@ -152,40 +161,67 @@ public final class MarkdownDocument {
 
 	private static boolean[] fenceMask(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
-		String openMarker = null;
+		Delimiter open = null;
 		for (int i = 0; i < lines.size(); i++) {
-			openMarker = applyFence(lines.get(i).strip(), openMarker, mask, i);
+			open = applyFence(lines.get(i).strip(), open, mask, i);
 		}
 		return mask;
 	}
 
 	/**
-	 * Marks line {@code index} as code or structure and returns the fence marker
-	 * still open afterwards. A fence is only closed by the marker it was opened
-	 * with, so a {@code ~~~} line inside a {@code ```} block, or the reverse, stays
-	 * content rather than ending the block.
+	 * Marks line {@code index} as code or structure and returns the fence delimiter
+	 * still open afterwards.
 	 */
-	private static String applyFence(String line, String openMarker, boolean[] mask, int index) {
-		String marker = fenceMarker(line);
-		if (openMarker == null) {
-			mask[index] = marker != null;
-			return marker;
+	private static Delimiter applyFence(String line, Delimiter open, boolean[] mask, int index) {
+		Delimiter delimiter = delimiterOf(line);
+		if (open == null) {
+			mask[index] = delimiter != null;
+			return delimiter;
 		}
 		mask[index] = true;
-		return closesFence(marker, openMarker) ? null : openMarker;
+		return delimiter != null && delimiter.closes(open) ? null : open;
 	}
 
-	private static boolean closesFence(String marker, String openMarker) {
-		return marker != null && marker.charAt(0) == openMarker.charAt(0);
+	/** The fence delimiter a line declares, or null when the line is not one. */
+	private static Delimiter delimiterOf(String line) {
+		if (line.isEmpty() || !isFenceCharacter(line.charAt(0))) {
+			return null;
+		}
+		char character = line.charAt(0);
+		int length = runLength(line, character);
+		if (length < MIN_FENCE_LENGTH) {
+			return null;
+		}
+		return new Delimiter(character, length, !line.substring(length).isBlank());
 	}
 
-	private static String fenceMarker(String line) {
-		if (line.startsWith(BACKTICK_FENCE)) {
-			return BACKTICK_FENCE;
+	private static boolean isFenceCharacter(char character) {
+		return character == BACKTICK || character == TILDE;
+	}
+
+	private static int runLength(String line, char character) {
+		int length = 0;
+		while (length < line.length() && line.charAt(length) == character) {
+			length++;
 		}
-		if (line.startsWith(TILDE_FENCE)) {
-			return TILDE_FENCE;
+		return length;
+	}
+
+	/**
+	 * One fence delimiter line: the character it is written with, how many of them
+	 * it runs, and whether anything follows them — the info string of an opening
+	 * delimiter, such as the {@code java} of {@code ```java}.
+	 */
+	private record Delimiter(char character, int length, boolean info) {
+
+		/**
+		 * True when this line closes the block {@code open} started. A closing
+		 * delimiter uses the same character, is at least as long, and carries no
+		 * info string, so a shorter or annotated fence nested inside the block is
+		 * content rather than its end.
+		 */
+		boolean closes(Delimiter open) {
+			return character == open.character() && length >= open.length() && !info;
 		}
-		return null;
 	}
 }

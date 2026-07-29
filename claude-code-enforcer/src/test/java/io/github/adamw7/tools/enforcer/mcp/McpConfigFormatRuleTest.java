@@ -1,12 +1,10 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -210,11 +208,4 @@ class McpConfigFormatRuleTest {
 		return rule;
 	}
 
-	private static void writeString(Path file, String content) {
-		try {
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
 }

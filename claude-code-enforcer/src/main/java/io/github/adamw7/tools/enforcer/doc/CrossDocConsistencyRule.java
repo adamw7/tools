@@ -52,9 +52,4 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	void setConsistentPatterns(List<String> consistentPatterns) {
 		this.consistentPatterns = consistentPatterns;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("CrossDocConsistencyRule[claudeMdFile=%s, agentsMdFile=%s]", claudeMdFile, agentsMdFile);
-	}
 }

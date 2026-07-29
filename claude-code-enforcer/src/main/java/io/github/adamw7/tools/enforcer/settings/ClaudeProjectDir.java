@@ -1,10 +1,12 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Resolves the base directory that a hook command's {@code $CLAUDE_PROJECT_DIR}
- * variable expands to, and performs that expansion on a single command token.
+ * variable expands to, and performs that expansion on the tokens of a command.
  * Both hook rules share this so the two accepted spellings of the variable and
  * the "grandparent of the settings file" fallback live in exactly one place.
  */
@@ -19,6 +21,16 @@ final class ClaudeProjectDir {
 	ClaudeProjectDir(File override, File settingsFile) {
 		this.override = override;
 		this.settingsFile = settingsFile;
+	}
+
+	/**
+	 * The paths every {@code $CLAUDE_PROJECT_DIR}-rooted token of {@code command}
+	 * resolves to. A command chains more than one script often enough — an
+	 * {@code &&} between two hooks — that stopping at the first reference would
+	 * leave the rest unchecked.
+	 */
+	List<String> expandAll(String command) {
+		return CommandTokens.of(command).stream().map(this::expand).filter(Objects::nonNull).toList();
 	}
 
 	/** The path {@code token} resolves to when it references the project dir, else null. */

@@ -16,25 +16,40 @@ import com.fasterxml.jackson.databind.JsonNode;
  * thrown, so it is reported through the shared {@link #report} path alongside any
  * structural problems.
  * <p>
- * Subclasses contribute the file, its parameter name, a human-readable description
- * used in messages, the report header, and the document-specific checks against
- * the parsed {@link JsonNode}. A misconfigured rule or a missing or empty file
- * always fails, because that is a build-setup mistake; a rule whose file is
- * optional overrides {@link #handleMissingFile} to pass instead.
+ * A subclass names its file parameter and the human-readable description used in
+ * messages at construction, and contributes the file itself, the report header,
+ * and the document-specific checks against the parsed {@link JsonNode}. A
+ * misconfigured rule or a missing or empty file always fails, because that is a
+ * build-setup mistake; a rule whose file is optional overrides
+ * {@link #handleMissingFile} to pass instead.
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
+
+	private final String fileParameter;
+	private final String description;
+
+	/**
+	 * @param fileParameter the configuration parameter name, used in the "not
+	 *                      configured" message, e.g. {@code settingsFile}
+	 * @param description   human-readable file name used in messages, e.g.
+	 *                      {@code settings.json}
+	 */
+	protected JsonFileRule(String fileParameter, String description) {
+		this.fileParameter = fileParameter;
+		this.description = description;
+	}
 
 	@Override
 	public final void execute() throws EnforcerRuleException {
 		File file = jsonFile();
-		requireConfigured(file, fileParameter());
+		requireConfigured(file, fileParameter);
 		if (!file.isFile()) {
 			handleMissingFile(file);
 			report(header(), List.of());
 			return;
 		}
 		List<String> violations = new ArrayList<>();
-		JsonNode root = JsonNodes.parseObject(requireContent(file, description()), description(), violations);
+		JsonNode root = JsonNodes.parseObject(requireContent(file, description), description, violations);
 		if (root != null) {
 			collectViolations(root, violations);
 		}
@@ -43,12 +58,6 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 
 	/** The JSON file to validate. Injected from the rule configuration. */
 	protected abstract File jsonFile();
-
-	/** The configuration parameter name, used in the "not configured" message, e.g. {@code settingsFile}. */
-	protected abstract String fileParameter();
-
-	/** Human-readable file name used in messages, e.g. {@code settings.json}. */
-	protected abstract String description();
 
 	/** Document-specific checks against the parsed JSON. */
 	protected abstract void collectViolations(JsonNode root, List<String> violations);
@@ -59,15 +68,15 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	 * {@code settings.json permissions are not well formed:}.
 	 */
 	protected String header() {
-		return description() + " is not well formed:";
+		return description + " is not well formed:";
 	}
 
 	@Override
 	protected List<String> howToFix() {
 		return List.of(
-				"Open " + description() + " and confirm it parses as valid JSON.",
+				"Open " + description + " and confirm it parses as valid JSON.",
 				"Correct every structural item listed above so it matches what the rule expects.",
-				"Re-run the build to confirm " + description() + " is well formed.");
+				"Re-run the build to confirm " + description + " is well formed.");
 	}
 
 	/**
@@ -78,6 +87,6 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	 * one's failure.
 	 */
 	protected void handleMissingFile(File file) throws EnforcerRuleException {
-		requireExists(file, description());
+		requireExists(file, description);
 	}
 }

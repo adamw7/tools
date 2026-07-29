@@ -148,9 +148,4 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 	void setUseDefaultPatterns(boolean useDefaultPatterns) {
 		this.useDefaultPatterns = useDefaultPatterns;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("NoSecretsRule[files=%s, directories=%s]", files, directories);
-	}
 }

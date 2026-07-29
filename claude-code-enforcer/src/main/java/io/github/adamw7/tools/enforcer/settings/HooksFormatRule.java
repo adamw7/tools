@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -181,27 +180,16 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * The absolute paths every {@code $CLAUDE_PROJECT_DIR} token of a command
-	 * resolves to that land inside the hooks directory. A command chaining two
-	 * scripts references both, so stopping at the first would leave the second
-	 * unchecked and then report it as an orphan.
+	 * The absolute paths a command's {@code $CLAUDE_PROJECT_DIR} tokens resolve to
+	 * that land inside the hooks directory. A path outside it belongs to another
+	 * rule's concern, so it is dropped rather than reported here.
 	 */
 	private List<Path> scriptsInHooksDir(String command) {
 		Path hooks = canonical(hooksDir.toPath());
-		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
-		return CommandTokens.of(command).stream()
-				.map(token -> resolveInHooks(projectDirs, token, hooks))
-				.filter(Objects::nonNull)
+		return new ClaudeProjectDir(projectDir, settingsFile).expandAll(command).stream()
+				.map(expanded -> canonical(new File(expanded).toPath()))
+				.filter(resolved -> resolved.startsWith(hooks))
 				.toList();
-	}
-
-	private Path resolveInHooks(ClaudeProjectDir projectDirs, String token, Path hooks) {
-		String expanded = projectDirs.expand(token);
-		if (expanded == null) {
-			return null;
-		}
-		Path resolved = canonical(new File(expanded).toPath());
-		return resolved.startsWith(hooks) ? resolved : null;
 	}
 
 	/**
@@ -257,10 +245,5 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setReportUnreferencedScripts(boolean reportUnreferencedScripts) {
 		this.reportUnreferencedScripts = reportUnreferencedScripts;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("HooksFormatRule[hooksDir=%s]", hooksDir);
 	}
 }

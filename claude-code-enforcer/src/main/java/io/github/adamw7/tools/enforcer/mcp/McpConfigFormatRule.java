@@ -51,19 +51,13 @@ public class McpConfigFormatRule extends JsonFileRule {
 	/** When true, a server {@code url} must use {@code https} rather than plain {@code http}. */
 	private boolean requireHttps;
 
+	public McpConfigFormatRule() {
+		super("mcpFile", "mcp.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return mcpFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "mcpFile";
-	}
-
-	@Override
-	protected String description() {
-		return "mcp.json";
 	}
 
 	@Override
@@ -175,10 +169,5 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	void setRequireHttps(boolean requireHttps) {
 		this.requireHttps = requireHttps;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("McpConfigFormatRule[mcpFile=%s]", mcpFile);
 	}
 }

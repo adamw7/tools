@@ -138,9 +138,4 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 	void setIgnoredModules(List<String> ignoredModules) {
 		this.ignoredModules = ignoredModules;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("ModuleMapConsistencyRule[pomFile=%s, docFiles=%s]", pomFile, docFiles);
-	}
 }

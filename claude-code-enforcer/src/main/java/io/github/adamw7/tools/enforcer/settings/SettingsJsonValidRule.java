@@ -37,19 +37,13 @@ public class SettingsJsonValidRule extends JsonFileRule {
 	/** Permission entries that must not appear in {@code permissions.allow}. */
 	private List<String> forbiddenPermissions;
 
+	public SettingsJsonValidRule() {
+		super("settingsFile", "settings.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return settingsFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "settingsFile";
-	}
-
-	@Override
-	protected String description() {
-		return "settings.json";
 	}
 
 	@Override
@@ -100,10 +94,5 @@ public class SettingsJsonValidRule extends JsonFileRule {
 
 	void setForbiddenPermissions(List<String> forbiddenPermissions) {
 		this.forbiddenPermissions = forbiddenPermissions;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("SettingsJsonValidRule[settingsFile=%s]", settingsFile);
 	}
 }

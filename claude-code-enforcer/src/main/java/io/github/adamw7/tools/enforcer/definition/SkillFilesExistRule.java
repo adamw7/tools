@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.definition;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import javax.inject.Named;
@@ -91,14 +92,10 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 	private void collectFrontMatterViolations(File skillDirectory, File skillFile, FrontMatter frontMatter,
 			List<String> violations) {
 		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, SKILL_FILE_NAME, skillFile, violations);
-		checks.requireKeys(requiredKeys());
+		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
 		checks.allowOnlyKeys(allowedFrontMatterKeys);
 		checks.checkName(skillDirectory.getName());
 		checks.checkDescription(maxDescriptionLength);
-	}
-
-	private List<String> requiredKeys() {
-		return requiredKeys != null ? requiredKeys : DEFAULT_REQUIRED_KEYS;
 	}
 
 	void setSkillsDir(File skillsDir) {
@@ -119,10 +116,5 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	void setAutoFix(boolean autoFix) {
 		this.autoFix = autoFix;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("SkillFilesExistRule[skillsDir=%s]", skillsDir);
 	}
 }

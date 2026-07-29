@@ -142,9 +142,4 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 	void setMaxTokens(int maxTokens) {
 		this.maxTokens = maxTokens;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("ContextBudgetRule[files=%s, directories=%s]", files, directories);
-	}
 }

@@ -17,7 +17,6 @@ import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
 @Named("agentsMdFormat")
 public class AgentsMdFormatRule extends MarkdownFormatRule {
 
-	private static final String DOCUMENT_NAME = "AGENTS.md";
 	private static final List<String> REQUIRED_SECTIONS = List.of(
 			"## Project overview",
 			"## Module layout",
@@ -30,27 +29,16 @@ public class AgentsMdFormatRule extends MarkdownFormatRule {
 	/** The {@code AGENTS.md} file to validate. Injected from the rule configuration. */
 	private File agentsMdFile;
 
+	public AgentsMdFormatRule() {
+		super("AGENTS.md", REQUIRED_SECTIONS);
+	}
+
 	@Override
 	protected File documentFile() {
 		return agentsMdFile;
 	}
 
-	@Override
-	protected String documentName() {
-		return DOCUMENT_NAME;
-	}
-
-	@Override
-	protected List<String> defaultRequiredSections() {
-		return REQUIRED_SECTIONS;
-	}
-
 	void setAgentsMdFile(File agentsMdFile) {
 		this.agentsMdFile = agentsMdFile;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("AgentsMdFormatRule[agentsMdFile=%s]", agentsMdFile);
 	}
 }

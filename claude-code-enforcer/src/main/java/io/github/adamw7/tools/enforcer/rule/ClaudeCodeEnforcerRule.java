@@ -1,7 +1,11 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
+import java.util.StringJoiner;
 
 import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -185,6 +189,58 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 			throw new EnforcerRuleException(description + " is empty: " + file);
 		}
 		return content;
+	}
+
+	/**
+	 * Names the rule by the inputs it was configured with: every {@code File} or
+	 * {@code List<File>} parameter the concrete rule declares, from the most derived
+	 * class up, skipping the ones left unset and the shared reporting parameters
+	 * declared here. Maven identifies a rule in its log by this string, so what
+	 * matters is which files the failing configuration pointed at — deriving that
+	 * from the parameters themselves saves every rule repeating the same override.
+	 */
+	@Override
+	public final String toString() {
+		StringJoiner parameters = new StringJoiner(", ", getClass().getSimpleName() + "[", "]");
+		for (Class<?> type = getClass(); type != ClaudeCodeEnforcerRule.class; type = type.getSuperclass()) {
+			appendParameters(type, parameters);
+		}
+		return parameters.toString();
+	}
+
+	private void appendParameters(Class<?> type, StringJoiner parameters) {
+		for (Field field : type.getDeclaredFields()) {
+			appendParameter(field, parameters);
+		}
+	}
+
+	private void appendParameter(Field field, StringJoiner parameters) {
+		Object value = isFileParameter(field) ? valueOf(field) : null;
+		if (value != null) {
+			parameters.add(field.getName() + "=" + value);
+		}
+	}
+
+	private static boolean isFileParameter(Field field) {
+		return !field.isSynthetic() && !Modifier.isStatic(field.getModifiers())
+				&& (field.getType() == File.class || isFileList(field));
+	}
+
+	private static boolean isFileList(Field field) {
+		return field.getType() == List.class
+				&& field.getGenericType() instanceof ParameterizedType parameterized
+				&& parameterized.getActualTypeArguments()[0] == File.class;
+	}
+
+	/** Null when the field cannot be read, since a log label must never break a build. */
+	private Object valueOf(Field field) {
+		try {
+			field.setAccessible(true);
+			return field.get(this);
+		} catch (ReflectiveOperationException | RuntimeException e) {
+			getLog().debug("Could not read rule parameter " + field.getName() + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	public void setSeverity(String severity) {

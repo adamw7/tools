@@ -59,19 +59,13 @@ public class PermissionsFormatRule extends JsonFileRule {
 	/** Optional regular expressions no {@code allow} entry may match, e.g. {@code Bash\(\*\)}. */
 	private List<String> forbiddenEntryPatterns;
 
+	public PermissionsFormatRule() {
+		super("settingsFile", "settings.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return settingsFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "settingsFile";
-	}
-
-	@Override
-	protected String description() {
-		return "settings.json";
 	}
 
 	@Override
@@ -209,10 +203,5 @@ public class PermissionsFormatRule extends JsonFileRule {
 
 	void setForbiddenEntryPatterns(List<String> forbiddenEntryPatterns) {
 		this.forbiddenEntryPatterns = forbiddenEntryPatterns;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("PermissionsFormatRule[settingsFile=%s]", settingsFile);
 	}
 }

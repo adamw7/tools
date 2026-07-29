@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -311,13 +312,8 @@ class ClaudeMdConformerTest {
 
 	/** Mirrors how the rule looks for the reference: fenced lines do not count. */
 	private boolean referencesAgentsMdOutsideFences(String content) {
-		boolean fenced = false;
-		boolean found = false;
-		for (String line : content.lines().toList()) {
-			found = found || (!fenced && line.contains(ClaudeMdConformer.AGENTS_REFERENCE));
-			fenced = line.strip().startsWith("```") != fenced;
-		}
-		return found;
+		return linesOutsideFences(content).stream()
+				.anyMatch(line -> line.contains(ClaudeMdConformer.AGENTS_REFERENCE));
 	}
 
 	@Test
@@ -338,11 +334,9 @@ class ClaudeMdConformerTest {
 	}
 
 	private String requiredSectionsBody() {
-		StringBuilder builder = new StringBuilder();
-		for (String section : ClaudeMdConformer.REQUIRED_SECTIONS) {
-			builder.append(section).append("\n\nContent.\n\n");
-		}
-		return builder.toString();
+		return ClaudeMdConformer.REQUIRED_SECTIONS.stream()
+				.map(section -> section + "\n\nContent.\n\n")
+				.collect(Collectors.joining());
 	}
 
 	private static final String UNTERMINATED_FENCE = """
@@ -381,17 +375,27 @@ class ClaudeMdConformerTest {
 
 	/** Mirrors how the rule finds headings: a heading inside a fence is code, not structure. */
 	private List<String> headingsOutsideFences(String content) {
-		List<String> headings = new ArrayList<>();
-		boolean fenced = false;
-		for (String line : content.lines().map(String::strip).toList()) {
-			fenced = collectHeading(headings, line, fenced);
-		}
-		return headings;
+		return linesOutsideFences(content).stream().filter(line -> line.startsWith("#")).toList();
 	}
 
-	private boolean collectHeading(List<String> headings, String line, boolean fenced) {
-		if (!fenced && line.startsWith("#")) {
-			headings.add(line);
+	/**
+	 * The document's lines that sit outside a code fence, stripped. The one place
+	 * these tests read fences, so the two questions they ask of a reshaped document —
+	 * which headings it carries, and whether it references {@code AGENTS.md} — cannot
+	 * come to different answers about what is code.
+	 */
+	private List<String> linesOutsideFences(String content) {
+		List<String> outside = new ArrayList<>();
+		boolean fenced = false;
+		for (String line : content.lines().map(String::strip).toList()) {
+			fenced = collect(outside, line, fenced);
+		}
+		return outside;
+	}
+
+	private boolean collect(List<String> outside, String line, boolean fenced) {
+		if (!fenced) {
+			outside.add(line);
 		}
 		return line.startsWith("```") != fenced;
 	}

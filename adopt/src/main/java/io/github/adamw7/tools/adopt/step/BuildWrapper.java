@@ -4,8 +4,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
+
+import io.github.adamw7.tools.adopt.Platform;
 
 /**
  * Finds the build wrapper script a checkout ships with — {@code mvnw} for Maven,
@@ -28,7 +29,7 @@ final class BuildWrapper {
 
 	/** The wrapper for the host platform: the Windows script there, the POSIX one everywhere else. */
 	BuildWrapper(String posixName, String windowsName) {
-		this(posixName, windowsName, isWindows());
+		this(posixName, windowsName, Platform.isWindows());
 	}
 
 	BuildWrapper(String posixName, String windowsName, boolean windows) {
@@ -54,9 +55,5 @@ final class BuildWrapper {
 	Optional<String> in(Path repositoryDirectory) {
 		Path wrapper = repositoryDirectory.resolve(fileName);
 		return Files.isRegularFile(wrapper) ? Optional.of(wrapper.toAbsolutePath().toString()) : Optional.empty();
-	}
-
-	private static boolean isWindows() {
-		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
 	}
 }

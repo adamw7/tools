@@ -25,7 +25,7 @@ public class PushStep extends AbstractCommandStep {
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		log.info("Pushing branch {} from {}", context.branchName(), context.repositoryDirectory());
-		List<String> command = List.of("git", "push", "-u", "origin", context.branchName());
+		List<String> command = List.of("git", "push", "-u", AdoptionContext.REMOTE, context.branchName());
 		runOrFail(runner, context.repositoryDirectory(), command);
 	}
 }

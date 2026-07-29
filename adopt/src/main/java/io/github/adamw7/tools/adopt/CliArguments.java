@@ -51,7 +51,7 @@ public final class CliArguments {
 	private Path reportFile;
 	private int positionals;
 	private String positionalUrl;
-	private int flaggedRepositories;
+	private boolean flagsNamedARepository;
 
 	private CliArguments() {
 	}
@@ -175,9 +175,7 @@ public final class CliArguments {
 	}
 
 	private void addFlaggedRepository(String url) {
-		if (Text.isPresent(url)) {
-			flaggedRepositories++;
-		}
+		flagsNamedARepository = flagsNamedARepository || Text.isPresent(url);
 		addRepository(url);
 	}
 
@@ -219,7 +217,7 @@ public final class CliArguments {
 	 * batch of local repositories names them all with {@code --repo}.
 	 */
 	private void requirePositionalNamesARepository() {
-		if (positionalUrl != null && flaggedRepositories > 0 && namesNoOwner(positionalUrl)) {
+		if (positionalUrl != null && flagsNamedARepository && namesNoOwner(positionalUrl)) {
 			throw new IllegalArgumentException("The first argument is read as a repository URL, but " + positionalUrl
 					+ " names no repository owner. Name the workspace with --workspace,"
 					+ " or the repository with --repo. " + USAGE);

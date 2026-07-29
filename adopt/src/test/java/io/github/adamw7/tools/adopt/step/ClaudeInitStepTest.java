@@ -139,8 +139,7 @@ class ClaudeInitStepTest {
 	@Test
 	void failedInitAbortsAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "boom"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "boom");
 		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
 	}
 
@@ -171,8 +170,7 @@ class ClaudeInitStepTest {
 	void restoresExistingClaudeDirMemoryWhenInitFails(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeDirMemory(context);
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "boom"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "boom");
 		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
 		assertEquals("# project memory", Files.readString(claudeDirMemory(context)));
 	}

@@ -38,7 +38,7 @@ public class ToolchainStep implements AdoptionStep {
 	 * about. It answers the weaker question — whether the credentials belong to
 	 * anyone — because there is nothing better to ask.
 	 */
-	static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "api", "user");
+	private static final List<String> AUTHENTICATION_PROBE = List.of(GITHUB_CLI, "api", "user");
 
 	private final List<String> tools;
 	private final ToolProbe probe = new ToolProbe();

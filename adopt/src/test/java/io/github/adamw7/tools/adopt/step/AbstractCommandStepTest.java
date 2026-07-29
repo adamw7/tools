@@ -39,8 +39,7 @@ class AbstractCommandStepTest {
 
 	@Test
 	void returnsResultWhenCommandSucceeds() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 0, "done"));
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("done");
 		CommandResult result = step.run(runner, workspace, List.of("git", "status"));
 		assertEquals("done", result.output());
 		assertEquals(List.of("git", "status"), runner.commandAt(0));
@@ -48,16 +47,14 @@ class AbstractCommandStepTest {
 
 	@Test
 	void failedCommandThrowsAdoptionException() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "rejected"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "rejected");
 		assertThrows(AdoptionException.class,
 				() -> step.run(runner, workspace, List.of("git", "push")));
 	}
 
 	@Test
 	void failureMessageCarriesStepNameExitCodeCommandAndOutput() {
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 128, "fatal: rejected"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(128, "fatal: rejected");
 		AdoptionException exception = assertThrows(AdoptionException.class,
 				() -> step.run(runner, workspace, List.of("git", "push", "origin", "main")));
 		String message = exception.getMessage();

@@ -40,7 +40,6 @@ public class CloneStep extends AbstractCommandStep {
 	private static final Logger log = LogManager.getLogger(CloneStep.class);
 
 	/** The remote a clone records, and the one {@link PushStep} publishes the branch to. */
-	private static final String REMOTE = "origin";
 
 	@Override
 	public String name() {
@@ -92,9 +91,10 @@ public class CloneStep extends AbstractCommandStep {
 	 */
 	private String originUrl(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
-				List.of("git", "remote", "get-url", REMOTE));
+				List.of("git", "remote", "get-url", AdoptionContext.REMOTE));
 		if (!result.succeeded()) {
-			throw new AdoptionException(context.repositoryDirectory() + " is a checkout with no '" + REMOTE
+			throw new AdoptionException(context.repositoryDirectory() + " is a checkout with no '"
+					+ AdoptionContext.REMOTE
 					+ "' remote, so it can be neither confirmed to be " + context.displayUrl() + " nor pushed to it: "
 					+ Redaction.of(result.output().strip()));
 		}
@@ -109,8 +109,8 @@ public class CloneStep extends AbstractCommandStep {
 	 * branch and leave {@link PushStep} refused as a non-fast-forward.
 	 */
 	private void refresh(AdoptionContext context, CommandRunner runner) {
-		log.info("Fetching {} in {}", REMOTE, context.repositoryDirectory());
-		runOrFail(runner, context.repositoryDirectory(), List.of("git", "fetch", REMOTE));
+		log.info("Fetching {} in {}", AdoptionContext.REMOTE, context.repositoryDirectory());
+		runOrFail(runner, context.repositoryDirectory(), List.of("git", "fetch", AdoptionContext.REMOTE));
 	}
 
 	private boolean alreadyCloned(AdoptionContext context) {

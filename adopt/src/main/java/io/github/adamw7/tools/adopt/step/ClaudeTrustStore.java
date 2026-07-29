@@ -27,8 +27,8 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  */
 public class ClaudeTrustStore {
 
-	static final String PROJECTS = "projects";
-	static final String TRUST_FLAG = "hasTrustDialogAccepted";
+	private static final String PROJECTS = "projects";
+	private static final String TRUST_FLAG = "hasTrustDialogAccepted";
 
 	private final Path configFile;
 	private final ObjectMapper mapper = new ObjectMapper();

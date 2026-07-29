@@ -15,7 +15,6 @@ import org.junit.jupiter.api.io.TempDir;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class BuildToolchainStepTest {
@@ -48,8 +47,7 @@ class BuildToolchainStepTest {
 	void anAbsentBuildToolAbortsTheAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 127, "gradle: not found"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(127, "gradle: not found");
 		AdoptionException thrown = assertThrows(AdoptionException.class,
 				() -> new BuildToolchainStep().execute(context, runner));
 		assertTrue(thrown.getMessage().contains("gradle"), thrown.getMessage());
@@ -121,8 +119,7 @@ class BuildToolchainStepTest {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 126, "Permission denied"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(126, "Permission denied");
 
 		AdoptionException failure = assertThrows(AdoptionException.class,
 				() -> new BuildToolchainStep(

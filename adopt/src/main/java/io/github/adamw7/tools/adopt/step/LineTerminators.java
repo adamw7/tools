@@ -25,7 +25,16 @@ final class LineTerminators {
 	 * converted body and a part carried over verbatim — is not double-converted.
 	 */
 	static String matching(String text, String sample) {
-		String normalized = text.replace(CRLF, LF).replace(CR, LF);
+		String normalized = normalized(text);
 		return sample.contains(CRLF) ? normalized.replace(LF, CRLF) : normalized;
+	}
+
+	/**
+	 * Rewrites every terminator to LF, so text assembled from parts that disagree —
+	 * or read from a CRLF file and then reshaped line by line — is worked on in one
+	 * shape and converted back only when it is written.
+	 */
+	static String normalized(String text) {
+		return text.replace(CRLF, LF).replace(CR, LF);
 	}
 }

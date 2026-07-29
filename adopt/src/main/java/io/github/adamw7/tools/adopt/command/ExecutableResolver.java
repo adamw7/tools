@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.adopt.Platform;
+
 /**
  * Resolves a command's program name to a form {@link ProcessBuilder} can actually
  * launch on the host operating system.
@@ -38,7 +40,7 @@ final class ExecutableResolver {
 	private final List<String> pathExtensions;
 
 	ExecutableResolver() {
-		this(isWindows(), pathDirectoriesFromEnvironment(), pathExtensionsFromEnvironment());
+		this(Platform.isWindows(), pathDirectoriesFromEnvironment(), pathExtensionsFromEnvironment());
 	}
 
 	ExecutableResolver(boolean windows, List<Path> pathDirectories, List<String> pathExtensions) {
@@ -101,10 +103,6 @@ final class ExecutableResolver {
 
 	private boolean hasPathSeparator(String program) {
 		return program.indexOf('/') >= 0 || program.indexOf('\\') >= 0;
-	}
-
-	private static boolean isWindows() {
-		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
 	}
 
 	private static List<Path> pathDirectoriesFromEnvironment() {

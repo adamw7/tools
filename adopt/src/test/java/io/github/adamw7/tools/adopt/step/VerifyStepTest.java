@@ -14,7 +14,6 @@ import org.junit.jupiter.api.io.TempDir;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionContexts;
 import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
 class VerifyStepTest {
@@ -56,8 +55,7 @@ class VerifyStepTest {
 	void failedVerificationAbortsAdoption(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writePom(context);
-		RecordingCommandRunner runner = new RecordingCommandRunner(
-				command -> new CommandResult(command, 1, "CLAUDE.md is malformed"));
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "CLAUDE.md is malformed");
 		assertThrows(AdoptionException.class, () -> new VerifyStep().execute(context, runner));
 	}
 

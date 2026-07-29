@@ -23,7 +23,7 @@ import io.github.adamw7.tools.adopt.Redaction;
  */
 public class ProcessCommandRunner implements CommandRunner {
 
-	static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
+	private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
 
 	private final Duration timeout;
 	private final ExecutableResolver resolver;

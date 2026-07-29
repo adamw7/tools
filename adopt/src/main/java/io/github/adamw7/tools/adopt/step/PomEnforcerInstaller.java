@@ -21,12 +21,12 @@ import org.w3c.dom.Element;
  */
 public class PomEnforcerInstaller {
 
-	static final String ENFORCER_GROUP_ID = "org.apache.maven.plugins";
+	private static final String ENFORCER_GROUP_ID = "org.apache.maven.plugins";
 	static final String ENFORCER_ARTIFACT_ID = "maven-enforcer-plugin";
 	static final String ENFORCER_VERSION = "3.6.3";
-	static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
-	static final String RULE_GROUP_ID = "io.github.adamw7";
-	static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
+	private static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
+	private static final String RULE_GROUP_ID = "io.github.adamw7";
+	private static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
 
 	/** The one place a plugin both runs from and is added to; see {@link #enforcerPluginOfTheBuild}. */
 	private static final List<String> BUILD_PLUGINS = List.of("build", "plugins");
@@ -70,6 +70,15 @@ public class PomEnforcerInstaller {
 	public PomEnforcerInstaller(String ruleVersion) {
 		String release = EnforcerRuleVersion.requireRelease(ruleVersion);
 		this.ruleVersion = () -> release;
+	}
+
+	/**
+	 * The installer for an optionally supplied version: the one named, or the running
+	 * build's when none was. Naming the choice here keeps callers from spelling out
+	 * which of the two constructors an empty {@link Optional} means.
+	 */
+	static PomEnforcerInstaller pinning(Optional<String> ruleVersion) {
+		return ruleVersion.map(PomEnforcerInstaller::new).orElseGet(PomEnforcerInstaller::new);
 	}
 
 	/**

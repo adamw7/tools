@@ -69,6 +69,22 @@ Maven project. The notable capabilities are:
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
   `CliArguments` alongside the positional URL, workspace, and branch arguments).
+  That record and the rest of a run's configuration — the starter assets, the rule
+  version, the dry-run flag, and the per-command timeout — are grouped into an
+  `AdoptionOptions`, which both entry points build and hand to
+  `GitHubRepoAdopter.withDefaultPipeline` and the MCP tool's `Pipeline` seam, so
+  neither grows a parameter per switch and the two cannot drift apart on what an
+  omitted option means. `--dry-run` (`dry_run` on the MCP tool) rehearses an
+  adoption: the pipeline is assembled *without* `PushStep` and `PullRequestStep`
+  rather than with steps that decide to do nothing, so nothing is left that could
+  push and the report's `completedSteps` ends at `verify` — everything before it
+  still runs, leaving the adoption's commits in the workspace to be read before
+  any of it reaches GitHub. `--timeout <minutes>` (`timeout_minutes`, bounded to a
+  day since the MCP server is long-lived) overrides the runner's ten-minute
+  default. `--help`/`-h` answers with the usage line and adopts nothing, rather
+  than being refused as an unknown option with the very line it asked for; it goes
+  to the log, whose console appender writes to standard error, because the same
+  jar is the MCP server and its stdio transport owns standard output.
   One run adopts a **list of repositories**: repeatable `--repo <url>` and
   `--repos <file>` (one URL per line, `#` comments and blank lines skipped, read
   by `RepositoryUrls`) add to the positional URL, duplicates are dropped, and

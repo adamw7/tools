@@ -2,7 +2,6 @@ package io.github.adamw7.tools.adopt;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,7 +18,6 @@ import io.github.adamw7.tools.adopt.step.ClaudeMdConformanceStep;
 import io.github.adamw7.tools.adopt.step.CloneStep;
 import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
-import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.adopt.step.PullRequestStep;
 import io.github.adamw7.tools.adopt.step.PushStep;
 import io.github.adamw7.tools.adopt.step.ToolchainStep;
@@ -42,7 +40,9 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  * {@link AdoptionReport} of the steps that completed and the pull request's URL;
  * a caller that needs the report of a run that <em>fails</em> supplies its own to
  * {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it afterwards.
- * The default pipeline optionally includes an {@link AssetsStep}.
+ * What the default pipeline contains is decided by {@link AdoptionOptions}: an
+ * {@link AssetsStep} is included on request, and a dry run leaves out the two
+ * steps that write to GitHub.
  */
 public class GitHubRepoAdopter {
 
@@ -56,14 +56,8 @@ public class GitHubRepoAdopter {
 		this.steps = List.copyOf(steps);
 	}
 
-	/**
-	 * @param ruleVersion the released {@code claude-code-enforcer} version a Maven
-	 *                    project's POM should pin, or empty to resolve the version of
-	 *                    the {@code tools} build running the adoption
-	 */
-	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, PullRequestOptions options,
-			boolean includeAssets, Optional<String> ruleVersion) {
-		return new GitHubRepoAdopter(runner, defaultSteps(options, includeAssets, ruleVersion));
+	public static GitHubRepoAdopter withDefaultPipeline(CommandRunner runner, AdoptionOptions options) {
+		return new GitHubRepoAdopter(runner, defaultSteps(options));
 	}
 
 	/**
@@ -71,9 +65,8 @@ public class GitHubRepoAdopter {
 	 * build-system list, so the guard that is wired in is the guard that is verified
 	 * with the tool that was probed.
 	 */
-	public static List<AdoptionStep> defaultSteps(PullRequestOptions options, boolean includeAssets,
-			Optional<String> ruleVersion) {
-		List<BuildSystem> buildSystems = BuildSystems.defaults(ruleVersion);
+	public static List<AdoptionStep> defaultSteps(AdoptionOptions options) {
+		List<BuildSystem> buildSystems = BuildSystems.defaults(options.pinnedRuleVersion());
 		List<AdoptionStep> steps = new ArrayList<>(List.of(
 				new ToolchainStep(),
 				new CloneStep(),
@@ -85,14 +78,34 @@ public class GitHubRepoAdopter {
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
 				new EnforcerStep(buildSystems),
 				new CommitStep("Add claude-code-enforcer to the build")));
-		if (includeAssets) {
+		if (options.includeAssets()) {
 			steps.add(new AssetsStep());
 			steps.add(new CommitStep("Add Claude Code configuration assets"));
 		}
 		steps.add(new VerifyStep(buildSystems));
-		steps.add(new PushStep());
-		steps.add(new PullRequestStep(options));
+		addPublication(steps, options);
 		return List.copyOf(steps);
+	}
+
+	/**
+	 * A dry run ends at the verification, so the pipeline is assembled without the
+	 * two steps that write to GitHub rather than with steps that decide for
+	 * themselves to do nothing. The report then says what a dry run really did: the
+	 * steps it completed stop at {@code verify}, instead of listing a {@code push}
+	 * and a {@code pull-request} that only pretended to run.
+	 *
+	 * <p>Everything before the verification still happens for real — the checkout is
+	 * cloned, branched, and committed on — so the operator has the adoption's commits
+	 * in the workspace to read before any of it is published.
+	 */
+	private static void addPublication(List<AdoptionStep> steps, AdoptionOptions options) {
+		if (options.dryRun()) {
+			log.info("Dry run: the adoption will be committed to the checkout but never pushed,"
+					+ " and no pull request will be opened");
+			return;
+		}
+		steps.add(new PushStep());
+		steps.add(new PullRequestStep(options.pullRequest()));
 	}
 
 	/**

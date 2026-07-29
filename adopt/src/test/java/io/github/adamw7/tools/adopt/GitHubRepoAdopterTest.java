@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -137,25 +136,53 @@ class GitHubRepoAdopterTest {
 	@Test
 	void withDefaultPipelineHonoursPullRequestOptionsAndTheAssetsFlag() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "missing");
-		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, PullRequestOptions.defaults(),
-				true, Optional.empty());
+		GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, withAssets());
 		assertThrows(AdoptionException.class, () -> adopter.adopt(context, new AdoptionReport()));
 		assertEquals(List.of("git", "--version"), runner.commandAt(0));
 	}
 
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
-		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), false, Optional.empty()).stream()
-				.map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "verify", "push", "pull-request"), names);
+				"commit", "enforcer", "commit", "verify", "push", "pull-request"),
+				stepNames(AdoptionOptions.defaults()));
 	}
 
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
-		List<String> names = GitHubRepoAdopter.defaultSteps(PullRequestOptions.defaults(), true, Optional.empty()).stream()
-				.map(AdoptionStep::name).toList();
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "assets", "commit", "verify", "push", "pull-request"), names);
+				"commit", "enforcer", "commit", "assets", "commit", "verify", "push", "pull-request"),
+				stepNames(withAssets()));
+	}
+
+	/**
+	 * A dry run is assembled without the two steps that write to GitHub rather than
+	 * with steps that decide to do nothing, so nothing is left that could push if a
+	 * later change got the condition wrong. Everything before the verification stays,
+	 * because a rehearsal that skipped the commits would prove nothing.
+	 */
+	@Test
+	void aDryRunPipelineStopsAtTheVerification() {
+		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
+				"commit", "enforcer", "commit", "verify"), stepNames(dryRun()));
+	}
+
+	@Test
+	void aDryRunPipelineStillInstallsTheAssetsWhenAskedFor() {
+		AdoptionOptions options = new AdoptionOptions(PullRequestOptions.defaults(), true, null, true, null);
+		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
+				"commit", "enforcer", "commit", "assets", "commit", "verify"), stepNames(options));
+	}
+
+	private List<String> stepNames(AdoptionOptions options) {
+		return GitHubRepoAdopter.defaultSteps(options).stream().map(AdoptionStep::name).toList();
+	}
+
+	private AdoptionOptions withAssets() {
+		return new AdoptionOptions(PullRequestOptions.defaults(), true, null, false, null);
+	}
+
+	private AdoptionOptions dryRun() {
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, true, null);
 	}
 }

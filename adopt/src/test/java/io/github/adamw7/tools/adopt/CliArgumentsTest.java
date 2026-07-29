@@ -8,12 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 
 class CliArgumentsTest {
@@ -173,7 +175,7 @@ class CliArgumentsTest {
 	void defaultsPullRequestOptionsWhenNoFlagsGiven() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL });
 		assertEquals(PullRequestOptions.defaults(), cli.pullRequestOptions());
-		assertFalse(cli.includeAssets());
+		assertFalse(cli.adoptionOptions().includeAssets());
 		assertTrue(cli.reportFile().isEmpty());
 	}
 
@@ -195,7 +197,7 @@ class CliArgumentsTest {
 	@Test
 	void parsesAssetsAndReportFlags() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--assets", "--report", "/tmp/report.json" });
-		assertTrue(cli.includeAssets());
+		assertTrue(cli.adoptionOptions().includeAssets());
 		assertEquals(Path.of("/tmp/report.json"), cli.reportFile().orElseThrow());
 	}
 
@@ -256,12 +258,12 @@ class CliArgumentsTest {
 	@Test
 	void parsesTheRuleVersionFlag() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--rule-version", "2.6.0" });
-		assertEquals(Optional.of("2.6.0"), cli.ruleVersion());
+		assertEquals(Optional.of("2.6.0"), cli.adoptionOptions().pinnedRuleVersion());
 	}
 
 	@Test
 	void noRuleVersionFlagLeavesTheRunningBuildsVersionToBeResolved() {
-		assertEquals(Optional.empty(), CliArguments.parse(new String[] { REPO_URL }).ruleVersion());
+		assertEquals(Optional.empty(), CliArguments.parse(new String[] { REPO_URL }).adoptionOptions().pinnedRuleVersion());
 	}
 
 	/**
@@ -272,7 +274,7 @@ class CliArgumentsTest {
 	@Test
 	void aBlankRuleVersionFallsBackToTheDefault() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--rule-version", "  " });
-		assertEquals(Optional.empty(), cli.ruleVersion());
+		assertEquals(Optional.empty(), cli.adoptionOptions().pinnedRuleVersion());
 	}
 
 	@Test
@@ -324,6 +326,75 @@ class CliArgumentsTest {
 	void aBlankRepositoryFlagDoesNotRejectALocalRepositoryPositional() {
 		CliArguments cli = CliArguments.parse(new String[] { "/tmp/checkouts/repo", "--repo", "  " });
 		assertEquals(List.of("/tmp/checkouts/repo"), cli.repositoryUrls());
+	}
+
+	/**
+	 * The flag an operator reaches for first used to be refused as an unknown
+	 * option — with the very usage line it was asking for, which made the refusal
+	 * read like a bug rather than an answer.
+	 */
+	@Test
+	void answersHelpWithoutRequiringARepository() {
+		assertTrue(CliArguments.parse(new String[] { CliArguments.HELP_FLAG }).helpRequested());
+		assertTrue(CliArguments.parse(new String[] { CliArguments.HELP_SHORTHAND }).helpRequested());
+	}
+
+	/**
+	 * {@code -h} carries no {@code --} prefix, so nothing but an explicit test keeps
+	 * it from being read as the run's first positional: a repository URL.
+	 */
+	@Test
+	void theHelpShorthandIsNotReadAsARepositoryUrl() {
+		assertEquals(List.of(), CliArguments.parse(new String[] { CliArguments.HELP_SHORTHAND }).repositoryUrls());
+	}
+
+	@Test
+	void helpBesideARealRunStillOnlyAsksForTheUsage() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, CliArguments.HELP_FLAG });
+		assertTrue(cli.helpRequested());
+		assertEquals(List.of(REPO_URL), cli.repositoryUrls());
+	}
+
+	@Test
+	void adoptsForRealUnlessTheDryRunFlagIsGiven() {
+		assertFalse(CliArguments.parse(new String[] { REPO_URL }).adoptionOptions().dryRun());
+		assertTrue(CliArguments.parse(new String[] { REPO_URL, "--dry-run" }).adoptionOptions().dryRun());
+	}
+
+	@Test
+	void readsTheCommandTimeoutAsWholeMinutes() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--timeout", "45" });
+		assertEquals(Duration.ofMinutes(45), cli.adoptionOptions().commandTimeout());
+	}
+
+	@Test
+	void fallsBackToTheDefaultTimeoutWhenNoneIsNamed() {
+		assertEquals(ProcessCommandRunner.DEFAULT_TIMEOUT,
+				CliArguments.parse(new String[] { REPO_URL }).adoptionOptions().commandTimeout());
+		assertEquals(ProcessCommandRunner.DEFAULT_TIMEOUT,
+				CliArguments.parse(new String[] { REPO_URL, "--timeout", "  " }).adoptionOptions().commandTimeout());
+	}
+
+	/**
+	 * A timeout that is not a positive number of minutes is refused while the
+	 * operator is still reading the command line, rather than at the first command
+	 * it would have killed — or, for a zero, never having run one at all.
+	 */
+	@Test
+	void refusesATimeoutThatIsNotAPositiveNumberOfMinutes() {
+		assertUsageFailure(new String[] { REPO_URL, "--timeout", "0" });
+		assertUsageFailure(new String[] { REPO_URL, "--timeout", "-5" });
+		assertUsageFailure(new String[] { REPO_URL, "--timeout", "soon" });
+	}
+
+	@Test
+	void carriesThePullRequestMetadataAndTheAssetsFlagIntoTheAdoptionOptions() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--title", "My title", "--assets",
+				"--rule-version", " 2.6.0 " });
+		AdoptionOptions options = cli.adoptionOptions();
+		assertEquals("My title", options.pullRequest().title());
+		assertTrue(options.includeAssets());
+		assertEquals(Optional.of("2.6.0"), options.pinnedRuleVersion());
 	}
 
 	private void assertUsageFailure(String[] args) {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +22,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionOptions;
 import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.BatchAdoption;
+import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.mcp.ToolResult;
 
@@ -37,17 +40,14 @@ class AdoptToolTest {
 
 		private final List<AdoptionContext> contexts = new ArrayList<>();
 		private final List<PullRequestOptions> optionsPerRepository = new ArrayList<>();
-		private boolean includeAssets;
-		private Optional<String> ruleVersion = Optional.empty();
+		private AdoptionOptions adoptionOptions = AdoptionOptions.defaults();
 		private int pipelinesCreated;
 
 		@Override
-		public BatchAdoption.Adoption create(PullRequestOptions options, boolean includeAssets,
-				Optional<String> ruleVersion) {
-			this.includeAssets = includeAssets;
-			this.ruleVersion = ruleVersion;
+		public BatchAdoption.Adoption create(AdoptionOptions options) {
+			this.adoptionOptions = options;
 			pipelinesCreated++;
-			return (context, report) -> adopt(context, options, report);
+			return (context, report) -> adopt(context, options.pullRequest(), report);
 		}
 
 		private void adopt(AdoptionContext context, PullRequestOptions options, AdoptionReport report) {
@@ -126,7 +126,7 @@ class AdoptToolTest {
 	 */
 	@Test
 	void answersWithAnErrorResultCarryingTheReportWhenARepositoryFails() throws IOException {
-		AdoptTool failing = new AdoptTool((options, includeAssets, ruleVersion) -> (context, report) -> {
+		AdoptTool failing = new AdoptTool(options -> (context, report) -> {
 			report.recordStep("clone");
 			throw new AdoptionException("boom");
 		});
@@ -144,7 +144,7 @@ class AdoptToolTest {
 		assertEquals(REPO_URL, pipeline.context().repositoryUrl());
 		assertEquals(AdoptionContext.DEFAULT_BRANCH, pipeline.context().branchName());
 		assertEquals(PullRequestOptions.defaults(), pipeline.options());
-		assertFalse(pipeline.includeAssets);
+		assertFalse(pipeline.adoptionOptions.includeAssets());
 		assertTrue(Files.isDirectory(pipeline.context().workspace()));
 	}
 
@@ -175,19 +175,19 @@ class AdoptToolTest {
 		assertEquals(List.of("automation"), pipeline.options().labels());
 		assertEquals(List.of("adamw7"), pipeline.options().assignees());
 		assertTrue(pipeline.options().draft());
-		assertTrue(pipeline.includeAssets);
+		assertTrue(pipeline.adoptionOptions.includeAssets());
 	}
 
 	@Test
 	void passesTheRuleVersionOnToThePipeline() {
 		tool.apply(Map.of("repository_url", REPO_URL, "rule_version", " 2.6.0 "));
-		assertEquals(Optional.of("2.6.0"), pipeline.ruleVersion);
+		assertEquals(Optional.of("2.6.0"), pipeline.adoptionOptions.pinnedRuleVersion());
 	}
 
 	@Test
 	void aBlankRuleVersionLeavesTheRunningBuildsVersionToBeResolved() {
 		tool.apply(Map.of("repository_url", REPO_URL, "rule_version", "  "));
-		assertEquals(Optional.empty(), pipeline.ruleVersion);
+		assertEquals(Optional.empty(), pipeline.adoptionOptions.pinnedRuleVersion());
 	}
 
 	@Test
@@ -195,6 +195,55 @@ class AdoptToolTest {
 		Object properties = tool.getToolDefinition().inputSchema().get("properties");
 		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("rule_version"),
 				"the version must be settable through the tool: " + properties);
+	}
+
+	/**
+	 * The flag an agent should reach for before letting the pipeline write to
+	 * GitHub, so it has to survive the argument mapping rather than be silently
+	 * dropped into a run that pushes.
+	 */
+	@Test
+	void passesTheDryRunFlagOnToThePipeline() {
+		tool.apply(Map.of("repository_url", REPO_URL, "dry_run", true));
+		assertTrue(pipeline.adoptionOptions.dryRun());
+	}
+
+	@Test
+	void adoptsForRealWhenNoDryRunIsAskedFor() {
+		tool.apply(Map.of("repository_url", REPO_URL));
+		assertFalse(pipeline.adoptionOptions.dryRun());
+	}
+
+	@Test
+	void passesTheCommandTimeoutOnToThePipeline() {
+		tool.apply(Map.of("repository_url", REPO_URL, "timeout_minutes", 25));
+		assertEquals(Duration.ofMinutes(25), pipeline.adoptionOptions.commandTimeout());
+	}
+
+	@Test
+	void fallsBackToTheRunnersOwnTimeoutWhenNoneIsAskedFor() {
+		tool.apply(Map.of("repository_url", REPO_URL));
+		assertEquals(ProcessCommandRunner.DEFAULT_TIMEOUT, pipeline.adoptionOptions.commandTimeout());
+	}
+
+	/**
+	 * The tool runs inside a long-lived server, so a timeout it could never reclaim
+	 * is refused before the first clone rather than honoured.
+	 */
+	@Test
+	void refusesATimeoutOutsideTheAllowedRange() {
+		assertThrows(IllegalArgumentException.class,
+				() -> tool.apply(Map.of("repository_url", REPO_URL, "timeout_minutes", 0)));
+		assertThrows(IllegalArgumentException.class,
+				() -> tool.apply(Map.of("repository_url", REPO_URL, "timeout_minutes", 24 * 60 + 1)));
+	}
+
+	@Test
+	void declaresTheDryRunAndTimeoutArguments() {
+		Object properties = tool.getToolDefinition().inputSchema().get("properties");
+		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("dry_run")
+				&& declared.containsKey("timeout_minutes"),
+				"a rehearsal and a longer command budget must be askable for: " + properties);
 	}
 
 	@Test
@@ -274,7 +323,7 @@ class AdoptToolTest {
 	 */
 	@Test
 	void adoptsTheRestOfTheListAfterARepositoryFails() throws IOException {
-		AdoptTool failing = new AdoptTool((options, includeAssets, ruleVersion) -> (context, report) -> {
+		AdoptTool failing = new AdoptTool(options -> (context, report) -> {
 			if (REPO_URL.equals(context.repositoryUrl())) {
 				throw new AdoptionException("boom");
 			}
@@ -306,7 +355,7 @@ class AdoptToolTest {
 		tool.apply(Map.of("repository_urls", List.of(REPO_URL, OTHER_URL), "title", "My title", "assets", true));
 		assertEquals(List.of("My title", "My title"),
 				pipeline.optionsPerRepository.stream().map(PullRequestOptions::title).toList());
-		assertTrue(pipeline.includeAssets);
+		assertTrue(pipeline.adoptionOptions.includeAssets());
 	}
 
 	@Test

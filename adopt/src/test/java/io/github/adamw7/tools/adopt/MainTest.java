@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,6 +46,17 @@ class MainTest {
 	@Test
 	void rejectsUnknownOptionBeforeAnyWorkStarts() {
 		assertThrows(IllegalArgumentException.class, () -> Main.main(new String[] { REPO_URL, "--frobnicate" }));
+	}
+
+	/**
+	 * {@code --help} returns instead of adopting, so the flag can be asked for
+	 * without a repository — and, when one is named beside it, without cloning that
+	 * repository as a side effect of asking what the arguments are.
+	 */
+	@Test
+	void answersHelpWithoutAdoptingAnything() {
+		assertDoesNotThrow(() -> Main.main(new String[] { "--help" }));
+		assertDoesNotThrow(() -> Main.main(new String[] { REPO_URL, "-h" }));
 	}
 
 	/**

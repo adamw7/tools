@@ -54,10 +54,17 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 		conformClaudeMd(checkout);
 	}
 
+	/**
+	 * The reshaped text is put back on the file's own line terminators before it is
+	 * compared or written. {@link ClaudeMdConformer} works in LF throughout, so a
+	 * CRLF {@code CLAUDE.md} would otherwise come back with every one of its lines
+	 * changed — a whole-file diff in the adoption's first commit, and a file the
+	 * step no longer recognises as already conforming on a re-adoption.
+	 */
 	private void conformClaudeMd(Path checkout) {
 		Path claudeMd = checkout.resolve(CLAUDE_MD);
 		String original = read(claudeMd);
-		String conformed = conformer.conform(original);
+		String conformed = LineTerminators.matching(conformer.conform(original), original);
 		if (conformed.equals(original)) {
 			log.info("{} already satisfies the claudeMdFormat rule; left unchanged", CLAUDE_MD);
 		} else {

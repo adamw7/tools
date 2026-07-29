@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -64,6 +65,33 @@ class ClaudeMdConformanceStepTest {
 	void leavesAnAlreadyConformingClaudeMdByteIdentical(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\n\nSee AGENTS.md.\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		String conformed = claudeMd(context);
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		assertEquals(conformed, claudeMd(context), "a conforming CLAUDE.md must be left untouched");
+	}
+
+	/**
+	 * The conformer works in LF throughout, so a CRLF {@code CLAUDE.md} came back
+	 * with every one of its lines changed — a whole-file diff in the adoption's
+	 * first commit, on a file the run only meant to add a heading to.
+	 */
+	@Test
+	void keepsACrlfClaudeMdOnCrlf(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\r\n\r\n## Project purpose\r\n\r\nA repo.\r\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		String claudeMd = claudeMd(context);
+		assertTrue(claudeMd.contains("\r\n"), "the file's CRLF terminators must survive the reshape");
+		assertFalse(claudeMd.replace("\r\n", "").contains("\n"), "no line may be left on a bare LF");
+		assertTrue(claudeMd.contains("## Project\r\n"), "the reshape must still have run");
+	}
+
+	/** An already conforming CRLF file must be recognised as conforming, not rewritten. */
+	@Test
+	void leavesAnAlreadyConformingCrlfClaudeMdByteIdentical(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\r\n\r\nSee AGENTS.md.\r\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
 		String conformed = claudeMd(context);
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());

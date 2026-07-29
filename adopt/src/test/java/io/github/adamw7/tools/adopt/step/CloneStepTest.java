@@ -86,6 +86,45 @@ class CloneStepTest {
 		assertFalse(failure.getMessage().contains("SECRET"), failure.getMessage());
 	}
 
+	/**
+	 * The runner merges standard error into the transcript, so a git that warns puts
+	 * that line in beside the URL. Reading the whole transcript as the origin refused
+	 * a checkout that was the right one and named the warning as the repository it
+	 * supposedly held.
+	 */
+	@Test
+	void reusesCheckoutWhoseOriginIsReportedAlongsideAWarning(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = origin("warning: unable to access '/etc/gitconfig': Permission denied"
+				+ System.lineSeparator() + "https://github.com/adamw7/tools.git");
+		step.execute(existing, runner);
+		assertEquals(2, runner.count());
+	}
+
+	/** Noise on its own still names no repository, so the checkout is refused. */
+	@Test
+	void refusesCheckoutWhoseOriginIsOnlyNoise(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = origin("warning: unable to access '/etc/gitconfig': Permission denied");
+		assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+	}
+
+	/**
+	 * A linked worktree records its {@code .git} as a file rather than a directory.
+	 * Insisting on the directory ran {@code git clone} into a directory that was not
+	 * empty, which git refuses — aborting on a checkout the step was meant to reuse.
+	 */
+	@Test
+	void reusesCheckoutWhoseGitIsAFile(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = new AdoptionContext("https://github.com/adamw7/tools.git", existingWorkspace);
+		Files.createDirectories(existing.repositoryDirectory());
+		Files.writeString(existing.repositoryDirectory().resolve(".git"), "gitdir: /elsewhere/.git/worktrees/tools\n");
+		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
+		step.execute(existing, runner);
+		assertEquals(List.of("git", "remote", "get-url", "origin"), runner.commandAt(0));
+		assertEquals(2, runner.count());
+	}
+
 	@Test
 	void refusesCheckoutWithNoOriginRemote(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);

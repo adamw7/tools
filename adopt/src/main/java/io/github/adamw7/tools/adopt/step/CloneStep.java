@@ -39,8 +39,6 @@ public class CloneStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(CloneStep.class);
 
-	/** The remote a clone records, and the one {@link PushStep} publishes the branch to. */
-
 	@Override
 	public String name() {
 		return "clone";
@@ -76,12 +74,26 @@ public class CloneStep extends AbstractCommandStep {
 	 * directory the other repository left behind.
 	 */
 	private void requireCheckoutOfTheSameRepository(AdoptionContext context, CommandRunner runner) {
-		String origin = originUrl(context, runner);
-		if (!context.isSameRepository(origin)) {
+		String transcript = originTranscript(context, runner);
+		if (!namesThisRepository(context, transcript)) {
 			throw new AdoptionException(context.repositoryDirectory() + " already holds a checkout of "
-					+ Redaction.of(origin) + ", not of " + context.displayUrl()
+					+ Redaction.of(transcript.strip()) + ", not of " + context.displayUrl()
 					+ ". Adopt this repository into its own --workspace, or remove that directory first.");
 		}
+	}
+
+	/**
+	 * The transcript merges the command's standard error into its standard output, so
+	 * the {@code origin} URL is not reliably the whole of it: a git that warns —
+	 * about an unreadable system config, say — puts that line in there too, and
+	 * reading the transcript as one URL then failed a checkout that was the right one
+	 * all along, naming the warning as the repository it supposedly held. Every line
+	 * is therefore asked in turn, which keeps the conservative reading
+	 * {@link AdoptionContext#isSameRepository} is built on: noise names no repository,
+	 * so a transcript carrying nothing else still answers no.
+	 */
+	private boolean namesThisRepository(AdoptionContext context, String transcript) {
+		return transcript.lines().map(String::strip).anyMatch(context::isSameRepository);
 	}
 
 	/**
@@ -89,7 +101,7 @@ public class CloneStep extends AbstractCommandStep {
 	 * than adopted: it cannot be shown to be the repository under adoption, and
 	 * {@link PushStep} would have nowhere to publish the branch to anyway.
 	 */
-	private String originUrl(AdoptionContext context, CommandRunner runner) {
+	private String originTranscript(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
 				List.of("git", "remote", "get-url", AdoptionContext.REMOTE));
 		if (!result.succeeded()) {
@@ -98,7 +110,7 @@ public class CloneStep extends AbstractCommandStep {
 					+ "' remote, so it can be neither confirmed to be " + context.displayUrl() + " nor pushed to it: "
 					+ Redaction.of(result.output().strip()));
 		}
-		return result.output().strip();
+		return result.output();
 	}
 
 	/**
@@ -113,8 +125,16 @@ public class CloneStep extends AbstractCommandStep {
 		runOrFail(runner, context.repositoryDirectory(), List.of("git", "fetch", AdoptionContext.REMOTE));
 	}
 
+	/**
+	 * A checkout is recognised by its {@code .git} whether that is the directory a
+	 * plain clone leaves or the file a linked worktree does. Insisting on the
+	 * directory read a worktree as uncloned and ran {@code git clone} into a
+	 * directory that was not empty, which git refuses — so the step aborted on a
+	 * checkout it was meant to reuse, and did so without ever confirming it held the
+	 * repository under adoption.
+	 */
 	private boolean alreadyCloned(AdoptionContext context) {
 		Path gitDirectory = context.repositoryDirectory().resolve(".git");
-		return Files.isDirectory(gitDirectory);
+		return Files.exists(gitDirectory);
 	}
 }

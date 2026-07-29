@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -116,7 +117,9 @@ class FrontMatterFixerTest {
 		Optional<String> repaired = FrontMatterFixer.repair(content);
 
 		assertTrue(repaired.isPresent());
-		assertTrue(repaired.get().endsWith("---\nUse this skill when: you need a review.\n"), repaired.get());
+		assertEquals("---\nname: reviewer\n\n---\nUse this skill when: you need a review.\n", repaired.get());
+		assertEquals(Optional.of("reviewer"), FrontMatter.parse(repaired.get()).flatMap(fm -> fm.value("name")));
+		assertEquals(List.of("name"), FrontMatter.parse(repaired.get()).orElseThrow().keys());
 	}
 
 	@Test

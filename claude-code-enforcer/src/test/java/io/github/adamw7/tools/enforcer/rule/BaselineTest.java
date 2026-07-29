@@ -118,6 +118,8 @@ class BaselineTest {
 
 		String content = readString(file);
 		assertTrue(content.contains("${basedir}/CLAUDE.md is over budget"), content);
+		assertFalse(content.contains(projectDir() + "/CLAUDE.md"), content);
+		// The working directory is not the project, so it is left as it was written.
 		assertTrue(content.contains(workingDir + "/elsewhere.md is over budget"), content);
 	}
 
@@ -125,11 +127,13 @@ class BaselineTest {
 	void aBaselineRecordedInOneProjectDirectoryStillSuppressesWhenReadFromAnother() {
 		File file = writeString("${basedir}/CLAUDE.md is over budget\n");
 		File otherCheckout = tempDir.resolve("elsewhere/checkout").toFile();
+		String outsideTheProject = tempDir.resolve("unrelated").toFile() + "/CLAUDE.md is over budget";
 
 		List<String> newViolations = assertDoesNotThrow(() -> Baseline.read(file, otherCheckout)
-				.newViolations(List.of(otherCheckout + "/CLAUDE.md is over budget")));
+				.newViolations(List.of(otherCheckout + "/CLAUDE.md is over budget", outsideTheProject)));
 
-		assertTrue(newViolations.isEmpty(), newViolations.toString());
+		// The token matches only what sits under the configured project directory.
+		assertEquals(List.of(outsideTheProject), newViolations);
 	}
 
 	@Test

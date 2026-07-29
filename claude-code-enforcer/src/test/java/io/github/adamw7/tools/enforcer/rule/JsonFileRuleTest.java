@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.rule;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -140,6 +141,8 @@ class JsonFileRuleTest {
 		assertDoesNotThrow(optional::execute);
 		String html = Files.readString(report.toPath());
 		assertTrue(html.contains("Check passed"), html);
+		assertFalse(html.contains("Check failed"), html);
+		assertFalse(html.contains("something is wrong"), html);
 	}
 
 	private TestJsonRule ruleFor(String content) {

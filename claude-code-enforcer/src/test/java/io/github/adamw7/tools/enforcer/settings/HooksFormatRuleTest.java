@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -249,6 +250,8 @@ class HooksFormatRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
 		assertTrue(exception.getMessage().contains("cannot be read as a text script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("logo.png"), exception.getMessage());
+		assertFalse(exception.getMessage().contains("is empty"), exception.getMessage());
 	}
 
 	@Test
@@ -257,7 +260,11 @@ class HooksFormatRuleTest {
 		writeScript("session-start.sh", "echo hi\n", true);
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
+		// Both are reported: the undecodable file no longer aborts the run before
+		// the script after it is looked at.
+		assertTrue(exception.getMessage().contains("logo.png"), exception.getMessage());
 		assertTrue(exception.getMessage().contains("shebang"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("session-start.sh"), exception.getMessage());
 	}
 
 	@Test

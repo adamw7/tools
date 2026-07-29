@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.doc;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -183,6 +184,37 @@ class ContextBudgetRuleTest {
 		// The undecodable file no longer aborts the run before the next one is measured.
 		assertTrue(exception.getMessage().contains("fine.md"), exception.getMessage());
 		assertTrue(exception.getMessage().contains("2 lines, over the 1-line budget"), exception.getMessage());
+	}
+
+	@Test
+	void measuresAFileNamedAndScannedAsADirectoryEntryOnlyOnce() {
+		Path directory = tempDir.resolve("skills");
+		Path file = writeString(directory.resolve("SKILL.md"), "x".repeat(100));
+		ContextBudgetRule rule = new ContextBudgetRule();
+		rule.setFiles(List.of(file.toFile()));
+		rule.setDirectories(List.of(directory.toFile()));
+		rule.setMaxBytes(10);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertEquals(1, occurrences(exception.getMessage(), "over the 10-byte budget"), exception.getMessage());
+	}
+
+	@Test
+	void stillMeasuresAConfiguredFileThatIsNotMarkdown() {
+		Path file = writeString(tempDir.resolve("notes.txt"), "x".repeat(100));
+		ContextBudgetRule rule = new ContextBudgetRule();
+		rule.setFiles(List.of(file.toFile()));
+		rule.setDirectories(List.of(tempDir.toFile()));
+		rule.setMaxBytes(10);
+
+		// The *.md filter narrows the directory scan; a file named outright was
+		// chosen by the configuration and is measured whatever it is called.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("notes.txt"), exception.getMessage());
+	}
+
+	private static int occurrences(String message, String token) {
+		return message.split(java.util.regex.Pattern.quote(token), -1).length - 1;
 	}
 
 	private ContextBudgetRule ruleForFile(String content) {

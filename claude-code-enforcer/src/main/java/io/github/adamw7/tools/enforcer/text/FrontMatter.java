@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.enforcer.text;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * The YAML front matter block at the top of a Markdown document: the lines
@@ -11,11 +13,26 @@ import java.util.Optional;
  * the flat {@code key: value} shape that Claude Code skill and sub-agent files
  * use, which is all the rules need. Parsing is shared here so every rule agrees
  * on what counts as front matter, which keys it declares, and each key's value.
+ * <p>
+ * A key is only recognised where YAML puts one: at the start of a line, with no
+ * indentation. An indented line continues the value above it, so reading a key out
+ * of one would invent entries an author never declared — the {@code Use this when:}
+ * of a wrapped description would be reported as an unknown key.
+ * <p>
+ * A value written as a block scalar ({@code description: >} or {@code |}, with the
+ * text on the indented lines below) is folded back into a single line, since the
+ * indicator alone is not the value: reading it literally would leave every such
+ * definition claiming the same one-character description and escape any length cap.
+ * The fold joins the continuation lines with single spaces, which is all the
+ * length, blankness, and uniqueness checks need.
  */
 public final class FrontMatter {
 
 	private static final String DELIMITER = "---";
 	private static final char KEY_VALUE_SEPARATOR = ':';
+
+	/** A block scalar header: {@code >} or {@code |} with optional indentation and chomping indicators. */
+	private static final Pattern BLOCK_SCALAR = Pattern.compile("[>|][0-9+-]*");
 
 	private final List<String> lines;
 
@@ -45,18 +62,21 @@ public final class FrontMatter {
 
 	/** True when a {@code key:} entry is present, regardless of its value. */
 	public boolean hasKey(String key) {
-		return lines.stream().anyMatch(line -> isEntryFor(line, key));
+		return indexOfEntry(key) >= 0;
 	}
 
 	/**
 	 * The trimmed value declared for {@code key}, or empty when the key is absent.
-	 * A present key with no value yields an empty string, not an empty optional.
+	 * A present key with no value yields an empty string, not an empty optional, and
+	 * a block scalar yields its folded continuation lines rather than the indicator.
 	 */
 	public Optional<String> value(String key) {
-		return lines.stream()
-				.filter(line -> isEntryFor(line, key))
-				.findFirst()
-				.map(line -> valueOf(line, key));
+		int index = indexOfEntry(key);
+		if (index < 0) {
+			return Optional.empty();
+		}
+		String declared = valueOf(lines.get(index), key);
+		return Optional.of(isBlockScalar(declared) ? folded(index + 1) : declared);
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
@@ -69,11 +89,12 @@ public final class FrontMatter {
 	 * This shares its definition with {@link #hasKey} and {@link #value}, so the
 	 * three never disagree about whether a line declares a key: a bare {@code key:}
 	 * or a {@code key: value} (or {@code key:\tvalue}) counts, while {@code key:value}
-	 * without a separating space, comments, and list items do not.
+	 * without a separating space, comments, list items, and indented continuation
+	 * lines do not.
 	 */
 	private Optional<String> entryKey(String line) {
 		String stripped = line.strip();
-		if (stripped.startsWith("#") || stripped.startsWith("-")) {
+		if (isIndented(line) || stripped.startsWith("#") || stripped.startsWith("-")) {
 			return Optional.empty();
 		}
 		int separator = stripped.indexOf(KEY_VALUE_SEPARATOR);
@@ -85,10 +106,55 @@ public final class FrontMatter {
 	}
 
 	private boolean isEntryFor(String line, String key) {
+		if (isIndented(line)) {
+			return false;
+		}
 		String stripped = line.strip();
 		return stripped.equals(key + KEY_VALUE_SEPARATOR)
 				|| stripped.startsWith(key + KEY_VALUE_SEPARATOR + " ")
 				|| stripped.startsWith(key + KEY_VALUE_SEPARATOR + "\t");
+	}
+
+	/** True when the line is a continuation of the entry above rather than one of its own. */
+	private boolean isIndented(String line) {
+		return !line.isEmpty() && Character.isWhitespace(line.charAt(0));
+	}
+
+	private int indexOfEntry(String key) {
+		for (int i = 0; i < lines.size(); i++) {
+			if (isEntryFor(lines.get(i), key)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private boolean isBlockScalar(String declared) {
+		return BLOCK_SCALAR.matcher(declared).matches();
+	}
+
+	/**
+	 * The block scalar's continuation lines from {@code from}, joined with single
+	 * spaces. The block runs until the next entry at the block's own level, so blank
+	 * lines inside it are kept as separators and dropped from the result.
+	 */
+	private String folded(int from) {
+		List<String> content = new ArrayList<>();
+		for (int i = from; i < lines.size() && isContinuation(lines.get(i)); i++) {
+			addContent(lines.get(i), content);
+		}
+		return String.join(" ", content);
+	}
+
+	private boolean isContinuation(String line) {
+		return line.isBlank() || isIndented(line);
+	}
+
+	private void addContent(String line, List<String> content) {
+		String stripped = line.strip();
+		if (!stripped.isEmpty()) {
+			content.add(stripped);
+		}
 	}
 
 	private String valueOf(String line, String key) {

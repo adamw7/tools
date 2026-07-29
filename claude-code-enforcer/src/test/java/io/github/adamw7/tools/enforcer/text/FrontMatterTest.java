@@ -106,4 +106,65 @@ class FrontMatterTest {
 
 		assertEquals(List.of("name", "tools"), frontMatter.keys());
 	}
+
+	@Test
+	void doesNotReadAKeyOutOfAnIndentedContinuationLine() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				name: demo
+				description: >
+				  Use this when: the user asks for a demo.
+				---
+				""").orElseThrow();
+
+		// The wrapped prose continues the description; "Use this when" is not a key an
+		// author declared, and reporting it would fail the build for an unknown key.
+		assertEquals(List.of("name", "description"), frontMatter.keys());
+		assertFalse(frontMatter.hasKey("Use this when"));
+	}
+
+	@Test
+	void foldsAFoldedBlockScalarIntoItsValue() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				name: demo
+				description: >
+				  Generate a demo report.
+
+				  Use when the user asks for one.
+				---
+				""").orElseThrow();
+
+		assertEquals(Optional.of("Generate a demo report. Use when the user asks for one."),
+				frontMatter.value("description"));
+	}
+
+	@Test
+	void foldsALiteralBlockScalarWithChompingIndicator() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				description: |-
+				  First line.
+				  Second line.
+				name: demo
+				---
+				""").orElseThrow();
+
+		assertEquals(Optional.of("First line. Second line."), frontMatter.value("description"));
+		assertEquals(Optional.of("demo"), frontMatter.value("name"));
+	}
+
+	@Test
+	void treatsAnEmptyBlockScalarAsAnEmptyValue() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: >\nname: demo\n---\n").orElseThrow();
+
+		assertEquals(Optional.of(""), frontMatter.value("description"));
+	}
+
+	@Test
+	void doesNotMistakeAPipeCharacterInProseForABlockScalar() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: a | b\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("a | b"), frontMatter.value("description"));
+	}
 }

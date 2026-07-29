@@ -167,6 +167,40 @@ class MarkdownDocumentTest {
 		assertFalse(document.containsOutsideFences("TODO"));
 	}
 
+	@Test
+	void doesNotTreatAHashPrefixedProseLineAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## Maven
+
+				#1 rule: run mvn install.
+
+				## Testing
+
+				Body.
+				""");
+
+		// "#1 rule:" is prose, not an ATX heading. Counting it as one would end the
+		// Maven section at its first line and report the section as empty.
+		assertEquals(Set.of("# Title", "## Maven", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Maven"));
+	}
+
+	@Test
+	void doesNotTreatSevenHashesAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n####### too deep\n");
+
+		assertEquals(Set.of("# Title"), document.headings());
+	}
+
+	@Test
+	void treatsABareHashAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n##\n\nbody\n");
+
+		assertEquals(Set.of("# Title", "##"), document.headings());
+	}
+
 	/** The indices of the lines the document masks as fenced code, in document order. */
 	private static List<Integer> fencedLines(MarkdownDocument document) {
 		return IntStream.range(0, document.lineCount()).filter(document::isInsideFence).boxed().toList();

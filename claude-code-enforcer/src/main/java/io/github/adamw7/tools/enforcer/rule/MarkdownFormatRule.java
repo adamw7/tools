@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Base for enforcer rules that validate a Markdown document follows an expected
@@ -225,11 +226,16 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
+	/**
+	 * Links are read outside code fences and inline code spans alike, so a sample
+	 * link written as {@code `[label](example.md)`} is documentation rather than a
+	 * reference this rule must resolve on disk.
+	 */
 	private void collectLineReferences(MarkdownDocument document, int index, File baseDir, List<String> violations) {
 		if (document.isInsideFence(index)) {
 			return;
 		}
-		Matcher matcher = MARKDOWN_LINK.matcher(document.line(index));
+		Matcher matcher = MARKDOWN_LINK.matcher(MarkdownText.withoutCodeSpans(document.line(index)));
 		while (matcher.find()) {
 			addReferenceViolation(localReferencePath(linkDestination(matcher.group(1))), baseDir, violations);
 		}

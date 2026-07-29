@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
@@ -52,28 +53,46 @@ final class DocumentConsistency {
 	 * one document unless {@code requireInBoth} was set.
 	 */
 	List<String> violations(File firstFile, File secondFile) throws EnforcerRuleException {
-		verifyPatterns();
+		List<Pattern> compiled = compilePatterns();
 		Document first = read(firstFile);
 		Document second = read(secondFile);
 		List<String> violations = new ArrayList<>();
-		for (String pattern : patterns) {
+		for (Pattern pattern : compiled) {
 			collect(pattern, first, second, violations);
 		}
 		return violations;
 	}
 
-	/**
-	 * Each pattern must declare a capturing group, since comparison reads
-	 * {@code group(1)}. A pattern without one is a build-setup mistake, so it fails
-	 * with a clear message instead of letting an opaque
-	 * {@link IndexOutOfBoundsException} escape at match time.
-	 */
-	private void verifyPatterns() throws EnforcerRuleException {
+	private List<Pattern> compilePatterns() throws EnforcerRuleException {
+		List<Pattern> compiled = new ArrayList<>();
 		for (String pattern : patterns) {
-			if (Pattern.compile(pattern).matcher("").groupCount() < 1) {
-				throw new EnforcerRuleException(
-						"consistentPattern '" + pattern + "' must declare a capturing group");
-			}
+			compiled.add(verified(pattern));
+		}
+		return compiled;
+	}
+
+	/**
+	 * Each pattern must be a valid regular expression declaring a capturing group,
+	 * since comparison reads {@code group(1)}. Either mistake is a build-setup one,
+	 * so it fails with a message naming the pattern instead of letting an opaque
+	 * {@link java.util.regex.PatternSyntaxException} or
+	 * {@link IndexOutOfBoundsException} escape as an internal build error.
+	 */
+	private Pattern verified(String pattern) throws EnforcerRuleException {
+		Pattern compiled = compile(pattern);
+		if (compiled.matcher("").groupCount() < 1) {
+			throw new EnforcerRuleException(
+					"consistentPattern '" + pattern + "' must declare a capturing group");
+		}
+		return compiled;
+	}
+
+	private Pattern compile(String pattern) throws EnforcerRuleException {
+		try {
+			return Pattern.compile(pattern);
+		} catch (PatternSyntaxException e) {
+			throw new EnforcerRuleException(
+					"consistentPattern '" + pattern + "' is not a valid regular expression: " + e.getDescription());
 		}
 	}
 
@@ -81,21 +100,20 @@ final class DocumentConsistency {
 		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
 	}
 
-	private void collect(String pattern, Document first, Document second, List<String> violations) {
+	private void collect(Pattern pattern, Document first, Document second, List<String> violations) {
 		try {
 			addMismatch(pattern, first, second, violations);
 		} catch (BacktrackLimitExceededException e) {
-			violations.add("pattern '" + pattern
+			violations.add("pattern '" + pattern.pattern()
 					+ "' could not be evaluated within its backtracking budget (possible catastrophic backtracking)");
 		}
 	}
 
-	private void addMismatch(String pattern, Document first, Document second, List<String> violations) {
-		Pattern compiled = Pattern.compile(pattern);
-		Optional<String> firstValue = capture(compiled, first.content());
-		Optional<String> secondValue = capture(compiled, second.content());
+	private void addMismatch(Pattern pattern, Document first, Document second, List<String> violations) {
+		Optional<String> firstValue = capture(pattern, first.content());
+		Optional<String> secondValue = capture(pattern, second.content());
 		if (!firstValue.equals(secondValue) && !isIgnored(firstValue, secondValue)) {
-			violations.add("pattern '" + pattern + "' captured " + describe(first, firstValue) + " but "
+			violations.add("pattern '" + pattern.pattern() + "' captured " + describe(first, firstValue) + " but "
 					+ describe(second, secondValue));
 		}
 	}

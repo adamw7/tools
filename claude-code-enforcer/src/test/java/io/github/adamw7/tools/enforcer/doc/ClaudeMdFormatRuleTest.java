@@ -359,6 +359,28 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void doesNotReportASectionEmptyWhenItsBodyOpensWithHashPrefixedProse() {
+		ClaudeMdFormatRule rule = ruleFor(
+				VALID_CONTENT.replace("## Maven\nVersions live in the root pom.", "## Maven\n#1 rule: run mvn install."));
+
+		// "#1 rule:" is prose, not a heading ending the section, so the Maven section
+		// has a body.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void ignoresALinkQuotedAsCodeWhenValidatingReferences() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(
+				VALID_CONTENT + "\nWrite a link as `[label](example.md)` in your docs.\n");
+		rule.setValidateFileReferences(true);
+
+		// Documentation about Markdown quotes a sample link as code precisely because
+		// it is an example, so its target is not a reference to resolve on disk.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void warnSeverityLogsInsteadOfFailing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong"));
 		rule.setSeverity("WARN");

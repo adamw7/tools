@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
+import java.util.regex.PatternSyntaxException;
 
 import javax.inject.Named;
 
@@ -56,10 +57,7 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		targets.requireConfigured();
 		requirePatterns(patterns);
 		List<String> violations = new ArrayList<>();
-		for (File file : targets.files()) {
-			scanIfPresent(file, patterns, violations);
-		}
-		for (File file : targets.filesInDirectories()) {
+		for (File file : targets.allFiles()) {
 			scanIfPresent(file, patterns, violations);
 		}
 		report("Files contain what look like secrets:", violations);
@@ -121,16 +119,30 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		return content.map(text -> text.lines().toList()).orElseGet(List::of);
 	}
 
-	private List<SecretPattern> patterns() {
+	private List<SecretPattern> patterns() throws EnforcerRuleException {
 		List<SecretPattern> patterns = new ArrayList<>();
 		if (useDefaultPatterns) {
 			patterns.addAll(SecretPattern.defaults());
 		}
 		List<String> configured = secretPatterns != null ? secretPatterns : List.of();
 		for (String regex : configured) {
-			patterns.add(SecretPattern.of(regex, regex));
+			patterns.add(compiled(regex));
 		}
 		return patterns;
+	}
+
+	/**
+	 * A configured pattern that is not a valid regular expression is a build-setup
+	 * mistake, so it fails with a message naming it rather than letting a
+	 * {@link PatternSyntaxException} escape as an internal build error.
+	 */
+	private SecretPattern compiled(String regex) throws EnforcerRuleException {
+		try {
+			return SecretPattern.of(regex, regex);
+		} catch (PatternSyntaxException e) {
+			throw new EnforcerRuleException(
+					"secretPattern '" + regex + "' is not a valid regular expression: " + e.getDescription());
+		}
 	}
 
 	void setFiles(List<File> files) {

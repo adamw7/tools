@@ -148,6 +148,16 @@ class PermissionsFormatRuleTest {
 		assertTrue(exception.getMessage().contains("not of the form"), exception.getMessage());
 	}
 
+	@Test
+	void failsWithAClearMessageForAForbiddenPatternThatIsNotAValidRegularExpression() {
+		PermissionsFormatRule rule = ruleFor("{ \"permissions\": { \"allow\": [ \"Bash(mvn *)\" ] } }");
+		rule.setForbiddenEntryPatterns(List.of("Bash(\\*"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not a valid regular expression"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("Bash(\\*"), exception.getMessage());
+	}
+
 	private PermissionsFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve("settings.json");
 		writeString(file, content);

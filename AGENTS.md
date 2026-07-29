@@ -291,6 +291,18 @@ needs to publish the enforcer JAR for the plugin to load; the module's own test
 suite still runs in the `package` step. It is the only workflow that runs the
 CLAUDE.md check; the other workflows build normally and are unaffected.
 
+That `package` step is capped at **120 seconds** two ways: a
+`timeout-minutes: 2` on the step, which cancels a build that wedges outright,
+and a wall-clock check around `mvn` that prints the duration and fails with a
+`::error::` annotation when it exceeds 120 s. The timeout is what enforces the
+bound (the check cannot run until `mvn` returns); the check is what says by how
+much a slow-but-finishing build overran. Both are scoped to the step, so the
+checkout, JDK setup and enforcer bootstrap do not count against the budget. A
+run that trips either limit means the build got slower — profile it rather than
+raising the number. The cap applies only here: `maven-windows.yml` and the
+scheduled coverage, mutation and integration-test builds are legitimately
+longer and carry no timeout.
+
 ## Testing, coverage & mutation testing
 
 - **Unit tests** run in the normal `test`/`package` lifecycle
@@ -438,7 +450,7 @@ requests to `main`; the rest run on a schedule (or manually).
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
-| `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. |
+| `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
 | `docker.yml` | push, PR → `main` | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
 | `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |

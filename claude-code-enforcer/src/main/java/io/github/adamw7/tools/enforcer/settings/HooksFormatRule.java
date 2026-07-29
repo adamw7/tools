@@ -6,9 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.inject.Named;
@@ -81,13 +83,33 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		report("Hook scripts are not well formed:", violations);
 	}
 
+	/**
+	 * The regular files directly under the hooks directory, sorted.
+	 * {@link File#listFiles} yields entries in an unspecified, filesystem-dependent
+	 * order, which would let this rule report the same violations in a different
+	 * order run-to-run and so churn both the HTML report and a recorded baseline.
+	 */
 	private List<File> scriptFiles() {
 		File[] files = hooksDir.listFiles(File::isFile);
-		return files != null ? List.of(files) : List.of();
+		if (files == null) {
+			return List.of();
+		}
+		Arrays.sort(files);
+		return List.of(files);
 	}
 
+	/**
+	 * A file that cannot be decoded as text is reported rather than read, because
+	 * the hooks directory holds whatever a repository put there and an undecodable
+	 * file must not abort the build before the remaining scripts are checked.
+	 */
 	private void collectScriptViolations(File script, List<String> violations) {
-		String content = MarkdownText.read(script, "hook script");
+		Optional<String> text = MarkdownText.readIfText(script);
+		if (text.isEmpty()) {
+			violations.add("hook script cannot be read as a text script: " + script);
+			return;
+		}
+		String content = text.get();
 		if (content.isBlank()) {
 			violations.add("hook script is empty: " + script);
 			return;

@@ -123,6 +123,25 @@ class JsonFileRuleTest {
 		assertTrue(html.contains("Check passed"), html);
 	}
 
+	@Test
+	void anAbsentOptionalFileRefreshesTheReportRatherThanLeavingTheLastFailure() throws IOException {
+		File report = tempDir.resolve("report.html").toFile();
+		TestJsonRule failing = ruleFor("{ }");
+		failing.addViolation("something is wrong");
+		failing.setReportFile(report);
+		assertThrows(EnforcerRuleException.class, failing::execute);
+
+		Files.delete(tempDir.resolve("test.json"));
+		TestJsonRule optional = new TestJsonRule();
+		optional.setOptional(true);
+		optional.setFile(tempDir.resolve("test.json").toFile());
+		optional.setReportFile(report);
+
+		assertDoesNotThrow(optional::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check passed"), html);
+	}
+
 	private TestJsonRule ruleFor(String content) {
 		Path file = tempDir.resolve("test.json");
 		writeString(file, content);

@@ -146,6 +146,33 @@ class ContextBudgetRuleTest {
 		assertTrue(baseline.isFile(), "expected the baseline file to be written");
 	}
 
+	@Test
+	void writeBaselineModeRefreshesTheReportAsThePassItIs() throws IOException {
+		ContextBudgetRule rule = ruleForFile("x".repeat(100));
+		rule.setMaxBytes(50);
+		File report = tempDir.resolve("report.html").toFile();
+		rule.setReportFile(report);
+		rule.setBaselineFile(tempDir.resolve("baseline.txt").toFile());
+		rule.setWriteBaseline(true);
+		rule.setLog(new CapturingLogger());
+
+		assertDoesNotThrow(rule::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check passed"), html);
+	}
+
+	@Test
+	void reportsAMarkdownFileThatCannotBeDecodedInsteadOfFailingTheBuildOutright() {
+		Path directory = tempDir.resolve("skills");
+		writeBytes(directory.resolve("broken.md"), new byte[] { (byte) 0xFF, (byte) 0xFE, (byte) 0x00 });
+		ContextBudgetRule rule = new ContextBudgetRule();
+		rule.setDirectories(List.of(directory.toFile()));
+		rule.setMaxLines(10);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
+	}
+
 	private ContextBudgetRule ruleForFile(String content) {
 		Path file = tempDir.resolve("CLAUDE.md");
 		writeString(file, content);
@@ -158,6 +185,15 @@ class ContextBudgetRuleTest {
 		try {
 			Files.createDirectories(file.getParent());
 			Files.writeString(file, content);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write " + file, e);
+		}
+	}
+
+	private static void writeBytes(Path file, byte[] content) {
+		try {
+			Files.createDirectories(file.getParent());
+			Files.write(file, content);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not write " + file, e);
 		}

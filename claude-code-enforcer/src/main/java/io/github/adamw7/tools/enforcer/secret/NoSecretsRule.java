@@ -1,10 +1,9 @@
 package io.github.adamw7.tools.enforcer.secret;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 
 import javax.inject.Named;
@@ -13,6 +12,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when a configured file contains what looks
@@ -114,12 +114,11 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 
 	/** The file's lines, or none when it cannot be decoded as text (e.g. a binary asset). */
 	private List<String> readTextLines(File file) {
-		try {
-			return Files.readString(file.toPath()).lines().toList();
-		} catch (IOException e) {
-			getLog().debug("Skipping undecodable file " + file + ": " + e.getMessage());
-			return List.of();
+		Optional<String> content = MarkdownText.readIfText(file);
+		if (content.isEmpty()) {
+			getLog().debug("Skipping undecodable file " + file);
 		}
+		return content.map(text -> text.lines().toList()).orElseGet(List::of);
 	}
 
 	private List<SecretPattern> patterns() {

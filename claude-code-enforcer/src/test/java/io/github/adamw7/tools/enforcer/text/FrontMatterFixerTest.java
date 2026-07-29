@@ -93,6 +93,33 @@ class FrontMatterFixerTest {
 	}
 
 	@Test
+	void doesNotMistakeAThematicBreakFollowedByProseContainingAColonForFrontMatter() {
+		String content = """
+				---
+
+				Some notes: here is what the colon is doing.
+				More prose.
+				""";
+
+		assertTrue(FrontMatterFixer.repair(content).isEmpty(), () -> FrontMatterFixer.repair(content).toString());
+	}
+
+	@Test
+	void doesNotSwallowBodyProseContainingAColonIntoAnUnclosedBlock() {
+		String content = """
+				---
+				name: reviewer
+
+				Use this skill when: you need a review.
+				""";
+
+		Optional<String> repaired = FrontMatterFixer.repair(content);
+
+		assertTrue(repaired.isPresent());
+		assertTrue(repaired.get().endsWith("---\nUse this skill when: you need a review.\n"), repaired.get());
+	}
+
+	@Test
 	void leavesContentWithoutAFrontMatterIntentUntouched() {
 		String content = """
 				# Title

@@ -61,9 +61,23 @@ public class ClaudeTrustStore {
 		return true;
 	}
 
+	/**
+	 * A field the document does not carry is created, and one that is already an
+	 * object is used as-is. A field carrying anything else is refused rather than
+	 * replaced, for the same reason {@link #asObjectOrFresh} refuses a non-object
+	 * document: writing over it would discard whatever it held, and this is Claude
+	 * Code's own per-user state rather than a file the adoption owns.
+	 */
 	private ObjectNode objectChild(ObjectNode parent, String name) {
 		JsonNode existing = parent.get(name);
-		return existing instanceof ObjectNode object ? object : parent.putObject(name);
+		if (existing == null || existing.isNull()) {
+			return parent.putObject(name);
+		}
+		if (existing instanceof ObjectNode object) {
+			return object;
+		}
+		throw new AdoptionException("Refusing to overwrite '" + name + "' in the Claude config;"
+				+ " expected a JSON object but found " + existing.getNodeType() + ": " + configFile);
 	}
 
 	private ObjectNode readRoot() {

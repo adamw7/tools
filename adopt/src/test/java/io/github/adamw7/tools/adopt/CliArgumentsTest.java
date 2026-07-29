@@ -199,6 +199,23 @@ class CliArgumentsTest {
 		assertEquals(Path.of("/tmp/report.json"), cli.reportFile().orElseThrow());
 	}
 
+	/**
+	 * A blank value counts as not supplied for every other optional input, so a
+	 * blank {@code --report} must not leave the run writing a file named after
+	 * whitespace.
+	 */
+	@Test
+	void blankReportFileCountsAsNotSupplied() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--report", "  " });
+		assertTrue(cli.reportFile().isEmpty());
+	}
+
+	@Test
+	void stripsTheReportFileName() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--report", " /tmp/report.json " });
+		assertEquals(Path.of("/tmp/report.json"), cli.reportFile().orElseThrow());
+	}
+
 	@Test
 	void mixesFlagsAndPositionals() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--draft", "/tmp/ws", "feature/x" });

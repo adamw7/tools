@@ -2,12 +2,14 @@ package io.github.adamw7.tools.adopt.step;
 
 /**
  * Keeps text the adoption writes into an existing file on the line terminator
- * that file already uses. Both installers that edit a project file — the POM
- * rewrite in {@link PomEnforcerInstaller} and the block
- * {@link GradleGuardInstaller} appends — produce LF text, so writing it into a
- * CRLF file would leave the new region with terminators mixed into an otherwise
- * CRLF file, or (for the POM, whose terminators XML parsing has already
- * normalised) flip every line of it to LF and reformat the whole file.
+ * that file already uses. Every place that edits a file in the checkout — the POM
+ * rewrite in {@link PomEnforcerInstaller}, the block
+ * {@link GradleGuardInstaller} appends, and the {@code CLAUDE.md}
+ * {@link ClaudeMdConformanceStep} reshapes — produces LF text, so writing it into
+ * a CRLF file would leave the new region with terminators mixed into an otherwise
+ * CRLF file, or (for the POM and the {@code CLAUDE.md}, whose terminators the
+ * reading has already normalised) flip every line of it to LF and reformat the
+ * whole file.
  */
 final class LineTerminators {
 

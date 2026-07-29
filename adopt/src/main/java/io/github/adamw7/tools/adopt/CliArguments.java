@@ -127,7 +127,7 @@ public final class CliArguments {
 			case "--label" -> consumeValue(args, index, labels::add);
 			case "--assignee" -> consumeValue(args, index, assignees::add);
 			case "--rule-version" -> consumeValue(args, index, value -> ruleVersion = optionalText(value));
-			case "--report" -> consumeValue(args, index, value -> reportFile = Path.of(value));
+			case "--report" -> consumeValue(args, index, value -> reportFile = optionalPath(value));
 			case "--draft" -> {
 				draft = true;
 				yield index + 1;
@@ -150,10 +150,11 @@ public final class CliArguments {
 
 	/**
 	 * A blank workspace or branch positional counts as not supplied — the rule
-	 * {@link Text} defines for every optional input — so it falls back to its
-	 * default rather than resolving the empty path or being rejected as an invalid
-	 * branch. A blank repository positional is dropped the same way, leaving the run
-	 * with whatever the {@code --repo} and {@code --repos} flags named.
+	 * {@link Text} defines for every optional input, and the one every optional flag
+	 * value follows too — so it falls back to its default rather than resolving the
+	 * empty path or being rejected as an invalid branch. A blank repository
+	 * positional is dropped the same way, leaving the run with whatever the
+	 * {@code --repo} and {@code --repos} flags named.
 	 */
 	private void consumePositional(String argument) {
 		switch (positionals) {

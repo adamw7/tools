@@ -112,6 +112,33 @@ class ClaudeTrustStoreTest {
 	}
 
 	/**
+	 * The refusal has to reach inside the document too. A {@code projects} field
+	 * carrying something other than an object was quietly replaced with a fresh one,
+	 * discarding whatever it held — the very outcome the top-level check exists to
+	 * prevent.
+	 */
+	@Test
+	void refusesToOverwriteAProjectsFieldThatIsNotAnObject(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		String original = "{\"projects\":[\"do not lose me\"],\"numStartups\":4}";
+		Files.writeString(config, original);
+
+		assertThrows(AdoptionException.class, () -> new ClaudeTrustStore(config).trust(dir.resolve("repo")));
+		assertEquals(original, Files.readString(config));
+	}
+
+	/** A {@code projects} field the config carries as JSON null is simply created. */
+	@Test
+	void treatsANullProjectsFieldAsAbsent(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		Files.writeString(config, "{\"projects\":null,\"numStartups\":4}");
+		Path repo = dir.resolve("repo");
+
+		assertTrue(new ClaudeTrustStore(config).trust(repo));
+		assertTrue(Files.readString(config).contains("hasTrustDialogAccepted"), Files.readString(config));
+	}
+
+	/**
 	 * A half-written or hand-edited config is not something to silently replace:
 	 * the trust flag is worth far less than the user's own Claude Code settings.
 	 */

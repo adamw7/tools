@@ -45,8 +45,9 @@ public class ClaudeMdConformer {
 
 	static final String AGENTS_REFERENCE_LINE = "See [AGENTS.md](AGENTS.md) for the companion agent guide.";
 
-	private static final String BACKTICK_FENCE = "```";
-	private static final String TILDE_FENCE = "~~~";
+	private static final char BACKTICK = '`';
+	private static final char TILDE = '~';
+	private static final int MIN_FENCE_LENGTH = 3;
 	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
 
 	/**
@@ -68,14 +69,15 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * Closes a fence the document opened and never closed — with the marker it was
-	 * opened with — so everything appended below lands outside the block. A document
-	 * whose fences balance is returned untouched, keeping the reshape idempotent.
+	 * Closes a fence the document opened and never closed — with a delimiter that
+	 * actually closes it, so a {@code ````} wrapper is not left open by a {@code ```}
+	 * line — so everything appended below lands outside the block. A document whose
+	 * fences balance is returned untouched, keeping the reshape idempotent.
 	 */
 	private void closeUnterminatedFence(List<String> lines) {
-		String open = scanFences(lines).openAtEnd();
+		Delimiter open = scanFences(lines).openAtEnd();
 		if (open != null) {
-			lines.add(open);
+			lines.add(open.closing());
 		}
 	}
 
@@ -237,18 +239,50 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * The outcome of reading the document's fences: which lines are code, and the
-	 * marker still open once the last line has been read.
+	 * One fence delimiter line: the character it is written with, how many of them it
+	 * runs, and whether anything follows them — the info string of an opening
+	 * delimiter, such as the {@code java} of {@code ```java}.
 	 *
-	 * @param openAtEnd the unterminated fence's marker, or {@code null} when the
+	 * <p>This mirrors {@code MarkdownDocument} in the {@code claude-code-enforcer}
+	 * module, the reader the wired-in {@code claudeMdFormat} rule uses; keep the two
+	 * in sync, as with {@link #REQUIRED_SECTIONS}. Reading fences any more loosely
+	 * than the rule does makes the reshape act on lines the rule holds to be code: a
+	 * {@code ## Testing} inside a code sample was taken for the section the document
+	 * already had, so the real one was never appended and the adoption failed its own
+	 * {@link VerifyStep} — and a heading inside a sample was renamed in place,
+	 * rewriting the sample.
+	 */
+	private record Delimiter(char character, int length, boolean info) {
+
+		/**
+		 * Whether this line closes the block {@code open} started. A closing delimiter
+		 * uses the same character, is at least as long, and carries no info string, so a
+		 * shorter or annotated fence nested inside the block is content rather than its
+		 * end.
+		 */
+		boolean closes(Delimiter open) {
+			return character == open.character() && length >= open.length() && !info;
+		}
+
+		/** The delimiter line that closes this one: the same run, carrying no info string. */
+		String closing() {
+			return String.valueOf(character).repeat(length);
+		}
+	}
+
+	/**
+	 * The outcome of reading the document's fences: which lines are code, and the
+	 * delimiter still open once the last line has been read.
+	 *
+	 * @param openAtEnd the unterminated fence's delimiter, or {@code null} when the
 	 *                  document's fences balance
 	 */
-	private record Fences(boolean[] mask, String openAtEnd) {
+	private record Fences(boolean[] mask, Delimiter openAtEnd) {
 	}
 
 	private static Fences scanFences(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
-		String open = null;
+		Delimiter open = null;
 		for (int index = 0; index < lines.size(); index++) {
 			open = applyFence(lines.get(index).strip(), open, mask, index);
 		}
@@ -256,28 +290,41 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * Marks whether the line is code and returns the fence marker still open after
-	 * it. A fence is closed only by the marker it was opened with, so a {@code ~~~}
-	 * line inside a {@code ```} block stays content.
+	 * Marks whether the line is code and returns the fence delimiter still open after
+	 * it. A fence is closed only by a delimiter that {@link Delimiter#closes} it, so a
+	 * {@code ~~~} line inside a {@code ```} block, a {@code ```java} line inside a
+	 * {@code ```} block, and a {@code ```} line inside a {@code ````} wrapper all stay
+	 * content.
 	 */
-	private static String applyFence(String line, String open, boolean[] mask, int index) {
-		String marker = fenceMarker(line);
+	private static Delimiter applyFence(String line, Delimiter open, boolean[] mask, int index) {
+		Delimiter delimiter = delimiterOf(line);
 		if (open == null) {
-			mask[index] = marker != null;
-			return marker;
+			mask[index] = delimiter != null;
+			return delimiter;
 		}
 		mask[index] = true;
-		return open.equals(marker) ? null : open;
+		return delimiter != null && delimiter.closes(open) ? null : open;
 	}
 
-	private static String fenceMarker(String line) {
-		if (line.startsWith(BACKTICK_FENCE)) {
-			return BACKTICK_FENCE;
+	/** @return the fence delimiter the line declares, or {@code null} when it declares none */
+	private static Delimiter delimiterOf(String line) {
+		if (line.isEmpty() || !isFenceCharacter(line.charAt(0))) {
+			return null;
 		}
-		if (line.startsWith(TILDE_FENCE)) {
-			return TILDE_FENCE;
+		char character = line.charAt(0);
+		int length = runLength(line, character);
+		if (length < MIN_FENCE_LENGTH) {
+			return null;
 		}
-		return null;
+		return new Delimiter(character, length, !line.substring(length).isBlank());
+	}
+
+	private static boolean isFenceCharacter(char character) {
+		return character == BACKTICK || character == TILDE;
+	}
+
+	private static int runLength(String line, char character) {
+		return (int) line.chars().takeWhile(candidate -> candidate == character).count();
 	}
 
 	/** Joins the lines under a single trailing newline, dropping any blank lines the reshape left at the end. */

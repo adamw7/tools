@@ -379,24 +379,142 @@ class ClaudeMdConformerTest {
 	}
 
 	/**
+	 * A {@code ````} wrapper holding a {@code ```} sample is one code block to the
+	 * rule, which ends a fence only on a run at least as long as the one that opened
+	 * it. Reading the inner {@code ```} as the wrapper's end left the sample's
+	 * {@code ## Testing} looking like the document's own section, so the real one was
+	 * never appended and the rule the adoption had just wired in failed the build.
+	 */
+	@Test
+	void doesNotTakeAHeadingInsideANestedFenceForASection() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Project
+
+				How to write a section:
+
+				````
+				```
+				## Testing
+
+				Run the tests.
+				```
+				````
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(headingsOutsideFences(conformed).contains("## Testing"),
+				"the sample's heading is code, so the real section must still be appended:\n" + conformed);
+		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS), conformed);
+	}
+
+	/**
+	 * A fence line carrying an info string opens a block and never closes one, so a
+	 * {@code ```java} inside an open {@code ```} block is content. Reading it as the
+	 * block's end flipped every line after it from code to structure, exposing the
+	 * sample's headings to the reshape — which then renamed them and spliced stub
+	 * bodies into the very sample the document was explaining.
+	 */
+	@Test
+	void doesNotCloseAFenceWithAnInfoStringDelimiter() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Project
+
+				```
+				```java
+				## Maven
+				```
+
+				## Java version
+
+				Java 25.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(headingsOutsideFences(conformed).contains("## Maven"),
+				"the sample's heading is code, so the real section must still be appended:\n" + conformed);
+		assertTrue(conformed.contains("```java\n## Maven\n"), "the sample must survive verbatim:\n" + conformed);
+	}
+
+	/**
+	 * The delimiter that closes an unterminated fence has to be one that actually
+	 * closes it: a {@code ```} line leaves a {@code ````} wrapper open, so every
+	 * section appended below would still be code to the rule.
+	 */
+	@Test
+	void closesAnUnterminatedFenceWithADelimiterAsLongAsTheOneThatOpenedIt() {
+		String generated = """
+				# CLAUDE.md
+
+				Intro.
+
+				````markdown
+				```java
+				class Foo {}
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+				"every appended section must be a heading, not code:\n" + conformed);
+		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
+	}
+
+	/**
 	 * The document's lines that sit outside a code fence, stripped. The one place
 	 * these tests read fences, so the two questions they ask of a reshaped document —
 	 * which headings it carries, and whether it references {@code AGENTS.md} — cannot
 	 * come to different answers about what is code.
+	 *
+	 * <p>Deliberately written the way the enforcer's {@code MarkdownDocument} reads
+	 * fences rather than the way {@link ClaudeMdConformer} does, so these tests judge
+	 * the reshape against the rule it has to satisfy instead of against its own
+	 * reading of the document. A fence is closed only by a run of the same character,
+	 * at least as long as the one that opened it, carrying no info string.
 	 */
 	private List<String> linesOutsideFences(String content) {
 		List<String> outside = new ArrayList<>();
-		boolean fenced = false;
+		String open = null;
 		for (String line : content.lines().map(String::strip).toList()) {
-			fenced = collect(outside, line, fenced);
+			open = collect(outside, line, open);
 		}
 		return outside;
 	}
 
-	private boolean collect(List<String> outside, String line, boolean fenced) {
-		if (!fenced) {
+	/**
+	 * Records the line unless it is code — the delimiters included, as the rule masks
+	 * them too — and answers with the fence run still open after it.
+	 */
+	private String collect(List<String> outside, String line, String open) {
+		String run = fenceRun(line);
+		if (open == null) {
+			addUnlessCode(outside, line, run != null);
+			return run;
+		}
+		return closes(run, line, open) ? null : open;
+	}
+
+	private void addUnlessCode(List<String> outside, String line, boolean code) {
+		if (!code) {
 			outside.add(line);
 		}
-		return line.startsWith("```") != fenced;
+	}
+
+	private boolean closes(String run, String line, String open) {
+		return run != null && run.charAt(0) == open.charAt(0) && run.length() >= open.length()
+				&& line.substring(run.length()).isBlank();
+	}
+
+	/** The leading run of fence characters a line declares, or {@code null} when it declares none. */
+	private String fenceRun(String line) {
+		if (line.isEmpty() || (line.charAt(0) != '`' && line.charAt(0) != '~')) {
+			return null;
+		}
+		char character = line.charAt(0);
+		String run = line.substring(0, (int) line.chars().takeWhile(candidate -> candidate == character).count());
+		return run.length() < 3 ? null : run;
 	}
 }

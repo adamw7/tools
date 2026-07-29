@@ -1,13 +1,17 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
+
+import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -74,7 +78,7 @@ public class PermissionsFormatRule extends JsonFileRule {
 	}
 
 	@Override
-	protected void collectViolations(JsonNode settings, List<String> violations) {
+	protected void collectViolations(JsonNode settings, List<String> violations) throws EnforcerRuleException {
 		if (!settings.has(PERMISSIONS_KEY)) {
 			return;
 		}
@@ -148,13 +152,35 @@ public class PermissionsFormatRule extends JsonFileRule {
 		}
 	}
 
-	private void collectForbiddenEntries(JsonNode permissions, List<String> violations) {
+	private void collectForbiddenEntries(JsonNode permissions, List<String> violations) throws EnforcerRuleException {
 		if (forbiddenEntryPatterns == null) {
 			return;
 		}
-		List<Pattern> patterns = forbiddenEntryPatterns.stream().map(Pattern::compile).toList();
+		List<Pattern> patterns = compiledForbiddenPatterns();
 		for (String entry : textEntries(permissions, ALLOW_KEY)) {
 			addForbiddenEntryViolations(entry, patterns, violations);
+		}
+	}
+
+	/**
+	 * A configured pattern that is not a valid regular expression is a build-setup
+	 * mistake, so it fails with a message naming it rather than letting a
+	 * {@link PatternSyntaxException} escape as an internal build error.
+	 */
+	private List<Pattern> compiledForbiddenPatterns() throws EnforcerRuleException {
+		List<Pattern> patterns = new ArrayList<>();
+		for (String pattern : forbiddenEntryPatterns) {
+			patterns.add(compiled(pattern));
+		}
+		return patterns;
+	}
+
+	private Pattern compiled(String pattern) throws EnforcerRuleException {
+		try {
+			return Pattern.compile(pattern);
+		} catch (PatternSyntaxException e) {
+			throw new EnforcerRuleException("forbiddenEntryPattern '" + pattern
+					+ "' is not a valid regular expression: " + e.getDescription());
 		}
 	}
 

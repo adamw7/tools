@@ -59,8 +59,13 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	/** The JSON file to validate. Injected from the rule configuration. */
 	protected abstract File jsonFile();
 
-	/** Document-specific checks against the parsed JSON. */
-	protected abstract void collectViolations(JsonNode root, List<String> violations);
+	/**
+	 * Document-specific checks against the parsed JSON. A subclass throws only for a
+	 * build-setup mistake in its own configuration, such as a parameter that is not
+	 * the regular expression it must be; a problem with the document itself belongs
+	 * in {@code violations}.
+	 */
+	protected abstract void collectViolations(JsonNode root, List<String> violations) throws EnforcerRuleException;
 
 	/**
 	 * The header that prefixes the grouped violation report. A rule that validates

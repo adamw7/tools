@@ -101,6 +101,36 @@ class UniqueDescriptionsRuleTest {
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("Reviews code.")), logger.warnings().toString());
 	}
 
+	@Test
+	void doesNotTreatTwoBlockScalarDescriptionsAsTheSameOne() {
+		writeAgentWithBlockScalarDescription("reviewer", "Reviews Java code for defects.");
+		writeAgentWithBlockScalarDescription("committer", "Writes conventional commit messages.");
+
+		// Both declare their description as '>'; reading the indicator instead of the
+		// prose below it would make every such definition look identical.
+		assertDoesNotThrow(agentsRule()::execute);
+	}
+
+	@Test
+	void stillReportsTwoBlockScalarDescriptionsThatDoAgree() {
+		writeAgentWithBlockScalarDescription("reviewer", "Reviews Java code for defects.");
+		writeAgentWithBlockScalarDescription("auditor", "Reviews Java code for defects.");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
+		assertTrue(exception.getMessage().contains("Reviews Java code for defects."), exception.getMessage());
+	}
+
+	private void writeAgentWithBlockScalarDescription(String name, String description) {
+		writeString(agentsDir().resolve(name + ".md"), """
+				---
+				name: %s
+				description: >
+				  %s
+				---
+				# %s
+				""".formatted(name, description, name));
+	}
+
 	private UniqueDescriptionsRule agentsRule() {
 		UniqueDescriptionsRule rule = new UniqueDescriptionsRule();
 		rule.setAgentsDir(agentsDir().toFile());

@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * The {@code @path} memory imports reachable from a root document, together with
@@ -43,7 +44,6 @@ final class ImportGraph {
 	}
 
 	private static final Pattern IMPORT = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9_./-]+)");
-	private static final Pattern CODE_SPAN = Pattern.compile("`[^`]*`");
 	private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
 
 	private final Map<Path, List<Reference>> references = new LinkedHashMap<>();
@@ -128,7 +128,7 @@ final class ImportGraph {
 		if (document.isInsideFence(index)) {
 			return;
 		}
-		Matcher matcher = IMPORT.matcher(CODE_SPAN.matcher(document.line(index)).replaceAll(" "));
+		Matcher matcher = IMPORT.matcher(MarkdownText.withoutCodeSpans(document.line(index)));
 		while (matcher.find()) {
 			addReference(file, withoutTrailingDots(matcher.group(1)), found);
 		}

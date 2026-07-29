@@ -48,4 +48,19 @@ class CommandTokensTest {
 		assertEquals(List.of("\"$CLAUDE_PROJECT_DIR\"/my", "hook.sh"),
 				CommandTokens.of("\"$CLAUDE_PROJECT_DIR\"/my hook.sh"));
 	}
+
+	@Test
+	void splitsOnASemicolonSoItDoesNotStayGluedToAPath() {
+		assertEquals(List.of("a.sh", "echo", "done"), CommandTokens.of("a.sh; echo done"));
+	}
+
+	@Test
+	void splitsOnPipesAndAmpersandsWithNoSurroundingSpace() {
+		assertEquals(List.of("a.sh", "b.sh", "c.sh"), CommandTokens.of("a.sh&&b.sh|c.sh"));
+	}
+
+	@Test
+	void keepsAQuotedSeparatorInsideItsToken() {
+		assertEquals(List.of("echo", "\"a;b\""), CommandTokens.of("echo \"a;b\""));
+	}
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A parsed Markdown document: its lines plus a mask marking which lines belong to
@@ -13,7 +14,10 @@ import java.util.Set;
  * Headings are recognised on whole lines outside fenced code blocks, so a heading
  * mentioned inside a fence or in prose is not treated as document structure. The
  * mask includes the opening and closing delimiters themselves, so heading and body
- * detection agree on what is code.
+ * detection agree on what is code. A heading is an ATX one — one to six {@code #}
+ * characters followed by whitespace or nothing else — so a line that merely starts
+ * with a hash, such as {@code #1 rule: run mvn install}, stays prose. Counting it
+ * as a heading would end the section it sits in and report that section as empty.
  * <p>
  * A fence is closed only by a run of the <em>same</em> character, at least as long
  * as the one that opened it, carrying no info string. All three conditions matter,
@@ -29,8 +33,10 @@ public final class MarkdownDocument {
 	private static final char BACKTICK = '`';
 	private static final char TILDE = '~';
 	private static final int MIN_FENCE_LENGTH = 3;
-	private static final String HEADING_PREFIX = "#";
 	private static final char HEADING_CHAR = '#';
+
+	/** One to six {@code #} characters, then whitespace and any text, or nothing at all. */
+	private static final Pattern ATX_HEADING = Pattern.compile("#{1,6}(\\s.*)?");
 
 	private final List<String> lines;
 	private final boolean[] insideFence;
@@ -148,7 +154,7 @@ public final class MarkdownDocument {
 	}
 
 	private static boolean isHeading(String line) {
-		return line.startsWith(HEADING_PREFIX);
+		return ATX_HEADING.matcher(line).matches();
 	}
 
 	private static int headingLevel(String heading) {

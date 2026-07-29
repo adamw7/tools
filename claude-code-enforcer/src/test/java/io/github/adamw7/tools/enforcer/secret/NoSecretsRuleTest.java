@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.secret;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +104,31 @@ class NoSecretsRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("password"), exception.getMessage());
+	}
+
+	@Test
+	void failsWithAClearMessageForAPatternThatIsNotAValidRegularExpression() {
+		NoSecretsRule rule = ruleForFile("nothing to see here");
+		rule.setSecretPatterns(List.of("(unclosed"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not a valid regular expression"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("(unclosed"), exception.getMessage());
+	}
+
+	@Test
+	void reportsAFileNamedAndScannedAsADirectoryEntryOnlyOnce() {
+		Path file = writeString(tempDir.resolve("hooks/script.sh"), "export KEY=" + ANTHROPIC_KEY + "\n");
+		NoSecretsRule rule = new NoSecretsRule();
+		rule.setFiles(List.of(file.toFile()));
+		rule.setDirectories(List.of(tempDir.resolve("hooks").toFile()));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertEquals(1, occurrences(exception.getMessage(), "script.sh"), exception.getMessage());
+	}
+
+	private static int occurrences(String message, String token) {
+		return message.split(java.util.regex.Pattern.quote(token), -1).length - 1;
 	}
 
 	private NoSecretsRule ruleForFile(String content) {

@@ -251,6 +251,39 @@ class HookCommandsValidRuleTest {
 	}
 
 	@Test
+	void passesWhenAChainedCommandEndsAScriptPathWithASemicolon() {
+		writeString(tempDir.resolve("first.sh"), "#!/bin/sh\n");
+		writeString(tempDir.resolve("second.sh"), "#!/bin/sh\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/first.sh; $CLAUDE_PROJECT_DIR/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// The semicolon separates the two commands; keeping it on the first path
+		// would look for a script literally named 'first.sh;'.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void leavesAVariableThatOnlyStartsWithTheProjectDirNameAlone() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash $CLAUDE_PROJECT_DIR_BACKUP/run.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		// $CLAUDE_PROJECT_DIR_BACKUP is a different variable, so nothing here names a
+		// project-local script for the rule to resolve.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillResolvesTheBracedSpellingFollowedByMoreOfThePath() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash ${CLAUDE_PROJECT_DIR}/absent.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+		assertTrue(exception.getMessage().endsWith("absent.sh"), exception.getMessage());
+	}
+
+	@Test
 	void namesTheSettingsFileInItsDescription() {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("echo hi"));
 

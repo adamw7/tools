@@ -220,6 +220,43 @@ class SkillFilesExistRuleTest {
 		assertTrue(readString(file).contains("---\n# Body"), readString(file));
 	}
 
+	@Test
+	void acceptsADescriptionWrittenAsABlockScalar() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description: >
+				  Generate conventional commit messages. Use when: the user says "commit".
+				---
+				# Body
+				""");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setAllowedFrontMatterKeys(java.util.List.of("name", "description"));
+
+		// The wrapped prose continues the description, so "Use when" is not an
+		// unknown key the skill declared.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void measuresABlockScalarDescriptionAgainstTheLengthCap() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description: >
+				  %s
+				---
+				# Body
+				""".formatted("x".repeat(60)));
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setMaxDescriptionLength(20);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("exceeds 20 characters"), exception.getMessage());
+	}
+
 	private void createSkill(String name) {
 		Path skillDir = createDirectory(tempDir.resolve(name));
 		writeString(skillDir.resolve("SKILL.md"), """

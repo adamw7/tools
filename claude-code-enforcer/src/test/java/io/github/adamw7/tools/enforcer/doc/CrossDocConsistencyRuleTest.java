@@ -99,6 +99,19 @@ class CrossDocConsistencyRuleTest {
 		assertTrue(exception.getMessage().contains("catastrophic backtracking"), exception.getMessage());
 	}
 
+	@Test
+	void failsWithAClearMessageForAPatternThatIsNotAValidRegularExpression() {
+		CrossDocConsistencyRule rule = ruleFor("# CLAUDE.md\nJava 25\n", "# AGENTS.md\nJava 25\n");
+		rule.setConsistentPatterns(List.of("Java (\\d+"));
+
+		// A misconfigured pattern is a build-setup mistake and must name itself,
+		// rather than escaping as a PatternSyntaxException the build reports as an
+		// internal error.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("not a valid regular expression"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("Java (\\d+"), exception.getMessage());
+	}
+
 	private CrossDocConsistencyRule ruleFor(String claudeContent, String agentsContent) {
 		Path claude = tempDir.resolve("CLAUDE.md");
 		Path agents = tempDir.resolve("AGENTS.md");

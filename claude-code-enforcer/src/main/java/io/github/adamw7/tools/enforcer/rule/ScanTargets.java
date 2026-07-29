@@ -6,7 +6,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -22,6 +24,12 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * yields entries in a filesystem-dependent order that would otherwise let a rule
  * report its violations differently run to run. An absent directory is skipped,
  * since most Claude Code configuration directories are optional.
+ * <p>
+ * The two parameters overlap freely — naming a file explicitly and scanning the
+ * directory it sits in is a natural way to say "this one especially" — so
+ * {@link #allFiles} yields each file once. A rule that checked both lists in turn
+ * would report the overlapping file's violations twice and record them twice in a
+ * baseline.
  */
 public final class ScanTargets {
 
@@ -45,9 +53,29 @@ public final class ScanTargets {
 		return files;
 	}
 
-	/** Every regular file under the configured directories. */
-	public List<File> filesInDirectories() {
-		return filesInDirectories(path -> true);
+	/**
+	 * Every configured file, then every regular file under the configured
+	 * directories, each listed once.
+	 */
+	public List<File> allFiles() {
+		return allFiles(path -> true);
+	}
+
+	/**
+	 * Every configured file, then the files under the configured directories that
+	 * {@code acceptedInDirectories} matches, each listed once. The predicate narrows
+	 * the directory scan alone: a file named explicitly was chosen by the
+	 * configuration and is checked whatever its name.
+	 */
+	public List<File> allFiles(Predicate<Path> acceptedInDirectories) {
+		Map<Path, File> unique = new LinkedHashMap<>();
+		files.forEach(file -> unique.putIfAbsent(key(file), file));
+		filesInDirectories(acceptedInDirectories).forEach(file -> unique.putIfAbsent(key(file), file));
+		return List.copyOf(unique.values());
+	}
+
+	private static Path key(File file) {
+		return file.toPath().toAbsolutePath().normalize();
 	}
 
 	/** The regular files under the configured directories that {@code accepted} matches. */

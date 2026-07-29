@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 public final class MarkdownText {
 
 	private static final char BYTE_ORDER_MARK = (char) 0xFEFF;
+	private static final Pattern CODE_SPAN = Pattern.compile("`[^`]*`");
 
 	private MarkdownText() {
 	}
@@ -74,6 +76,17 @@ public final class MarkdownText {
 			return content.substring(1);
 		}
 		return content;
+	}
+
+	/**
+	 * The line with every inline code span replaced by a space, so text quoted as
+	 * code is not read as the markup it illustrates. Documentation about Markdown
+	 * writes a sample link or import inside backticks precisely because it is an
+	 * example, and a rule that followed it would report the sample's target as a
+	 * missing file.
+	 */
+	public static String withoutCodeSpans(String line) {
+		return CODE_SPAN.matcher(line).replaceAll(" ");
 	}
 
 	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */

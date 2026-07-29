@@ -55,12 +55,11 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		requireLimitConfigured();
 		ScanTargets targets = new ScanTargets(files, directories);
 		targets.requireConfigured();
-		List<String> violations = new ArrayList<>();
 		for (File file : targets.files()) {
 			requireExists(file, file.getName());
-			collectBudgetViolations(file, violations);
 		}
-		for (File file : targets.filesInDirectories(ContextBudgetRule::isMarkdown)) {
+		List<String> violations = new ArrayList<>();
+		for (File file : targets.allFiles(ContextBudgetRule::isMarkdown)) {
 			collectBudgetViolations(file, violations);
 		}
 		report("Context budget exceeded:", violations);

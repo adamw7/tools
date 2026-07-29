@@ -46,6 +46,14 @@ jobs:
       # -DenforceClaudeMd activates the claude-md-enforce profile so the root
       # build fails when CLAUDE.md is missing or malformed. This is the only
       # workflow that runs the check.
+      #
+      # timeout-minutes: 2 caps the build at 120 seconds. The duration check
+      # below reports and fails on an overrun, but it can only run once mvn has
+      # returned: a build that wedges outright would sit there until the job's
+      # 6-hour default limit. The step timeout is what actually kills it at the
+      # same 120s bound. Scoped to this step, not the job, so the checkout, JDK
+      # setup and enforcer bootstrap do not eat into the build's budget.
+      timeout-minutes: 2
       run: |
         start=$(date +%s)
         mvn -B -ntp package -DenforceClaudeMd --file pom.xml

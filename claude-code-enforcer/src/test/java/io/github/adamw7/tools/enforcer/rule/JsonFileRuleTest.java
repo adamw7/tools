@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -153,14 +153,6 @@ class JsonFileRuleTest {
 		return rule;
 	}
 
-	private static void writeString(Path file, String content) {
-		try {
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
 	/**
 	 * Minimal concrete rule that records what the base class hands to
 	 * {@link #collectViolations} so the shared scaffolding can be asserted in
@@ -172,6 +164,10 @@ class JsonFileRuleTest {
 		private boolean optional;
 		private final List<String> injectedViolations = new ArrayList<>();
 		private JsonNode parsedRoot;
+
+		TestJsonRule() {
+			super("testFile", "test.json");
+		}
 
 		void setFile(File file) {
 			this.file = file;
@@ -188,16 +184,6 @@ class JsonFileRuleTest {
 		@Override
 		protected File jsonFile() {
 			return file;
-		}
-
-		@Override
-		protected String fileParameter() {
-			return "testFile";
-		}
-
-		@Override
-		protected String description() {
-			return "test.json";
 		}
 
 		@Override

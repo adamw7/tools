@@ -1,5 +1,8 @@
 package io.github.adamw7.tools.enforcer.settings;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,10 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
+import io.github.adamw7.tools.enforcer.rule.TestFiles;
 
 class HooksFormatRuleTest {
 
@@ -292,12 +293,7 @@ class HooksFormatRuleTest {
 	}
 
 	private void writeBytes(String name, byte[] content) {
-		Path file = hooksDir().resolve(name);
-		try {
-			Files.write(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
+		TestFiles.writeBytes(hooksDir().resolve(name), content);
 	}
 
 	private File settingsReferencing(String command) {
@@ -310,7 +306,7 @@ class HooksFormatRuleTest {
 
 	private Path hooksDir() {
 		Path dir = tempDir.resolve(".claude").resolve("hooks");
-		createDirectories(dir);
+		createDirectory(dir);
 		return dir;
 	}
 
@@ -332,30 +328,5 @@ class HooksFormatRuleTest {
 
 	private boolean supportsExecutableBit() {
 		return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
-	}
-
-	private void assumeSymlink(Path link, Path target) {
-		try {
-			Files.createSymbolicLink(link, target);
-		} catch (IOException | UnsupportedOperationException e) {
-			assumeTrue(false, "filesystem does not support symbolic links");
-		}
-	}
-
-	private void writeString(Path file, String content) {
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
-	private static void createDirectories(Path dir) {
-		try {
-			Files.createDirectories(dir);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not create " + dir, e);
-		}
 	}
 }

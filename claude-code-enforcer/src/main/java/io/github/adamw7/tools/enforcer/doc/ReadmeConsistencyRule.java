@@ -52,9 +52,4 @@ public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
 	void setConsistentPatterns(List<String> consistentPatterns) {
 		this.consistentPatterns = consistentPatterns;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("ReadmeConsistencyRule[readmeFile=%s, agentDocFile=%s]", readmeFile, agentDocFile);
-	}
 }

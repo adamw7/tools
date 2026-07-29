@@ -119,9 +119,4 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 	void setIgnoredImports(List<String> ignoredImports) {
 		this.ignoredImports = ignoredImports;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("MemoryImportsRule[claudeMdFile=%s]", claudeMdFile);
-	}
 }

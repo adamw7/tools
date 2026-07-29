@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.rule;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,6 +37,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)]+)\\)");
 	private static final Pattern EXTERNAL_REFERENCE = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
 
+	private final String documentName;
+	private final List<String> defaultRequiredSections;
+
 	/** Optional override for the title heading. Falls back to the subclass default. */
 	private String titleHeading;
 
@@ -57,6 +61,17 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	/** Base directory for resolving relative file references. Defaults to the document's directory. */
 	private File referenceBaseDir;
 
+	/**
+	 * @param documentName            human-readable file name used in messages, e.g.
+	 *                                {@code CLAUDE.md}
+	 * @param defaultRequiredSections the section headings the document must contain
+	 *                                unless the configuration overrides them
+	 */
+	protected MarkdownFormatRule(String documentName, List<String> defaultRequiredSections) {
+		this.documentName = documentName;
+		this.defaultRequiredSections = defaultRequiredSections;
+	}
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		MarkdownDocument document = readDocument();
@@ -75,10 +90,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	protected abstract File documentFile();
 
 	/** Human-readable file name used in messages, e.g. {@code CLAUDE.md}. */
-	protected abstract String documentName();
-
-	/** The default section headings the document must contain. */
-	protected abstract List<String> defaultRequiredSections();
+	protected final String documentName() {
+		return documentName;
+	}
 
 	/**
 	 * The default title heading the document must start with. A document is titled
@@ -86,7 +100,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	 * document titled otherwise overrides this.
 	 */
 	protected String defaultTitleHeading() {
-		return "# " + documentName();
+		return "# " + documentName;
 	}
 
 	/** Hook for document-specific checks. The default implementation does nothing. */
@@ -103,11 +117,11 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	final String titleHeading() {
-		return titleHeading != null ? titleHeading : defaultTitleHeading();
+		return Objects.requireNonNullElseGet(titleHeading, this::defaultTitleHeading);
 	}
 
 	final List<String> requiredSections() {
-		return requiredSections != null ? requiredSections : defaultRequiredSections();
+		return Objects.requireNonNullElse(requiredSections, defaultRequiredSections);
 	}
 
 	public void setTitleHeading(String titleHeading) {

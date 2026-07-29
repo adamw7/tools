@@ -1,14 +1,12 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -156,19 +154,7 @@ class BaselineTest {
 	}
 
 	private File writeString(String content) {
-		Path file = tempDir.resolve("baseline.txt");
-		try {
-			return Files.writeString(file, content).toFile();
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
+		return TestFiles.writeString(tempDir.resolve("baseline.txt"), content).toFile();
 	}
 
-	private static String readString(File file) {
-		try {
-			return Files.readString(file.toPath());
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + file, e);
-		}
-	}
 }

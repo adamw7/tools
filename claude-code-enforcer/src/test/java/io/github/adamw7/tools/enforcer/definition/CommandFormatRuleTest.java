@@ -1,12 +1,12 @@
 package io.github.adamw7.tools.enforcer.definition;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -182,29 +182,5 @@ class CommandFormatRuleTest {
 		CommandFormatRule rule = new CommandFormatRule();
 		rule.setCommandsDir(commandsDir.toFile());
 		return rule;
-	}
-
-	private static void writeString(Path file, String content) {
-		try {
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
-	private static String readString(Path file) {
-		try {
-			return Files.readString(file);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + file, e);
-		}
-	}
-
-	private static void createDirectory(Path dir) {
-		try {
-			Files.createDirectory(dir);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not create " + dir, e);
-		}
 	}
 }

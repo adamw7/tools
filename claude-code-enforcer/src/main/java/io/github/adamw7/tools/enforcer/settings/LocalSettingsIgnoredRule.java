@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.settings;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.inject.Named;
 
@@ -42,7 +43,7 @@ public class LocalSettingsIgnoredRule extends ClaudeCodeEnforcerRule {
 		requireExists(gitignoreFile, ".gitignore");
 		Gitignore gitignore = Gitignore.parse(MarkdownText.read(gitignoreFile, ".gitignore"));
 		List<String> violations = new ArrayList<>();
-		for (String path : ignoredPaths()) {
+		for (String path : Objects.requireNonNullElse(ignoredPaths, DEFAULT_IGNORED_PATHS)) {
 			collectUncoveredPath(gitignore, path, violations);
 		}
 		report("Local settings are not ignored:", violations);
@@ -71,20 +72,11 @@ public class LocalSettingsIgnoredRule extends ClaudeCodeEnforcerRule {
 		return withoutDot.startsWith("/") ? withoutDot.substring(1) : withoutDot;
 	}
 
-	private List<String> ignoredPaths() {
-		return ignoredPaths != null ? ignoredPaths : DEFAULT_IGNORED_PATHS;
-	}
-
 	void setGitignoreFile(File gitignoreFile) {
 		this.gitignoreFile = gitignoreFile;
 	}
 
 	void setIgnoredPaths(List<String> ignoredPaths) {
 		this.ignoredPaths = ignoredPaths;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("LocalSettingsIgnoredRule[gitignoreFile=%s]", gitignoreFile);
 	}
 }

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.definition;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import javax.inject.Named;
@@ -75,14 +76,10 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, definition, violations);
-		checks.requireKeys(requiredKeys());
+		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
 		checks.checkName(DefinitionFiles.baseName(definition));
 		checks.checkDescription(0);
 		checks.checkModel(allowedModels);
-	}
-
-	private List<String> requiredKeys() {
-		return requiredKeys != null ? requiredKeys : DEFAULT_REQUIRED_KEYS;
 	}
 
 	void setAgentsDir(File agentsDir) {
@@ -99,10 +96,5 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setAutoFix(boolean autoFix) {
 		this.autoFix = autoFix;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("SubAgentFormatRule[agentsDir=%s]", agentsDir);
 	}
 }

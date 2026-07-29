@@ -1,14 +1,14 @@
 package io.github.adamw7.tools.enforcer.text;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
@@ -109,29 +109,5 @@ class MarkdownTextTest {
 		UncheckedIOException exception = assertThrows(UncheckedIOException.class,
 				() -> MarkdownText.read(missing.toFile(), "absent.md"));
 		assertTrue(exception.getMessage().contains("absent.md"), exception.getMessage());
-	}
-
-	private static void writeString(Path file, String content) {
-		try {
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
-	private static String readString(Path file) {
-		try {
-			return Files.readString(file);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read " + file, e);
-		}
-	}
-
-	private static void assumeSymlink(Path link, Path target) {
-		try {
-			Files.createSymbolicLink(link, target);
-		} catch (IOException | UnsupportedOperationException e) {
-			assumeTrue(false, "filesystem does not support symbolic links");
-		}
 	}
 }

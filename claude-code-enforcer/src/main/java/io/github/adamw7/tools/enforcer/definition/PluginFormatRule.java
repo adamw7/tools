@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import javax.inject.Named;
@@ -48,19 +49,13 @@ public class PluginFormatRule extends JsonFileRule {
 	/** Optional whitelist of allowed manifest keys. When set, unknown keys are reported. */
 	private List<String> allowedKeys;
 
+	public PluginFormatRule() {
+		super("pluginFile", "plugin.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return pluginFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "pluginFile";
-	}
-
-	@Override
-	protected String description() {
-		return "plugin.json";
 	}
 
 	/** Not every repository ships a plugin, so an absent manifest is a pass. */
@@ -78,7 +73,7 @@ public class PluginFormatRule extends JsonFileRule {
 	}
 
 	private void collectMissingKeys(JsonNode manifest, List<String> violations) {
-		for (String key : requiredKeys()) {
+		for (String key : Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS)) {
 			if (!manifest.has(key)) {
 				violations.add("plugin.json is missing required key '" + key + "' in: " + pluginFile);
 			}
@@ -118,10 +113,6 @@ public class PluginFormatRule extends JsonFileRule {
 		}
 	}
 
-	private List<String> requiredKeys() {
-		return requiredKeys != null ? requiredKeys : DEFAULT_REQUIRED_KEYS;
-	}
-
 	void setPluginFile(File pluginFile) {
 		this.pluginFile = pluginFile;
 	}
@@ -132,10 +123,5 @@ public class PluginFormatRule extends JsonFileRule {
 
 	void setAllowedKeys(List<String> allowedKeys) {
 		this.allowedKeys = allowedKeys;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("PluginFormatRule[pluginFile=%s]", pluginFile);
 	}
 }

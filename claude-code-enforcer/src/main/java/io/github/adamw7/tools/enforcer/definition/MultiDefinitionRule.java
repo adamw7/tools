@@ -96,10 +96,4 @@ abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {
 	void setSkillsDir(File skillsDir) {
 		this.skillsDir = skillsDir;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("%s[commandsDir=%s, agentsDir=%s, skillsDir=%s]",
-				getClass().getSimpleName(), commandsDir, agentsDir, skillsDir);
-	}
 }

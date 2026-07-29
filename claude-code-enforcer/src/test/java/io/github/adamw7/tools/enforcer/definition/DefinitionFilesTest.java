@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.enforcer.definition;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,9 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,7 +39,7 @@ class DefinitionFilesTest {
 
 	@Test
 	void verifyDirectoryFailsWhenPathIsAFileRatherThanADirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body");
+		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
 				() -> DefinitionFiles.verifyDirectory(file, "Skills"));
@@ -81,7 +80,7 @@ class DefinitionFilesTest {
 
 	@Test
 	void markdownFilesReturnsEmptyArrayWhenPathIsNotAListableDirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body");
+		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
 
 		assertArrayEquals(new File[0], DefinitionFiles.markdownFiles(file));
 	}
@@ -112,7 +111,7 @@ class DefinitionFilesTest {
 
 	@Test
 	void subdirectoriesReturnsEmptyArrayWhenPathIsNotAListableDirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body");
+		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
 
 		assertArrayEquals(new File[0], DefinitionFiles.subdirectories(file));
 	}
@@ -134,21 +133,5 @@ class DefinitionFilesTest {
 	/** Names in the array's own order, so a test can assert the helper's sorting rather than re-sort it. */
 	private static String[] names(File[] files) {
 		return Arrays.stream(files).map(File::getName).toArray(String[]::new);
-	}
-
-	private static File writeString(Path file, String content) {
-		try {
-			return Files.writeString(file, content).toFile();
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
-	private static void createDirectory(Path dir) {
-		try {
-			Files.createDirectory(dir);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not create " + dir, e);
-		}
 	}
 }

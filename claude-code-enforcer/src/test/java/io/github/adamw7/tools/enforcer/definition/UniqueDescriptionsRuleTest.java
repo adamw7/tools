@@ -1,12 +1,11 @@
 package io.github.adamw7.tools.enforcer.definition;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -138,27 +137,10 @@ class UniqueDescriptionsRuleTest {
 	}
 
 	private Path agentsDir() {
-		return createDirectories(tempDir.resolve("agents"));
+		return createDirectory(tempDir.resolve("agents"));
 	}
 
 	private Path skillsDir() {
-		return createDirectories(tempDir.resolve("skills"));
-	}
-
-	private void writeString(Path file, String content) {
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-	}
-
-	private static Path createDirectories(Path dir) {
-		try {
-			return Files.createDirectories(dir);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not create " + dir, e);
-		}
+		return createDirectory(tempDir.resolve("skills"));
 	}
 }

@@ -17,7 +17,6 @@ import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 @Named("claudeMdFormat")
 public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
-	private static final String DOCUMENT_NAME = "CLAUDE.md";
 	private static final String AGENTS_REFERENCE = "AGENTS.md";
 	private static final List<String> REQUIRED_SECTIONS = List.of(
 			"## Project",
@@ -30,19 +29,13 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 	/** The {@code CLAUDE.md} file to validate. Injected from the rule configuration. */
 	private File claudeMdFile;
 
+	public ClaudeMdFormatRule() {
+		super("CLAUDE.md", REQUIRED_SECTIONS);
+	}
+
 	@Override
 	protected File documentFile() {
 		return claudeMdFile;
-	}
-
-	@Override
-	protected String documentName() {
-		return DOCUMENT_NAME;
-	}
-
-	@Override
-	protected List<String> defaultRequiredSections() {
-		return REQUIRED_SECTIONS;
 	}
 
 	@Override
@@ -54,10 +47,5 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
 	void setClaudeMdFile(File claudeMdFile) {
 		this.claudeMdFile = claudeMdFile;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("ClaudeMdFormatRule[claudeMdFile=%s]", claudeMdFile);
 	}
 }

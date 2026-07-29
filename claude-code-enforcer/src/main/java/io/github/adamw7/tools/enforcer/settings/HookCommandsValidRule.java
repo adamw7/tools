@@ -2,7 +2,6 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
 import java.util.List;
-import java.util.Objects;
 
 import javax.inject.Named;
 
@@ -48,19 +47,13 @@ public class HookCommandsValidRule extends JsonFileRule {
 	/** When true (default), a {@code $CLAUDE_PROJECT_DIR} script reference must resolve to an existing file. */
 	private boolean validateScriptReferences = true;
 
+	public HookCommandsValidRule() {
+		super("settingsFile", "settings.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return settingsFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "settingsFile";
-	}
-
-	@Override
-	protected String description() {
-		return "settings.json";
 	}
 
 	@Override
@@ -148,18 +141,12 @@ public class HookCommandsValidRule extends JsonFileRule {
 		violations.add("hook event '" + event + "' " + problem);
 	}
 
-	/**
-	 * The resolved on-disk paths of every {@code $CLAUDE_PROJECT_DIR}-rooted token
-	 * in the command. A command chains more than one script often enough — an
-	 * {@code &&} between two hooks — that stopping at the first reference would
-	 * leave the rest unchecked.
-	 */
+	/** The resolved on-disk paths the command's {@code $CLAUDE_PROJECT_DIR} tokens point at. */
 	private List<String> localScriptPaths(String command) {
 		if (!validateScriptReferences) {
 			return List.of();
 		}
-		ClaudeProjectDir projectDirs = new ClaudeProjectDir(projectDir, settingsFile);
-		return CommandTokens.of(command).stream().map(projectDirs::expand).filter(Objects::nonNull).toList();
+		return new ClaudeProjectDir(projectDir, settingsFile).expandAll(command);
 	}
 
 	void setSettingsFile(File settingsFile) {
@@ -176,10 +163,5 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	void setValidateScriptReferences(boolean validateScriptReferences) {
 		this.validateScriptReferences = validateScriptReferences;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("HookCommandsValidRule[settingsFile=%s]", settingsFile);
 	}
 }

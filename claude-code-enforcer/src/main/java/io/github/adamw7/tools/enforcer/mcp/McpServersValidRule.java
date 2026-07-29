@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.mcp;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 
 import javax.inject.Named;
 
@@ -50,19 +51,13 @@ public class McpServersValidRule extends JsonFileRule {
 	/** Optional override for the allowed transport types. */
 	private List<String> allowedTypes;
 
+	public McpServersValidRule() {
+		super("mcpFile", "mcp.json");
+	}
+
 	@Override
 	protected File jsonFile() {
 		return mcpFile;
-	}
-
-	@Override
-	protected String fileParameter() {
-		return "mcpFile";
-	}
-
-	@Override
-	protected String description() {
-		return "mcp.json";
 	}
 
 	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
@@ -97,7 +92,7 @@ public class McpServersValidRule extends JsonFileRule {
 		String type = JsonNodes.textAt(server, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
 			collectInferredTransportViolations(name, server, violations);
-		} else if (!allowedTypes().contains(type)) {
+		} else if (!Objects.requireNonNullElse(allowedTypes, DEFAULT_ALLOWED_TYPES).contains(type)) {
 			add(name, "has an unsupported type: " + type, violations);
 		} else if (type.equals(STDIO_TYPE)) {
 			collectCommandViolation(name, server, violations);
@@ -153,10 +148,6 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	private List<String> allowedTypes() {
-		return allowedTypes != null ? allowedTypes : DEFAULT_ALLOWED_TYPES;
-	}
-
 	void setMcpFile(File mcpFile) {
 		this.mcpFile = mcpFile;
 	}
@@ -171,10 +162,5 @@ public class McpServersValidRule extends JsonFileRule {
 
 	void setAllowedTypes(List<String> allowedTypes) {
 		this.allowedTypes = allowedTypes;
-	}
-
-	@Override
-	public String toString() {
-		return String.format("McpServersValidRule[mcpFile=%s]", mcpFile);
 	}
 }

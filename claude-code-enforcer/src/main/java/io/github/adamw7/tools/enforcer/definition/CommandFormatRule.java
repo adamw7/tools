@@ -91,9 +91,4 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	void setAutoFix(boolean autoFix) {
 		this.autoFix = autoFix;
 	}
-
-	@Override
-	public String toString() {
-		return String.format("CommandFormatRule[commandsDir=%s]", commandsDir);
-	}
 }

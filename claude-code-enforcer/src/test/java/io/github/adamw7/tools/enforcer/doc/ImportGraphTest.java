@@ -1,12 +1,12 @@
 package io.github.adamw7.tools.enforcer.doc;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -233,13 +233,6 @@ class ImportGraphTest {
 	}
 
 	private File write(String name, String content) {
-		Path file = tempDir.resolve(name);
-		try {
-			Files.createDirectories(file.getParent());
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-		return file.toFile();
+		return writeString(tempDir.resolve(name), content).toFile();
 	}
 }

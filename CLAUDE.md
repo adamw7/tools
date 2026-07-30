@@ -197,13 +197,13 @@ paths.
 
 ## Continuous integration and commits
 
-Three workflows gate pull requests to `main`: `maven.yml` (`mvn -B package
--DenforceClaudeMd`, the only one that runs the doc checks), `docker.yml` (builds
-the `assembly` image but never runs it), and `codeql.yml`. The rest are
-scheduled — `integration-tests.yml` daily, `coverage.yml` and `pitest.yml`
-weekly — and `maven-publish.yml` / `central-publish.yml` fire on a GitHub
-release. Every workflow builds on JDK 25 (Temurin). See *Continuous integration*
-and *Releasing* in AGENTS.md.
+One workflow gates pull requests to `main`: `maven.yml` (`mvn -B package
+-DenforceClaudeMd`, the only one that runs the doc checks). The rest are
+scheduled — `integration-tests.yml` daily, `codeql.yml` and `coverage.yml`
+Saturdays, `pitest.yml` and `maven-windows.yml` Sundays — and `docker.yml`
+(builds the `assembly` image but never runs it), `maven-publish.yml` and
+`central-publish.yml` fire on a GitHub release. Every workflow builds on JDK 25
+(Temurin). See *Continuous integration* and *Releasing* in AGENTS.md.
 
 Use clear, conventional commit messages — the `git-commit` skill writes them
 with this repository's real module scopes — keep changes focused, and add or

@@ -1,23 +1,37 @@
 # C4 Architecture — `tools`
 
 This document describes the architecture of the `tools` repository using the
-[C4 model](https://c4model.com/) (Context → Container → Component). Diagrams are
-written in [Mermaid](https://mermaid.js.org/) flowchart syntax, styled with the
-standard C4 colour scheme, and render directly on GitHub.
+[C4 model](https://c4model.com/) (Context → Container → Component, plus a
+dynamic and a deployment view). Diagrams are written in
+[Mermaid](https://mermaid.js.org/) flowchart syntax, styled with the standard C4
+colour scheme, and render directly on GitHub.
 
 `tools` is a multi-module Maven library of Java tooling. Its notable
 capabilities are compile-time-safe protobuf **code generation**, **context
-engineering** for gen-AI agents working with Java code, and a **data** toolkit
-(data sources, a uniqueness/key finder, and data structures). Two of the modules
-also ship **MCP servers** (Spring Boot apps) so AI assistants can call the tools
-directly.
+engineering** for gen-AI agents working with Java code, a **data** toolkit (data
+sources, a uniqueness/key finder, and data structures), **Claude Code adoption**
+of a GitHub repository, and a set of custom **maven-enforcer rules** that keep
+agent documentation and configuration honest. Three of the modules ship **MCP
+servers** (Spring Boot apps) so AI assistants can call the tools directly.
 
 > **Legend** —
 > 🟦 dark&nbsp;blue = person ·
 > 🔵 blue = the `tools` system ·
 > 🔹 light&nbsp;blue = container (Maven module / app) ·
 > 🟪 purple = MCP server ·
-> ⬜ grey = external system
+> ⬜ grey = external system ·
+> solid arrow = runtime call or data flow ·
+> dashed arrow = build-time / compile-time dependency
+
+**Contents**
+
+| View | Diagram |
+| --- | --- |
+| Level 1 | [System Context](#level-1--system-context) |
+| Level 2 | [Containers (Maven modules)](#level-2--containers-maven-modules) |
+| Level 3 | [`data`](#level-3--components-data-module) · [`code/context`](#level-3--components-codecontext-module) · [`code/protogen-maven-plugin`](#level-3--components-codeprotogen-maven-plugin) · [`adopt`](#level-3--components-adopt-module) · [`claude-code-enforcer`](#level-3--components-claude-code-enforcer-module) |
+| Dynamic | [An adoption run](#dynamic-view--an-adoption-run) |
+| Deployment | [`k8s/`](#deployment--k8s-uniqueness-check-on-kubernetes) · [CI](#deployment--continuous-integration) |
 
 ---
 
@@ -28,33 +42,40 @@ on.
 
 ```mermaid
 flowchart TB
-    dev["👤 Java Developer<br/><i>Builds apps with the library,<br/>the protogen plugin & the gRPC example</i>"]
+    dev["👤 Java Developer<br/><i>Builds apps with the library,<br/>the protogen plugin &amp; the gRPC example</i>"]
     agent["👤 AI Agent / Assistant<br/><i>Calls the MCP servers</i>"]
+    maintainer["👤 Repository Maintainer<br/><i>Adopts Claude Code into repos</i>"]
 
     subgraph sys [" "]
-        tools["<b>tools</b><br/>Java tooling: code generation,<br/>context engineering, data &amp;<br/>uniqueness, CLAUDE.md enforcement"]
+        tools["<b>tools</b><br/>Java tooling: code generation,<br/>context engineering, data &amp; uniqueness,<br/>Claude Code adoption &amp; enforcement"]
     end
 
     mavenCentral["📦 Maven Central<br/><i>Resolves / publishes artifacts</i>"]
     projectSrc["🗂️ Java Project Sources<br/><i>Scanned for context</i>"]
     db["🛢️ Relational Database<br/><i>JDBC data source</i>"]
-    files["📄 Data Files<br/><i>CSV / JSON / YAML / TOON / GZip</i>"]
+    files["📄 Data Files<br/><i>CSV / Parquet / JSON /<br/>YAML / TOON / GZip</i>"]
+    github["🐙 GitHub<br/><i>Repositories adopted:<br/>cloned, pushed, PRs opened</i>"]
+    cli["🖥️ Local CLIs<br/><i>git · claude · gh ·<br/>mvn / gradle wrappers</i>"]
     ci["⚙️ GitHub Actions CI<br/><i>Builds, tests, enforces CLAUDE.md</i>"]
 
     dev -->|"Adds as dependency /<br/>runs the Maven plugin"| tools
     agent -->|"Invokes tools<br/>(MCP: stdio / HTTP)"| tools
+    maintainer -->|"Runs the adoption<br/>(CLI or MCP)"| tools
     tools -->|"Resolves deps /<br/>published to (HTTPS)"| mavenCentral
     tools -->|"Scans classes &amp;<br/>builds project tree"| projectSrc
     tools -->|"Reads rows (JDBC)"| db
     tools -->|"Reads / streams records"| files
+    tools -->|"Clones, pushes a branch,<br/>opens a pull request"| github
+    tools -->|"Spawns processes"| cli
+    cli -->|"git / gh reach"| github
     ci -->|"mvn -B package<br/>-DenforceClaudeMd"| tools
 
     classDef person fill:#08427b,stroke:#052e56,color:#fff
     classDef system fill:#1168bd,stroke:#0b4884,color:#fff
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class dev,agent person
+    class dev,agent,maintainer person
     class tools system
-    class mavenCentral,projectSrc,db,files,ci ext
+    class mavenCentral,projectSrc,db,files,github,cli,ci ext
     style sys fill:none,stroke:none
 ```
 
@@ -62,70 +83,107 @@ flowchart TB
 
 ## Level 2 — Containers (Maven modules)
 
-Each Maven module is a container. The two MCP servers are runnable Spring Boot
-applications (purple); the other modules are libraries / plugins.
+Each Maven module is a container. The three MCP servers are runnable Spring Boot
+applications (purple); the other modules are libraries, plugins, or examples.
+Solid arrows are runtime calls; dashed arrows are build-time dependencies.
 
 ```mermaid
 flowchart TB
     dev["👤 Java Developer"]
     agent["👤 AI Agent / Assistant"]
+    maintainer["👤 Repository Maintainer"]
 
     subgraph tools ["tools  (multi-module Maven project)"]
         direction TB
 
-        enforcer["<b>claude-code-enforcer</b><br/><i>maven-enforcer rules</i><br/>Fails the build on malformed<br/>CLAUDE.md / AGENTS.md / skills / settings"]
-        protogen["<b>code/protogen-maven-plugin</b><br/><i>Maven plugin</i><br/>Generates proto2 builders that catch<br/>missing required fields at compile time"]
-        grpc["<b>grpc-example</b><br/><i>Java example</i><br/>End-to-end gRPC demo using the<br/>compile-time-safe builders"]
-        assembly["<b>assembly</b><br/><i>Executable jar</i><br/>Bundles SampleApp"]
+        subgraph shared ["Shared foundations"]
+            enforcer["<b>claude-code-enforcer</b><br/><i>maven-enforcer rules</i><br/>Fails the build on malformed<br/>CLAUDE.md / AGENTS.md / README /<br/>skills / settings / .mcp.json"]
+            testCommon["<b>test-common</b><br/><i>test-jar</i><br/>Shared ArchUnit rule libraries:<br/>coding · naming · test conventions"]
+            mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · ToolDefinition · TransportConfigurer"]
+        end
 
-        context["<b>code/context</b><br/><i>Library + MCP server</i><br/>Class-usage finder + ProjectTreeBuilder"]
-        contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens"])
+        subgraph codegen ["Code generation"]
+            protogen["<b>code/protogen-maven-plugin</b><br/><i>Maven plugin</i><br/>Generates builders that catch missing<br/>required fields at compile time"]
+            protogenTest["<b>code/protogen-maven-plugin-test</b><br/><i>Integration tests</i>"]
+            grpc["<b>grpc-example</b><br/><i>Java example</i><br/>End-to-end gRPC demo using the<br/>compile-time-safe builders"]
+        end
 
-        data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap · OpenAddressingSet · IntKeyOpenAddressingMap"]
-        dataMcp(["🟪 Uniqueness MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>check uniqueness"])
+        subgraph dataCol ["Data"]
+            data["<b>data</b><br/><i>Library + MCP server</i><br/>Data sources · uniqueness/key finder ·<br/>OpenAddressingMap · OpenAddressingSet ·<br/>IntKeyOpenAddressingMap"]
+            dataMcp(["🟪 Uniqueness MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>uniqueness_check"])
+            assembly["<b>assembly</b><br/><i>Executable jar</i><br/>Bundles SampleApp"]
+        end
 
-        mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · TransportConfigurer"]
+        subgraph agentTooling ["Agent tooling"]
+            context["<b>code/context</b><br/><i>Library + MCP server</i><br/>Class-usage finder + ProjectTreeBuilder"]
+            contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens"])
+            adopt["<b>adopt</b><br/><i>CLI + MCP server</i><br/>Adoption pipeline: toolchain → clone →<br/>branch → init → conform → guard →<br/>verify → push → PR"]
+            adoptMcp(["🟪 Adopt MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>adopt_repo"])
+        end
 
         context --- contextMcp
         data --- dataMcp
-        contextMcp -.->|"builds on"| mcpCommon
-        dataMcp -.->|"builds on"| mcpCommon
+        adopt --- adoptMcp
     end
 
     projectSrc["🗂️ Java Project Sources"]
     db["🛢️ Relational Database"]
     files["📄 Data Files"]
+    github["🐙 GitHub"]
+    cli["🖥️ git · claude · gh"]
+    ownBuild["⚙️ This repository's build<br/><i>mvn -DenforceClaudeMd ·<br/>every module's tests</i>"]
 
     dev -->|"Configures / runs"| protogen
     dev -->|"Studies / runs"| grpc
     dev -->|"Runs SampleApp"| assembly
     agent -->|"MCP"| contextMcp
     agent -->|"MCP"| dataMcp
+    maintainer -->|"CLI: --repo / --repos"| adopt
+    agent -->|"MCP"| adoptMcp
 
-    protogen -.->|"generates builders<br/>consumed by"| grpc
-    assembly -.->|"bundles"| data
     contextMcp --> context
     dataMcp --> data
+    adoptMcp --> adopt
+
+    contextMcp -.->|"builds on"| mcpCommon
+    dataMcp -.->|"builds on"| mcpCommon
+    adoptMcp -.->|"builds on"| mcpCommon
+    protogen -.->|"generates builders<br/>consumed by"| grpc
+    protogen -.->|"verified by"| protogenTest
+    assembly -.->|"bundles"| data
+    ownBuild -.->|"runs the rules on<br/>this repo's docs &amp; config"| enforcer
+    ownBuild -.->|"runs the architecture tests"| testCommon
+
+    adopt -->|"wires the rule into<br/>the adopted build"| enforcer
     context -->|"scans"| projectSrc
-    data -->|"reads (JDBC)"| db
+    data -->|"reads (JDBC / DuckDB)"| db
     data -->|"reads / streams"| files
+    adopt -->|"spawns"| cli
+    adopt -->|"clone · push · pull request"| github
 
     classDef person fill:#08427b,stroke:#052e56,color:#fff
     classDef container fill:#438dd5,stroke:#2e6295,color:#fff
     classDef mcp fill:#6b3fa0,stroke:#46296b,color:#fff
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class dev,agent person
-    class enforcer,protogen,grpc,assembly,context,data,mcpCommon container
-    class contextMcp,dataMcp mcp
-    class projectSrc,db,files ext
+    class dev,agent,maintainer person
+    class enforcer,testCommon,mcpCommon,protogen,protogenTest,grpc,assembly,context,data,adopt container
+    class contextMcp,dataMcp,adoptMcp mcp
+    class projectSrc,db,files,github,cli,ownBuild ext
     style tools fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style shared fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
+    style codegen fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style dataCol fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
+    style agentTooling fill:#f0f0fb,stroke:#6b3fa0,color:#46296b
 ```
 
 ---
 
 ## Level 3 — Components: `data` module
 
-Key components inside the `data` module and how they collaborate.
+Key components inside the `data` module and how they collaborate. The
+uniqueness check needs the schema, so it takes the narrower
+`ColumnarDataSource` contract — a forward-only JSON/YAML/TOON source cannot be
+handed to it.
 
 ```mermaid
 flowchart TB
@@ -137,7 +195,7 @@ flowchart TB
 
         subgraph mcpLayer ["MCP server"]
             mcpMain["<b>Main + McpConfiguration</b><br/><i>Spring Boot</i><br/>stdio / streamable-http"]
-            uniqTool["<b>UniquenessTool</b><br/><i>MCP tool</i>"]
+            uniqTool["<b>UniquenessTool</b><br/><i>MCP tool: uniqueness_check</i>"]
         end
 
         subgraph uniq ["Uniqueness"]
@@ -148,20 +206,31 @@ flowchart TB
             result["<b>Key / Result</b><br/><i>value objects</i>"]
         end
 
-        subgraph srcs ["Data sources"]
-            srcIfc["<b>Iterable / InMemory<br/>DataSource</b><br/><i>interfaces</i>"]
-            fileSrc["<b>File sources</b><br/>CSV · JSON · YAML · TOON"]
-            dbSrc["<b>SQL sources</b><br/><i>JDBC</i>"]
+        subgraph srcs ["Data sources — contracts (dashed = extends / implements)"]
+            iterIfc["<b>IterableDataSource</b><br/><i>forward-only base</i>"]
+            columnar["<b>ColumnarDataSource</b><br/><i>adds the schema —<br/>what a uniqueness check needs</i>"]
+            inMemIfc["<b>InMemoryDataSource</b><br/><i>random access</i>"]
+            csvSrc["<b>CSV sources</b><br/>CSVDataSource ·<br/>InMemoryCSVDataSource"]
+            dbSrc["<b>SQL sources</b><br/>Iterable · InMemory<br/><i>JDBC</i>"]
+            parquetSrc["<b>Parquet sources</b><br/><i>DuckDbParquet — in-process DuckDB</i>"]
+            jacksonMem["<b>In-memory JSON · YAML · TOON</b><br/><i>map-backed</i>"]
+            jacksonIter["<b>Iterative JSON · YAML · TOON</b><br/><i>forward-only, no schema</i>"]
+            paths["<b>PathValidator</b><br/><i>path checks</i>"]
             compression["<b>ZipUtils</b><br/><i>GZip</i>"]
         end
 
         subgraph struct ["Data structures — standalone public API"]
             structure["<b>OpenAddressingMap</b><br/>OpenAddressingSet · IntKeyOpenAddressingMap"]
         end
+
+        subgraph net ["Network"]
+            switch["<b>Switch</b><br/><i>kill-switch; unit tests run<br/>with the network off</i>"]
+        end
     end
 
     db["🛢️ Relational Database"]
     files["📄 Data Files"]
+    parquet["📄 Parquet Files"]
 
     agent -->|"MCP"| mcpMain
     mcpMain --> uniqTool
@@ -170,26 +239,39 @@ flowchart TB
     uniqApi --> noMem
     uniqApi --> keyFinder
     uniqApi --> result
-    inMem --> srcIfc
-    noMem --> srcIfc
-    srcIfc --> fileSrc
-    srcIfc --> dbSrc
-    fileSrc --> compression
-    fileSrc --> files
+    inMem -->|"needs"| inMemIfc
+    noMem -->|"needs"| columnar
+    inMemIfc -.->|"extends"| columnar
+    columnar -.->|"extends"| iterIfc
+    csvSrc -.->|"implements"| columnar
+    dbSrc -.->|"implements"| columnar
+    parquetSrc -.->|"extends the SQL sources"| dbSrc
+    jacksonMem -.->|"implements"| inMemIfc
+    jacksonIter -.->|"implements"| iterIfc
+    csvSrc --> compression
+    csvSrc --> paths
+    jacksonMem --> paths
+    jacksonIter --> paths
+    csvSrc --> files
+    jacksonMem --> files
+    jacksonIter --> files
+    parquetSrc -->|"DuckDB JDBC"| parquet
     dbSrc -->|"JDBC"| db
+    dbSrc -.->|"outbound connections<br/>guarded by"| switch
     dev -->|"Uses as collections<br/>(open-addressing)"| structure
 
     classDef person fill:#08427b,stroke:#052e56,color:#fff
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
     class agent,dev person
-    class mcpMain,uniqTool,uniqApi,inMem,noMem,keyFinder,result,srcIfc,fileSrc,dbSrc,compression,structure comp
-    class db,files ext
+    class mcpMain,uniqTool,uniqApi,inMem,noMem,keyFinder,result,iterIfc,columnar,inMemIfc,csvSrc,dbSrc,parquetSrc,jacksonMem,jacksonIter,paths,compression,structure,switch comp
+    class db,files,parquet ext
     style data fill:#f2f7fc,stroke:#438dd5,color:#08427b
     style mcpLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
     style uniq fill:#fff7ec,stroke:#d59a43,color:#7a5418
     style srcs fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
     style struct fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
+    style net fill:#f0f0fb,stroke:#6b3fa0,color:#46296b
 ```
 
 ---
@@ -217,7 +299,7 @@ flowchart TB
             context_["<b>Context / BudgetedContext /<br/>ContextFactory</b>"]
             treeBuilder["<b>ProjectTreeBuilder</b><br/><i>scans project → tree</i>"]
             treeNode["<b>ProjectTreeNode</b><br/><i>model</i>"]
-            serializers["<b>ProjectTree*Serializer</b><br/>JSON · Markdown · DOT · printer"]
+            serializers["<b>ProjectTree*Serializer</b><br/>JSON · Markdown · DOT ·<br/>Mermaid · printer"]
             tokens["<b>TokenEstimator impls</b><br/>heuristic · subword"]
             sources["<b>ProjectSources / Language</b>"]
         end
@@ -240,6 +322,7 @@ flowchart TB
     treeBuilder --> sources
     finder --> sources
     context_ --> finder
+    context_ --> tokens
 
     finder -->|"scans"| projectSrc
     treeBuilder -->|"scans"| projectSrc
@@ -316,6 +399,244 @@ flowchart TB
 
 ---
 
+## Level 3 — Components: `adopt` module
+
+How a run adopts Claude Code into one or more GitHub repositories. Every step
+implements `AdoptionStep`, so the pipeline is a list the entry points assemble
+from `AdoptionOptions`; only the `command` package spawns processes, and only
+`CloneStep` reads the credentialled clone URL (both pinned by ArchUnit).
+
+```mermaid
+flowchart TB
+    maintainer["👤 Repository Maintainer<br/><i>--repo / --repos · --assets ·<br/>--dry-run · --report</i>"]
+    agent["👤 AI Agent / Assistant"]
+
+    subgraph adopt ["adopt module"]
+        direction TB
+
+        subgraph entryLayer ["Entry points"]
+            cliMain["<b>Main + CliArguments</b><br/><i>CLI · --help · --timeout</i>"]
+            mcpMain["<b>mcp.Main + McpConfiguration</b><br/><i>Spring Boot</i>"]
+            adoptTool["<b>AdoptTool</b><br/><i>MCP tool: adopt_repo</i>"]
+            options["<b>AdoptionOptions /<br/>PullRequestOptions</b><br/><i>one run's configuration</i>"]
+        end
+
+        subgraph runLayer ["Run orchestration"]
+            batch["<b>BatchAdoption</b><br/><i>one report per repository;<br/>a failure does not stop the rest</i>"]
+            adopter["<b>GitHubRepoAdopter</b><br/><i>runs the ordered pipeline</i>"]
+            ctx["<b>AdoptionContext / Checkouts /<br/>Workspaces / RepositoryUrl</b>"]
+            report["<b>AdoptionReport /<br/>AdoptionReportWriter</b><br/><i>steps completed + PR URL → JSON</i>"]
+            redaction["<b>Redaction</b><br/><i>masks clone-URL credentials<br/>in every log &amp; report</i>"]
+        end
+
+        subgraph steps ["Pipeline steps"]
+            toolchain["<b>ToolchainStep</b><br/><i>git · claude · gh installed,<br/>gh logged in</i>"]
+            clone["<b>CloneStep</b>"]
+            buildToolchain["<b>BuildToolchainStep</b><br/><i>the checkout's own build tool</i>"]
+            branch["<b>BranchStep + TrustStep</b>"]
+            init["<b>ClaudeInitStep +<br/>ClaudeMdConformanceStep</b>"]
+            commit["<b>CommitStep</b><br/><i>runs after the conform,<br/>the guard, and the assets</i>"]
+            enforcerStep["<b>EnforcerStep</b><br/><i>wires the guard in</i>"]
+            assets["<b>AssetsStep</b><br/><i>optional starter config</i>"]
+            verify["<b>VerifyStep</b><br/><i>the guard passes on<br/>the generated file</i>"]
+            publish["<b>PushStep +<br/>PullRequestStep</b><br/><i>omitted on a dry run</i>"]
+        end
+
+        subgraph buildSystems ["Build systems"]
+            bs["<b>BuildSystems / BuildSystem</b><br/><i>Maven → Gradle → fallback</i>"]
+            installers["<b>PomEnforcerInstaller ·<br/>GradleGuardInstaller ·<br/>WorkflowGuardInstaller</b>"]
+        end
+
+        subgraph cmd ["command — the only package that spawns a process"]
+            runner["<b>CommandRunner /<br/>ProcessCommandRunner</b><br/><i>CommandLine · CommandResult ·<br/>StreamGobbler · ExecutableResolver</i>"]
+        end
+    end
+
+    github["🐙 GitHub"]
+    cli["🖥️ git · claude · gh · mvn / gradle"]
+    workspace["🗂️ Workspace checkout"]
+
+    maintainer --> cliMain
+    agent -->|"MCP"| mcpMain
+    mcpMain --> adoptTool
+    cliMain --> options
+    adoptTool --> options
+    options --> batch
+    batch --> adopter
+    batch --> ctx
+    adopter --> report
+    report --> redaction
+
+    adopter -->|"runs in order"| toolchain
+    toolchain --> clone
+    clone --> buildToolchain
+    buildToolchain --> branch
+    branch --> init
+    init --> commit
+    commit --> enforcerStep
+    enforcerStep --> assets
+    assets --> verify
+    verify --> publish
+
+    buildToolchain --> bs
+    enforcerStep --> bs
+    verify --> bs
+    bs --> installers
+    installers -->|"edit pom.xml / build.gradle /<br/>.github workflow"| workspace
+
+    adopter -->|"injects into every<br/>step.execute(context, runner)"| runner
+    runner -->|"spawns"| cli
+    clone -->|"clone (credentials masked in logs)"| github
+    publish -->|"push branch · gh pr create"| github
+    clone --> workspace
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class maintainer,agent person
+    class cliMain,mcpMain,adoptTool,options,batch,adopter,ctx,report,redaction,toolchain,clone,buildToolchain,branch,init,enforcerStep,assets,verify,publish,commit,bs,installers,runner comp
+    class github,cli,workspace ext
+    style adopt fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style entryLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
+    style runLayer fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style steps fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
+    style buildSystems fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
+    style cmd fill:#f0f0fb,stroke:#6b3fa0,color:#46296b
+```
+
+---
+
+## Level 3 — Components: `claude-code-enforcer` module
+
+The custom `maven-enforcer-plugin` rules that fail a build when the agent
+documentation or configuration is missing, malformed, or inconsistent. Rules
+extend shared bases (`MarkdownFormatRule`, `JsonFileRule`,
+`MultiDefinitionRule`) so a new rule states only what it checks. The check is
+opt-in via `-DenforceClaudeMd` and needs the rule jar installed first.
+
+```mermaid
+flowchart TB
+    build["⚙️ Maven build<br/><i>maven-enforcer-plugin ·<br/>-DenforceClaudeMd</i>"]
+
+    subgraph enforcer ["claude-code-enforcer module"]
+        direction TB
+
+        subgraph base ["rule — shared bases"]
+            entry["<b>ClaudeCodeEnforcerRule</b><br/><i>the aggregate entry rule</i>"]
+            bases["<b>MarkdownFormatRule ·<br/>JsonFileRule · ScanTargets ·<br/>JsonNodes · Baseline · HtmlReport</b>"]
+        end
+
+        subgraph docRules ["doc — documentation contract"]
+            docs["<b>ClaudeMdFormatRule · AgentsMdFormatRule ·<br/>ReadmeConsistencyRule · CrossDocConsistencyRule ·<br/>ModuleMapConsistencyRule · ContextBudgetRule ·<br/>MemoryImportsRule</b>"]
+        end
+
+        subgraph defRules ["definition — skills, agents, plugins"]
+            defs["<b>SkillFilesExistRule · UniqueNamesRule ·<br/>UniqueDescriptionsRule · SubAgentFormatRule ·<br/>CommandFormatRule · PluginFormatRule</b>"]
+        end
+
+        subgraph setRules ["settings &amp; mcp"]
+            sets["<b>SettingsJsonValidRule · PermissionsFormatRule ·<br/>HooksFormatRule · HookCommandsValidRule ·<br/>LocalSettingsIgnoredRule · McpServersValidRule ·<br/>McpConfigFormatRule</b>"]
+        end
+
+        subgraph secRules ["secret"]
+            secrets["<b>NoSecretsRule / SecretPattern</b>"]
+        end
+
+        subgraph textSupport ["text — parsing support"]
+            text["<b>MarkdownDocument · FrontMatter ·<br/>FrontMatterFixer · NameConvention</b>"]
+        end
+    end
+
+    docsFiles["📄 CLAUDE.md · AGENTS.md · README.md"]
+    config["🗂️ .claude/ · .mcp.json ·<br/>.claude-plugin/plugin.json"]
+    pom["📦 Root pom.xml<br/><i>&lt;module&gt; list</i>"]
+
+    build --> entry
+    entry --> bases
+    entry --> docs
+    entry --> defs
+    entry --> sets
+    entry --> secrets
+    docs --> text
+    defs --> text
+    docs --> docsFiles
+    docs --> pom
+    defs --> config
+    sets --> config
+    secrets --> config
+    secrets --> docsFiles
+
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class entry,bases,docs,defs,sets,secrets,text comp
+    class build,docsFiles,config,pom ext
+    style enforcer fill:#f2f7fc,stroke:#438dd5,color:#08427b
+    style base fill:#eef4ec,stroke:#6b3fa0,color:#46296b
+    style docRules fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style defRules fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
+    style setRules fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
+    style secRules fill:#f0f0fb,stroke:#6b3fa0,color:#46296b
+    style textSupport fill:#f5f5f5,stroke:#999999,color:#333333
+```
+
+---
+
+## Dynamic view — an adoption run
+
+The order of a single repository's adoption, and where a run stops when
+`--dry-run` is given. The two toolchain checks are deliberately early: the
+pipeline's own tools before any expensive work, the checkout's build tool as
+soon as the clone reveals which one it is.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as 👤 Maintainer / AI Agent
+    participant B as BatchAdoption
+    participant A as GitHubRepoAdopter
+    participant R as CommandRunner
+    participant W as Workspace checkout
+    participant G as 🐙 GitHub
+
+    M->>B: adopt(AdoptionOptions)
+    loop each repository URL
+        B->>A: adopt(context, report)
+        A->>R: toolchain — git / claude / gh present, gh logged in
+        A->>R: clone (credentialled URL, masked in logs)
+        R->>G: git clone
+        G-->>W: checkout
+        A->>W: build-toolchain — detect Maven / Gradle / fallback
+        A->>R: branch + trust
+        A->>R: claude init → CLAUDE.md
+        A->>W: conform CLAUDE.md, add AGENTS.md
+        A->>R: commit "Adopt Claude Code: add CLAUDE.md"
+        A->>W: enforcer — wire the guard into the build
+        A->>R: commit "Add claude-code-enforcer to the build"
+        opt --assets
+            A->>W: assets — .claude/settings.json, hook, .mcp.json, workflow
+            A->>R: commit "Add Claude Code configuration assets"
+        end
+        A->>R: verify — the guard passes on the generated file
+        alt --dry-run
+            A-->>B: report stops at verify (nothing published)
+        else normal run
+            A->>R: push branch
+            R->>G: git push -u origin (feature branch)
+            A->>R: gh pr create (title · reviewer · draft)
+            R->>G: pull request
+            G-->>A: pull request URL
+        end
+        A-->>B: AdoptionReport (steps completed, PR URL)
+    end
+    B-->>M: one report per repository (JSON via --report)
+```
+
+A step that throws marks the report failed and propagates, so the caller keeps
+the report of the steps that did complete; the next repository in the batch is
+still adopted into its own checkout.
+
+---
+
 ## Deployment — `k8s/` (uniqueness check on Kubernetes)
 
 An optional C4 deployment view of the assets under `k8s/`, which run `SampleApp`
@@ -341,7 +662,7 @@ flowchart TB
 
     logs["📄 kubectl logs<br/><i>uniqueness result → stdout</i>"]
 
-    dev -->|"build & load"| maven
+    dev -->|"build &amp; load"| maven
     maven --> image
     image -->|"minikube image load"| pod
     cm -->|"mounted read-only at /data"| pod
@@ -360,22 +681,96 @@ flowchart TB
 
 ---
 
+## Deployment — continuous integration
+
+Which workflow runs what, and what leaves the build. `maven.yml` is the gate on
+every pull request to `main` — and the only workflow that runs the CLAUDE.md
+checks; the heavier and slower checks are scheduled, and everything that
+publishes fires on a GitHub release. Triggers below are the ones in
+`.github/workflows/`; every workflow builds on JDK 25 (Temurin).
+
+```mermaid
+flowchart TB
+    pr["🔀 push / pull request → main"]
+    sched["⏰ Schedule"]
+    manual["🖱️ workflow_dispatch"]
+    rel["🏷️ GitHub release"]
+
+    subgraph gate ["Pull-request gate"]
+        mavenWf["<b>maven.yml</b><br/><i>installs the enforcer rule, then<br/>mvn -B package -DenforceClaudeMd</i><br/>the only workflow running the doc checks;<br/>build step capped at 120 s"]
+    end
+
+    subgraph scheduled ["Scheduled"]
+        itWf["<b>integration-tests.yml</b><br/><i>daily · -P integration-tests verify</i>"]
+        codeqlWf["<b>codeql.yml</b><br/><i>Saturdays · CodeQL analysis</i>"]
+        covWf["<b>coverage.yml</b><br/><i>Saturdays · JaCoCo, 80% floor</i>"]
+        pitWf["<b>pitest.yml</b><br/><i>Sundays · mutation testing</i>"]
+        winWf["<b>maven-windows.yml</b><br/><i>Sundays · the build on Windows</i>"]
+    end
+
+    subgraph publish ["On a release"]
+        dockerWf["<b>docker.yml</b><br/><i>builds the assembly image,<br/>never runs it</i>"]
+        ghPkg["<b>maven-publish.yml</b><br/><i>GitHub Packages</i>"]
+        central["<b>central-publish.yml</b><br/><i>Maven Central; dispatch =<br/>staged-only dry run</i>"]
+    end
+
+    pr --> mavenWf
+    sched --> itWf
+    sched --> codeqlWf
+    sched --> covWf
+    sched --> pitWf
+    sched --> winWf
+    manual --> pitWf
+    manual --> winWf
+    manual --> central
+    rel --> dockerWf
+    rel --> ghPkg
+    rel --> central
+
+    classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
+    classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
+    class mavenWf,dockerWf,codeqlWf,itWf,covWf,pitWf,winWf,ghPkg,central comp
+    class pr,sched,manual,rel ext
+    style gate fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
+    style scheduled fill:#fff7ec,stroke:#d59a43,color:#7a5418
+    style publish fill:#f2f7fc,stroke:#438dd5,color:#08427b
+```
+
+---
+
 ## Notes
 
 - **Base package:** `io.github.adamw7` (`io.github.adamw7.context` for the
   context module, `io.github.adamw7.tools.*` elsewhere).
-- **MCP servers:** both are Spring Boot apps whose entry point is `Main.java`
-  and support stdio (default) or `--transport.mode=streamable-http`. Both build
-  on the shared **`mcp-common`** module (`AbstractMcpConfiguration`, `McpTool`,
-  `TransportConfigurer`).
+- **MCP servers:** all three (`data` uniqueness, `code/context`, `adopt`) are
+  Spring Boot apps whose entry point is `Main.java` and which support stdio
+  (default), streamable HTTP, or stateless HTTP. All three build on the shared
+  **`mcp-common`** module (`AbstractMcpConfiguration`, `McpTool`,
+  `ToolDefinition`, `ToolArguments`, `ToolResult`, `TransportConfigurer`), and
+  each ships an `MCP_USAGE.md` next to its `mcp` package.
 - **Build:** Java 25 + Maven 3.9.x; `mvn clean install` from the root. CI runs
   `mvn -B package -DenforceClaudeMd`, which also runs the `claude-code-enforcer`
-  rules.
+  rules — those need a two-phase build, since a maven-enforcer rule must be
+  resolvable as a jar before the build that uses it runs.
+- **Architecture rules:** the layering these diagrams show is executable.
+  ArchUnit tests in each module's `.architecture` test package fail the build
+  when it is broken — data-source contracts must not depend on their
+  implementations, the uniqueness core must not depend on its MCP adapter, JDBC
+  stays confined to `source.db`, and the adoption spawns processes only in its
+  `command` package. The rules common to every module live once in
+  **`test-common`** and are pulled in with `ArchTests.in(...)`.
 - The `data-test` module is built separately and is intentionally not in the
-  root reactor `<modules>` list, so it is omitted from the container view.
+  root reactor `<modules>` list, so it is omitted from the container view;
+  `code` is an aggregator pom whose children (`protogen-maven-plugin`,
+  `protogen-maven-plugin-test`, `context`) appear instead.
 - **Deployment:** `k8s/` packages `SampleApp` into the `tools-k8s` image
   (`k8s/Dockerfile`) and runs it as a Kubernetes **Job**
   (`job-uniqueness-check.yaml`) reading a CSV from a ConfigMap — see the
   Deployment diagram above and `k8s/README.md`.
+- **Keeping this current:** a new `<module>` in the root pom belongs in the
+  container view; a new MCP tool belongs in the relevant component view. The
+  standing decisions behind these structures (DuckDB, log4j2, MCP on Spring
+  Boot, documentation as an enforced contract, the security posture) are
+  recorded in [docs/adr](adr).
 
 See [AGENTS.md](../AGENTS.md) and [README.md](../README.md) for full detail.

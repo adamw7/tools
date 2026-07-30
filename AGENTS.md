@@ -461,17 +461,18 @@ longer and carry no timeout.
 
 ## Continuous integration
 
-Workflows live in `.github/workflows/`. Only the first three below gate pull
-requests to `main`; the rest run on a schedule (or manually).
+Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
+`main`; the rest run on a schedule, manually, or on a release.
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
 | `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
-| `docker.yml` | push, PR → `main` | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
-| `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |
-| `coverage.yml` | weekly | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly; manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `codeql.yml` | weekly (Saturdays) | CodeQL security/static analysis for Java (autobuild). |
+| `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
+| `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `maven-windows.yml` | weekly (Sundays); manual | The build on `windows-latest`, so the Windows-only paths stay honest. |
+| `docker.yml` | on GitHub release | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
 

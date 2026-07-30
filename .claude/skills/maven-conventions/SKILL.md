@@ -40,7 +40,7 @@ profile, is the most common source of avoidable build friction here.
 |---|---|
 | `mvn clean install` | Full clean build + install to local repo |
 | `mvn install` | Faster incremental build |
-| `mvn -pl <module> test` | Tests for a single module |
+| `mvn -pl <module> -am test` | Tests for a single module (`-am` is required — a bare `-pl` fails the `ReactorModuleConvergence` rule) |
 | `mvn -P integration-tests verify` | MCP integration tests (`*IT`) |
 | `mvn -Pcoverage verify` | JaCoCo coverage (fails under 80% instruction or branch) |
 | `mvn -Ppitest test` | PIT mutation testing |

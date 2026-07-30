@@ -1058,8 +1058,10 @@ into the `PER_CLASS` lifecycle).
 
 Run them for a single module with, for example:
 ```
-mvn -pl data test
+mvn -pl data -am test
 ```
+(`-am` is required — a bare `mvn -pl data test` fails the root pom's
+`ReactorModuleConvergence` enforcer rule.)
 or across the whole repository as part of `mvn install`.
 
 # Building

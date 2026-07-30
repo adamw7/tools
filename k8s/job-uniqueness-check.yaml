@@ -2,10 +2,10 @@
 # SampleApp is a batch CLI (read CSV -> check column uniqueness -> log -> exit),
 # so a Job is the correct primitive, not a Deployment.
 #
-# Uses the tools-k8s image (built from k8s/Dockerfile), which repackages the
-# assembly fat jar into a runnable flat classpath and logs to stdout, so the
-# result shows up directly in `kubectl logs`. The two positional args are the
-# CSV path (mounted from the ConfigMap at /data) and the column to check.
+# Uses the tools-k8s image (built from assembly/Dockerfile), which runs the
+# assembled distribution under a numeric UID and logs to stdout, so the result
+# shows up directly in `kubectl logs`. The two positional args are the CSV path
+# (mounted from the ConfigMap at /data) and the column to check.
 apiVersion: batch/v1
 kind: Job
 metadata:

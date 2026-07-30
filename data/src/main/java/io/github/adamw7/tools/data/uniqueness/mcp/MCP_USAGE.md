@@ -28,7 +28,9 @@ From the root of the repository:
 mvn clean install
 ```
 
-This creates an executable JAR in `data/target/tools.data-{version}.jar`.
+This creates an executable JAR in `data/target/tools.data-{version}-boot.jar`. The
+`boot` classifier keeps the executable server separate from `tools.data-{version}.jar`,
+which stays an ordinary library jar for modules that depend on this one.
 
 ## Tool Specification
 
@@ -70,7 +72,7 @@ Add the following to your Claude Desktop configuration file:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/data/target/tools.data-{version}.jar"
+        "/absolute/path/to/tools/data/target/tools.data-{version}-boot.jar"
       ]
     }
   }
@@ -90,7 +92,7 @@ In VS Code settings (settings.json):
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/data/target/tools.data-{version}.jar"
+        "/absolute/path/to/tools/data/target/tools.data-{version}-boot.jar"
       ]
     }
   }
@@ -104,7 +106,7 @@ For any MCP client that supports stdio transport:
 ```json
 {
   "command": "java",
-  "args": ["-jar", "/path/to/tools.data-{version}.jar"],
+  "args": ["-jar", "/path/to/tools.data-{version}-boot.jar"],
   "transport": "stdio"
 }
 ```
@@ -234,7 +236,7 @@ mvn test
 To enable debug logging, modify the Log4j2 configuration or set system properties:
 
 ```bash
-java -Dlog4j.configurationFile=log4j2-debug.xml -jar tools.data-{version}.jar
+java -Dlog4j.configurationFile=log4j2-debug.xml -jar tools.data-{version}-boot.jar
 ```
 
 ## Extending the Server

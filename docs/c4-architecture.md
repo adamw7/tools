@@ -649,7 +649,7 @@ flowchart TB
 
     subgraph build ["Build host (docker + Maven)"]
         maven["<b>mvn package</b><br/><i>assembly fat jar</i>"]
-        image["<b>tools-k8s image</b><br/><i>k8s/Dockerfile</i><br/>flat classpath + console log4j2"]
+        image["<b>tools-k8s image</b><br/><i>assembly/Dockerfile</i><br/>launcher jar + lib/ + console log4j2"]
     end
 
     subgraph cluster ["minikube cluster"]
@@ -709,7 +709,7 @@ flowchart TB
     end
 
     subgraph publish ["On a release"]
-        dockerWf["<b>docker.yml</b><br/><i>builds the assembly image,<br/>never runs it</i>"]
+        dockerWf["<b>docker.yml</b><br/><i>builds, smoke-runs and scans<br/>the image, pushes it to GHCR</i>"]
         ghPkg["<b>maven-publish.yml</b><br/><i>GitHub Packages</i>"]
         central["<b>central-publish.yml</b><br/><i>Maven Central; dispatch =<br/>staged-only dry run</i>"]
     end
@@ -764,7 +764,7 @@ flowchart TB
   `code` is an aggregator pom whose children (`protogen-maven-plugin`,
   `protogen-maven-plugin-test`, `context`) appear instead.
 - **Deployment:** `k8s/` packages `SampleApp` into the `tools-k8s` image
-  (`k8s/Dockerfile`) and runs it as a Kubernetes **Job**
+  (`assembly/Dockerfile`) and runs it as a Kubernetes **Job**
   (`job-uniqueness-check.yaml`) reading a CSV from a ConfigMap — see the
   Deployment diagram above and `k8s/README.md`.
 - **Keeping this current:** a new `<module>` in the root pom belongs in the

@@ -76,7 +76,7 @@ tools (root pom, packaging=pom)
 │   └── context                     # class-usage context finder + MCP server
 ├── adopt                  # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example           # end-to-end gRPC example
-├── assembly               # executable jar-with-dependencies (SampleApp)
+├── assembly               # runnable SampleApp distribution (launcher jar + lib/)
 └── data-test              # standalone test module (not in root <modules>)
 ```
 
@@ -227,21 +227,22 @@ paths.
 
 ## Continuous integration and commits
 
-One workflow gates pull requests to `main`: `maven.yml`, which bootstraps the
-enforcer rule and then runs `mvn -B package -DenforceClaudeMd` — the only
-workflow that runs the doc checks. Its `package` step is capped at **120
-seconds** (`timeout-minutes: 2` plus a wall-clock check that fails with a
-`::error::` annotation), so a change that slows the build down red-flags the PR;
-profile it rather than raising the cap. Everything else runs on a schedule or a
-release, so a green PR is not proof the whole matrix passes:
+Two workflows gate pull requests to `main`. `maven.yml` bootstraps the enforcer
+rule and then runs `mvn -B package -DenforceClaudeMd` — the only workflow that
+runs the doc checks. Its `package` step is capped at **120 seconds**
+(`timeout-minutes: 2` plus a wall-clock check that fails with a `::error::`
+annotation), so a change that slows the build down red-flags the PR; profile it
+rather than raising the cap. `docker.yml` builds the image, runs it against a
+sample CSV and scans it, pushing nothing outside a release. Everything else runs
+on a schedule or a release, so a green PR is not proof the whole matrix passes:
 
 - **Scheduled** — `integration-tests.yml` daily; `codeql.yml` and
   `coverage.yml` Saturdays; `pitest.yml` and `maven-windows.yml` Sundays.
   `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep path,
   line-ending, and file-locking assumptions platform-neutral.
-- **On a GitHub release** — `docker.yml` (builds the `assembly` image but never
-  runs it), `maven-publish.yml` (GitHub Packages), and `central-publish.yml`
-  (Maven Central).
+- **On a GitHub release** — `docker.yml` again, this time pushing the multi-arch
+  image to GHCR; `maven-publish.yml` (GitHub Packages); and
+  `central-publish.yml` (Maven Central).
 
 Every workflow builds on JDK 25 (Temurin). See *Continuous integration* and
 *Releasing* in AGENTS.md.

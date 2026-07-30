@@ -1,0 +1,11 @@
+# The image builds from the repository root and copies exactly two things: the
+# assembled distribution directory and the shared console log4j2 config.
+# Everything else is context the daemon would tar up for nothing — without this
+# file that is well over 500 MB, most of it target/ directories.
+#
+# So: exclude everything, then re-admit only what the Dockerfile COPYs.
+*
+
+!docker/log4j2-console.properties
+!assembly/target/tools.assembly-*-dist
+!assembly/target/tools.assembly-*-dist/**

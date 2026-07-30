@@ -21,7 +21,7 @@ echo "==> Building the application (mvn -DskipTests package)"
 (cd "${ROOT_DIR}" && mvn -B -ntp -DskipTests package)
 
 echo "==> Building the Docker image: ${IMAGE}"
-docker build -f "${K8S_DIR}/Dockerfile" -t "${IMAGE}" "${ROOT_DIR}"
+docker build -f "${ROOT_DIR}/assembly/Dockerfile" -t "${IMAGE}" "${ROOT_DIR}"
 
 echo "==> Ensuring minikube is running"
 if ! minikube status >/dev/null 2>&1; then

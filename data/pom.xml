@@ -62,6 +62,15 @@
 					<executable>true</executable>
 					<layout>JAR</layout>
 					<jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
+					<!-- Attach the executable MCP-server jar under a classifier instead of
+					     letting it replace the main artifact. Repackaging in place gives
+					     tools.data a nested BOOT-INF/ layout, which every consumer inherits:
+					     the assembly's jar-with-dependencies then carries SampleApp under
+					     BOOT-INF/classes while its manifest Main-Class points at the flat
+					     name, so `java -jar` fails with ClassNotFoundException. With the
+					     classifier the main artifact stays an ordinary library jar and the
+					     runnable server is tools.data-{version}-boot.jar. -->
+					<classifier>boot</classifier>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -9,8 +9,8 @@
       1. Ensures minikube and kubectl are installed (downloads the official
          Windows binaries into $ToolsDir and puts them on this session's PATH
          if they are not already available).
-      2. Builds the fat jar (mvn -DskipTests package).
-      3. Builds the k8s/Dockerfile deployment image.
+      2. Builds the distribution (mvn -DskipTests package).
+      3. Builds the assembly/Dockerfile image.
       4. Starts minikube (docker driver) and loads the local image.
       5. Applies the ConfigMap and Job, waits for completion, prints the logs.
 
@@ -118,7 +118,7 @@ function Invoke-MavenBuild {
 
 function Build-DockerImage {
     Write-Step "Building the Docker image: $Image"
-    & docker build -f (Join-Path $K8sDir "Dockerfile") -t $Image $RootDir
+    & docker build -f (Join-Path $RootDir "assembly/Dockerfile") -t $Image $RootDir
     if ($LASTEXITCODE -ne 0) { throw "docker build failed (exit code $LASTEXITCODE)" }
 }
 

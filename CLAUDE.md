@@ -76,7 +76,7 @@ tools (root pom, packaging=pom)
 │   └── context                     # class-usage context finder + MCP server
 ├── adopt                  # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example           # end-to-end gRPC example
-├── assembly               # executable jar-with-dependencies (SampleApp)
+├── assembly               # runnable SampleApp distribution (launcher jar + lib/)
 └── data-test              # standalone test module (not in root <modules>)
 ```
 
@@ -239,8 +239,9 @@ release, so a green PR is not proof the whole matrix passes:
   `coverage.yml` Saturdays; `pitest.yml` and `maven-windows.yml` Sundays.
   `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep path,
   line-ending, and file-locking assumptions platform-neutral.
-- **On a GitHub release** — `docker.yml` (builds the `assembly` image but never
-  runs it), `maven-publish.yml` (GitHub Packages), and `central-publish.yml`
+- **On a GitHub release** — `docker.yml` (builds `assembly/Dockerfile`, runs it
+  against a sample CSV, scans it with Trivy, then pushes a multi-arch image to
+  GHCR), `maven-publish.yml` (GitHub Packages), and `central-publish.yml`
   (Maven Central).
 
 Every workflow builds on JDK 25 (Temurin). See *Continuous integration* and

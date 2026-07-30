@@ -182,7 +182,7 @@ tools (root pom, packaging=pom)
 │   └── context                     # regex-based class-usage context finder
 ├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, enforcer, verify, push, PR)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
-├── assembly                    # builds an executable jar-with-dependencies
+├── assembly                    # runnable SampleApp distribution: launcher jar + lib/
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)
 └── data-test                   # standalone test module for the data module
 ```
@@ -492,7 +492,7 @@ Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
 | `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
 | `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
 | `maven-windows.yml` | weekly (Sundays); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
-| `docker.yml` | on GitHub release | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile` (never runs it). |
+| `docker.yml` | on GitHub release; manual dispatch | `mvn -B package`, then builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, scans it with Trivy (fails on fixable HIGH/CRITICAL), and on a release pushes a `linux/amd64,linux/arm64` image to GHCR tagged with the release version and `latest`, with SBOM and provenance. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
 
@@ -794,17 +794,37 @@ The `central.autoPublish` (default `true`) and `central.waitUntil` (default
 
 ## Containers & Kubernetes
 
-The repository ships two Dockerfiles with different purposes:
+The repository ships one Dockerfile, `assembly/Dockerfile`, used both for the
+released image and for the Kubernetes Job under `k8s/`. It packages the
+distribution directory the `assembly` module builds — a launcher jar whose
+manifest carries `Main-Class` and a `lib/`-prefixed `Class-Path`, next to a
+`lib/` of intact dependency jars — and runs it with `java -jar`.
 
-- `assembly/Dockerfile` packages the `jar-with-dependencies` built by the
-  `assembly` module. CI (`docker.yml`) builds this image on a GitHub release
-  but never runs it. **Caveat:** the `data` jar is repackaged with
-  `spring-boot:repackage` (nested `BOOT-INF/` layout), so this image cannot
-  launch `SampleApp` with `java -jar` — see `k8s/README.md` for the full
-  explanation.
-- `k8s/Dockerfile` is a dedicated deployment image that expands the fat jar into
-  a flat `classes/` + `lib/` classpath and adds a console `log4j2.properties`, so
-  `SampleApp`'s result reaches stdout (and thus `kubectl logs`).
+Points worth knowing before changing any of it:
+
+- **Build it from the repository root**, not from `assembly/`: the context has to
+  include `docker/log4j2-console.properties` as well as `assembly/target/`.
+  `.dockerignore` excludes everything and re-admits only those two paths.
+- **The distribution is deliberately not a `jar-with-dependencies`.** Merging
+  every dependency into one archive collapses same-named metadata, and both
+  `log4j-core` and `spring-boot` ship a `Log4j2Plugins.dat`; the survivor cost
+  log4j2 its plugin registry and dropped it to `DefaultConfiguration` at level
+  `ERROR`, so the app ran and logged nothing. See `assembly/src/assembly/bin.xml`.
+- **`data` attaches its Spring Boot jar under the `boot` classifier** so its main
+  artifact stays an ordinary library jar. Repackaging in place gave every
+  consumer the nested `BOOT-INF/` layout and broke `Main-Class` resolution.
+- **Ownership is set by `COPY --chown`, never a later `RUN chown`**, which would
+  rewrite the whole distribution into a second layer and store it twice.
+- **A JDK build stage strips the DuckDB driver's macOS and Windows natives**
+  (~100 MB each) before the runtime stage copies `lib/`. Both Linux
+  architectures stay, because the release publishes `linux/amd64` and
+  `linux/arm64`.
+- **`USER` is the numeric `10001:10001`**, because Kubernetes' `runAsNonRoot`
+  admission check cannot verify a name-based user.
+- **Logging goes through `docker/log4j2-console.properties`**, selected with
+  `-Dlog4j2.configurationFile` in `JDK_JAVA_OPTIONS`. The `data` module's own
+  config is file-only on purpose: its MCP server speaks JSON-RPC over stdio, and
+  a stdout appender there would corrupt the protocol stream.
 
 The `k8s/` directory runs `SampleApp` (the CSV column-uniqueness checker) on a
 local minikube cluster as a run-to-completion **Job** (not a Deployment):
@@ -814,8 +834,8 @@ and `run-on-minikube.sh` / `run-on-minikube.ps1` drive the whole flow (build →
 image → minikube → load → apply → logs). The Job meets the **restricted** Pod
 Security Standard (non-root numeric UID `10001`, read-only root filesystem, all
 capabilities dropped, `RuntimeDefault` seccomp, no service-account token, an
-`emptyDir` `/tmp`, and an `activeDeadlineSeconds` runtime bound), so the
-`k8s/Dockerfile` declares a numeric `USER`. Pick the column to check with the
+`emptyDir` `/tmp`, and an `activeDeadlineSeconds` runtime bound), which is why
+`assembly/Dockerfile` declares a numeric `USER`. Pick the column to check with the
 `COLUMN` env var (Linux/macOS) or `-Column` parameter (Windows). See
 [k8s/README.md](k8s/README.md) for quick-start, manual steps, and the sandbox
 limitations that prevent running a minikube control plane in this repo's

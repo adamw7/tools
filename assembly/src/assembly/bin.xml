@@ -1,6 +1,20 @@
 <assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 https://maven.apache.org/xsd/assembly-2.2.0.xsd">
-	<id>assembly-id</id>
+	<!-- The runnable SampleApp distribution: the module jar next to a lib/ of its
+	     dependencies, each left intact.
+
+	     Deliberately not a jar-with-dependencies. Unpacking every dependency into
+	     a single archive collapses same-named metadata files, and two dependencies
+	     here ship a
+	     META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat:
+	     log4j-core and spring-boot. Whichever is unpacked last wins, log4j-core's
+	     plugin registry disappears, and log4j2 silently falls back to its
+	     DefaultConfiguration (root level ERROR) — so SampleApp runs and logs
+	     nothing at all. maven-assembly-plugin has no transformer able to merge
+	     those caches. Keeping the jars separate sidesteps that whole class of
+	     merge collision, and gives the container images a lib/ layer that changes
+	     only when the dependencies do. -->
+	<id>dist</id>
 	<formats>
 		<format>dir</format>
 	</formats>

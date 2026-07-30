@@ -57,8 +57,9 @@ fails the build, not just review.
    If yes → `*IT`. If no → `*Test`.
 2. Put the class in the right package (`.architecture` for ArchUnit rules).
 3. Write focused, fast assertions — behavior, edge cases, and error paths.
-4. Run it: `mvn -pl <module> test` (unit) or
-   `mvn -P integration-tests verify` (integration).
+4. Run it: `mvn -pl <module> -am test` (unit — `-am` is required) or
+   `mvn -P integration-tests verify` (integration). For one class or method,
+   `cd <module> && mvn test -Dtest='SomeTest#someMethod'`.
 5. If a unit test legitimately needs more than 5 s, add `@Timeout(...)`
    with a one-line comment justifying it.
 

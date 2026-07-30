@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
+
 See [AGENTS.md](AGENTS.md) for the full agent guide (repository overview, module
 layout, build/test commands, CI, environment, and release process). AGENTS.md is
 the single source of truth; this file is a quick-reference summary of the
@@ -113,12 +116,36 @@ Common commands (run from the repository root):
 ```bash
 mvn clean install                 # full clean build + install to local repo
 mvn install                       # faster incremental build
-mvn -pl data test                 # tests for a single module
+mvn -pl data -am install          # one module plus the modules it depends on
+mvn -pl data -am test             # tests for a single module
 mvn -B package                    # build without installing (what CI runs)
 mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
 mvn -Ppitest install              # PIT mutation testing (needs a phase past package)
 ```
+
+**Always pair `-pl` with `-am`.** `mvn -pl data test` fails before compiling:
+the root pom's `ReactorModuleConvergence` rule rejects a reactor whose module
+parents are absent from it, and sibling `-SNAPSHOT`s (e.g. `mcp-common`) are not
+resolvable from the local repo until installed. `-am` pulls the parent and the
+upstream modules back into the reactor.
+
+Running a single test class or method needs one of these, because `-Dtest`
+applies to *every* module in the reactor and surefire fails the upstream ones
+where nothing matches:
+
+```bash
+cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'   # simplest
+mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+The first form needs the parent and siblings installed once (`mvn install
+-DskipTests`), since running from the module directory resolves them from the
+local repo rather than the reactor.
+
+Maven 3.9.X is enforced, not just recommended: the root pom's `enforce`
+execution pins `requireMavenVersion [3.9,4.0)` and `requireJavaVersion 25`, so a
+Maven 4 or older-JDK build fails at `validate` rather than midway.
 
 Use `clean` after removing a code-generation source, so stale generated builders
 in `target/` cannot mask the change.
@@ -193,17 +220,31 @@ paths.
   and cover what needs something real: the MCP servers over HTTP, and `adopt`'s
   `MultiRepoAdoptionIT`, which clones real GitHub sample repositories to prove a
   batch gives each repository its own checkout. It stops at the branch step, so
-  it never pushes or opens a pull request. See *Testing* in AGENTS.md.
+  it never pushes or opens a pull request. The profile is declared per module —
+  in `data`, `code/context`, and `adopt`, each wiring `maven-failsafe-plugin` —
+  not in the root pom, so a new module's `*IT`s stay unrun until that module
+  gets its own copy. See *Testing* in AGENTS.md.
 
 ## Continuous integration and commits
 
-Three workflows gate pull requests to `main`: `maven.yml` (`mvn -B package
--DenforceClaudeMd`, the only one that runs the doc checks), `docker.yml` (builds
-the `assembly` image but never runs it), and `codeql.yml`. The rest are
-scheduled — `integration-tests.yml` daily, `coverage.yml` and `pitest.yml`
-weekly — and `maven-publish.yml` / `central-publish.yml` fire on a GitHub
-release. Every workflow builds on JDK 25 (Temurin). See *Continuous integration*
-and *Releasing* in AGENTS.md.
+One workflow gates pull requests to `main`: `maven.yml`, which bootstraps the
+enforcer rule and then runs `mvn -B package -DenforceClaudeMd` — the only
+workflow that runs the doc checks. Its `package` step is capped at **120
+seconds** (`timeout-minutes: 2` plus a wall-clock check that fails with a
+`::error::` annotation), so a change that slows the build down red-flags the PR;
+profile it rather than raising the cap. Everything else runs on a schedule or a
+release, so a green PR is not proof the whole matrix passes:
+
+- **Scheduled** — `integration-tests.yml` daily; `codeql.yml` and
+  `coverage.yml` weekly (Sat); `pitest.yml` and `maven-windows.yml` weekly
+  (Sun). `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep
+  path, line-ending, and file-locking assumptions platform-neutral.
+- **On a GitHub release** — `docker.yml` (builds the `assembly` image but never
+  runs it), `maven-publish.yml` (GitHub Packages), and `central-publish.yml`
+  (Maven Central).
+
+Every workflow builds on JDK 25 (Temurin). See *Continuous integration* and
+*Releasing* in AGENTS.md.
 
 Use clear, conventional commit messages — the `git-commit` skill writes them
 with this repository's real module scopes — keep changes focused, and add or
@@ -240,13 +281,24 @@ editing them:
   mentioned in both CLAUDE.md and AGENTS.md; `crossDocConsistency` pins facts
   shared with AGENTS.md (the Java version) and `readmeConsistency` pins the
   README against AGENTS.md (the protobuf major version).
-- `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
+- `agentsMdFormat` applies the same title/required-heading checks to AGENTS.md,
+  and `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
   `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
-  `hookCommandsValid`, `hooksFormat`, `mcpServersValid`, `mcpConfigFormat`, and
-  `pluginFormat` cover the rest of the agent configuration. The last three
-  validate `.mcp.json` and `.claude-plugin/plugin.json`, which this repository
-  does not ship — they pass on the absent file and start enforcing the moment
-  one is added.
+  `hookCommandsValid`, `hooksFormat`, `localSettingsIgnored`, `mcpServersValid`,
+  `mcpConfigFormat`, and `pluginFormat` cover the rest of the agent
+  configuration. The last three validate `.mcp.json` and
+  `.claude-plugin/plugin.json`, which this repository does not ship — they pass
+  on the absent file and start enforcing the moment one is added.
+- Two more rules ship but are **not** wired here: `subAgentFormat`
+  (`.claude/agents`) and `commandFormat` (`.claude/commands`). Unlike
+  `pluginFormat`, a *configured* definition directory must exist — an absent one
+  counts as a build-setup mistake — so they can only be wired once the
+  directory does. Add the directory and the rule together.
+- Every rule extends a common base offering `severity` (`error`, the default, or
+  `warn` to log without failing), an optional `reportFile` for a self-contained
+  HTML report, and an optional `baselineFile` that suppresses already-accepted
+  violations so a new rule can be gated without clearing the backlog first. See
+  *CLAUDE.md enforcement* in AGENTS.md before adding or configuring a rule.
 
 The check is opt-in via the `claude-md-enforce` profile and needs a two-phase
 build, since a maven-enforcer rule must be resolvable as a JAR before the build

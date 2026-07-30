@@ -254,11 +254,31 @@ mvn install
 # Build without installing (what CI runs)
 mvn -B package
 
-# Run the tests for a single module
-mvn -pl data test
+# Run the tests for a single module (-am is required, see below)
+mvn -pl data -am test
 
 # Build the standalone data-test module
 mvn -pl data-test -am test
+```
+
+**Always pair `-pl` with `-am`.** A bare `mvn -pl data test` fails before it
+compiles anything: the root pom's `ReactorModuleConvergence` enforcer rule
+rejects a reactor whose module parents are not part of it, and sibling
+`-SNAPSHOT` dependencies (e.g. `mcp-common`) are not resolvable from the local
+repository until they have been installed. `-am` ("also make") brings the parent
+and the upstream modules back into the reactor and fixes both.
+
+To run a **single test class or method**, note that `-Dtest` applies to every
+module in the reactor, so surefire fails the upstream modules where the pattern
+matches nothing. Use either form:
+
+```bash
+# From the module directory — needs the parent and siblings installed once
+# (mvn install -DskipTests), because they resolve from the local repository.
+cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'
+
+# From the root, telling surefire not to fail the modules with no match
+mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 **Always use `clean` after removing a source of code generation.** The build
@@ -322,7 +342,7 @@ longer and carry no timeout.
 ## Testing, coverage & mutation testing
 
 - **Unit tests** run in the normal `test`/`package` lifecycle
-  (`mvn -pl <module> test`). Write tests for all new logic — behavior, edge
+  (`mvn -pl <module> -am test`). Write tests for all new logic — behavior, edge
   cases, and error paths. Surefire enforces a **5-second per-test timeout** (the
   `junit.jupiter.execution.timeout.testable.method.default` JUnit config
   parameter set on the surefire plugin in the root `pom.xml`), so a unit test
@@ -461,17 +481,18 @@ longer and carry no timeout.
 
 ## Continuous integration
 
-Workflows live in `.github/workflows/`. Only the first three below gate pull
-requests to `main`; the rest run on a schedule (or manually).
+Workflows live in `.github/workflows/`. Only the first below gates pull requests
+to `main`; the rest run on a schedule, on a release, or manually.
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
 | `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
-| `docker.yml` | push, PR → `main` | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile`. |
-| `codeql.yml` | push, PR → `main`; weekly | CodeQL security/static analysis for Java (autobuild). |
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |
-| `coverage.yml` | weekly | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly; manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `codeql.yml` | weekly (Sat) | CodeQL security/static analysis for Java (autobuild). |
+| `coverage.yml` | weekly (Sat) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
+| `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `maven-windows.yml` | weekly (Sun); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
+| `docker.yml` | on GitHub release | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile` (never runs it). |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
 
@@ -776,8 +797,8 @@ The `central.autoPublish` (default `true`) and `central.waitUntil` (default
 The repository ships two Dockerfiles with different purposes:
 
 - `assembly/Dockerfile` packages the `jar-with-dependencies` built by the
-  `assembly` module. CI (`docker.yml`) builds this image on every push and PR
-  to `main` but never runs it. **Caveat:** the `data` jar is repackaged with
+  `assembly` module. CI (`docker.yml`) builds this image on a GitHub release
+  but never runs it. **Caveat:** the `data` jar is repackaged with
   `spring-boot:repackage` (nested `BOOT-INF/` layout), so this image cannot
   launch `SampleApp` with `java -jar` — see `k8s/README.md` for the full
   explanation.
@@ -806,8 +827,8 @@ automated environment.
   [SECURITY.md](SECURITY.md); do not open a public issue for them.
 - [SECURITY.md](SECURITY.md) also lists which released versions currently
   receive security fixes (only the latest line is supported).
-- `codeql.yml` runs GitHub CodeQL analysis on every push and PR to `main` and on
-  a weekly schedule; keep new code free of the issues it flags.
+- `codeql.yml` runs GitHub CodeQL analysis on a weekly schedule (it does not gate
+  pull requests); keep new code free of the issues it flags.
 
 ## Pull requests & commits
 

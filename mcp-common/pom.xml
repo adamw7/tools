@@ -11,7 +11,6 @@
 	<packaging>jar</packaging>
 	<name>Shared MCP server scaffolding</name>
 	<description>Shared MCP server scaffolding providing transport wiring and the tool SPI reused by the repository's MCP servers.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<build>
 		<plugins>
 			<!-- This module has no module-info.java, so the JPMS name that
@@ -63,7 +62,7 @@
 		<dependency>
 			<groupId>io.github.adamw7</groupId>
 			<artifactId>tools.test-common</artifactId>
-			<version>${revision}</version>
+			<version>${project.version}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>

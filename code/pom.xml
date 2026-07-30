@@ -11,7 +11,6 @@
 	<packaging>pom</packaging>
 	<name>Tooling for code</name>
 	<description>Aggregator module for code-oriented tooling: the protobuf builder-generating Maven plugin and the regex-based class-usage context finder.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<modules>
 		<module>protogen-maven-plugin</module>
 		<module>protogen-maven-plugin-test</module>

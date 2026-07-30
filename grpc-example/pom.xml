@@ -11,11 +11,16 @@
 	<packaging>jar</packaging>
 	<name>grpc-example</name>
 	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<!-- This module only exercises generated protobuf/gRPC classes, so the
 		     instruction-coverage gate is not meaningful here. -->
 		<jacoco.skip>true</jacoco.skip>
+		<!-- An example, not a reusable library, so keep it out of both
+		     publications: the GitHub Packages deployment maven-deploy-plugin
+		     performs on `mvn deploy`, and the Maven Central bundle the root pom's
+		     release profile publishes. -->
+		<maven.deploy.skip>true</maven.deploy.skip>
+		<central.skipPublishing>true</central.skipPublishing>
 		<!-- Default main class for exec:java. Declared as a property (rather than
 		     hard-coded in the plugin <configuration>) so that -Dexec.mainClass on
 		     the command line can override it to run GreeterClient. -->
@@ -134,24 +139,4 @@
 			<artifactId>log4j-core</artifactId>
 		</dependency>
 	</dependencies>
-	<profiles>
-		<profile>
-			<!-- This module only exercises generated protobuf/gRPC classes as an
-			     example, not a reusable library, so keep it out of the Maven
-			     Central bundle that the release profile publishes. skipPublishing
-			     is honoured per module by the central-publishing-maven-plugin. -->
-			<id>release</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.sonatype.central</groupId>
-						<artifactId>central-publishing-maven-plugin</artifactId>
-						<configuration>
-							<skipPublishing>true</skipPublishing>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

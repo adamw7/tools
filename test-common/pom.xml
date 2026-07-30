@@ -11,14 +11,14 @@
 	<packaging>jar</packaging>
 	<name>Shared test scaffolding</name>
 	<description>Shared ArchUnit rule libraries reused by every module's architecture tests.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<!-- This module carries no production code, only the rule libraries the
-		     other modules' architecture tests import, so keep it out of the
-		     GitHub Packages deployment that maven-deploy-plugin performs on
-		     `mvn deploy`. (The Maven Central release profile excludes it via the
-		     central-publishing plugin's skipPublishing flag below.) -->
+		     other modules' architecture tests import, so keep it out of both
+		     publications: the GitHub Packages deployment maven-deploy-plugin
+		     performs on `mvn deploy`, and the Maven Central bundle the root pom's
+		     release profile publishes. -->
 		<maven.deploy.skip>true</maven.deploy.skip>
+		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<build>
 		<plugins>
@@ -53,24 +53,4 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-	<profiles>
-		<profile>
-			<!-- This module is test scaffolding for the reactor, not a reusable
-			     library, so keep it out of the Maven Central bundle that the
-			     release profile publishes. skipPublishing is honoured per module
-			     by the central-publishing-maven-plugin. -->
-			<id>release</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.sonatype.central</groupId>
-						<artifactId>central-publishing-maven-plugin</artifactId>
-						<configuration>
-							<skipPublishing>true</skipPublishing>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

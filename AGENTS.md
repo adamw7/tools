@@ -215,7 +215,9 @@ is `Main.java` and which supports stdio (default), streamable HTTP
 
 ## Environment & toolchain
 
-- **Java 25** (`maven.compiler.source`/`target` = 25). A JDK 25 must be on the
+- **Java 25** (the `java.version` property, from which the Spring Boot parent
+  derives `maven.compiler.release`; `source`/`target` are deliberately unset
+  because the compiler plugin ignores them once `release` is set). A JDK 25 must be on the
   `PATH` with `JAVA_HOME` set. In Claude Code web/remote sessions the
   `.claude/hooks/session-start.sh` hook installs `openjdk-25-jdk`, exports
   `JAVA_HOME`, and pre-fetches dependencies (`mvn dependency:go-offline`).
@@ -257,8 +259,10 @@ mvn -B package
 # Run the tests for a single module (-am is required, see below)
 mvn -pl data -am test
 
-# Build the standalone data-test module
-mvn -pl data-test -am test
+# Build the standalone data-test module. It is not in the root <modules>, so
+# -pl cannot select it ("Could not find the selected project in the reactor");
+# run it from its own directory, with tools.data already installed.
+cd data-test && mvn test
 ```
 
 **Always pair `-pl` with `-am`.** A bare `mvn -pl data test` fails before it
@@ -740,6 +744,23 @@ These are hard requirements for any code you add or modify:
   `<pluginManagement>`.
 - **Do not add a new dependency without asking first.** Prefer the existing
   Maven dependencies.
+- A family of artifacts that must move together shares one property rather than
+  a version each: `protobuf.version` (the `protobuf-java` runtime *and* the
+  `protoc` that `protobuf-maven-plugin` runs), `grpc.version`, `derby.version`,
+  `log4j2.version`, `maven.api.version`. `derby.version` and `log4j2.version`
+  are Spring Boot's own property names on purpose — the
+  `spring-boot-dependencies` BOM manages the rest of each family (derbyshared,
+  derbynet, the other log4j2 artifacts) from them, so pinning only the artifacts
+  this repository declares would leave the siblings on Boot's older version.
+- A module that is an example, a test harness or a distribution rather than a
+  reusable library opts out of publication with two properties —
+  `maven.deploy.skip` (GitHub Packages) and `central.skipPublishing` (Maven
+  Central) — not by redeclaring the `release` profile.
+- The root `enforce` execution also runs `requireProfileIdsExist`, so a
+  mistyped `-P` fails the build instead of silently running without the profile.
+  It is satisfied when *any* project in the reactor declares the id, which is
+  what lets the per-module `integration-tests` profile be requested from the
+  root.
 
 ## Releasing
 
@@ -774,8 +795,12 @@ credentials. The release job requires four repository secrets:
 `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal user
 token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing
 key). Every reactor module is published to Central except `assembly`,
-`grpc-example`, and `protogen-maven-plugin-test`, which are excluded as noted
-above.
+`grpc-example`, `protogen-maven-plugin-test` and `test-common`, each of which
+sets `<central.skipPublishing>true</central.skipPublishing>` in its own
+`<properties>`. That property drives the `skipPublishing` flag the root pom
+configures on the `central-publishing-maven-plugin`, and the plugin honours it
+per module, so the exclusion holds with or without the workflow's `-pl` filter.
+The same modules set `maven.deploy.skip` to stay out of GitHub Packages too.
 
 To publish from a workstation: `mvn -P release deploy` with the same `central`
 server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.

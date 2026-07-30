@@ -1,6 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	child.project.url.inherit.append.path="false">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -18,12 +19,24 @@
 	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<revision>2.6.0-SNAPSHOT</revision>
-		<maven.compiler.source>25</maven.compiler.source>
-		<maven.compiler.target>25</maven.compiler.target>
+		<!-- The Spring Boot parent derives maven.compiler.release from this, so
+		     javac both targets and validates against the Java 25 API. Setting
+		     maven.compiler.source/target as well would be dead weight: the
+		     compiler plugin ignores them once release is set, and a second copy
+		     of the number is a copy that can drift. -->
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<protobuf.version>4.33.4</protobuf.version>
+		<!-- One version for the whole protobuf toolchain: the protobuf-java
+		     runtime below and the protoc that protobuf-maven-plugin runs. Keeping
+		     them apart let the generated code and the runtime it compiles against
+		     drift by two minor versions. -->
+		<protobuf.version>4.35.1</protobuf.version>
 		<grpc.version>1.83.0</grpc.version>
+		<derby.version>10.17.1.0</derby.version>
+		<log4j2.version>2.26.1</log4j2.version>
+		<!-- Named maven.api.version, not maven.version: Maven itself exposes
+		     ${maven.version} as the running Maven's own version. -->
+		<maven.api.version>4.0.0-rc-5</maven.api.version>
 		<argLine/>
 		<!-- Per-test timeout for unit tests (see the surefire plugin config). The
 		     build runs the reactor in parallel (-T1C in .mvn/maven.config), so
@@ -59,6 +72,13 @@
 		     publishing: -Dcentral.autoPublish=false -Dcentral.waitUntil=validated. -->
 		<central.autoPublish>true</central.autoPublish>
 		<central.waitUntil>published</central.waitUntil>
+		<!-- Whether the release profile keeps this module out of the Maven Central
+		     bundle. Modules that are examples, test harnesses or distributions
+		     rather than reusable libraries set it to true in their own
+		     <properties>, which is one line instead of a copy of the
+		     central-publishing plugin declaration inside a copy of the release
+		     profile. -->
+		<central.skipPublishing>false</central.skipPublishing>
 	</properties>
 	<licenses>
 		<license>
@@ -98,7 +118,6 @@
 	</modules>
 	<dependencyManagement>
 		<dependencies>
-
 			<dependency>
 				<groupId>org.apache.maven.enforcer</groupId>
 				<artifactId>enforcer-api</artifactId>
@@ -129,32 +148,38 @@
 				<version>1.22.2</version>
 				<scope>test</scope>
 			</dependency>
+			<!-- log4j2.version and derby.version are Spring Boot's own property
+			     names. Setting them (rather than only pinning the artifacts we
+			     declare) is what keeps the rest of each family in step: the
+			     spring-boot-dependencies BOM manages derbyshared and derbynet from
+			     derby.version, so leaving it at Boot's value resolved derbyshared
+			     10.16.1.1 underneath derby 10.17.1.0. -->
 			<dependency>
 				<groupId>org.apache.logging.log4j</groupId>
 				<artifactId>log4j-api</artifactId>
-				<version>2.26.1</version>
+				<version>${log4j2.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.logging.log4j</groupId>
 				<artifactId>log4j-core</artifactId>
-				<version>2.26.1</version>
+				<version>${log4j2.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.derby</groupId>
 				<artifactId>derby</artifactId>
-				<version>10.17.1.0</version>
+				<version>${derby.version}</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.derby</groupId>
 				<artifactId>derbyclient</artifactId>
-				<version>10.17.1.0</version>
+				<version>${derby.version}</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.derby</groupId>
 				<artifactId>derbytools</artifactId>
-				<version>10.17.1.0</version>
+				<version>${derby.version}</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
@@ -165,19 +190,19 @@
 			<dependency>
 				<groupId>org.apache.maven</groupId>
 				<artifactId>maven-plugin-api</artifactId>
-				<version>4.0.0-rc-5</version>
+				<version>${maven.api.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven</groupId>
 				<artifactId>maven-model</artifactId>
-				<version>4.0.0-rc-5</version>
+				<version>${maven.api.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven</groupId>
 				<artifactId>maven-artifact</artifactId>
-				<version>4.0.0-rc-5</version>
+				<version>${maven.api.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
@@ -189,7 +214,7 @@
 			<dependency>
 				<groupId>com.google.protobuf</groupId>
 				<artifactId>protobuf-java</artifactId>
-				<version>4.35.1</version>
+				<version>${protobuf.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.reflections</groupId>
@@ -270,10 +295,12 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Managed only to attach the exclusion; the version stays the one the
+			     spring-boot-dependencies BOM already supplies, so it cannot fall
+			     behind the parent on the next Spring Boot bump. -->
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter</artifactId>
-				<version>3.5.16</version>
 				<exclusions>
 					<exclusion>
 						<groupId>org.springframework.boot</groupId>
@@ -518,6 +545,11 @@
 								</requirePluginVersions>
 								<dependencyConvergence />
 								<requireNoRepositories />
+								<!-- A profile named on the command line that no pom declares
+								     is silently ignored by Maven, so a typo in -Pcoverage or
+								     -Pintegration-tests looks like a clean run that quietly
+								     skipped the very thing it was asked for. -->
+								<requireProfileIdsExist />
 							</rules>
 						</configuration>
 					</execution>
@@ -869,6 +901,10 @@
 							<publishingServerId>central</publishingServerId>
 							<autoPublish>${central.autoPublish}</autoPublish>
 							<waitUntil>${central.waitUntil}</waitUntil>
+							<!-- Honoured per module, so a module stays out of the bundle by
+							     setting the property rather than redeclaring this plugin
+							     inside a copy of this profile. -->
+							<skipPublishing>${central.skipPublishing}</skipPublishing>
 						</configuration>
 					</plugin>
 				</plugins>

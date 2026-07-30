@@ -11,22 +11,17 @@
 	<packaging>jar</packaging>
 	<name>Test for data</name>
 	<description>Standalone test module that validates the data module's sources, uniqueness checks and data structures independently of the root reactor.</description>
-	<url>https://github.com/adamw7/tools</url>
-	<developers>
-		<developer>
-			<id>adamw7</id>
-			<name>Adam Witkowski</name>
-			<email>adamwitkowski3@gmail.com</email>
-			<url>https://github.com/adamw7</url>
-		</developer>
-	</developers>
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<argLine>-Xmx16m</argLine>
+					<!-- The tight heap is the point of this module: it proves the
+					     iterative sources stream rather than buffer. @{argLine} keeps
+					     whatever the build already put there (the JaCoCo agent under
+					     the coverage profile) instead of dropping it. -->
+					<argLine>@{argLine} -Xmx16m</argLine>
 				</configuration>
 			</plugin>
 		</plugins>

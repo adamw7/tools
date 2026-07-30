@@ -1,12 +1,12 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.command.CommandLine;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -63,18 +63,15 @@ public class CommitStep extends AbstractCommandStep {
 	}
 
 	private List<String> commitCommand(AdoptionContext context, CommandRunner runner) {
-		List<String> command = new ArrayList<>(List.of("git"));
+		CommandLine command = CommandLine.of("git");
 		addOverrideIfMissing(command, context, runner, "user.name", FALLBACK_NAME);
 		addOverrideIfMissing(command, context, runner, "user.email", FALLBACK_EMAIL);
-		command.addAll(List.of("commit", "-m", message));
-		return command;
+		return command.add("commit", "-m", message).toList();
 	}
 
-	private void addOverrideIfMissing(List<String> command, AdoptionContext context, CommandRunner runner,
+	private void addOverrideIfMissing(CommandLine command, AdoptionContext context, CommandRunner runner,
 			String key, String fallback) {
-		if (!hasConfig(context, runner, key)) {
-			command.addAll(List.of("-c", key + "=" + fallback));
-		}
+		command.addIf(!hasConfig(context, runner, key), "-c", key + "=" + fallback);
 	}
 
 	private boolean hasConfig(AdoptionContext context, CommandRunner runner, String key) {

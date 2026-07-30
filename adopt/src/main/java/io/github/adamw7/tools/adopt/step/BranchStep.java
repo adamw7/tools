@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.command.CommandLine;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -42,9 +42,9 @@ public class BranchStep extends AbstractCommandStep {
 	}
 
 	private List<String> checkoutCommand(AdoptionContext context, CommandRunner runner) {
-		List<String> command = new ArrayList<>(List.of("git", "checkout", "-B", context.branchName()));
+		CommandLine command = CommandLine.of("git", "checkout", "-B", context.branchName());
 		startPoint(context, runner).ifPresent(command::add);
-		return List.copyOf(command);
+		return command.toList();
 	}
 
 	/**

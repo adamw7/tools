@@ -5,15 +5,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
@@ -117,27 +117,19 @@ final class ImportGraph {
 
 	private List<Reference> referencesIn(File file) {
 		MarkdownDocument document = MarkdownDocument.parse(readSafely(file));
-		List<Reference> found = new ArrayList<>();
-		for (int i = 0; i < document.lineCount(); i++) {
-			collectLineReferences(file, document, i, found);
-		}
-		return found;
+		return IntStream.range(0, document.lineCount())
+				.filter(index -> !document.isInsideFence(index))
+				.mapToObj(document::line)
+				.flatMap(line -> lineReferences(file, line))
+				.toList();
 	}
 
-	private void collectLineReferences(File file, MarkdownDocument document, int index, List<Reference> found) {
-		if (document.isInsideFence(index)) {
-			return;
-		}
-		Matcher matcher = IMPORT.matcher(MarkdownText.withoutCodeSpans(document.line(index)));
-		while (matcher.find()) {
-			addReference(file, withoutTrailingDots(matcher.group(1)), found);
-		}
-	}
-
-	private void addReference(File file, String imported, List<Reference> found) {
-		if (!ignored.test(imported)) {
-			found.add(new Reference(imported, resolve(file, imported)));
-		}
+	private Stream<Reference> lineReferences(File file, String line) {
+		return IMPORT.matcher(MarkdownText.withoutCodeSpans(line))
+				.results()
+				.map(match -> withoutTrailingDots(match.group(1)))
+				.filter(imported -> !ignored.test(imported))
+				.map(imported -> new Reference(imported, resolve(file, imported)));
 	}
 
 	/** Drops sentence punctuation, so "see @docs/setup.md." imports {@code docs/setup.md}. */

@@ -4,8 +4,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import javax.inject.Named;
 
@@ -56,10 +57,10 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		ScanTargets targets = new ScanTargets(files, directories);
 		targets.requireConfigured();
 		requirePatterns(patterns);
-		List<String> violations = new ArrayList<>();
-		for (File file : targets.allFiles()) {
-			scanIfPresent(file, patterns, violations);
-		}
+		List<String> violations = targets.allFiles().stream()
+				.filter(File::isFile)
+				.flatMap(file -> scan(file, patterns))
+				.toList();
 		report("Files contain what look like secrets:", violations);
 	}
 
@@ -79,30 +80,22 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	private void scanIfPresent(File file, List<SecretPattern> patterns, List<String> violations) {
-		if (!file.isFile()) {
-			return;
-		}
+	private Stream<String> scan(File file, List<SecretPattern> patterns) {
 		List<String> lines = readTextLines(file);
-		for (int i = 0; i < lines.size(); i++) {
-			scanLine(file, lines.get(i), i + 1, patterns, violations);
-		}
+		return IntStream.range(0, lines.size())
+				.boxed()
+				.flatMap(index -> scanLine(file, lines.get(index), index + 1, patterns));
 	}
 
-	private void scanLine(File file, String line, int lineNumber, List<SecretPattern> patterns,
-			List<String> violations) {
-		for (SecretPattern pattern : patterns) {
-			collectMatches(file, line, lineNumber, pattern, violations);
-		}
+	private Stream<String> scanLine(File file, String line, int lineNumber, List<SecretPattern> patterns) {
+		return patterns.stream().flatMap(pattern -> matches(file, line, lineNumber, pattern));
 	}
 
-	private void collectMatches(File file, String line, int lineNumber, SecretPattern pattern,
-			List<String> violations) {
-		Matcher matcher = pattern.pattern().matcher(line);
-		while (matcher.find()) {
-			violations.add(file + " line " + lineNumber + " contains what looks like a " + pattern.name()
-					+ ": " + masked(matcher.group()));
-		}
+	private Stream<String> matches(File file, String line, int lineNumber, SecretPattern pattern) {
+		return pattern.pattern().matcher(line)
+				.results()
+				.map(match -> file + " line " + lineNumber + " contains what looks like a " + pattern.name()
+						+ ": " + masked(match.group()));
 	}
 
 	/** The first characters of the match followed by an ellipsis, so the report never echoes the full secret. */

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,13 +79,10 @@ public final class ScanTargets {
 
 	/** The regular files under the configured directories that {@code accepted} matches. */
 	public List<File> filesInDirectories(Predicate<Path> accepted) {
-		List<File> found = new ArrayList<>();
-		for (File directory : directories) {
-			if (directory.isDirectory()) {
-				found.addAll(walk(directory, accepted));
-			}
-		}
-		return found;
+		return directories.stream()
+				.filter(File::isDirectory)
+				.flatMap(directory -> walk(directory, accepted).stream())
+				.toList();
 	}
 
 	private List<File> walk(File directory, Predicate<Path> accepted) {

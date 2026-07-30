@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionReport;
+import io.github.adamw7.tools.adopt.command.CommandLine;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -100,24 +100,18 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	private List<String> createCommand(AdoptionContext context) {
-		List<String> command = new ArrayList<>(List.of("gh", "pr", "create", "--title", options.title(), "--body",
-				options.body(), "--head", context.branchName()));
-		addTargetRepository(command, context);
-		if (options.draft()) {
-			command.add("--draft");
-		}
-		addRepeated(command, "--reviewer", options.reviewers());
-		addRepeated(command, "--label", options.labels());
-		addRepeated(command, "--assignee", options.assignees());
-		return List.copyOf(command);
+		CommandLine command = CommandLine.of("gh", "pr", "create", "--title", options.title(), "--body",
+				options.body(), "--head", context.branchName());
+		return withTargetRepository(command, context)
+				.addIf(options.draft(), "--draft")
+				.addEach("--reviewer", options.reviewers())
+				.addEach("--label", options.labels())
+				.addEach("--assignee", options.assignees())
+				.toList();
 	}
 
-	private void addTargetRepository(List<String> command, AdoptionContext context) {
-		context.repositorySlug().ifPresent(slug -> command.addAll(List.of("--repo", slug)));
-	}
-
-	private void addRepeated(List<String> command, String flag, List<String> values) {
-		values.forEach(value -> command.addAll(List.of(flag, value)));
+	private CommandLine withTargetRepository(CommandLine command, AdoptionContext context) {
+		return context.repositorySlug().map(slug -> command.add("--repo", slug)).orElse(command);
 	}
 
 	/**
@@ -140,10 +134,9 @@ public class PullRequestStep extends AbstractCommandStep {
 	}
 
 	private List<String> listCommand(AdoptionContext context) {
-		List<String> command = new ArrayList<>(List.of("gh", "pr", "list", "--head", context.branchName(), "--state",
-				"open", "--json", "url"));
-		addTargetRepository(command, context);
-		return List.copyOf(command);
+		CommandLine command = CommandLine.of("gh", "pr", "list", "--head", context.branchName(), "--state",
+				"open", "--json", "url");
+		return withTargetRepository(command, context).toList();
 	}
 
 	/**

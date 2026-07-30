@@ -32,13 +32,10 @@ final class Duplicates {
 	 * (e.g. {@code name}) and every source that claims it.
 	 */
 	List<String> violations(String property) {
-		List<String> violations = new ArrayList<>();
-		for (Claim claim : byKey.values()) {
-			if (claim.sources().size() > 1) {
-				violations.add(property + " '" + claim.value() + "' is used by " + claim.sources().size()
-						+ " definitions: " + String.join(", ", claim.sources()));
-			}
-		}
-		return violations;
+		return byKey.values().stream()
+				.filter(claim -> claim.sources().size() > 1)
+				.map(claim -> property + " '" + claim.value() + "' is used by " + claim.sources().size()
+						+ " definitions: " + String.join(", ", claim.sources()))
+				.toList();
 	}
 }

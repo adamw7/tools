@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -67,7 +67,17 @@ public class GitHubRepoAdopter {
 	 */
 	public static List<AdoptionStep> defaultSteps(AdoptionOptions options) {
 		List<BuildSystem> buildSystems = BuildSystems.defaults(options.pinnedRuleVersion());
-		List<AdoptionStep> steps = new ArrayList<>(List.of(
+		return Stream.of(
+				adoptionSteps(buildSystems),
+				assetSteps(options),
+				List.<AdoptionStep>of(new VerifyStep(buildSystems)),
+				publicationSteps(options))
+				.flatMap(List::stream)
+				.toList();
+	}
+
+	private static List<AdoptionStep> adoptionSteps(List<BuildSystem> buildSystems) {
+		return List.of(
 				new ToolchainStep(),
 				new CloneStep(),
 				new BuildToolchainStep(buildSystems),
@@ -77,14 +87,14 @@ public class GitHubRepoAdopter {
 				new ClaudeMdConformanceStep(),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
 				new EnforcerStep(buildSystems),
-				new CommitStep("Add claude-code-enforcer to the build")));
-		if (options.includeAssets()) {
-			steps.add(new AssetsStep());
-			steps.add(new CommitStep("Add Claude Code configuration assets"));
+				new CommitStep("Add claude-code-enforcer to the build"));
+	}
+
+	private static List<AdoptionStep> assetSteps(AdoptionOptions options) {
+		if (!options.includeAssets()) {
+			return List.of();
 		}
-		steps.add(new VerifyStep(buildSystems));
-		addPublication(steps, options);
-		return List.copyOf(steps);
+		return List.of(new AssetsStep(), new CommitStep("Add Claude Code configuration assets"));
 	}
 
 	/**
@@ -98,14 +108,13 @@ public class GitHubRepoAdopter {
 	 * cloned, branched, and committed on — so the operator has the adoption's commits
 	 * in the workspace to read before any of it is published.
 	 */
-	private static void addPublication(List<AdoptionStep> steps, AdoptionOptions options) {
+	private static List<AdoptionStep> publicationSteps(AdoptionOptions options) {
 		if (options.dryRun()) {
 			log.info("Dry run: the adoption will be committed to the checkout but never pushed,"
 					+ " and no pull request will be opened");
-			return;
+			return List.of();
 		}
-		steps.add(new PushStep());
-		steps.add(new PullRequestStep(options.pullRequest()));
+		return List.of(new PushStep(), new PullRequestStep(options.pullRequest()));
 	}
 
 	/**

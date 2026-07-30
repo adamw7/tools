@@ -97,12 +97,8 @@ public final class FrontMatterFixer {
 	}
 
 	private static boolean containsKeyEntry(List<String> lines, int from, int toExclusive) {
-		for (int i = from; i < toExclusive; i++) {
-			if (KEY_ENTRY.matcher(lines.get(i).strip()).matches()) {
-				return true;
-			}
-		}
-		return false;
+		return lines.subList(from, toExclusive).stream()
+				.anyMatch(line -> KEY_ENTRY.matcher(line.strip()).matches());
 	}
 
 	private static boolean isFrontMatterLine(String line) {

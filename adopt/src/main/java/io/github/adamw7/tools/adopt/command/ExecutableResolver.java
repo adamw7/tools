@@ -39,7 +39,8 @@ final class ExecutableResolver {
 	private final List<String> pathExtensions;
 
 	ExecutableResolver() {
-		this(Platform.isWindows(), pathDirectoriesFromEnvironment(), pathExtensionsFromEnvironment());
+		this(Platform.isWindows(), pathDirectories(System.getenv("PATH")),
+				pathExtensions(System.getenv("PATHEXT")));
 	}
 
 	ExecutableResolver(boolean windows, List<Path> pathDirectories, List<String> pathExtensions) {
@@ -101,8 +102,13 @@ final class ExecutableResolver {
 		return program.indexOf('/') >= 0 || program.indexOf('\\') >= 0;
 	}
 
-	private static List<Path> pathDirectoriesFromEnvironment() {
-		return splitPathList(System.getenv("PATH")).stream()
+	/**
+	 * The {@code PATH} entries to search, given the raw variable. Entries that are not
+	 * legal paths on this platform are dropped rather than failing the resolution, so
+	 * one malformed entry cannot stop the rest of the search.
+	 */
+	static List<Path> pathDirectories(String pathValue) {
+		return splitPathList(pathValue).stream()
 				.map(ExecutableResolver::toPath)
 				.flatMap(Optional::stream)
 				.toList();
@@ -116,15 +122,21 @@ final class ExecutableResolver {
 		}
 	}
 
-	private static List<String> pathExtensionsFromEnvironment() {
-		List<String> configured = splitPathList(System.getenv("PATHEXT")).stream()
+	/**
+	 * The executable extensions to try, given the raw {@code PATHEXT}. Each is
+	 * normalised to a leading dot and lower case so it can be appended to a program
+	 * name directly, whatever casing the environment used. An unset or empty variable
+	 * falls back to {@link #DEFAULT_PATH_EXTENSIONS}.
+	 */
+	static List<String> pathExtensions(String pathExtValue) {
+		List<String> configured = splitPathList(pathExtValue).stream()
 				.map(extension -> extension.startsWith(".") ? extension : "." + extension)
 				.map(extension -> extension.toLowerCase(Locale.ROOT))
 				.toList();
 		return configured.isEmpty() ? DEFAULT_PATH_EXTENSIONS : configured;
 	}
 
-	private static List<String> splitPathList(String value) {
+	static List<String> splitPathList(String value) {
 		if (value == null || value.isBlank()) {
 			return List.of();
 		}

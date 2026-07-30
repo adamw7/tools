@@ -481,17 +481,17 @@ longer and carry no timeout.
 
 ## Continuous integration
 
-Workflows live in `.github/workflows/`. Only the first below gates pull requests
-to `main`; the rest run on a schedule, on a release, or manually.
+Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
+`main`; the rest run on a schedule, manually, or on a release.
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
 | `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |
-| `codeql.yml` | weekly (Sat) | CodeQL security/static analysis for Java (autobuild). |
-| `coverage.yml` | weekly (Sat) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
-| `maven-windows.yml` | weekly (Sun); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
+| `codeql.yml` | weekly (Saturdays) | CodeQL security/static analysis for Java (autobuild). |
+| `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
+| `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `maven-windows.yml` | weekly (Sundays); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
 | `docker.yml` | on GitHub release | `mvn -B package`, then builds the Docker image from `assembly/Dockerfile` (never runs it). |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |

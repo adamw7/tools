@@ -236,9 +236,9 @@ profile it rather than raising the cap. Everything else runs on a schedule or a
 release, so a green PR is not proof the whole matrix passes:
 
 - **Scheduled** — `integration-tests.yml` daily; `codeql.yml` and
-  `coverage.yml` weekly (Sat); `pitest.yml` and `maven-windows.yml` weekly
-  (Sun). `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep
-  path, line-ending, and file-locking assumptions platform-neutral.
+  `coverage.yml` Saturdays; `pitest.yml` and `maven-windows.yml` Sundays.
+  `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep path,
+  line-ending, and file-locking assumptions platform-neutral.
 - **On a GitHub release** — `docker.yml` (builds the `assembly` image but never
   runs it), `maven-publish.yml` (GitHub Packages), and `central-publish.yml`
   (Maven Central).

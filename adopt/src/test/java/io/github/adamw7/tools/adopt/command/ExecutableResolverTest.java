@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.command;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -106,5 +107,51 @@ class ExecutableResolverTest {
 		ExecutableResolver resolver = new ExecutableResolver(true, List.of(), EXTENSIONS);
 		List<String> command = List.of();
 		assertSame(command, resolver.resolve(command));
+	}
+
+	@Test
+	void splitsAPathListOnThePlatformSeparator() {
+		String value = String.join(File.pathSeparator, "one", "two", "three");
+		assertEquals(List.of("one", "two", "three"), ExecutableResolver.splitPathList(value));
+	}
+
+	@Test
+	void skipsBlankEntriesInAPathList() {
+		// A trailing separator, or two in a row, is common in a hand-edited PATH and
+		// would otherwise resolve to the working directory.
+		String value = String.join(File.pathSeparator, "one", "", "  ", "two", "");
+		assertEquals(List.of("one", "two"), ExecutableResolver.splitPathList(value));
+	}
+
+	@Test
+	void anUnsetPathListIsEmpty() {
+		assertEquals(List.of(), ExecutableResolver.splitPathList(null));
+		assertEquals(List.of(), ExecutableResolver.splitPathList(""));
+		assertEquals(List.of(), ExecutableResolver.splitPathList("   "));
+	}
+
+	@Test
+	void readsPathDirectoriesFromThePathValue() {
+		String value = String.join(File.pathSeparator, "one", "two");
+		assertEquals(List.of(Path.of("one"), Path.of("two")), ExecutableResolver.pathDirectories(value));
+	}
+
+	@Test
+	void anUnsetPathYieldsNoDirectories() {
+		assertEquals(List.of(), ExecutableResolver.pathDirectories(null));
+	}
+
+	@Test
+	void pathExtensionsAreNormalisedToALeadingDotAndLowerCase() {
+		// Windows spells PATHEXT in upper case and without dots on some hosts; both have
+		// to end up appendable to a bare program name.
+		assertEquals(List.of(".exe", ".cmd", ".bat"),
+				ExecutableResolver.pathExtensions(String.join(File.pathSeparator, ".EXE", "CMD", ".bat")));
+	}
+
+	@Test
+	void anUnsetPathExtFallsBackToTheDefaultExtensions() {
+		assertEquals(EXTENSIONS, ExecutableResolver.pathExtensions(null));
+		assertEquals(EXTENSIONS, ExecutableResolver.pathExtensions(""));
 	}
 }

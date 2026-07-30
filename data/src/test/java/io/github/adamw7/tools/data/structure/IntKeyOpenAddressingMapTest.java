@@ -135,6 +135,86 @@ public class IntKeyOpenAddressingMapTest {
 	}
 
 	@Test
+	public void growsOnePutBeforeTheTableWouldFill() {
+		// The table grows while one slot is still free rather than once it is full, so
+		// a probe chain always terminates on an empty slot. Pinning the exact capacity
+		// either side of the trigger is what keeps the growth policy from drifting: a
+		// table that waited for the last slot, or grew a put early, still passes every
+		// test that only checks the entries survive.
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>(8);
+		for (int i = 0; i < 7; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(7, map.size());
+		assertEquals(8, map.capacity(), "the seventh entry still fits the original table");
+
+		map.put(7, "v7");
+		assertEquals(8, map.size());
+		assertEquals(9, map.capacity(), "the eighth entry grows the table by one slot");
+		for (int i = 0; i < 8; ++i) {
+			assertEquals("v" + i, map.get(i));
+		}
+	}
+
+	@Test
+	public void churnOfDistinctKeysGrowsTheTableEvenWhileEmpty() {
+		// The mirror of repeatedRemoveAndReAddOfSameKeyDoesNotGrowTheTable: a tombstone
+		// can only be revived by its own key, so churning *distinct* keys leaves one
+		// behind on every cycle until no slot is empty. The table must then grow to
+		// clear them, even though it holds nothing.
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>(8);
+		int initialCapacity = map.capacity();
+		for (int key = 0; key < 30; ++key) {
+			map.put(key, "v" + key);
+			map.remove(key);
+		}
+		assertEquals(0, map.size());
+		assertTrue(map.isEmpty());
+		assertTrue(map.capacity() > initialCapacity,
+				"tombstones from distinct keys must force the table to grow");
+
+		map.put(999, "last");
+		assertEquals("last", map.get(999), "the map still works once the tombstones are cleared");
+		assertEquals(1, map.size());
+	}
+
+	@Test
+	public void clearKeepsTheCurrentCapacity() {
+		// Unlike OpenAddressingMap.clear(), which resizes to the size it held, this map
+		// reuses the array it already has.
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>(8);
+		for (int i = 0; i < 5; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(8, map.capacity());
+
+		map.clear();
+		assertEquals(8, map.capacity());
+		assertEquals(0, map.size());
+	}
+
+	@Test
+	public void keyProbingTheFirstSlotIsFound() {
+		// indexOf reports absence as -1 and presence as the slot index, so a key living
+		// at slot 0 is the case that separates the two. In the default capacity-64 table
+		// (prime 61) key -3 probes slot 0 first.
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
+		map.put(-3, "first slot");
+		assertTrue(map.containsKey(-3));
+		assertEquals("first slot", map.get(-3));
+		assertEquals("first slot", map.getOrDefault(-3, "fallback"));
+		assertEquals("first slot", map.remove(-3));
+		assertFalse(map.containsKey(-3));
+	}
+
+	@Test
+	public void notEmptyAfterPut() {
+		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
+		map.put(1, "A");
+		assertFalse(map.isEmpty());
+	}
+
+	@Test
 	public void negativeKeysAreSupported() {
 		IntKeyOpenAddressingMap<String> map = new IntKeyOpenAddressingMap<>();
 		map.put(-1, "minus one");

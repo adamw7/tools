@@ -362,6 +362,15 @@ public class MapTest {
 
 	@ParameterizedTest
 	@MethodSource("allImplementations")
+	public void keySetDoesNotContainAnAbsentKey(Map<Integer, String> map) {
+		map.put(1, "A");
+		Set<Integer> keySet = map.keySet();
+		assertTrue(keySet.contains(1));
+		assertFalse(keySet.contains(2));
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
 	public void keySetIsALiveViewOfTheMap(Map<Integer, String> map) {
 		map.put(1, "A");
 		map.put(2, "B");
@@ -425,5 +434,73 @@ public class MapTest {
 		for (int i = 0; i < 100; ++i) {
 			assertEquals("v" + i, map.get(i));
 		}
+	}
+
+	@Test
+	public void growsOnePutBeforeTheTableWouldFill() {
+		// The table grows while one slot is still free rather than once it is full, so
+		// a probe chain always terminates on an empty slot. Pinning the exact capacity
+		// either side of the trigger is what keeps the growth policy from drifting: a
+		// table that waited for the last slot, or grew a put early, still passes every
+		// test that only checks the entries survive.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		for (int i = 0; i < 7; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(7, map.size());
+		assertEquals(8, map.capacity(), "the seventh entry still fits the original table");
+
+		map.put(7, "v7");
+		assertEquals(8, map.size());
+		assertEquals(9, map.capacity(), "the eighth entry grows the table by one slot");
+		for (int i = 0; i < 8; ++i) {
+			assertEquals("v" + i, map.get(i));
+		}
+	}
+
+	@Test
+	public void churnOfDistinctKeysGrowsTheTableEvenWhileEmpty() {
+		// A tombstone can only be revived by its own key, so churning distinct keys
+		// leaves one behind on every cycle until no slot is empty. The table must then
+		// grow to clear them, even though it holds nothing.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		int initialCapacity = map.capacity();
+		for (int key = 0; key < 30; ++key) {
+			map.put(key, "v" + key);
+			map.remove(key);
+		}
+		assertEquals(0, map.size());
+		assertTrue(map.isEmpty());
+		assertTrue(map.capacity() > initialCapacity,
+				"tombstones from distinct keys must force the table to grow");
+
+		map.put(999, "last");
+		assertEquals("last", map.get(999), "the map still works once the tombstones are cleared");
+		assertEquals(1, map.size());
+	}
+
+	@Test
+	public void clearResizesToTheSizeTheMapHeld() {
+		// clear() rebuilds the array at the size the map held rather than reusing the
+		// grown one, so clearing a table that grew hands the memory back.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		for (int i = 0; i < 5; ++i) {
+			map.put(i, "v" + i);
+		}
+		assertEquals(8, map.capacity());
+
+		map.clear();
+		assertEquals(0, map.size());
+		assertEquals(5, map.capacity(), "the cleared table shrinks to the size it held");
+	}
+
+	@Test
+	public void clearOnAnEmptyMapShrinksToTheMinimumTable() {
+		// An array of 2 would force prime == 1, so 3 is the floor a cleared empty map
+		// lands on rather than 0.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		map.clear();
+		assertEquals(0, map.size());
+		assertEquals(3, map.capacity());
 	}
 }

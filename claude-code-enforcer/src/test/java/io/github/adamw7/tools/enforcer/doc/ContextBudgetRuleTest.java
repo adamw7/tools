@@ -69,6 +69,64 @@ class ContextBudgetRuleTest {
 	}
 
 	@Test
+	void passesWhenTheFileIsExactlyOnTheByteBudget() {
+		// The budget is a maximum, not a ceiling to stay under, so a file measuring
+		// exactly maxBytes must pass. Together with the test below this pins which side
+		// of the comparison the boundary falls on; a rule that rejected an exact fit,
+		// or accepted one byte over, still satisfies the round-number tests.
+		ContextBudgetRule rule = ruleForFile("x".repeat(50));
+		rule.setMaxBytes(50);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenTheFileIsOneByteOverTheBudget() {
+		ContextBudgetRule rule = ruleForFile("x".repeat(51));
+		rule.setMaxBytes(50);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("is 51 bytes, over the 50-byte budget"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenTheFileIsExactlyOnTheLineBudget() {
+		ContextBudgetRule rule = ruleForFile("one\ntwo\n");
+		rule.setMaxLines(2);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenTheFileIsOneLineOverTheBudget() {
+		ContextBudgetRule rule = ruleForFile("one\ntwo\nthree\n");
+		rule.setMaxLines(2);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("has 3 lines, over the 2-line budget"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenTheFileIsExactlyOnTheTokenBudget() {
+		// Tokens round up at four characters each, so 40 characters is exactly 10.
+		ContextBudgetRule rule = ruleForFile("x".repeat(40));
+		rule.setMaxTokens(10);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenTheFileIsOneTokenOverTheBudget() {
+		// One character past the exact fit rounds up to the eleventh token.
+		ContextBudgetRule rule = ruleForFile("x".repeat(41));
+		rule.setMaxTokens(10);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("estimated 11 tokens, over the 10-token budget"),
+				exception.getMessage());
+	}
+
+	@Test
 	void failsWhenTheLineBudgetIsExceeded() {
 		ContextBudgetRule rule = ruleForFile("one\ntwo\nthree\n");
 		rule.setMaxLines(2);

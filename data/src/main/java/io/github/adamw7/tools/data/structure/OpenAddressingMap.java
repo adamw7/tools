@@ -46,6 +46,11 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		return size() == 0;
 	}
 
+	/** The current backing-array length; exposed for tests that assert growth behaviour. */
+	int capacity() {
+		return array.length;
+	}
+
 	@Override
 	public boolean containsKey(Object key) {
 		return find(key) != null;

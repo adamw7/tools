@@ -108,7 +108,7 @@ jobs:
       # fix, and blocking every open PR on it helps nobody. The findings are
       # still printed in the log.
       - name: Scan the image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: tools:ci
           format: table

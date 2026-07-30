@@ -481,8 +481,10 @@ longer and carry no timeout.
 
 ## Continuous integration
 
-Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
-`main`; the rest run on a schedule, manually, or on a release.
+Workflows live in `.github/workflows/`. Two gate pull requests to `main`:
+`maven.yml` (the build and the doc checks) and `docker.yml` (the image build,
+smoke run and scan — it pushes nothing outside a release); the rest run on a
+schedule, manually, or on a release.
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
@@ -492,7 +494,7 @@ Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
 | `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
 | `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
 | `maven-windows.yml` | weekly (Sundays); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
-| `docker.yml` | on GitHub release; manual dispatch | `mvn -B package`, then builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, scans it with Trivy (fails on fixable HIGH/CRITICAL), and on a release pushes a `linux/amd64,linux/arm64` image to GHCR tagged with the release version and `latest`, with SBOM and provenance. |
+| `docker.yml` | PR → `main`; on GitHub release; manual dispatch | `mvn -B package`, then builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (blocking on a release, advisory on a PR). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR, tagged with the release version and `latest`, with SBOM and provenance. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
 | `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
 

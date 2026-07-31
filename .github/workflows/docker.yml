@@ -1,28 +1,29 @@
 name: Java Maven Build and Docker
 
 on:
-  # Pull requests build, run and scan the image but never push it, so a
-  # packaging regression is caught in review rather than at the next release.
-  # No paths filter on purpose: the image contains the built jars, so a change
-  # anywhere in the reactor — source, pom, or dependency version — can break it.
-  pull_request:
-    branches: [main]
+  # Not on pull requests: the image build, smoke run and scan add minutes to
+  # every review for a packaging path that changes rarely. It runs weekly
+  # instead, so a packaging regression — or a fresh CVE in the base image —
+  # still surfaces well before the next release, and always on the release
+  # itself. Trigger it by hand after touching the assembly or the Dockerfile.
+  schedule:
+    # Saturdays at 03:00 UTC, clear of the other weekend workflows.
+    - cron: '0 3 * * 6'
   release:
     types: [created]
   workflow_dispatch:
 
 # The workflow only reads the repository; `packages: write` is what lets the
 # job push the released image to GHCR with the built-in token. It is unused on
-# pull requests, where the push step is skipped (and where GITHUB_TOKEN is
-# read-only for forks regardless).
+# the scheduled and manual runs, where the push step is skipped.
 permissions:
   contents: read
   packages: write
 
 concurrency:
   group: docker-${{ github.ref }}
-  # Superseded pull-request runs are worth cancelling; a release run is not.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Neither a release nor a weekly run is worth cancelling half-way.
+  cancel-in-progress: false
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
@@ -102,11 +103,9 @@ jobs:
           echo "${not_unique}" | grep -q 'country is NOT unique'
           echo "${unique}" | grep -q 'id is unique'
 
-      # Fails the release on fixable HIGH/CRITICAL findings, so a vulnerable base
-      # image is caught before the push rather than after. Advisory on pull
-      # requests: a fresh upstream CVE is real, but it is not the PR author's to
-      # fix, and blocking every open PR on it helps nobody. The findings are
-      # still printed in the log.
+      # Fails on fixable HIGH/CRITICAL findings, so a vulnerable base image is
+      # caught before the push rather than after — and, on the weekly run, while
+      # there is still time to fix it rather than at the release.
       - name: Scan the image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -114,7 +113,7 @@ jobs:
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          exit-code: '1'
 
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'release'

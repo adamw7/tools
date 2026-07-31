@@ -227,19 +227,21 @@ paths.
 
 ## Continuous integration and commits
 
-Two workflows gate pull requests to `main`. `maven.yml` bootstraps the enforcer
+One workflow gates pull requests to `main`: `maven.yml` bootstraps the enforcer
 rule and then runs `mvn -B package -DenforceClaudeMd` — the only workflow that
 runs the doc checks. Its `package` step is capped at **120 seconds**
 (`timeout-minutes: 2` plus a wall-clock check that fails with a `::error::`
 annotation), so a change that slows the build down red-flags the PR; profile it
-rather than raising the cap. `docker.yml` builds the image, runs it against a
-sample CSV and scans it, pushing nothing outside a release. Everything else runs
-on a schedule or a release, so a green PR is not proof the whole matrix passes:
+rather than raising the cap. Everything else runs on a schedule or a release, so
+a green PR is not proof the whole matrix passes:
 
-- **Scheduled** — `integration-tests.yml` daily; `codeql.yml` and
-  `coverage.yml` Saturdays; `pitest.yml` and `maven-windows.yml` Sundays.
+- **Scheduled** — `integration-tests.yml` daily; `codeql.yml`, `coverage.yml`
+  and `docker.yml` Saturdays; `pitest.yml` and `maven-windows.yml` Sundays.
   `maven-windows.yml` runs `mvn install` on `windows-latest`, so keep path,
-  line-ending, and file-locking assumptions platform-neutral.
+  line-ending, and file-locking assumptions platform-neutral. `docker.yml`
+  builds the image, runs it against a sample CSV and scans it, pushing nothing
+  outside a release — run it by hand (`workflow_dispatch`) after changing the
+  assembly or the Dockerfile rather than waiting for the weekly run.
 - **On a GitHub release** — `docker.yml` again, this time pushing the multi-arch
   image to GHCR; `maven-publish.yml` (GitHub Packages); and
   `central-publish.yml` (Maven Central).

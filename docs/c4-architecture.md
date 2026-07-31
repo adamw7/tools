@@ -686,8 +686,10 @@ flowchart TB
 Which workflow runs what, and what leaves the build. `maven.yml` is the gate on
 every pull request to `main` — and the only workflow that runs the CLAUDE.md
 checks; the heavier and slower checks are scheduled, and everything that
-publishes fires on a GitHub release. Triggers below are the ones in
-`.github/workflows/`; every workflow builds on JDK 25 (Temurin).
+publishes fires on a GitHub release. `docker.yml` sits in both halves: it builds,
+smoke-runs and scans the image on its weekly run, and does the same again on a
+release before pushing the multi-arch image to GHCR. Triggers below are the ones
+in `.github/workflows/`; every workflow builds on JDK 25 (Temurin).
 
 ```mermaid
 flowchart TB
@@ -706,10 +708,10 @@ flowchart TB
         covWf["<b>coverage.yml</b><br/><i>Saturdays · JaCoCo, 80% floor</i>"]
         pitWf["<b>pitest.yml</b><br/><i>Sundays · mutation testing</i>"]
         winWf["<b>maven-windows.yml</b><br/><i>Sundays · the build on Windows</i>"]
+        dockerWf["<b>docker.yml</b><br/><i>Saturdays · builds, smoke-runs<br/>and scans the image; on a release,<br/>also pushes it to GHCR</i>"]
     end
 
     subgraph publish ["On a release"]
-        dockerWf["<b>docker.yml</b><br/><i>builds, smoke-runs and scans<br/>the image, pushes it to GHCR</i>"]
         ghPkg["<b>maven-publish.yml</b><br/><i>GitHub Packages</i>"]
         central["<b>central-publish.yml</b><br/><i>Maven Central; dispatch =<br/>staged-only dry run</i>"]
     end
@@ -720,8 +722,10 @@ flowchart TB
     sched --> covWf
     sched --> pitWf
     sched --> winWf
+    sched --> dockerWf
     manual --> pitWf
     manual --> winWf
+    manual --> dockerWf
     manual --> central
     rel --> dockerWf
     rel --> ghPkg

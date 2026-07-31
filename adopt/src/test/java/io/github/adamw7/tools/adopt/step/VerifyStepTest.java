@@ -109,7 +109,7 @@ class VerifyStepTest {
 		}
 
 		@Override
-		public Optional<String> requiredTool(Path repositoryDirectory) {
+		public Optional<List<String>> toolProbe(Path repositoryDirectory) {
 			return Optional.empty();
 		}
 	}

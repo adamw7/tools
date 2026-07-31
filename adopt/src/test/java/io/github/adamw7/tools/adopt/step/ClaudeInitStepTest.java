@@ -150,6 +150,31 @@ class ClaudeInitStepTest {
 		assertThrows(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner));
 	}
 
+	/**
+	 * A CLI run that exits cleanly without writing the file has said why in its own
+	 * transcript, which runOrFail discards for a command that succeeded. Reporting the
+	 * missing file alone left the adoption stopped on a message nothing could explain.
+	 */
+	@Test
+	void missingClaudeMdIsReportedWithWhatTheCliSaid(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("I did not create a CLAUDE.md");
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ClaudeInitStep().execute(context, runner));
+		assertTrue(thrown.getMessage().contains("I did not create a CLAUDE.md"), thrown.getMessage());
+	}
+
+	/** The transcript is redacted like every other one, since it is the run's reported failure. */
+	@Test
+	void theReportedTranscriptCarriesNoCredentials(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = RecordingCommandRunner
+				.answering("cloned https://x-access-token:secret@github.com/adamw7/tools.git");
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> new ClaudeInitStep().execute(context, runner));
+		assertFalse(thrown.getMessage().contains("secret"), thrown.getMessage());
+	}
+
 	@Test
 	void movesExistingClaudeDirMemoryAsideSoHeadlessInitWritesRootFile(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);

@@ -64,7 +64,13 @@ Maven project. The notable capabilities are:
   `PATH` for a `gradle` used to abort the adoption of a repository the host could
   build perfectly well. The wrapper is launched by its absolute path, since
   `ProcessBuilder` resolves a relative program name against the JVM's working
-  directory rather than the command's. The pull request metadata — title, body,
+  directory rather than the command's, and a POSIX wrapper the project committed
+  without its executable bit — the usual state of one added from Windows — is
+  launched through `sh` rather than as a program, since it would otherwise be
+  refused with "Permission denied". `BuildSystem.toolProbe` answers the whole
+  probe command rather than a program name so `BuildToolchainStep` probes that
+  same launcher: `sh --version` is not portable, so probing the program alone
+  would answer for the shell instead of for the build tool. The pull request metadata — title, body,
   reviewers, labels, assignees, and draft flag — is supplied through
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
@@ -102,7 +108,12 @@ Maven project. The notable capabilities are:
   never meet, though, so `CloneStep` guards the other half of that collision: a
   checkout it reuses instead of cloning is first confirmed to be the repository
   under adoption, by comparing the repository its `origin` names with the one the
-  run was given. Two URLs name one repository when they agree once their scheme,
+  run was given. That comparison reads the raw configured remote (`git config
+  --get-all remote.origin.url`) rather than `git remote get-url`, which expands
+  the caller's `url.<base>.insteadOf` rewrites and so answers a host and path the
+  checkout never recorded: against a mirror or a proxied clone the reused checkout
+  was refused as a different repository, aborting the adoption of the very
+  repository it held. Two URLs name one repository when they agree once their scheme,
   credentials, `.git` suffix, trailing slash, and letter case are set aside — so a
   checkout cloned over SSH is reused by a run given the HTTPS URL — and anything
   else is refused, because re-cloning costs a clone while adopting the wrong

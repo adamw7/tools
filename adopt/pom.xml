@@ -11,7 +11,6 @@
 	<packaging>jar</packaging>
 	<name>Claude Code repository adoption</name>
 	<description>Adopts Claude Code into a GitHub repository: clones it, runs claude init to generate CLAUDE.md, commits and pushes, then wires the claude-code-enforcer into the project build.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<build>
 		<resources>
 			<!-- Default resources copied verbatim: log4j2.properties carries ${...}
@@ -87,7 +86,7 @@
 		<dependency>
 			<groupId>io.github.adamw7</groupId>
 			<artifactId>tools.mcp-common</artifactId>
-			<version>${revision}</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.modelcontextprotocol.sdk</groupId>
@@ -117,7 +116,7 @@
 		<dependency>
 			<groupId>io.github.adamw7</groupId>
 			<artifactId>tools.test-common</artifactId>
-			<version>${revision}</version>
+			<version>${project.version}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>

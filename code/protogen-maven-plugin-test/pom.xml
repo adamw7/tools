@@ -11,11 +11,18 @@
 	<packaging>jar</packaging>
 	<name>protogen-maven-plugin-test</name>
 	<description>Integration test module that exercises the protogen-maven-plugin by generating and compiling protobuf builders end to end.</description>
-	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<!-- This module only exercises generated protobuf classes, so the
 		     instruction-coverage gate is not meaningful here. -->
 		<jacoco.skip>true</jacoco.skip>
+		<!-- An integration-test harness for the protogen-maven-plugin, not a
+		     reusable library: it has no main Java sources (only src/main/proto),
+		     so its -sources.jar is empty and Central validation rejects it. Keep
+		     it out of both publications: the GitHub Packages deployment
+		     maven-deploy-plugin performs on `mvn deploy`, and the Maven Central
+		     bundle the root pom's release profile publishes. -->
+		<maven.deploy.skip>true</maven.deploy.skip>
+		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<build>
 		<plugins>
@@ -94,27 +101,4 @@
 			<artifactId>protobuf-java</artifactId>
 		</dependency>
 	</dependencies>
-	<profiles>
-		<profile>
-			<!-- This module is an integration-test harness for the
-			     protogen-maven-plugin, not a reusable library: it has no main
-			     Java sources (only src/main/proto), so its -sources.jar is empty
-			     and Central validation rejects it. Keep it out of the Maven
-			     Central bundle that the release profile publishes. skipPublishing
-			     is honoured per module by the central-publishing-maven-plugin, so
-			     the exclusion holds even without the reactor -pl filter. -->
-			<id>release</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.sonatype.central</groupId>
-						<artifactId>central-publishing-maven-plugin</artifactId>
-						<configuration>
-							<skipPublishing>true</skipPublishing>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

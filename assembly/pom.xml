@@ -11,14 +11,14 @@
 	<packaging>jar</packaging>
 	<name>assembly</name>
 	<description>Builds a runnable SampleApp distribution: a launcher jar plus a lib/ of dependency jars (mainClass: io.github.adamw7.tools.data.SampleApp).</description>
-	<url>https://github.com/adamw7/tools</url>
 	<properties>
-		<!-- This module only assembles a runnable SampleApp distribution, not a
-		     reusable library, so keep it out of the GitHub Packages deployment
-		     that maven-deploy-plugin performs on `mvn deploy`. (The Maven Central
-		     release profile already excludes it via the central-publishing
-		     plugin's skipPublishing flag below.) -->
+		<!-- This module only assembles a runnable SampleApp distribution (a
+		     launcher jar plus its lib/ of dependencies), not a reusable library,
+		     so keep it out of both publications: the GitHub Packages deployment
+		     maven-deploy-plugin performs on `mvn deploy`, and the Maven Central
+		     bundle the root pom's release profile publishes. -->
 		<maven.deploy.skip>true</maven.deploy.skip>
+		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<build>
 		<plugins>
@@ -27,6 +27,7 @@
 				     distribution's launcher. Main-Class plus a lib/-prefixed Class-Path
 				     make `java -jar tools.assembly-<version>.jar` work straight out of
 				     the assembled directory, in the container images and outside them. -->
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>
 					<archive>
@@ -39,6 +40,7 @@
 				</configuration>
 			</plugin>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
 					<descriptors>
@@ -69,25 +71,4 @@
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
-	<profiles>
-		<profile>
-			<!-- This module only assembles a runnable SampleApp distribution
-			     (a launcher jar plus its lib/ of dependencies), not a reusable library,
-			     so keep it out of the Maven Central bundle that the release
-			     profile publishes. skipPublishing is honoured per module by the
-			     central-publishing-maven-plugin. -->
-			<id>release</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.sonatype.central</groupId>
-						<artifactId>central-publishing-maven-plugin</artifactId>
-						<configuration>
-							<skipPublishing>true</skipPublishing>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

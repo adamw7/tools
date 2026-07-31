@@ -23,7 +23,14 @@ profile, is the most common source of avoidable build friction here.
 - **Plugin versions**: only in the **root** `pom.xml` under
   `<pluginManagement>`.
 - **Module poms reference dependencies and plugins WITHOUT versions.** Never add
-  a `<version>` to a module pom — add or change it in the root instead.
+  a `<version>` to a module pom — add or change it in the root instead. The
+  exceptions are reactor artifacts, which use `${project.version}`.
+- **Artifacts that must move together share one property**, not a version each:
+  `protobuf.version` (runtime *and* `protoc`), `grpc.version`, `derby.version`,
+  `log4j2.version`, `maven.api.version`. `derby.version` and `log4j2.version`
+  are Spring Boot's own property names, so overriding them also moves the
+  siblings the `spring-boot-dependencies` BOM manages (derbyshared, the other
+  log4j2 artifacts) instead of leaving them on Boot's older version.
 
 ### Ask before adding a dependency
 - Use the existing Maven dependencies. **Always ask the user before adding a new
@@ -53,9 +60,15 @@ profile, is the most common source of avoidable build friction here.
   `shellcheck` and works offline. Skip it with `-Dskip.shellcheck=true` when you
   just want a fast loop.
 - **Java 25** is required: JDK 25 on `PATH` with `JAVA_HOME` set.
-- The root reactor modules are: `claude-code-enforcer`, `mcp-common`, `data`,
-  `code`, `adopt`, `grpc-example`, `assembly`. `data-test` is built separately
-  (not in the root `<modules>`).
+- The root reactor modules are: `claude-code-enforcer`, `test-common`,
+  `mcp-common`, `data`, `code`, `adopt`, `grpc-example`, `assembly`. `data-test`
+  is built separately (not in the root `<modules>`).
+- **A typo in `-P` fails the build**, not the run: the root `enforce` execution
+  runs `requireProfileIdsExist`.
+- **A module that is not a reusable library** (example, test harness,
+  distribution) opts out of publishing with `<maven.deploy.skip>` and
+  `<central.skipPublishing>` in its `<properties>` — never by redeclaring the
+  `release` profile.
 
 ## Workflow for a dependency/plugin change
 1. Confirm it isn't already managed in the root pom.

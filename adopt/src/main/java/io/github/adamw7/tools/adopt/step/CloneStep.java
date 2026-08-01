@@ -31,6 +31,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * branch, commit, and push the first repository's working tree, and report the
  * first repository's pull request as the second's.
  *
+ * <p>A reused checkout must also be free of uncommitted work that is not the
+ * adoption's own, since {@link CommitStep} stages the whole tree and would push a
+ * contributor's work in progress as part of the adoption.
+ *
  * <p>The checkout is then refreshed with {@code git fetch}, because every later
  * decision about the feature branch is taken against the remote-tracking refs a
  * stale checkout has out of date.
@@ -38,6 +42,12 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 public class CloneStep extends AbstractCommandStep {
 
 	private static final Logger log = LogManager.getLogger(CloneStep.class);
+
+	/** The two status letters and the space before the path in {@code git status --porcelain}. */
+	private static final int STATUS_PREFIX = 3;
+
+	/** What {@code git status --porcelain} puts between a rename's old and new path. */
+	private static final String RENAME_ARROW = " -> ";
 
 	@Override
 	public String name() {
@@ -62,9 +72,65 @@ public class CloneStep extends AbstractCommandStep {
 
 	private void reuse(AdoptionContext context, CommandRunner runner) {
 		requireCheckoutOfTheSameRepository(context, runner);
+		requireNoUnrelatedChanges(context, runner);
 		log.info("{} already contains a checkout of {}; skipping clone", context.repositoryDirectory(),
 				context.displayUrl());
 		refresh(context, runner);
+	}
+
+	/**
+	 * Refuses a reused checkout carrying uncommitted work that is not the adoption's
+	 * own. {@link CommitStep} stages the whole tree with {@code git add -A}, so
+	 * whatever a contributor had in progress in that checkout would be swept into the
+	 * adoption's commit, pushed to the feature branch, and offered for review as part
+	 * of adopting Claude Code.
+	 *
+	 * <p>Only unrelated paths stop the run. An adoption that failed between writing a
+	 * file and committing it leaves exactly the paths {@link AdoptionAssets} names, so
+	 * re-running against the same workspace still resumes — which is the case worth
+	 * resuming, the one that has already paid for a {@code claude init}.
+	 */
+	private void requireNoUnrelatedChanges(AdoptionContext context, CommandRunner runner) {
+		List<String> unrelated = unrelatedChanges(context, runner);
+		if (!unrelated.isEmpty()) {
+			throw new AdoptionException(context.repositoryDirectory() + " has uncommitted changes that are not the"
+					+ " adoption's: " + String.join(", ", unrelated) + ". The adoption commits everything in the"
+					+ " checkout, so these would be pushed to " + context.branchName()
+					+ " too. Commit or stash them, or adopt into a fresh --workspace.");
+		}
+	}
+
+	/**
+	 * The changed paths the adoption does not own. A rename is reported as
+	 * {@code old -> new} and a path carrying a space or a quote is reported quoted, so
+	 * both are reduced to the path git would act on before it is compared.
+	 */
+	private List<String> unrelatedChanges(AdoptionContext context, CommandRunner runner) {
+		CommandResult result = runner.run(context.repositoryDirectory(),
+				List.of("git", "status", "--porcelain"));
+		if (!result.succeeded()) {
+			throw new AdoptionException(context.repositoryDirectory() + " is a checkout whose status could not be"
+					+ " read, so it cannot be shown to be free of uncommitted work: "
+					+ Redaction.of(result.output().strip()));
+		}
+		return result.output().lines()
+				.filter(line -> line.length() > STATUS_PREFIX)
+				.map(this::changedPath)
+				.filter(path -> !AdoptionAssets.WRITTEN_PATHS.contains(path))
+				.toList();
+	}
+
+	private String changedPath(String statusLine) {
+		String path = statusLine.substring(STATUS_PREFIX);
+		int rename = path.lastIndexOf(RENAME_ARROW);
+		return unquoted(rename < 0 ? path : path.substring(rename + RENAME_ARROW.length()));
+	}
+
+	private String unquoted(String path) {
+		String stripped = path.strip();
+		return stripped.length() > 1 && stripped.startsWith("\"") && stripped.endsWith("\"")
+				? stripped.substring(1, stripped.length() - 1)
+				: stripped;
 	}
 
 	/**

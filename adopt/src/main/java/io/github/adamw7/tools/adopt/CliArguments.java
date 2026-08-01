@@ -71,9 +71,10 @@ public final class CliArguments {
 
 	public static CliArguments parse(String[] args) {
 		CliArguments cli = new CliArguments();
+		String[] arguments = args == null ? new String[0] : args;
 		int index = 0;
-		while (args != null && index < args.length) {
-			index = cli.consume(args, index);
+		while (index < arguments.length) {
+			index = cli.consume(arguments, index);
 		}
 		cli.requireSomethingToAdopt();
 		return cli;
@@ -138,18 +139,18 @@ public final class CliArguments {
 	private int consumeFlag(String[] args, int index) {
 		String flag = args[index];
 		return switch (flag) {
-			case "--repo" -> consumeValue(args, index, this::addFlaggedRepository);
-			case "--repos" -> consumeValue(args, index, value -> addFlaggedRepositories(readList(value)));
-			case "--workspace" -> consumeValue(args, index, value -> workspace = optionalPath(value));
-			case "--branch" -> consumeValue(args, index, value -> branchName = optionalText(value));
+			case "--repo" -> consumeName(args, index, this::addFlaggedRepository);
+			case "--repos" -> consumeName(args, index, value -> addFlaggedRepositories(readList(value)));
+			case "--workspace" -> consumeName(args, index, value -> workspace = optionalPath(value));
+			case "--branch" -> consumeName(args, index, value -> branchName = optionalText(value));
 			case "--title" -> consumeValue(args, index, value -> title = value);
 			case "--body" -> consumeValue(args, index, value -> body = value);
-			case "--reviewer" -> consumeValue(args, index, reviewers::add);
-			case "--label" -> consumeValue(args, index, labels::add);
-			case "--assignee" -> consumeValue(args, index, assignees::add);
-			case "--rule-version" -> consumeValue(args, index, value -> ruleVersion = optionalText(value));
-			case TIMEOUT_FLAG -> consumeValue(args, index, value -> commandTimeout = optionalTimeout(value));
-			case "--report" -> consumeValue(args, index, value -> reportFile = optionalPath(value));
+			case "--reviewer" -> consumeName(args, index, reviewers::add);
+			case "--label" -> consumeName(args, index, labels::add);
+			case "--assignee" -> consumeName(args, index, assignees::add);
+			case "--rule-version" -> consumeName(args, index, value -> ruleVersion = optionalText(value));
+			case TIMEOUT_FLAG -> consumeName(args, index, value -> commandTimeout = optionalTimeout(value));
+			case "--report" -> consumeName(args, index, value -> reportFile = optionalPath(value));
 			case "--draft" -> {
 				draft = true;
 				yield index + 1;
@@ -172,6 +173,23 @@ public final class CliArguments {
 		}
 		target.accept(args[index + 1]);
 		return index + 2;
+	}
+
+	/**
+	 * Reads the value of a flag that names something — a URL, a path, a branch, a
+	 * user, a number — none of which is ever spelled as a flag. A missing value would
+	 * otherwise swallow the next flag as the value: {@code --branch --draft} named a
+	 * branch called {@code --draft}, created it, and pushed it, with the draft the
+	 * operator asked for silently dropped. {@code --title} and {@code --body} take
+	 * free-form prose and so keep {@link #consumeValue}, which accepts whatever
+	 * follows.
+	 */
+	private int consumeName(String[] args, int index, Consumer<String> target) {
+		if (index + 1 < args.length && args[index + 1].startsWith("--")) {
+			throw new IllegalArgumentException(args[index] + " requires a value, but was followed by the option "
+					+ args[index + 1] + ". " + USAGE);
+		}
+		return consumeValue(args, index, target);
 	}
 
 	/**

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * The starter Claude Code configuration assets an {@link AssetsStep} installs
@@ -113,6 +114,32 @@ public final class AdoptionAssets {
 			new AssetInstaller(SESSION_START_HOOK_FILE, SESSION_START_HOOK, true),
 			new AssetInstaller(MCP_CONFIG_FILE, MCP_CONFIG),
 			new AssetInstaller(CLAUDE_WORKFLOW_FILE, CLAUDE_WORKFLOW));
+
+	/**
+	 * Every checkout-relative path an adoption may write or edit: the starter assets,
+	 * the generated {@code CLAUDE.md}, the fallback guard's two files, and the build
+	 * files the guard is wired into.
+	 *
+	 * <p>{@link CloneStep} reads this to tell the adoption's own work apart from a
+	 * contributor's, so a path missing from it is a file the adoption writes and
+	 * cannot account for. Extend it when the adoption learns to write a new one — the
+	 * asset installers and the two guard installers are read from their own constants
+	 * here, so only a genuinely new file has to be added by hand.
+	 */
+	public static final List<String> WRITTEN_PATHS = writtenPaths();
+
+	private static List<String> writtenPaths() {
+		return Stream.concat(
+				DEFAULTS.stream().map(AssetInstaller::relativePath),
+				Stream.of(CLAUDE_MD_FILE,
+						WorkflowGuardInstaller.WORKFLOW_FILE,
+						WorkflowGuardInstaller.SCRIPT_FILE,
+						MavenBuildSystem.POM,
+						GradleBuildSystem.GROOVY_BUILD_FILE,
+						GradleBuildSystem.KOTLIN_BUILD_FILE))
+				.distinct()
+				.toList();
+	}
 
 	private AdoptionAssets() {
 	}

@@ -105,4 +105,25 @@ class AssetsStepTest {
 		assertEquals("assets", step.name());
 	}
 
+	/**
+	 * {@link CloneStep} tells the adoption's own uncommitted work apart from a
+	 * contributor's by this list, so a file the adoption writes but does not name here
+	 * would make a resumable checkout look like one carrying somebody else's work.
+	 * Every starter asset is folded in from {@link AdoptionAssets#DEFAULTS} itself; the
+	 * files written outside an installer are the ones worth pinning.
+	 */
+	@Test
+	void namesEveryFileTheAdoptionWrites() {
+		assertTrue(AdoptionAssets.WRITTEN_PATHS.containsAll(List.of(
+				"CLAUDE.md", "AGENTS.md", ".claude/settings.json", ".claude/hooks/session-start.sh",
+				".mcp.json", ".github/workflows/claude.yml", ".github/workflows/claude-md-guard.yml",
+				".github/claude-md-guard.sh", "pom.xml", "build.gradle", "build.gradle.kts")),
+				AdoptionAssets.WRITTEN_PATHS.toString());
+	}
+
+	/** A path named twice would report the same file twice in a refusal. */
+	@Test
+	void namesEachFileOnce() {
+		assertEquals(AdoptionAssets.WRITTEN_PATHS.stream().distinct().toList(), AdoptionAssets.WRITTEN_PATHS);
+	}
 }

@@ -72,6 +72,12 @@ public class PullRequestStep extends AbstractCommandStep {
 		return "pull-request";
 	}
 
+	/**
+	 * The report-less overload the {@link AdoptionStep} contract requires. The
+	 * pipeline never calls it — {@link io.github.adamw7.tools.adopt.GitHubRepoAdopter}
+	 * always passes the run's report — so the pull request's URL is deliberately
+	 * discarded here rather than reported to a report nobody holds.
+	 */
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
 		execute(context, runner, new AdoptionReport());

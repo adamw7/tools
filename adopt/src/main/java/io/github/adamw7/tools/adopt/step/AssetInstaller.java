@@ -34,6 +34,11 @@ public class AssetInstaller {
 		this.executable = executable;
 	}
 
+	/** The checkout-relative path this asset is written to. */
+	public String relativePath() {
+		return relativePath;
+	}
+
 	/**
 	 * @return {@code true} when the asset was written, {@code false} when the
 	 *         checkout already carried a file at its path and was left unchanged.

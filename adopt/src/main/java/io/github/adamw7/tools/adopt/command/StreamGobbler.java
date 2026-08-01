@@ -5,9 +5,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Drains a process's output stream on a dedicated daemon thread so the command can
@@ -22,6 +24,8 @@ import java.time.Duration;
  * pipe open after the child itself has exited.
  */
 final class StreamGobbler {
+
+	private static final Logger log = LogManager.getLogger(StreamGobbler.class);
 
 	/**
 	 * How long {@link #output()} waits for the reader thread to reach
@@ -65,11 +69,19 @@ final class StreamGobbler {
 		}
 	}
 
+	/**
+	 * A read that fails ends the transcript where it failed rather than propagating.
+	 * This runs on a thread nobody joins for a result, so a thrown exception reaches
+	 * the JVM's default handler and prints a stack trace to standard error — the one
+	 * channel this module never logs on, and one the operator cannot attribute to a
+	 * command. The partial output is what {@link #output()} answers either way, so
+	 * the caller is no worse off for the failure being recorded here instead.
+	 */
 	private void drain(InputStream stream) {
 		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
 			reader.transferTo(output);
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			log.debug("Stopped reading the command's output before end-of-stream", e);
 		}
 	}
 }

@@ -57,8 +57,24 @@ public class ProcessCommandRunner implements CommandRunner {
 				.directory(workingDirectory.toFile())
 				.redirectErrorStream(true);
 		Process process = start(builder, command);
-		closeStandardInput(process, command);
-		return await(process, command, StreamGobbler.consuming(process.getInputStream()));
+		return awaitOrDestroy(process, command);
+	}
+
+	/**
+	 * Nothing may leave this method with the child still running. {@link #await}
+	 * destroys the tree on the two failures it raises itself, but the steps before it
+	 * — closing standard input, starting the reader — can fail too, and a child left
+	 * behind by one of those outlives the adoption entirely: no later step knows it
+	 * exists, and its merged output pipe stays open with nobody draining it.
+	 */
+	private CommandResult awaitOrDestroy(Process process, List<String> command) {
+		try {
+			closeStandardInput(process, command);
+			return await(process, command, StreamGobbler.consuming(process.getInputStream()));
+		} catch (RuntimeException e) {
+			destroyTree(process);
+			throw e;
+		}
 	}
 
 	private Process start(ProcessBuilder builder, List<String> command) {

@@ -48,10 +48,20 @@ public interface BuildSystem {
 	 * {@code --version} is not portable — and probing only the program would then
 	 * answer for the shell rather than for the build tool.
 	 *
+	 * <p>A build system whose verification names no command at all has nothing to
+	 * probe, and is answered as such rather than with the
+	 * {@link IndexOutOfBoundsException} that reading its first word would raise —
+	 * this is the extension point a new build system is added through, so it says
+	 * what it expects instead of failing an adoption several steps in.
+	 *
 	 * @return the probe command, or empty when the verification needs nothing beyond
 	 *         the shell
 	 */
 	default Optional<List<String>> toolProbe(Path repositoryDirectory) {
-		return Optional.of(List.of(verifyCommand(repositoryDirectory).get(0), ToolProbe.VERSION_FLAG));
+		List<String> verify = verifyCommand(repositoryDirectory);
+		if (verify.isEmpty()) {
+			return Optional.empty();
+		}
+		return Optional.of(List.of(verify.get(0), ToolProbe.VERSION_FLAG));
 	}
 }

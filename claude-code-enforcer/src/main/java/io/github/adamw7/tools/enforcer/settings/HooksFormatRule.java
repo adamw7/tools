@@ -38,8 +38,10 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * note left in the directory.
  * <p>
  * When {@code settingsFile} is configured, any command hook whose command resolves
- * a {@code $CLAUDE_PROJECT_DIR} path into the hooks directory must point at a
- * script that exists there, catching a hook renamed on disk but not in settings;
+ * a project-local path into the hooks directory — written with
+ * {@code $CLAUDE_PROJECT_DIR} or as the plain repository-relative path Claude Code
+ * resolves the same way — must point at a script that exists there, catching a hook
+ * renamed on disk but not in settings;
  * {@code reportUnreferencedScripts} also reports a script no hook references. The
  * {@code hooksDir} parameter must be configured, but an absent directory is a pass
  * because hooks are optional. All problems found are reported together.
@@ -180,13 +182,13 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * The absolute paths a command's {@code $CLAUDE_PROJECT_DIR} tokens resolve to
-	 * that land inside the hooks directory. A path outside it belongs to another
-	 * rule's concern, so it is dropped rather than reported here.
+	 * The absolute paths of the project-local scripts a command runs that land inside
+	 * the hooks directory. A path outside it belongs to another rule's concern, so it
+	 * is dropped rather than reported here.
 	 */
 	private List<Path> scriptsInHooksDir(String command) {
 		Path hooks = canonical(hooksDir.toPath());
-		return new ClaudeProjectDir(projectDir, settingsFile).expandAll(command).stream()
+		return new ClaudeProjectDir(projectDir, settingsFile).scriptsIn(command).stream()
 				.map(expanded -> canonical(new File(expanded).toPath()))
 				.filter(resolved -> resolved.startsWith(hooks))
 				.toList();

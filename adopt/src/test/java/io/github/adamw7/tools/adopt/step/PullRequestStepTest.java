@@ -233,6 +233,40 @@ class PullRequestStepTest {
 		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
 	}
 
+	/** The other wording gh reports it with, when its own pre-check missed the pull request. */
+	@Test
+	void anAlreadyOpenPullRequestReportedByGraphQlIsNotAFailure() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "pull request create failed: GraphQL: A pull request already exists"
+						+ " for adamw7:claude/adopt-claude-code.")
+				: new CommandResult(command, 0, "[]"));
+		step.execute(context, runner);
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
+
+	/**
+	 * The tolerated wordings are matched against gh's whole merged transcript, so a
+	 * fragment that does not name a pull request matches a failure that has nothing
+	 * to do with one. A bare "already exists" swallowed these, and the adoption was
+	 * reported as complete with no pull request opened and none to find.
+	 */
+	@Test
+	void aFailureMentioningSomethingElseThatAlreadyExistsStillAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "could not add label: 'infra' already exists on another repository")
+				: new CommandResult(command, 0, "[]"));
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
+	@Test
+	void aRefThatAlreadyExistsStillAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "pull request create failed: GraphQL: A ref named"
+						+ " \"refs/heads/claude/adopt-claude-code\" already exists in the repository")
+				: new CommandResult(command, 0, "[]"));
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
 	@Test
 	void aCreationFailureThatIsNotBenignStillAbortsAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")

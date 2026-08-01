@@ -4,6 +4,7 @@ import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Locale;
 
 import javax.inject.Named;
 
@@ -156,7 +157,7 @@ public class McpConfigFormatRule extends JsonFileRule {
 			if (scheme == null || uri.getHost() == null) {
 				return null;
 			}
-			String lower = scheme.toLowerCase();
+			String lower = scheme.toLowerCase(Locale.ROOT);
 			return lower.equals(HTTP_SCHEME) || lower.equals(HTTPS_SCHEME) ? lower : null;
 		} catch (URISyntaxException e) {
 			return null;

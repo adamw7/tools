@@ -128,6 +128,34 @@ class HooksFormatRuleTest {
 		assertTrue(exception.getMessage().contains("orphan.sh"), exception.getMessage());
 	}
 
+	/**
+	 * A settings.json is as likely to wire a hook by the repository-relative path
+	 * Claude Code resolves against the project directory. Reading only the
+	 * {@code $CLAUDE_PROJECT_DIR} spelling left the script it really does reference
+	 * reported as referenced by nothing.
+	 */
+	@Test
+	void treatsARelativeReferenceAsReferencing() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(".claude/hooks/session-start.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenSettingsReferencesAMissingScriptRelatively() {
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(".claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("references a missing hook script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
 	@Test
 	void treatsAQuotedReferenceAsReferencing() {
 		writeScript("session-start.sh", "#!/bin/sh\n", true);

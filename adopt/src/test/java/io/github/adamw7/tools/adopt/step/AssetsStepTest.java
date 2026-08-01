@@ -67,6 +67,20 @@ class AssetsStepTest {
 		assertTrue(settings.contains(AdoptionAssets.SESSION_START_HOOK_FILE));
 	}
 
+	/**
+	 * The hook is wired through {@code $CLAUDE_PROJECT_DIR} rather than by a bare
+	 * relative path, so it resolves to the checkout's own script whatever directory
+	 * the session was started in — and so the {@code hookCommandsValid} guard the
+	 * adoption is wiring in can see which script it points at.
+	 */
+	@Test
+	void settingsRootTheHookAtTheProjectDirectory(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		step.execute(context, new RecordingCommandRunner());
+		String settings = Files.readString(context.repositoryDirectory().resolve(AdoptionAssets.SETTINGS_FILE));
+		assertTrue(settings.contains("$CLAUDE_PROJECT_DIR/" + AdoptionAssets.SESSION_START_HOOK_FILE), settings);
+	}
+
 	@Test
 	void isIdempotentAcrossReRuns(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);

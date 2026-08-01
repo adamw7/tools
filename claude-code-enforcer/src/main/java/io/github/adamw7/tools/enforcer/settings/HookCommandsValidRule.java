@@ -17,11 +17,14 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * {@code hooks} array, and every hook in it must declare a non-blank {@code type};
  * a {@code command} hook must also declare a non-blank {@code command}.
  * <p>
- * A command that points at a project-local script through the
- * {@code $CLAUDE_PROJECT_DIR} variable is resolved against {@code projectDir} (the
+ * A command that points at a project-local script — through the
+ * {@code $CLAUDE_PROJECT_DIR} variable, or as the plain repository-relative path
+ * Claude Code resolves the same way — is resolved against {@code projectDir} (the
  * parent of the settings file's directory by default) and must exist on disk, so a
  * renamed or missing hook script is caught; the check is on by default and can be
- * switched off with {@code validateScriptReferences}. An event name outside a
+ * switched off with {@code validateScriptReferences}. Only the program of each
+ * chained command is read as a relative script, never an argument, so a hook passing
+ * a path it is about to write is not required to exist. An event name outside a
  * configured {@code allowedEvents} is reported, which catches a mistyped
  * {@code SessionSart}. A settings file without a {@code hooks} key is allowed, but
  * a {@code hooks} that is present and is not an object is reported rather than
@@ -141,12 +144,12 @@ public class HookCommandsValidRule extends JsonFileRule {
 		violations.add("hook event '" + event + "' " + problem);
 	}
 
-	/** The resolved on-disk paths the command's {@code $CLAUDE_PROJECT_DIR} tokens point at. */
+	/** The resolved on-disk paths of the project-local scripts the command runs. */
 	private List<String> localScriptPaths(String command) {
 		if (!validateScriptReferences) {
 			return List.of();
 		}
-		return new ClaudeProjectDir(projectDir, settingsFile).expandAll(command);
+		return new ClaudeProjectDir(projectDir, settingsFile).scriptsIn(command);
 	}
 
 	void setSettingsFile(File settingsFile) {

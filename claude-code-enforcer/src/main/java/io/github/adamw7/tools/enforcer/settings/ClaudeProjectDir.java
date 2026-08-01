@@ -5,12 +5,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
- * Resolves the base directory that a hook command's {@code $CLAUDE_PROJECT_DIR}
- * variable expands to, and performs that expansion on the tokens of a command.
- * Both hook rules share this so the two accepted spellings of the variable and
- * the "grandparent of the settings file" fallback live in exactly one place.
+ * Resolves the project-local scripts a hook command runs, against the base
+ * directory its {@code $CLAUDE_PROJECT_DIR} variable expands to. Both hook rules
+ * share this so the two accepted spellings of the variable, the "grandparent of the
+ * settings file" fallback, and what counts as a project-local script live in
+ * exactly one place.
  * <p>
  * The unbraced spelling ends where the variable name does, as a shell reads it, so
  * {@code $CLAUDE_PROJECT_DIR_BACKUP} is a different variable and not this one with
@@ -34,6 +36,24 @@ final class ClaudeProjectDir {
 	}
 
 	/**
+	 * The project-local scripts {@code command} runs: every token rooted at
+	 * {@code $CLAUDE_PROJECT_DIR}, plus the program of each chained command written
+	 * as a plain repository-relative path.
+	 * <p>
+	 * Both spellings name the same file — Claude Code runs a hook from the project
+	 * directory, so {@code .claude/hooks/session-start.sh} resolves exactly where
+	 * {@code $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh} does — and a
+	 * settings.json is as likely to be written either way. Reading only the variable
+	 * left the relative spelling unchecked: a hook pointing at a script that had been
+	 * renamed passed, which is the very failure these rules exist to catch, and
+	 * {@code hooksFormat} reported the script it really did reference as referenced
+	 * by nothing.
+	 */
+	List<String> scriptsIn(String command) {
+		return Stream.concat(expandAll(command).stream(), relativePrograms(command).stream()).distinct().toList();
+	}
+
+	/**
 	 * The paths every {@code $CLAUDE_PROJECT_DIR}-rooted token of {@code command}
 	 * resolves to. A command chains more than one script often enough — an
 	 * {@code &&} between two hooks — that stopping at the first reference would
@@ -41,6 +61,33 @@ final class ClaudeProjectDir {
 	 */
 	List<String> expandAll(String command) {
 		return CommandTokens.of(command).stream().map(this::expand).filter(Objects::nonNull).toList();
+	}
+
+	/**
+	 * Only a program is read as a relative script, never an argument — see
+	 * {@link CommandTokens#programsOf} — so a hook passing a path to the script it
+	 * runs does not have that path required to exist too.
+	 */
+	private List<String> relativePrograms(String command) {
+		return CommandTokens.programsOf(command).stream()
+				.map(this::withoutQuotes)
+				.filter(ClaudeProjectDir::isRelativeScript)
+				.map(program -> new File(resolve(), program).getPath())
+				.toList();
+	}
+
+	/**
+	 * Whether a program names a repository-relative script rather than a tool the
+	 * shell finds for itself: {@code .claude/hooks/session-start.sh} and
+	 * {@code ./run.sh} do, while {@code bash}, {@code python3}, and {@code npx} name
+	 * no path at all and are looked up on the {@code PATH}. An absolute path, a
+	 * home-relative one, and one carrying a shell expansion all name a file outside
+	 * the repository's control — or one only a shell can resolve — so none of them is
+	 * a script this rule may require.
+	 */
+	private static boolean isRelativeScript(String program) {
+		return program.indexOf('/') > 0 && program.indexOf('$') < 0 && !program.startsWith("~")
+				&& !program.startsWith("-");
 	}
 
 	/** The path {@code token} resolves to when it references the project dir, else null. */

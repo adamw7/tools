@@ -71,9 +71,12 @@ consistent and in their expected shape:
   section of `.claude/settings.json`: every event must map to an array of groups,
   each group must carry a `hooks` array, and every hook must declare a non-blank
   `type` (a `command` hook also a non-blank `command`). A command that points at
-  a project-local script through `$CLAUDE_PROJECT_DIR` is resolved against
-  `projectDir` and must exist on disk, so a renamed or missing hook script is
-  caught. An optional `allowedEvents` whitelist rejects a mistyped event such as
+  a project-local script — through `$CLAUDE_PROJECT_DIR`, or as the plain
+  repository-relative path Claude Code resolves the same way — is resolved
+  against `projectDir` and must exist on disk, so a renamed or missing hook
+  script is caught; only the program of each chained command is read as a
+  relative script, so an argument that looks like a path is not required to
+  exist. An optional `allowedEvents` whitelist rejects a mistyped event such as
   `SessionSart`, and `validateScriptReferences` can switch the script check off.
 - **`mcpServersValid`** (`McpServersValidRule`) — validates the project's
   `.mcp.json`. A project-level MCP file is optional, so an absent file passes;
@@ -99,7 +102,8 @@ consistent and in their expected shape:
   whitelist rejects a stray file. Where `hookCommandsValid` validates the JSON
   shape of the `hooks` section, this rule validates the scripts themselves; when
   a `settingsFile` is configured it also cross-checks the wiring, so a command
-  hook whose `$CLAUDE_PROJECT_DIR` path lands in the hooks directory must point
+  hook whose project-local path — `$CLAUDE_PROJECT_DIR`-rooted or plain
+  repository-relative — lands in the hooks directory must point
   at a script that exists there, and `reportUnreferencedScripts` flags a script
   no hook references. An absent `hooksDir` is a pass because hooks are optional.
 - **`uniqueDescriptions`** (`UniqueDescriptionsRule`) — reads the `description`

@@ -556,9 +556,12 @@ profile:
 - `HookCommandsValidRule` (`hookCommandsValid`) validates the `hooks` section of
   `.claude/settings.json`: every event maps to an array of groups, each group
   carries a `hooks` array, and every hook declares a non-blank `type` (a
-  `command` hook also a non-blank `command`). A `$CLAUDE_PROJECT_DIR`-rooted
-  script command is resolved against `projectDir` and must exist on disk. An
-  optional `allowedEvents` list rejects mistyped events and
+  `command` hook also a non-blank `command`). A project-local script command —
+  rooted at `$CLAUDE_PROJECT_DIR`, or written as the plain repository-relative
+  path Claude Code resolves the same way — is resolved against `projectDir` and
+  must exist on disk; only the program of each chained command is read as a
+  relative script, so an argument that looks like a path is not required to
+  exist. An optional `allowedEvents` list rejects mistyped events and
   `validateScriptReferences` toggles the script-existence check.
 - `HooksFormatRule` (`hooksFormat`) validates the hook scripts under a configured
   `hooksDir` (e.g. `.claude/hooks`): every regular file must be non-empty, start
@@ -566,8 +569,9 @@ profile:
   (`requireExecutable`), and an optional `allowedExtensions` list rejects a stray
   file. Where `hookCommandsValid` validates the JSON shape of the `hooks` section,
   this rule validates the scripts themselves; when a `settingsFile` is configured
-  it also cross-checks the wiring, so a command hook whose `$CLAUDE_PROJECT_DIR`
-  path lands in the hooks directory must point at a script that exists there (with
+  it also cross-checks the wiring, so a command hook whose project-local path —
+  `$CLAUDE_PROJECT_DIR`-rooted or plain repository-relative — lands in the hooks
+  directory must point at a script that exists there (with
   symlinks resolved so a script cannot escape the directory), and
   `reportUnreferencedScripts` flags a script no hook references. An absent
   `hooksDir` is a pass because hooks are optional.

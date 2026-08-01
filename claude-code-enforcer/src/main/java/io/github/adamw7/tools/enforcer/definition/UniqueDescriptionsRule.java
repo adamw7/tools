@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
+import java.util.Locale;
 import java.util.Optional;
 
 import javax.inject.Named;
@@ -52,7 +53,14 @@ public class UniqueDescriptionsRule extends MultiDefinitionRule {
 				.filter(value -> !value.isBlank());
 	}
 
+	/**
+	 * Case is folded in the root locale rather than the machine's, so which
+	 * descriptions count as duplicates is a property of the definitions and not of
+	 * where the build runs. The default locale folds {@code I} to a dotless
+	 * {@code ı} in Turkish, which made two descriptions collide on one developer's
+	 * machine and not on another's — the least reproducible way for a rule to fail.
+	 */
 	private String normalize(String text) {
-		return text.strip().toLowerCase().replaceAll("\\s+", " ");
+		return text.strip().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
 	}
 }

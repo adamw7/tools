@@ -43,10 +43,18 @@ public class PullRequestStep extends AbstractCommandStep {
 
 	/**
 	 * The conditions {@code gh pr create} reports as a failure that mean the pull
-	 * request need not — or cannot — be opened, matched against its own wording:
-	 * "a pull request for branch ... already exists" and "No commits between ...".
+	 * request need not — or cannot — be opened, matched against its own wording: the
+	 * two spellings of "a pull request already exists" (the client-side check names
+	 * the branches, the GraphQL error names the head) and "No commits between ...".
+	 *
+	 * <p>Each fragment names a pull request, because the transcript these are matched
+	 * against is the whole of {@code gh}'s merged output. A bare "already exists"
+	 * also matched a failure that had nothing to do with an open pull request — a
+	 * label {@code gh} could not add, a ref the push had already published — and left
+	 * the adoption reported as complete with no pull request opened and none to find.
 	 */
-	private static final List<String> TOLERATED_FAILURES = List.of("already exists", "no commits between");
+	private static final List<String> TOLERATED_FAILURES = List.of("a pull request for branch",
+			"a pull request already exists", "no commits between");
 
 	private final PullRequestOptions options;
 	private final ObjectMapper mapper = new ObjectMapper();

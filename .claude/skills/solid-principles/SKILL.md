@@ -1,640 +1,147 @@
 ---
 name: solid-principles
-description: SOLID principles checklist with Java examples. Use when reviewing classes, refactoring code, or when user asks about Single Responsibility, Open/Closed, Liskov, Interface Segregation, or Dependency Inversion.
+description: Apply and review SOLID in this repo's Java — the detection heuristics per principle, the refactoring that fixes each one, and the real examples in data, adopt, context and mcp-common. Use when reviewing class design, refactoring a large class, or when the user says "check SOLID", "is this class doing too much?", or names one of the five principles.
 ---
 
 # SOLID Principles Skill
 
-Review and apply SOLID principles in Java code.
+Review and apply SOLID in the `tools` reactor. The heuristics below are the fast
+path; long before/after code lives in **`examples.md`** next to this file — load
+it only when a worked example would actually help.
 
 ## When to Use
 - User says "check SOLID" / "SOLID review" / "is this class doing too much?"
-- Reviewing class design
-- Refactoring large classes
-- Code review focusing on design
+- Reviewing class design or refactoring a large class
+- Choosing where a new abstraction belongs
 
----
-
-## Quick Reference
+## Quick reference
 
 | Letter | Principle | One-liner |
 |--------|-----------|-----------|
 | **S** | Single Responsibility | One class = one reason to change |
 | **O** | Open/Closed | Open for extension, closed for modification |
 | **L** | Liskov Substitution | Subtypes must be substitutable for base types |
-| **I** | Interface Segregation | Many specific interfaces > one general interface |
+| **I** | Interface Segregation | Many specific interfaces beat one general one |
 | **D** | Dependency Inversion | Depend on abstractions, not concretions |
 
 ---
 
-## S - Single Responsibility Principle (SRP)
+## S — Single Responsibility
+> One reason to change.
 
-> "A class should have only one reason to change."
+**Detect**: imports from unrelated domains · a name containing "And", "Manager"
+or "Handler" · methods that use none of the fields · you cannot describe the
+class in one sentence without "and".
 
-### Violation
+**Fix**: Extract Class / Move Method.
 
-```java
-// ❌ BAD: UserService does too much
-public class UserService {
-
-    public User createUser(String name, String email) {
-        // validation logic
-        if (email == null || !email.contains("@")) {
-            throw new IllegalArgumentException("Invalid email");
-        }
-
-        // persistence logic
-        User user = new User(name, email);
-        entityManager.persist(user);
-
-        // notification logic
-        String subject = "Welcome!";
-        String body = "Hello " + name;
-        emailClient.send(email, subject, body);
-
-        // audit logic
-        auditLog.log("User created: " + email);
-
-        return user;
-    }
-}
-```
-
-**Problems:**
-- Validation changes? Modify UserService
-- Email template changes? Modify UserService
-- Audit format changes? Modify UserService
-- Hard to test each concern separately
-
-### Refactored
-
-```java
-// ✅ GOOD: Each class has one responsibility
-
-public class UserValidator {
-    public void validate(String name, String email) {
-        if (email == null || !email.contains("@")) {
-            throw new ValidationException("Invalid email");
-        }
-    }
-}
-
-public class UserRepository {
-    public User save(User user) {
-        entityManager.persist(user);
-        return user;
-    }
-}
-
-public class WelcomeEmailSender {
-    public void sendWelcome(User user) {
-        String subject = "Welcome!";
-        String body = "Hello " + user.getName();
-        emailClient.send(user.getEmail(), subject, body);
-    }
-}
-
-public class UserAuditLogger {
-    public void logCreation(User user) {
-        auditLog.log("User created: " + user.getEmail());
-    }
-}
-
-public class UserService {
-    private final UserValidator validator;
-    private final UserRepository repository;
-    private final WelcomeEmailSender emailSender;
-    private final UserAuditLogger auditLogger;
-
-    public User createUser(String name, String email) {
-        validator.validate(name, email);
-        User user = repository.save(new User(name, email));
-        emailSender.sendWelcome(user);
-        auditLogger.logCreation(user);
-        return user;
-    }
-}
-```
-
-### How to Detect SRP Violations
-
-- Class has many `import` statements from different domains
-- Class name contains "And" or "Manager" or "Handler" (often)
-- Methods operate on unrelated data
-- Changes in one area require touching unrelated methods
-- Hard to name the class concisely
-
-### Quick Check Questions
-
-1. Can you describe the class purpose in one sentence without "and"?
-2. Would different stakeholders request changes to this class?
-3. Are there methods that don't use most of the class fields?
+**Here**: an `AdoptionStep` is one stage of the adoption and nothing else;
+`ClaudeCodeEnforcerRule.report(...)` is the one exit point every enforcer rule
+funnels its violations through; the uniqueness core knows nothing about its MCP
+adapter (ArchUnit fails the build if it learns).
 
 ---
 
-## O - Open/Closed Principle (OCP)
+## O — Open/Closed
+> New behaviour arrives as a new class, not an edit to an old one.
 
-> "Software entities should be open for extension, but closed for modification."
+**Detect**: an `if/else` or `switch` on a type or status that keeps growing ·
+adding a feature means editing a core class.
 
-### Violation
+**Fix**: Strategy, Template Method, Decorator, Factory.
 
-```java
-// ❌ BAD: Must modify class to add new discount type
-public class DiscountCalculator {
-
-    public double calculate(Order order, String discountType) {
-        if (discountType.equals("PERCENTAGE")) {
-            return order.getTotal() * 0.1;
-        } else if (discountType.equals("FIXED")) {
-            return 50.0;
-        } else if (discountType.equals("LOYALTY")) {
-            return order.getTotal() * order.getCustomer().getLoyaltyRate();
-        }
-        // Every new discount type = modify this class
-        return 0;
-    }
-}
-```
-
-### Refactored
-
-```java
-// ✅ GOOD: Add new discounts without modifying existing code
-
-public interface DiscountStrategy {
-    double calculate(Order order);
-    boolean supports(String discountType);
-}
-
-public class PercentageDiscount implements DiscountStrategy {
-    @Override
-    public double calculate(Order order) {
-        return order.getTotal() * 0.1;
-    }
-
-    @Override
-    public boolean supports(String discountType) {
-        return "PERCENTAGE".equals(discountType);
-    }
-}
-
-public class FixedDiscount implements DiscountStrategy {
-    @Override
-    public double calculate(Order order) {
-        return 50.0;
-    }
-
-    @Override
-    public boolean supports(String discountType) {
-        return "FIXED".equals(discountType);
-    }
-}
-
-public class LoyaltyDiscount implements DiscountStrategy {
-    @Override
-    public double calculate(Order order) {
-        return order.getTotal() * order.getCustomer().getLoyaltyRate();
-    }
-
-    @Override
-    public boolean supports(String discountType) {
-        return "LOYALTY".equals(discountType);
-    }
-}
-
-// New discount? Just add new class, no modification needed
-public class SeasonalDiscount implements DiscountStrategy {
-    @Override
-    public double calculate(Order order) {
-        return order.getTotal() * 0.2;
-    }
-
-    @Override
-    public boolean supports(String discountType) {
-        return "SEASONAL".equals(discountType);
-    }
-}
-
-public class DiscountCalculator {
-    private final List<DiscountStrategy> strategies;
-
-    public DiscountCalculator(List<DiscountStrategy> strategies) {
-        this.strategies = strategies;
-    }
-
-    public double calculate(Order order, String discountType) {
-        return strategies.stream()
-            .filter(s -> s.supports(discountType))
-            .findFirst()
-            .map(s -> s.calculate(order))
-            .orElse(0.0);
-    }
-}
-```
-
-### How to Detect OCP Violations
-
-- `if/else` or `switch` on type/status that grows over time
-- Enum-based dispatching with frequent new values
-- Changes require modifying core classes
-
-### Common OCP Patterns
-
-| Pattern | Use When |
-|---------|----------|
-| Strategy | Multiple algorithms for same operation |
-| Template Method | Same structure, different steps |
-| Decorator | Add behavior dynamically |
-| Factory | Create objects without specifying class |
+**Here**: `GitHubRepoAdopter` composes a `List<AdoptionStep>`, so a new stage is
+a new step, not a branch; a new tree output format is a new
+`ProjectTreeSerializer`; `BudgetedContext` decorates any `Context` instead of
+teaching `Finder` about budgets; `AbstractFinder` template-methods the
+depth-bounded traversal and lets subclasses supply only
+`findDirectDependencies`.
 
 ---
 
-## L - Liskov Substitution Principle (LSP)
+## L — Liskov Substitution
+> A subtype may not surprise a caller holding the base type.
 
-> "Subtypes must be substitutable for their base types."
+**Detect**: a subclass throwing where the parent doesn't · returning `null`
+where the parent returns a value · `instanceof` checks before calling a method ·
+empty or `UnsupportedOperationException` overrides.
 
-### Violation
+**Fix**: composition over inheritance, or extract a narrower interface.
 
-```java
-// ❌ BAD: Square violates Rectangle contract
-public class Rectangle {
-    protected int width;
-    protected int height;
-
-    public void setWidth(int width) {
-        this.width = width;
-    }
-
-    public void setHeight(int height) {
-        this.height = height;
-    }
-
-    public int getArea() {
-        return width * height;
-    }
-}
-
-public class Square extends Rectangle {
-    @Override
-    public void setWidth(int width) {
-        this.width = width;
-        this.height = width;  // Violates expected behavior!
-    }
-
-    @Override
-    public void setHeight(int height) {
-        this.width = height;  // Violates expected behavior!
-        this.height = height;
-    }
-}
-
-// This test fails for Square!
-void testRectangle(Rectangle r) {
-    r.setWidth(5);
-    r.setHeight(4);
-    assert r.getArea() == 20;  // Square returns 16!
-}
-```
-
-### Refactored
-
-```java
-// ✅ GOOD: Separate abstractions
-
-public interface Shape {
-    int getArea();
-}
-
-public class Rectangle implements Shape {
-    private final int width;
-    private final int height;
-
-    public Rectangle(int width, int height) {
-        this.width = width;
-        this.height = height;
-    }
-
-    @Override
-    public int getArea() {
-        return width * height;
-    }
-}
-
-public class Square implements Shape {
-    private final int side;
-
-    public Square(int side) {
-        this.side = side;
-    }
-
-    @Override
-    public int getArea() {
-        return side * side;
-    }
-}
-```
-
-### LSP Rules
-
-| Rule | Meaning |
-|------|---------|
-| Preconditions | Subclass cannot strengthen (require more) |
-| Postconditions | Subclass cannot weaken (promise less) |
-| Invariants | Subclass must maintain parent's invariants |
-| History | Subclass cannot modify inherited state unexpectedly |
-
-### How to Detect LSP Violations
-
-- Subclass throws exception parent doesn't
-- Subclass returns null where parent returns object
-- Subclass ignores or overrides parent behavior unexpectedly
-- `instanceof` checks before calling methods
-- Empty or throwing implementations of interface methods
-
-### Quick Check
-
-```java
-// If you see this, LSP might be violated
-if (bird instanceof Penguin) {
-    // don't call fly()
-} else {
-    bird.fly();
-}
-```
+**Here**: the repo prefers immutable, constructor-set state — step fields are
+final by an ArchUnit rule — which removes the classic setter-based LSP traps
+before they start.
 
 ---
 
-## I - Interface Segregation Principle (ISP)
+## I — Interface Segregation
+> A client should not be forced to depend on methods it does not use.
 
-> "Clients should not be forced to depend on interfaces they do not use."
+**Detect**: a fat interface (10+ methods) · implementations with empty bodies ·
+different clients using disjoint subsets.
 
-### Violation
+**Fix**: split by role; combine at the implementation.
 
-```java
-// ❌ BAD: Fat interface forces unnecessary implementations
-public interface Worker {
-    void work();
-    void eat();
-    void sleep();
-    void attendMeeting();
-    void writeReport();
-}
-
-// Robot can't eat or sleep!
-public class Robot implements Worker {
-    @Override public void work() { /* OK */ }
-    @Override public void eat() { /* Can't eat! */ }
-    @Override public void sleep() { /* Can't sleep! */ }
-    @Override public void attendMeeting() { /* OK */ }
-    @Override public void writeReport() { /* Maybe */ }
-}
-
-// Intern doesn't attend meetings or write reports
-public class Intern implements Worker {
-    @Override public void work() { /* OK */ }
-    @Override public void eat() { /* OK */ }
-    @Override public void sleep() { /* OK */ }
-    @Override public void attendMeeting() { /* Not allowed! */ }
-    @Override public void writeReport() { /* Not expected! */ }
-}
-```
-
-### Refactored
-
-```java
-// ✅ GOOD: Segregated interfaces
-
-public interface Workable {
-    void work();
-}
-
-public interface Feedable {
-    void eat();
-    void sleep();
-}
-
-public interface Manageable {
-    void attendMeeting();
-    void writeReport();
-}
-
-// Combine what you need
-public class Employee implements Workable, Feedable, Manageable {
-    @Override public void work() { /* ... */ }
-    @Override public void eat() { /* ... */ }
-    @Override public void sleep() { /* ... */ }
-    @Override public void attendMeeting() { /* ... */ }
-    @Override public void writeReport() { /* ... */ }
-}
-
-public class Robot implements Workable {
-    @Override public void work() { /* ... */ }
-    // No unnecessary methods!
-}
-
-public class Intern implements Workable, Feedable {
-    @Override public void work() { /* ... */ }
-    @Override public void eat() { /* ... */ }
-    @Override public void sleep() { /* ... */ }
-    // No meeting/report methods!
-}
-```
-
-### How to Detect ISP Violations
-
-- Implementations with empty methods or `throw new UnsupportedOperationException()`
-- Interface has 10+ methods
-- Different clients use completely different subsets of methods
-- Changes to interface affect unrelated implementations
-
-### Java Standard Library Violations
-
-```java
-// java.util.List has many methods - but this is acceptable for collections
-// However, be careful with your own interfaces!
-
-// ❌ This interface is too fat for most use cases
-public interface Repository<T> {
-    T findById(Long id);
-    List<T> findAll();
-    T save(T entity);
-    void delete(T entity);
-    void deleteById(Long id);
-    List<T> findByExample(T example);
-    Page<T> findAll(Pageable pageable);
-    List<T> findAllById(Iterable<Long> ids);
-    long count();
-    boolean existsById(Long id);
-    // ... 20 more methods
-}
-
-// ✅ Better: Split by use case
-public interface ReadRepository<T> {
-    Optional<T> findById(Long id);
-    List<T> findAll();
-}
-
-public interface WriteRepository<T> {
-    T save(T entity);
-    void delete(T entity);
-}
-```
+**Here — the canonical example.** `IterableDataSource` is the forward-only
+contract (`open`, `nextRow`, `hasMoreData`, `reset`); `ColumnarDataSource
+extends IterableDataSource` adds `getColumnNames()` for sources whose schema is
+known up front. Forward-only JSON/YAML/TOON iterables deliberately **do not**
+implement the columnar contract, so the uniqueness check — which depends on the
+narrower type — can never be handed a source that would answer `null`. Don't
+widen a contract to silence a compile error; that error is the design working.
 
 ---
 
-## D - Dependency Inversion Principle (DIP)
+## D — Dependency Inversion
+> High-level and low-level both depend on the abstraction.
 
-> "High-level modules should not depend on low-level modules. Both should depend on abstractions."
+**Detect**: `new ConcreteClass()` inside business logic · imports of
+implementation packages · tests that need a database or the network.
 
-### Violation
+**Fix**: constructor injection, an interface owned by the caller's side.
 
-```java
-// ❌ BAD: High-level depends on low-level directly
-public class OrderService {
-    private MySqlOrderRepository repository;  // Concrete class!
-    private SmtpEmailSender emailSender;      // Concrete class!
+**Here**: steps shell out through the `CommandRunner` interface, never
+`ProcessBuilder`, so tests pass a fake runner and never spawn a process; MCP
+tools implement `McpTool` and never touch the SDK; `ProjectTreeBuilder` takes a
+`ContextFactory` so the finder can be swapped without touching the builder.
 
-    public OrderService() {
-        this.repository = new MySqlOrderRepository();  // Hard dependency
-        this.emailSender = new SmtpEmailSender();      // Hard dependency
-    }
-
-    public void createOrder(Order order) {
-        repository.save(order);
-        emailSender.send(order.getCustomerEmail(), "Order confirmed");
-    }
-}
-```
-
-**Problems:**
-- Cannot test without real MySQL database
-- Cannot swap email provider
-- OrderService knows about MySQL, SMTP details
-
-### Refactored
-
-```java
-// ✅ GOOD: Depend on abstractions
-
-// Abstractions (interfaces)
-public interface OrderRepository {
-    void save(Order order);
-    Optional<Order> findById(Long id);
-}
-
-public interface NotificationSender {
-    void send(String recipient, String message);
-}
-
-// High-level module depends on abstractions
-public class OrderService {
-    private final OrderRepository repository;
-    private final NotificationSender notificationSender;
-
-    // Dependencies injected
-    public OrderService(OrderRepository repository,
-                        NotificationSender notificationSender) {
-        this.repository = repository;
-        this.notificationSender = notificationSender;
-    }
-
-    public void createOrder(Order order) {
-        repository.save(order);
-        notificationSender.send(order.getCustomerEmail(), "Order confirmed");
-    }
-}
-
-// Low-level modules implement abstractions
-public class MySqlOrderRepository implements OrderRepository {
-    @Override
-    public void save(Order order) { /* MySQL specific */ }
-
-    @Override
-    public Optional<Order> findById(Long id) { /* MySQL specific */ }
-}
-
-public class SmtpEmailSender implements NotificationSender {
-    @Override
-    public void send(String recipient, String message) { /* SMTP specific */ }
-}
-
-// Easy to test with mocks!
-public class InMemoryOrderRepository implements OrderRepository {
-    private Map<Long, Order> orders = new HashMap<>();
-
-    @Override
-    public void save(Order order) {
-        orders.put(order.getId(), order);
-    }
-
-    @Override
-    public Optional<Order> findById(Long id) {
-        return Optional.ofNullable(orders.get(id));
-    }
-}
-```
-
-### DIP in this repo (plain constructor injection — no framework)
-
-`tools` is a plain Maven library: **there is no Spring / CDI here.** Wire
-dependencies by hand through the constructor and pass a test double in tests —
-exactly how the `data` sources and the MCP servers are assembled.
-
-```java
-// Production wiring — the caller supplies the concretions
-OrderService service = new OrderService(
-    new MySqlOrderRepository(),
-    new SmtpEmailSender());
-
-// Test wiring — swap in in-memory / fake implementations, no network needed
-OrderService service = new OrderService(
-    new InMemoryOrderRepository(),
-    recordingNotificationSender);
-```
-
-> Repo caveat: `Optional` is fine as a **return type** (e.g.
-> `Optional<Order> findById(...)`), but a **field must never be `Optional`** —
-> an ArchUnit rule fails the build on `Optional` fields. Hold the value itself
-> and null-check it.
-
-### How to Detect DIP Violations
-
-- `new ConcreteClass()` inside business logic
-- Import statements include implementation packages (e.g., `com.mysql`, `org.apache.http`)
-- Cannot easily swap implementations
-- Tests require real infrastructure (database, network)
+**Wiring is plain constructor injection** — no Spring or CDI outside the MCP
+adapters. Pass concretions from the caller; pass fakes from the test. That is
+what makes the network-off unit tests possible.
 
 ---
 
-## SOLID Review Checklist
+## Repo rules that interact with these
 
-When reviewing code, check:
+- **A field must never be `Optional`** (ArchUnit). `Optional` as a *return type*
+  is fine — hold the value and null-check it in a field.
+- **Abstract types carry an `Abstract` prefix** (`AbstractFinder`,
+  `AbstractCommandStep`), public fields are `final`, mutable static state is
+  `volatile`.
+- **No `continue` or `break`** anywhere — a loop that wants one usually wants a
+  stream or an extracted method, which tends to improve the design anyway.
+- Packages must stay free of cycles; a "shared" class pulled sideways between
+  packages is a layering smell before it is a SOLID one.
+
+## Review checklist
 
 | Principle | Question |
 |-----------|----------|
-| **SRP** | Does this class have more than one reason to change? |
-| **OCP** | Will adding a new type/feature require modifying this class? |
-| **LSP** | Can subclasses be used wherever parent is expected? |
-| **ISP** | Are there empty or throwing method implementations? |
-| **DIP** | Does high-level code depend on concrete implementations? |
-
----
-
-## Common Refactoring Patterns
+| **SRP** | More than one reason to change? |
+| **OCP** | Will the next feature require editing this class? |
+| **LSP** | Can every subtype stand in for the base type? |
+| **ISP** | Any empty or throwing implementations? |
+| **DIP** | Does high-level code name a concrete implementation? |
 
 | Violation | Refactoring |
 |-----------|-------------|
-| SRP - God class | Extract Class, Move Method |
-| OCP - Type switching | Strategy Pattern, Factory |
-| LSP - Broken inheritance | Composition over Inheritance, Extract Interface |
-| ISP - Fat interface | Split Interface, Role Interface |
-| DIP - Hard dependencies | Dependency Injection, Abstract Factory |
+| SRP — god class | Extract Class, Move Method |
+| OCP — type switching | Strategy, Factory |
+| LSP — broken inheritance | Composition, Extract Interface |
+| ISP — fat interface | Split Interface, Role Interface |
+| DIP — hard dependency | Constructor injection, Abstract Factory |
 
----
-
-## Related Skills
-
-- `java-code-review` - Comprehensive review checklist (leads with the repo's
-  ArchUnit-enforced rules)
-- `testing-conventions` - Writing the fast, network-off, DI-friendly tests these
-  abstractions make possible
+## Related
+- `examples.md` (this directory) — full before/after code per principle
+- `java-code-review` — the wider review checklist, led by the enforced rules
+- `testing-conventions` — the fast, network-off tests these abstractions enable

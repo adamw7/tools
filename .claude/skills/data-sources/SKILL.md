@@ -64,6 +64,18 @@ The checker consumes a `ColumnarDataSource`, asks whether the given columns form
 a key, and searches for a smaller one. `InMemory…` runs recursive passes over a
 single load; `NoMemory…` re-reads the source per pass for a tiny heap.
 
+## Data structures (`data.structure`)
+Open-addressing collections with double hashing, for when `HashMap`'s per-entry
+node allocation is what hurts:
+- `OpenAddressingMap<K, V>` / `OpenAddressingSet<E>` — implement `Map` / `Set`.
+- `IntKeyOpenAddressingMap<V>` — primitive `int[]` keys, so lookups and inserts
+  never box. It deliberately does **not** implement `Map` (that contract is
+  defined over `Object` keys and would reintroduce the boxing it exists to
+  avoid), and mirrors the map operations with primitive keys instead.
+- All three store a `null` value faithfully and report it from `containsKey`;
+  only `get` cannot tell a stored `null` from an absent key. **None is
+  thread-safe.**
+
 ## Adding a new source
 Implement `IterableDataSource` (five methods; `nextRows` is a default). If it can
 report its columns, also implement `ColumnarDataSource` so schema-dependent

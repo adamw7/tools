@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -39,6 +41,20 @@ class ClaudeTrustStoreTest {
 
 	private JsonNode read(Path config) throws IOException {
 		return MAPPER.readTree(config.toFile());
+	}
+
+	/**
+	 * The files beside the config that the store is not entitled to leave behind.
+	 * Its lock file is: it guards the read-modify-write against a concurrent
+	 * adoption, so it has to outlive the update that took it — a lock file deleted
+	 * on the way out is a lock the next process takes on a different inode.
+	 */
+	private List<Path> strayFiles(Path dir) throws IOException {
+		try (Stream<Path> entries = Files.list(dir)) {
+			return entries.filter(Files::isRegularFile)
+					.filter(entry -> !entry.getFileName().toString().endsWith(".adopt-lock"))
+					.toList();
+		}
 	}
 
 	private boolean trusted(JsonNode root, Path directory) {
@@ -175,10 +191,8 @@ class ClaudeTrustStoreTest {
 
 		assertTrue(new ClaudeTrustStore(config).trust(repo));
 
-		try (Stream<Path> entries = Files.list(dir)) {
-			assertEquals(List.of(config), entries.filter(Files::isRegularFile).toList(),
-					"the temporary file the write goes through must not survive it");
-		}
+		assertEquals(List.of(config), strayFiles(dir),
+				"the temporary file the write goes through must not survive it");
 		assertTrue(trusted(read(config), repo));
 	}
 
@@ -198,9 +212,52 @@ class ClaudeTrustStoreTest {
 
 		assertThrows(AdoptionException.class, () -> new ClaudeTrustStore(config).trust(dir.resolve("repo")));
 
-		try (Stream<Path> entries = Files.list(dir)) {
-			assertEquals(List.of(), entries.filter(Files::isRegularFile).toList(),
-					"the temporary file must not outlive the failed write");
+		assertEquals(List.of(), strayFiles(dir), "the temporary file must not outlive the failed write");
+	}
+
+	/**
+	 * Two adoptions trusting two checkouts at once must both be recorded. Each reads
+	 * the whole document, adds its own directory, and writes the whole of it back, so
+	 * without an exclusive section around that sequence the later write is built on a
+	 * document read before the earlier one landed and silently drops it — leaving that
+	 * adoption's {@code claude init} to block on the trust prompt until its command
+	 * timeout. The barrier makes both threads read at the same moment, which is the
+	 * interleaving that loses an update.
+	 */
+	@Test
+	void concurrentTrustsAreBothRecorded(@TempDir Path dir) throws Exception {
+		Path config = dir.resolve(".claude.json");
+		Path first = dir.resolve("first");
+		Path second = dir.resolve("second");
+		CyclicBarrier startTogether = new CyclicBarrier(2);
+
+		Thread firstThread = trusting(config, first, startTogether);
+		Thread secondThread = trusting(config, second, startTogether);
+		firstThread.join();
+		secondThread.join();
+
+		JsonNode root = read(config);
+		assertTrue(trusted(root, first), "the first directory must survive the second adoption's write");
+		assertTrue(trusted(root, second), "the second directory must survive the first adoption's write");
+	}
+
+	private Thread trusting(Path config, Path directory, CyclicBarrier startTogether) {
+		Thread thread = new Thread(() -> {
+			await(startTogether);
+			new ClaudeTrustStore(config).trust(directory);
+		});
+		thread.start();
+		return thread;
+	}
+
+	private void await(CyclicBarrier startTogether) {
+		try {
+			startTogether.await();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		} catch (BrokenBarrierException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 }

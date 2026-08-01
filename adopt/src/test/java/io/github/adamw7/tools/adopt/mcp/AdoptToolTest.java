@@ -370,4 +370,24 @@ class AdoptToolTest {
 		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("repository_urls"),
 				"a list of repositories must be settable through the tool: " + properties);
 	}
+
+	/**
+	 * The arguments of a call are logged, and a CI-driven client supplies its clone
+	 * URL with an access token in it. This server outlives the call, so a token that
+	 * reached the log would outlive it too.
+	 */
+	@Test
+	void masksCloneCredentialsInTheLoggedArguments() {
+		String described = AdoptTool.describe(Map.of("repository_url",
+				"https://x-access-token:ghs_SECRET@github.com/owner/repo.git"));
+		assertFalse(described.contains("ghs_SECRET"), described);
+		assertTrue(described.contains("github.com/owner/repo.git"), described);
+	}
+
+	@Test
+	void masksCloneCredentialsSuppliedInTheRepositoryList() {
+		String described = AdoptTool.describe(Map.of("repository_urls",
+				List.of("https://user:p@ss@github.com/owner/repo.git")));
+		assertFalse(described.contains("p@ss"), described);
+	}
 }

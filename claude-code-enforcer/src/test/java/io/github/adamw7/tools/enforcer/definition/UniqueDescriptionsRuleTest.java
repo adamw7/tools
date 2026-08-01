@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,26 @@ class UniqueDescriptionsRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
 		assertTrue(exception.getMessage().contains("is used by 2"), exception.getMessage());
+	}
+
+	/**
+	 * Case is folded in the root locale, so which descriptions count as duplicates is
+	 * a property of the definitions rather than of the machine running the build.
+	 * Turkish folds {@code I} to a dotless {@code ı}, which made these two collide
+	 * there and nowhere else — a rule failing on one developer's machine and passing
+	 * on CI.
+	 */
+	@Test
+	void comparesDescriptionsTheSameWayInEveryLocale() {
+		writeAgent("installer", "Installs the CLI.");
+		writeAgent("inspector", "ınstalls the clı.");
+		Locale original = Locale.getDefault();
+		try {
+			Locale.setDefault(Locale.of("tr", "TR"));
+			assertDoesNotThrow(agentsRule()::execute);
+		} finally {
+			Locale.setDefault(original);
+		}
 	}
 
 	@Test

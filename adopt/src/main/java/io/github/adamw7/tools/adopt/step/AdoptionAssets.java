@@ -48,7 +48,7 @@ public final class AdoptionAssets {
 			        "hooks": [
 			          {
 			            "type": "command",
-			            "command": ".claude/hooks/session-start.sh"
+			            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
 			          }
 			        ]
 			      }

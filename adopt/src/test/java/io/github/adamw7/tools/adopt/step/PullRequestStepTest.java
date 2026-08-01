@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -231,6 +232,63 @@ class PullRequestStepTest {
 				: new CommandResult(command, 1, "HTTP 403: this GraphQL query is not enabled for this session"));
 		step.execute(context, runner);
 		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
+
+	/** The other wording gh reports it with, when its own pre-check missed the pull request. */
+	@Test
+	void anAlreadyOpenPullRequestReportedByGraphQlIsNotAFailure() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "pull request create failed: GraphQL: A pull request already exists"
+						+ " for adamw7:claude/adopt-claude-code.")
+				: new CommandResult(command, 0, "[]"));
+		step.execute(context, runner);
+		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
+
+	/**
+	 * Tolerating the creation is only half of it: the pull request gh refused to
+	 * open a second time is the one the report must carry, which the read-back that
+	 * follows is what supplies.
+	 */
+	@Test
+	void recordsTheUrlOfThePullRequestThatAlreadyExisted() {
+		AtomicInteger listCalls = new AtomicInteger();
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			if (command.contains("create")) {
+				return new CommandResult(command, 1, "a pull request for branch \"claude/adopt-claude-code\""
+						+ " into branch \"main\" already exists:\n" + PR_URL);
+			}
+			// The pre-check misses it — a restricted token, a proxied host — and the
+			// read-back after the tolerated creation is what finds it.
+			return new CommandResult(command, 0,
+					listCalls.getAndIncrement() == 0 ? "[]" : "[{\"url\":\"" + PR_URL + "\"}]");
+		});
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertEquals(PR_URL, report.pullRequestUrl().orElseThrow());
+	}
+
+	/**
+	 * The tolerated wordings are matched against gh's whole merged transcript, so a
+	 * fragment that does not name a pull request matches a failure that has nothing
+	 * to do with one. A bare "already exists" swallowed these, and the adoption was
+	 * reported as complete with no pull request opened and none to find.
+	 */
+	@Test
+	void aFailureMentioningSomethingElseThatAlreadyExistsStillAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "could not add label: 'infra' already exists on another repository")
+				: new CommandResult(command, 0, "[]"));
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
+	@Test
+	void aRefThatAlreadyExistsStillAbortsAdoption() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("create")
+				? new CommandResult(command, 1, "pull request create failed: GraphQL: A ref named"
+						+ " \"refs/heads/claude/adopt-claude-code\" already exists in the repository")
+				: new CommandResult(command, 0, "[]"));
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
 	}
 
 	@Test

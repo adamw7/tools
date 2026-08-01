@@ -63,4 +63,56 @@ class CommandTokensTest {
 	void keepsAQuotedSeparatorInsideItsToken() {
 		assertEquals(List.of("echo", "\"a;b\""), CommandTokens.of("echo \"a;b\""));
 	}
+
+	@Test
+	void readsTheProgramOfASingleCommand() {
+		assertEquals(List.of(".claude/hooks/session-start.sh"),
+				CommandTokens.programsOf(".claude/hooks/session-start.sh"));
+	}
+
+	@Test
+	void readsTheProgramOfEveryChainedCommand() {
+		assertEquals(List.of("a.sh", "b.sh", "c.sh"), CommandTokens.programsOf("a.sh && b.sh; c.sh --flag"));
+	}
+
+	@Test
+	void doesNotReadAnArgumentAsAProgram() {
+		assertEquals(List.of("build.sh"), CommandTokens.programsOf("build.sh --out target/log.txt"));
+	}
+
+	@Test
+	void readsAnInterpreterAsTheProgramRatherThanTheScriptItRuns() {
+		assertEquals(List.of("bash"), CommandTokens.programsOf("bash .claude/hooks/run.sh"));
+	}
+
+	@Test
+	void keepsAQuotedProgramWithASpaceWhole() {
+		assertEquals(List.of("\"my hook.sh\""), CommandTokens.programsOf("\"my hook.sh\" --flag"));
+	}
+
+	@Test
+	void readsNoProgramFromAQuotedSeparator() {
+		assertEquals(List.of("echo"), CommandTokens.programsOf("echo \"a;b\""));
+	}
+
+	@Test
+	void yieldsNoProgramsForABlankCommand() {
+		assertEquals(List.of(), CommandTokens.programsOf("   "));
+	}
+
+	@Test
+	void yieldsNoProgramsForOperatorsAlone() {
+		assertEquals(List.of(), CommandTokens.programsOf("&& ;| "));
+	}
+
+	/** A program is the first token of its own segment, however the operators are spaced. */
+	@Test
+	void readsTheProgramAfterAnOperatorWithNoSurroundingSpace() {
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh --flag&&b.sh --flag"));
+	}
+
+	@Test
+	void doesNotSplitASegmentOnAQuotedOperator() {
+		assertEquals(List.of("run.sh", "b.sh"), CommandTokens.programsOf("run.sh \"a;b\"; b.sh"));
+	}
 }

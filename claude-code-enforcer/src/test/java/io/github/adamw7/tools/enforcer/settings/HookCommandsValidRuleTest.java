@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -281,6 +282,82 @@ class HookCommandsValidRuleTest {
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
 		assertTrue(exception.getMessage().endsWith("absent.sh"), exception.getMessage());
+	}
+
+	/**
+	 * A hook is as often wired by the repository-relative path Claude Code resolves
+	 * against the project directory as by the {@code $CLAUDE_PROJECT_DIR} spelling,
+	 * and a script renamed out from under either one is the failure this rule exists
+	 * to catch.
+	 */
+	@Test
+	void failsWhenARelativeScriptReferenceIsMissing() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+	}
+
+	@Test
+	void passesWhenARelativeScriptReferenceExists() {
+		writeString(tempDir.resolve(".claude/hooks/session-start.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/session-start.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * Only the program of a command is a script; an argument that happens to look
+	 * like a path is not, and requiring it to exist would fail the build over a file
+	 * the hook is about to write.
+	 */
+	@Test
+	void doesNotRequireAnArgumentThatLooksLikeAPath() {
+		writeString(tempDir.resolve(".claude/hooks/build.sh"), "#!/bin/sh\necho hi\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/build.sh --out target/log.txt"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** A bare program name is looked up on the PATH, so it is no repository file to require. */
+	@Test
+	void doesNotReadABareProgramNameAsAProjectScript() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("npx some-linter"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void passesWhenScriptReferenceValidationIsDisabledForARelativeScript() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setValidateScriptReferences(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** One script named both ways is one script, so it is not reported — or baselined — twice. */
+	@Test
+	void reportsAScriptNamedBothWaysOnlyOnce() {
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh && .claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertEquals(1, exception.getMessage().lines().filter(line -> line.contains("gone.sh")).count(),
+				exception.getMessage());
+	}
+
+	@Test
+	void doesNotRequireAnAbsoluteProgramToLiveInTheProject() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("/usr/local/bin/absent-tool"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
 	}
 
 	@Test

@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -44,8 +45,8 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 	@Override
 	protected void onDetected(BuildSystem buildSystem, AdoptionContext context, CommandRunner runner) {
 		Path repositoryDirectory = context.repositoryDirectory();
-		buildSystem.requiredTool(repositoryDirectory).ifPresentOrElse(
-				tool -> requireRunnable(tool, buildSystem, repositoryDirectory, runner),
+		buildSystem.toolProbe(repositoryDirectory).ifPresentOrElse(
+				command -> requireRunnable(command, buildSystem, repositoryDirectory, runner),
 				() -> log.info("The {} guard needs no build tool of its own in {}", buildSystem.name(),
 						repositoryDirectory));
 	}
@@ -55,15 +56,17 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 	 * shipping a build wrapper is that wrapper rather than a program on the
 	 * {@code PATH} — so the failure says the tool could not be run rather than that
 	 * it was not installed, which for a wrapper present but unusable would be wrong.
+	 * The whole probe command is named in the failure, since for a wrapper that is
+	 * how the operator reproduces it.
 	 */
-	private void requireRunnable(String tool, BuildSystem buildSystem, Path repositoryDirectory,
+	private void requireRunnable(List<String> command, BuildSystem buildSystem, Path repositoryDirectory,
 			CommandRunner runner) {
-		if (probe.isInstalled(tool, repositoryDirectory, runner)) {
+		if (probe.succeeds(command, repositoryDirectory, runner)) {
 			return;
 		}
 		throw new AdoptionException(name() + " failed: " + repositoryDirectory + " builds with "
-				+ buildSystem.name() + " but " + tool + " could not be run, so the CLAUDE.md guard"
-				+ " could not be verified. Install " + buildSystem.name() + " on the PATH, or commit the"
-				+ " project's build wrapper.");
+				+ buildSystem.name() + " but " + CommandResult.describe(command) + " could not be run, so the"
+				+ " CLAUDE.md guard could not be verified. Install " + buildSystem.name() + " on the PATH, or"
+				+ " commit the project's build wrapper.");
 	}
 }

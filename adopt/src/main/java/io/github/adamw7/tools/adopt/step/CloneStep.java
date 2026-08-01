@@ -100,10 +100,19 @@ public class CloneStep extends AbstractCommandStep {
 	 * A directory carrying a {@code .git} but no {@code origin} is reported rather
 	 * than adopted: it cannot be shown to be the repository under adoption, and
 	 * {@link PushStep} would have nowhere to publish the branch to anyway.
+	 *
+	 * <p>The remote is read from the configuration rather than with {@code git remote
+	 * get-url}, which expands the {@code url.<base>.insteadOf} rewrites the caller's
+	 * git may configure and so answers a URL the checkout never recorded. A rewrite
+	 * onto a mirror or a proxy names a different host and path from the one the run
+	 * was given, so the reused checkout was refused as a different repository — and
+	 * the adoption of the very repository it held aborted at its second step, in
+	 * exactly the environments that configure one. Only the raw configured value
+	 * can be compared with the URL the run was asked to adopt.
 	 */
 	private String originTranscript(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
-				List.of("git", "remote", "get-url", AdoptionContext.REMOTE));
+				List.of("git", "config", "--get-all", "remote." + AdoptionContext.REMOTE + ".url"));
 		if (!result.succeeded()) {
 			throw new AdoptionException(context.repositoryDirectory() + " is a checkout with no '"
 					+ AdoptionContext.REMOTE

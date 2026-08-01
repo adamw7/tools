@@ -13,6 +13,8 @@ import org.apache.logging.log4j.Logger;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.Failures;
+import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
@@ -69,14 +71,15 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		}
 		log.info("Running claude init in {}", checkout);
 		Optional<Path> relocated = relocateExistingClaudeDirMemory(checkout);
+		CommandResult result;
 		try {
-			runOrFail(runner, checkout, claudeCommand);
+			result = runOrFail(runner, checkout, claudeCommand);
 		} catch (RuntimeException e) {
 			Failures.alsoRun(e, () -> restoreRelocated(relocated, checkout));
 			throw e;
 		}
 		restoreRelocated(relocated, checkout);
-		requireGenerated(context);
+		requireGenerated(context, result);
 	}
 
 	private void restoreRelocated(Optional<Path> relocated, Path checkout) {
@@ -122,10 +125,20 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		}
 	}
 
-	private void requireGenerated(AdoptionContext context) {
+	/**
+	 * The CLI's own transcript is carried into the failure, because a run that exits
+	 * cleanly without writing the file has said why in it — it declined, it asked a
+	 * question headless mode could not answer, it wrote somewhere else — and that
+	 * transcript is otherwise discarded, {@link #runOrFail} only reporting the output
+	 * of a command that failed. Without it the adoption stops on a message that names
+	 * the missing file and nothing that would explain it.
+	 */
+	private void requireGenerated(AdoptionContext context, CommandResult result) {
 		if (!Files.isRegularFile(context.repositoryDirectory().resolve(CLAUDE_MD))) {
 			throw new AdoptionException(name() + " completed but " + CLAUDE_MD + " was not found in "
-					+ context.repositoryDirectory());
+					+ context.repositoryDirectory() + ". " + CommandResult.describe(claudeCommand)
+					+ " exited " + result.exitCode() + " and said:" + System.lineSeparator()
+					+ Redaction.of(result.output().strip()));
 		}
 	}
 }

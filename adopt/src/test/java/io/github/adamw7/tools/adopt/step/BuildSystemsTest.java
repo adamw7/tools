@@ -85,15 +85,13 @@ class BuildSystemsTest {
 	@Test
 	void mavenRequiresTheToolItsVerificationLaunches(@TempDir Path directory) {
 		BuildSystem maven = new MavenBuildSystem();
-		assertEquals(Optional.of(maven.verifyCommand(directory).get(0)), maven.requiredTool(directory));
-		assertEquals(Optional.of("mvn"), maven.requiredTool(directory));
+		assertEquals(Optional.of(List.of("mvn", "--version")), maven.toolProbe(directory));
 	}
 
 	@Test
 	void gradleRequiresTheToolItsVerificationLaunches(@TempDir Path directory) {
 		BuildSystem gradle = new GradleBuildSystem();
-		assertEquals(Optional.of(gradle.verifyCommand(directory).get(0)), gradle.requiredTool(directory));
-		assertEquals(Optional.of("gradle"), gradle.requiredTool(directory));
+		assertEquals(Optional.of(List.of("gradle", "--version")), gradle.toolProbe(directory));
 	}
 
 	/**
@@ -102,7 +100,7 @@ class BuildSystemsTest {
 	 */
 	@Test
 	void gradleVerifiesWithTheCheckoutsWrapperWhenItShipsOne(@TempDir Path directory) throws IOException {
-		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
+		Path wrapper = executable(directory.resolve("gradlew"));
 		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
 		assertEquals(List.of(wrapper.toAbsolutePath().toString(), "-q", "enforceClaudeMd"),
 				gradle.verifyCommand(directory));
@@ -110,19 +108,48 @@ class BuildSystemsTest {
 
 	@Test
 	void mavenVerifiesWithTheCheckoutsWrapperWhenItShipsOne(@TempDir Path directory) throws IOException {
-		Path wrapper = Files.writeString(directory.resolve("mvnw"), "#!/bin/sh\n");
+		Path wrapper = executable(directory.resolve("mvnw"));
 		MavenBuildSystem maven = new MavenBuildSystem(new PomEnforcerInstaller("2.6.0"),
 				new BuildWrapper("mvnw", "mvnw.cmd", false));
 		assertEquals(List.of(wrapper.toAbsolutePath().toString(), "-q", "-N", "validate"),
 				maven.verifyCommand(directory));
 	}
 
+	/**
+	 * A wrapper committed without its executable bit — the usual state of one added
+	 * from Windows — cannot be launched as a program, so it is run through sh. It was
+	 * otherwise refused with "Permission denied" and aborted the adoption of a
+	 * repository whose build was fine.
+	 */
+	@Test
+	void aWrapperWithoutItsExecutableBitIsLaunchedThroughTheShell(@TempDir Path directory) throws IOException {
+		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
+		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
+		assertEquals(List.of("sh", wrapper.toAbsolutePath().toString(), "-q", "enforceClaudeMd"),
+				gradle.verifyCommand(directory));
+	}
+
+	/**
+	 * The probe of a shelled wrapper must be the whole launcher: `sh --version` is
+	 * not portable — under dash it exits non-zero — so probing the program alone
+	 * answered for the shell rather than for the build tool.
+	 */
+	@Test
+	void aShelledWrapperIsProbedThroughTheShellToo(@TempDir Path directory) throws IOException {
+		Path wrapper = Files.writeString(directory.resolve("mvnw"), "#!/bin/sh\n");
+		MavenBuildSystem maven = new MavenBuildSystem(new PomEnforcerInstaller("2.6.0"),
+				new BuildWrapper("mvnw", "mvnw.cmd", false));
+		assertEquals(Optional.of(List.of("sh", wrapper.toAbsolutePath().toString(), "--version")),
+				maven.toolProbe(directory));
+	}
+
 	/** The wrapper the verification launches is the one the toolchain step probes. */
 	@Test
 	void theWrapperIsWhatTheToolchainStepProbes(@TempDir Path directory) throws IOException {
-		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
+		Path wrapper = executable(directory.resolve("gradlew"));
 		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
-		assertEquals(Optional.of(wrapper.toAbsolutePath().toString()), gradle.requiredTool(directory));
+		assertEquals(Optional.of(List.of(wrapper.toAbsolutePath().toString(), "--version")),
+				gradle.toolProbe(directory));
 	}
 
 	/**
@@ -151,6 +178,12 @@ class BuildSystemsTest {
 	 */
 	@Test
 	void theFallbackRequiresNoToolOfItsOwn(@TempDir Path directory) {
-		assertEquals(Optional.empty(), new FallbackBuildSystem().requiredTool(directory));
+		assertEquals(Optional.empty(), new FallbackBuildSystem().toolProbe(directory));
+	}
+
+	private Path executable(Path wrapper) throws IOException {
+		Files.writeString(wrapper, "#!/bin/sh\n");
+		assertTrue(wrapper.toFile().setExecutable(true), "could not make " + wrapper + " executable");
+		return wrapper;
 	}
 }

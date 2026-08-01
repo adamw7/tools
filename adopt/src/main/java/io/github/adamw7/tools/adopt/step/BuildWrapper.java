@@ -25,7 +25,11 @@ import io.github.adamw7.tools.adopt.command.CommandLine;
  */
 final class BuildWrapper {
 
+	/** Launches a wrapper the checkout committed without its executable bit; see {@link #launch}. */
+	private static final String SHELL = "sh";
+
 	private final String fileName;
+	private final boolean windows;
 
 	/** The wrapper for the host platform: the Windows script there, the POSIX one everywhere else. */
 	BuildWrapper(String posixName, String windowsName) {
@@ -34,6 +38,7 @@ final class BuildWrapper {
 
 	BuildWrapper(String posixName, String windowsName, boolean windows) {
 		this.fileName = windows ? windowsName : posixName;
+		this.windows = windows;
 	}
 
 	/**
@@ -42,7 +47,45 @@ final class BuildWrapper {
 	 * system's "wrapper, else the PATH tool" from being written out again.
 	 */
 	List<String> commandIn(Path repositoryDirectory, String fallback, List<String> arguments) {
-		return CommandLine.of(in(repositoryDirectory).orElse(fallback)).addAll(arguments).toList();
+		return CommandLine.of().addAll(launcherIn(repositoryDirectory, fallback)).addAll(arguments).toList();
+	}
+
+	/**
+	 * The probe that shows this build tool can actually be launched in the checkout,
+	 * built from the same launcher {@link #commandIn} uses so what
+	 * {@link BuildToolchainStep} checks is what {@link VerifyStep} will run. Probing
+	 * the launcher rather than the wrapper's file name matters for a wrapper that has
+	 * to go through {@link #SHELL}: {@code sh --version} is not portable — under
+	 * {@code dash} it exits non-zero — so a probe of the program alone would report
+	 * a wrapper that runs perfectly well as one that could not be run.
+	 */
+	List<String> probeIn(Path repositoryDirectory, String fallback) {
+		return commandIn(repositoryDirectory, fallback, List.of(ToolProbe.VERSION_FLAG));
+	}
+
+	/**
+	 * The program-and-arguments prefix that launches the build tool: the checkout's
+	 * wrapper, or {@code fallback} off the {@code PATH} when it ships none.
+	 */
+	private List<String> launcherIn(Path repositoryDirectory, String fallback) {
+		return in(repositoryDirectory).map(this::launch).orElse(List.of(fallback));
+	}
+
+	/**
+	 * A wrapper whose executable bit the project never committed — the usual state of
+	 * one added from Windows, where git records no such bit — cannot be launched as a
+	 * program at all: the checkout is refused with "Permission denied", which
+	 * {@link BuildToolchainStep} reports as a wrapper that could not be run and which
+	 * aborted the adoption of a repository whose build was fine. Running it through
+	 * {@code sh} is what the project's own CI does with it, and needs no change to
+	 * the checkout — where a {@code chmod} would leave a mode change in the adoption's
+	 * commit that nobody asked for.
+	 *
+	 * <p>Only the POSIX wrapper is ever shelled: the Windows {@code .bat}/{@code .cmd}
+	 * carries no executable bit to miss and is not a shell script.
+	 */
+	private List<String> launch(String wrapper) {
+		return windows || Files.isExecutable(Path.of(wrapper)) ? List.of(wrapper) : List.of(SHELL, wrapper);
 	}
 
 	/**

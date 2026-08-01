@@ -43,7 +43,7 @@ class CloneStepTest {
 		AdoptionContext existing = checkedOut(existingWorkspace);
 		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
-		assertEquals(List.of("git", "remote", "get-url", "origin"), runner.commandAt(0));
+		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
 		assertEquals(List.of("git", "fetch", "origin"), runner.commandAt(1));
 		assertEquals(2, runner.count());
 	}
@@ -121,7 +121,26 @@ class CloneStepTest {
 		Files.writeString(existing.repositoryDirectory().resolve(".git"), "gitdir: /elsewhere/.git/worktrees/tools\n");
 		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
-		assertEquals(List.of("git", "remote", "get-url", "origin"), runner.commandAt(0));
+		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
+		assertEquals(2, runner.count());
+	}
+
+	/**
+	 * The remote is read from the configuration, not with {@code git remote get-url},
+	 * which expands the caller's {@code url.<base>.insteadOf} rewrites: a rewrite onto
+	 * a mirror or a proxy answers a host and path the checkout never recorded, and the
+	 * reused checkout was refused as a different repository. Asking git for the raw
+	 * configured value is what makes the comparison against the run's own URL possible
+	 * at all.
+	 */
+	@Test
+	void readsTheConfiguredOriginRatherThanTheRewrittenOne(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("--get-all")
+				? new CommandResult(command, 0, "https://github.com/adamw7/tools.git")
+				: new CommandResult(command, 0, "https://mirror.corp/github/adamw7/tools.git"));
+		step.execute(existing, runner);
+		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
 		assertEquals(2, runner.count());
 	}
 

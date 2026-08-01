@@ -68,4 +68,10 @@ public class MavenBuildSystem implements BuildSystem {
 	public List<String> verifyCommand(Path repositoryDirectory) {
 		return wrapper.commandIn(repositoryDirectory, MAVEN, VERIFY_ARGUMENTS);
 	}
+
+	/** Probes whatever {@link #verifyCommand(Path)} will launch — the wrapper, however it has to be run. */
+	@Override
+	public Optional<List<String>> toolProbe(Path repositoryDirectory) {
+		return Optional.of(wrapper.probeIn(repositoryDirectory, MAVEN));
+	}
 }

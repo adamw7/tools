@@ -60,6 +60,12 @@ public class GradleBuildSystem implements BuildSystem {
 		return wrapper.commandIn(repositoryDirectory, GRADLE, VERIFY_ARGUMENTS);
 	}
 
+	/** Probes whatever {@link #verifyCommand(Path)} will launch — the wrapper, however it has to be run. */
+	@Override
+	public Optional<List<String>> toolProbe(Path repositoryDirectory) {
+		return Optional.of(wrapper.probeIn(repositoryDirectory, GRADLE));
+	}
+
 	/**
 	 * Prefers the Groovy build file over the Kotlin one when a checkout carries
 	 * both, matching the order most Gradle projects resolve them in.

@@ -38,15 +38,20 @@ public interface BuildSystem {
 	List<String> verifyCommand(Path repositoryDirectory);
 
 	/**
-	 * The program {@link #verifyCommand(Path)} launches, so {@link BuildToolchainStep}
-	 * can probe it before the pipeline spends a {@code claude init} on a checkout it
-	 * will not be able to verify. The verification launches the first word of its
-	 * own command, so that is what the default probes.
+	 * The command that shows the build tool {@link #verifyCommand(Path)} launches can
+	 * actually be run, so {@link BuildToolchainStep} can probe it before the pipeline
+	 * spends a {@code claude init} on a checkout it will not be able to verify.
 	 *
-	 * @return the program to probe, or empty when the verification needs nothing
-	 *         beyond the shell
+	 * <p>A whole command rather than a program name, because a build system may need
+	 * more than one word to launch its tool — a wrapper the checkout committed
+	 * without its executable bit goes through {@code sh}, whose own
+	 * {@code --version} is not portable — and probing only the program would then
+	 * answer for the shell rather than for the build tool.
+	 *
+	 * @return the probe command, or empty when the verification needs nothing beyond
+	 *         the shell
 	 */
-	default Optional<String> requiredTool(Path repositoryDirectory) {
-		return Optional.of(verifyCommand(repositoryDirectory).get(0));
+	default Optional<List<String>> toolProbe(Path repositoryDirectory) {
+		return Optional.of(List.of(verifyCommand(repositoryDirectory).get(0), ToolProbe.VERSION_FLAG));
 	}
 }

@@ -22,7 +22,11 @@ final class ToolProbe {
 
 	private static final Logger log = LogManager.getLogger(ToolProbe.class);
 
-	private static final String VERSION_FLAG = "--version";
+	/**
+	 * Package-visible so {@link BuildWrapper} builds its own probe with the same flag
+	 * rather than a copy of it that could drift.
+	 */
+	static final String VERSION_FLAG = "--version";
 
 	/**
 	 * @return the tools whose {@code --version} probe could not be run or exited

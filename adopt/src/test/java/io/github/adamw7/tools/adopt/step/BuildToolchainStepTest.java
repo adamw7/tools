@@ -103,6 +103,25 @@ class BuildToolchainStepTest {
 	void probesTheCheckoutsWrapperRatherThanThePathWhenOneIsShipped(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
+		Path wrapper = executableWrapper(context);
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+
+		new BuildToolchainStep(List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
+				.execute(context, runner);
+
+		assertEquals(List.of(wrapper.toString(), "--version"), runner.commandAt(0));
+	}
+
+	/**
+	 * A wrapper the project committed without its executable bit is probed through sh,
+	 * exactly as the verification will launch it. Probing it as a program instead
+	 * failed with "Permission denied" and aborted the adoption of a repository whose
+	 * build was fine — the usual state of a wrapper added from Windows.
+	 */
+	@Test
+	void probesAWrapperWithoutItsExecutableBitThroughTheShell(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		Path wrapper = context.repositoryDirectory().resolve("gradlew").toAbsolutePath();
@@ -110,7 +129,14 @@ class BuildToolchainStepTest {
 		new BuildToolchainStep(List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
 				.execute(context, runner);
 
-		assertEquals(List.of(wrapper.toString(), "--version"), runner.commandAt(0));
+		assertEquals(List.of("sh", wrapper.toString(), "--version"), runner.commandAt(0));
+	}
+
+	private Path executableWrapper(AdoptionContext context) throws IOException {
+		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
+		Path wrapper = context.repositoryDirectory().resolve("gradlew").toAbsolutePath();
+		assertTrue(wrapper.toFile().setExecutable(true), "could not make " + wrapper + " executable");
+		return wrapper;
 	}
 
 	/** A wrapper that cannot be run is named in the failure, not passed off as a missing PATH tool. */

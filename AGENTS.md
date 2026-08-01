@@ -858,6 +858,12 @@ Points worth knowing before changing any of it:
   `linux/arm64`.
 - **`USER` is the numeric `10001:10001`**, because Kubernetes' `runAsNonRoot`
   admission check cannot verify a name-based user.
+- **The runtime stage deletes `/usr/bin/pebble`** (and `/var/lib/pebble`).
+  Ubuntu 26.04, the base of `eclipse-temurin:25-jre`, ships Canonical's Pebble
+  service manager there; this image never runs it, the entrypoint being the JVM
+  itself. It is a static Go binary outside dpkg's control, so the Go CVEs it
+  vendors cannot be patched by an upgrade and fail `docker.yml`'s Trivy gate on
+  their own. Expect the same of any future unused binary the base image adds.
 - **Logging goes through `docker/log4j2-console.properties`**, selected with
   `-Dlog4j2.configurationFile` in `JDK_JAVA_OPTIONS`. The `data` module's own
   config is file-only on purpose: its MCP server speaks JSON-RPC over stdio, and

@@ -46,6 +46,17 @@ LABEL org.opencontainers.image.title="tools" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}"
 
+# Ubuntu 26.04 — what eclipse-temurin:25-jre is built on — ships Canonical's
+# Pebble service manager at /usr/bin/pebble. Nothing here uses it: the entrypoint
+# below is the JVM itself. It is a statically linked Go binary carrying its own
+# copy of golang.org/x/net and the Go standard library, and it is not tracked by
+# dpkg, so a `apt-get upgrade` cannot patch it and every CVE fixed upstream stays
+# reported against this image — enough on its own to fail the Trivy scan in
+# docker.yml, which is set to fail on fixable HIGH/CRITICAL findings. Deleting it
+# drops that dead code and its findings; it reclaims no space, since the file
+# lives in a base-image layer this only whites out.
+RUN rm -f /usr/bin/pebble && rm -rf /var/lib/pebble
+
 # Create the unprivileged user before copying, so COPY --chown can set ownership
 # as it writes. A `RUN chown` afterwards would rewrite every copied file into a
 # second layer, storing the whole distribution twice in the image.

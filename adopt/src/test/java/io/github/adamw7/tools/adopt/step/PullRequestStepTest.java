@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -242,6 +243,29 @@ class PullRequestStepTest {
 				: new CommandResult(command, 0, "[]"));
 		step.execute(context, runner);
 		assertTrue(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("create")));
+	}
+
+	/**
+	 * Tolerating the creation is only half of it: the pull request gh refused to
+	 * open a second time is the one the report must carry, which the read-back that
+	 * follows is what supplies.
+	 */
+	@Test
+	void recordsTheUrlOfThePullRequestThatAlreadyExisted() {
+		AtomicInteger listCalls = new AtomicInteger();
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			if (command.contains("create")) {
+				return new CommandResult(command, 1, "a pull request for branch \"claude/adopt-claude-code\""
+						+ " into branch \"main\" already exists:\n" + PR_URL);
+			}
+			// The pre-check misses it — a restricted token, a proxied host — and the
+			// read-back after the tolerated creation is what finds it.
+			return new CommandResult(command, 0,
+					listCalls.getAndIncrement() == 0 ? "[]" : "[{\"url\":\"" + PR_URL + "\"}]");
+		});
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, runner, report);
+		assertEquals(PR_URL, report.pullRequestUrl().orElseThrow());
 	}
 
 	/**

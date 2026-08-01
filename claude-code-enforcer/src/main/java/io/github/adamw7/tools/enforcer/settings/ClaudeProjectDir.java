@@ -48,9 +48,18 @@ final class ClaudeProjectDir {
 	 * renamed passed, which is the very failure these rules exist to catch, and
 	 * {@code hooksFormat} reported the script it really did reference as referenced
 	 * by nothing.
+	 * <p>
+	 * A command that names one script both ways yields it once. The separators are
+	 * normalised before the comparison because the two spellings are assembled
+	 * differently — an expansion keeps the separators the command was written with,
+	 * a relative program is resolved as a {@link File} — and on a platform where
+	 * those disagree the same script would otherwise be reported as two.
 	 */
 	List<String> scriptsIn(String command) {
-		return Stream.concat(expandAll(command).stream(), relativePrograms(command).stream()).distinct().toList();
+		return Stream.concat(expandAll(command).stream(), relativePrograms(command).stream())
+				.map(path -> new File(path).getPath())
+				.distinct()
+				.toList();
 	}
 
 	/**

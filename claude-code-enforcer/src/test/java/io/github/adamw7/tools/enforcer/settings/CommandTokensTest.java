@@ -99,4 +99,20 @@ class CommandTokensTest {
 	void yieldsNoProgramsForABlankCommand() {
 		assertEquals(List.of(), CommandTokens.programsOf("   "));
 	}
+
+	@Test
+	void yieldsNoProgramsForOperatorsAlone() {
+		assertEquals(List.of(), CommandTokens.programsOf("&& ;| "));
+	}
+
+	/** A program is the first token of its own segment, however the operators are spaced. */
+	@Test
+	void readsTheProgramAfterAnOperatorWithNoSurroundingSpace() {
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh --flag&&b.sh --flag"));
+	}
+
+	@Test
+	void doesNotSplitASegmentOnAQuotedOperator() {
+		assertEquals(List.of("run.sh", "b.sh"), CommandTokens.programsOf("run.sh \"a;b\"; b.sh"));
+	}
 }

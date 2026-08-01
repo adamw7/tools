@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -328,6 +329,27 @@ class HookCommandsValidRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 
 		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void passesWhenScriptReferenceValidationIsDisabledForARelativeScript() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setValidateScriptReferences(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** One script named both ways is one script, so it is not reported — or baselined — twice. */
+	@Test
+	void reportsAScriptNamedBothWaysOnlyOnce() {
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh && .claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertEquals(1, exception.getMessage().lines().filter(line -> line.contains("gone.sh")).count(),
+				exception.getMessage());
 	}
 
 	@Test

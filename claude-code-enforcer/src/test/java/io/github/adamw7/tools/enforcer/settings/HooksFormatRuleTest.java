@@ -156,6 +156,32 @@ class HooksFormatRuleTest {
 		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
 	}
 
+	/** A hook chaining two scripts references both, whichever spelling each is written with. */
+	@Test
+	void treatsEveryScriptOfAMixedChainedCommandAsReferenced() {
+		writeScript("first.sh", "#!/bin/sh\n", true);
+		writeScript("second.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(
+				"$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh && .claude/hooks/second.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** An argument is not a script, so it cannot mark one referenced or be required to exist. */
+	@Test
+	void doesNotTreatAnArgumentThatLooksLikeAPathAsAScript() {
+		writeScript("build.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(".claude/hooks/build.sh --out .claude/hooks/absent.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	@Test
 	void treatsAQuotedReferenceAsReferencing() {
 		writeScript("session-start.sh", "#!/bin/sh\n", true);

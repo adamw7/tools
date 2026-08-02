@@ -35,6 +35,12 @@ import java.util.stream.Collectors;
  * kebab-case convention it follows, a quoted {@code model} miss its whitelist, and
  * every description count two characters it does not have.
  * <p>
+ * A trailing comment is not part of the value. YAML ends a plain scalar at a
+ * {@code #} that follows whitespace outside quotes, so {@code name: git-commit # the
+ * commit helper} declares {@code git-commit}. Reading the note as part of the value
+ * failed a name over the kebab-case convention it follows and made every such
+ * description count characters Claude Code never sees.
+ * <p>
  * A key declared twice yields its <em>last</em> declaration, which is the one a YAML
  * loader keeps and so the one Claude Code acts on. Reading the first instead
  * validated a value the tool never sees — a second {@code description:} could
@@ -46,7 +52,10 @@ import java.util.stream.Collectors;
 public final class FrontMatter {
 
 	private static final String DELIMITER = "---";
+	private static final char NONE = 0;
 	private static final char KEY_VALUE_SEPARATOR = ':';
+	private static final char COMMENT_START = '#';
+	private static final char ESCAPE = '\\';
 	private static final char DOUBLE_QUOTE = '"';
 	private static final char SINGLE_QUOTE = '\'';
 	private static final String ESCAPED_DOUBLE_QUOTE = "\\\"";
@@ -98,7 +107,7 @@ public final class FrontMatter {
 		if (index < 0) {
 			return Optional.empty();
 		}
-		String declared = valueOf(lines.get(index), key);
+		String declared = withoutComment(valueOf(lines.get(index), key));
 		return Optional.of(isBlockScalar(declared) ? folded(index + 1) : unquoted(declared));
 	}
 
@@ -188,6 +197,40 @@ public final class FrontMatter {
 	private String valueOf(String line, String key) {
 		String stripped = line.strip();
 		return stripped.substring((key + KEY_VALUE_SEPARATOR).length()).strip();
+	}
+
+	/**
+	 * The value with a trailing YAML comment removed. A {@code #} that opens a
+	 * comment stands outside quotes and follows whitespace, which is what separates
+	 * the note in {@code name: git-commit # the commit helper} from the value in
+	 * {@code version: 1.0#2}. Keeping the note made a name break the kebab-case
+	 * convention it follows and a description count characters a YAML loader — and
+	 * so Claude Code — never reads.
+	 */
+	private static String withoutComment(String value) {
+		char quote = NONE;
+		for (int i = 0; i < value.length(); i++) {
+			char character = value.charAt(i);
+			if (quote != NONE) {
+				i += isEscape(quote, character) ? 1 : 0;
+				quote = character == quote ? NONE : quote;
+			} else if (character == DOUBLE_QUOTE || character == SINGLE_QUOTE) {
+				quote = character;
+			} else if (character == COMMENT_START && startsComment(value, i)) {
+				return value.substring(0, i).strip();
+			}
+		}
+		return value;
+	}
+
+	/** A backslash escapes the next character inside a double-quoted scalar, but not a single-quoted one. */
+	private static boolean isEscape(char quote, char character) {
+		return quote == DOUBLE_QUOTE && character == ESCAPE;
+	}
+
+	/** A {@code #} opens a comment at the start of the value or after whitespace, never mid-token. */
+	private static boolean startsComment(String value, int index) {
+		return index == 0 || Character.isWhitespace(value.charAt(index - 1));
 	}
 
 	/**

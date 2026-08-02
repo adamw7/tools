@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.settings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -67,6 +68,22 @@ final class CommandTokens {
 	 */
 	private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
 
+	/**
+	 * The shell reserved words, which structure a command rather than name a program.
+	 * A hook that runs its script only under a condition writes
+	 * {@code if [ -n "$CI" ]; then .claude/hooks/session-start.sh; fi}, and reading
+	 * the first word of each segment blindly took {@code then} for the program — so
+	 * the script went unresolved, and {@code reportUnreferencedScripts} reported a
+	 * script the hook really does run as referenced by nothing. A shell skips over
+	 * these the same way it skips a {@code VAR=value} prefix, and so does this: the
+	 * word after them is what runs.
+	 */
+	private static final Set<String> RESERVED_WORDS = Set.of(
+			"if", "then", "elif", "else", "fi",
+			"for", "while", "until", "do", "done",
+			"case", "in", "esac",
+			"{", "}", "!");
+
 	private CommandTokens() {
 	}
 
@@ -96,12 +113,17 @@ final class CommandTokens {
 
 	/** The program of one segment, and the script it hands on when that program is an interpreter. */
 	private static Stream<String> candidatesIn(List<String> tokens) {
-		List<String> words = tokens.stream().dropWhile(token -> ASSIGNMENT.matcher(token).matches()).toList();
+		List<String> words = tokens.stream().dropWhile(CommandTokens::isPrefix).toList();
 		if (words.isEmpty()) {
 			return Stream.empty();
 		}
 		String program = words.getFirst();
 		return Stream.concat(Stream.of(program), interpretedScript(program, words.subList(1, words.size())).stream());
+	}
+
+	/** True for a word that precedes the program rather than being it: an assignment or a reserved word. */
+	private static boolean isPrefix(String token) {
+		return ASSIGNMENT.matcher(token).matches() || RESERVED_WORDS.contains(token);
 	}
 
 	/**

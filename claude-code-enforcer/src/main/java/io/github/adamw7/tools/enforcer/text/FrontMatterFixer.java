@@ -22,13 +22,17 @@ import java.util.regex.Pattern;
  * become the block actually contains at least one {@code key: value} entry, so a
  * lone {@code ---} thematic break is never mistaken for front matter. A document
  * whose front matter already parses, or whose problem is not one of the above, is
- * left untouched.
+ * left untouched, and one that is repaired keeps the line separator it was written
+ * with, so repairing two delimiter lines does not rewrite every other line of a
+ * CRLF file.
  */
 public final class FrontMatterFixer {
 
 	private static final char DASH = '-';
 	private static final int MIN_DELIMITER_DASHES = 3;
 	private static final String CANONICAL_DELIMITER = "---";
+	private static final String CARRIAGE_RETURN = "\r";
+	private static final String LINE_FEED = "\n";
 	/**
 	 * A {@code key:} or {@code key: value} entry. The key is a single identifier —
 	 * {@code name}, {@code description}, {@code allowed-tools} — with no spaces in
@@ -137,11 +141,25 @@ public final class FrontMatterFixer {
 	}
 
 	private static String render(List<String> lines, String original) {
-		String joined = String.join("\n", lines);
-		return endsWithNewline(original) ? joined + "\n" : joined;
+		String separator = separatorOf(original);
+		String joined = String.join(separator, lines);
+		return endsWithNewline(original) ? joined + separator : joined;
+	}
+
+	/**
+	 * The line separator the document is already written with. Rebuilding it with
+	 * {@code \n} regardless rewrote every line of a CRLF file to repair its two
+	 * delimiter lines, turning a two-line fix into a whole-file diff on Windows.
+	 */
+	private static String separatorOf(String content) {
+		int carriageReturn = content.indexOf(CARRIAGE_RETURN);
+		if (carriageReturn < 0) {
+			return LINE_FEED;
+		}
+		return content.startsWith(LINE_FEED, carriageReturn + 1) ? CARRIAGE_RETURN + LINE_FEED : CARRIAGE_RETURN;
 	}
 
 	private static boolean endsWithNewline(String content) {
-		return content.endsWith("\n") || content.endsWith("\r");
+		return content.endsWith(LINE_FEED) || content.endsWith(CARRIAGE_RETURN);
 	}
 }

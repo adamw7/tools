@@ -3,15 +3,17 @@ package io.github.adamw7.tools.enforcer.text;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * A parsed Markdown document: its lines plus a mask marking which lines belong to
- * a fenced code block. Parsing the mask once, at construction, lets the structural
- * checks share it instead of each rebuilding it.
+ * A parsed Markdown document: its lines plus the masks marking which of them belong
+ * to a fenced code block and which sit inside an HTML comment. Parsing the masks
+ * once, at construction, lets the structural checks share them instead of each
+ * rebuilding them.
  * <p>
  * Headings are recognised on whole lines outside fenced code blocks, so a heading
  * mentioned inside a fence or in prose is not treated as document structure. The
@@ -20,6 +22,11 @@ import java.util.stream.IntStream;
  * characters followed by whitespace or nothing else — so a line that merely starts
  * with a hash, such as {@code #1 rule: run mvn install}, stays prose. Counting it
  * as a heading would end the section it sits in and report that section as empty.
+ * <p>
+ * A heading is also recognised only outside an HTML comment block. A section
+ * commented out with {@code <!-- ... -->} is inert text, not structure, so counting
+ * it would let a document satisfy a required-section check with the very heading its
+ * author had removed.
  * <p>
  * A fence is closed only by a run of the <em>same</em> character, at least as long
  * as the one that opened it, carrying no info string. All three conditions matter,
@@ -36,22 +43,27 @@ public final class MarkdownDocument {
 	private static final char TILDE = '~';
 	private static final int MIN_FENCE_LENGTH = 3;
 	private static final char HEADING_CHAR = '#';
+	private static final String COMMENT_START = "<!--";
+	private static final String COMMENT_END = "-->";
 
 	/** One to six {@code #} characters, then whitespace and any text, or nothing at all. */
 	private static final Pattern ATX_HEADING = Pattern.compile("#{1,6}(\\s.*)?");
 
 	private final List<String> lines;
 	private final boolean[] insideFence;
+	private final boolean[] insideComment;
 
-	private MarkdownDocument(List<String> lines, boolean[] insideFence) {
+	private MarkdownDocument(List<String> lines, boolean[] insideFence, boolean[] insideComment) {
 		this.lines = lines;
 		this.insideFence = insideFence;
+		this.insideComment = insideComment;
 	}
 
-	/** Parses {@code content} into lines and a fenced-code-block mask. */
+	/** Parses {@code content} into lines, a fenced-code-block mask, and an HTML-comment mask. */
 	public static MarkdownDocument parse(String content) {
 		List<String> lines = content.lines().toList();
-		return new MarkdownDocument(lines, fenceMask(lines));
+		boolean[] insideFence = fenceMask(lines);
+		return new MarkdownDocument(lines, insideFence, commentMask(lines, insideFence));
 	}
 
 	public int lineCount() {
@@ -78,14 +90,23 @@ public final class MarkdownDocument {
 		return IntStream.range(0, lines.size()).filter(index -> !insideFence[index]);
 	}
 
+	/**
+	 * The indices of the lines that can carry document structure: outside fenced code
+	 * blocks and outside HTML comments alike. A heading is only recognised on one of
+	 * these.
+	 */
+	private IntStream structuralLines() {
+		return outsideFences().filter(index -> !insideComment[index]);
+	}
+
 	/** True when {@code token} appears on a line outside a fenced code block. */
 	public boolean containsOutsideFences(String token) {
 		return outsideFences().anyMatch(index -> lines.get(index).contains(token));
 	}
 
-	/** The heading lines outside fenced code blocks, in document order. */
+	/** The heading lines outside fenced code blocks and HTML comments, in document order. */
 	public Set<String> headings() {
-		return outsideFences()
+		return structuralLines()
 				.mapToObj(index -> lines.get(index).strip())
 				.filter(MarkdownDocument::isHeading)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
@@ -117,31 +138,45 @@ public final class MarkdownDocument {
 	public List<String> headingsInOrder(List<String> wanted) {
 		Set<String> required = new LinkedHashSet<>(wanted);
 		List<String> ordered = new ArrayList<>();
-		outsideFences().mapToObj(index -> lines.get(index).strip())
+		structuralLines().mapToObj(index -> lines.get(index).strip())
 				.filter(required::remove)
 				.forEach(ordered::add);
 		return ordered;
 	}
 
 	private int headingIndex(String section) {
-		return outsideFences().filter(index -> lines.get(index).strip().equals(section)).findFirst().orElse(-1);
+		return structuralLines().filter(index -> lines.get(index).strip().equals(section)).findFirst().orElse(-1);
 	}
 
 	private boolean hasBodyAt(int headingIndex) {
 		int sectionLevel = headingLevel(lines.get(headingIndex).strip());
 		for (int i = headingIndex + 1; i < lines.size(); i++) {
-			String line = lines.get(i).strip();
-			if (insideFence[i]) {
-				return true;
-			}
-			if (isHeading(line)) {
-				return headingLevel(line) > sectionLevel;
-			}
-			if (!line.isEmpty()) {
-				return true;
+			Optional<Boolean> verdict = bodyVerdict(i, sectionLevel);
+			if (verdict.isPresent()) {
+				return verdict.get();
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Whether the line at {@code index} settles the question of the section's body,
+	 * or empty when it says nothing either way. A blank line does not, and neither
+	 * does a commented-out one: a section whose only content is inside an HTML
+	 * comment reads as empty, which is what commenting it out meant.
+	 */
+	private Optional<Boolean> bodyVerdict(int index, int sectionLevel) {
+		if (insideComment[index]) {
+			return Optional.empty();
+		}
+		if (insideFence[index]) {
+			return Optional.of(Boolean.TRUE);
+		}
+		String line = lines.get(index).strip();
+		if (isHeading(line)) {
+			return Optional.of(headingLevel(line) > sectionLevel);
+		}
+		return line.isEmpty() ? Optional.empty() : Optional.of(Boolean.TRUE);
 	}
 
 	private static boolean isHeading(String line) {
@@ -163,6 +198,39 @@ public final class MarkdownDocument {
 			open = applyFence(lines.get(i).strip(), open, mask, i);
 		}
 		return mask;
+	}
+
+	/**
+	 * Marks the lines an HTML comment spans, so a commented-out section is not read
+	 * as document structure. A comment that opens and closes on one line masks
+	 * nothing — {@code <!-- ## Testing -->} is not a heading to begin with — while a
+	 * block comment hid a required section from the check that exists to demand it
+	 * and satisfied it at the same time. A comment inside a fenced code block is
+	 * sample text, so the fence wins.
+	 */
+	private static boolean[] commentMask(List<String> lines, boolean[] insideFence) {
+		boolean[] mask = new boolean[lines.size()];
+		boolean open = false;
+		for (int i = 0; i < lines.size(); i++) {
+			open = applyComment(lines.get(i).strip(), open, insideFence[i], mask, i);
+		}
+		return mask;
+	}
+
+	/**
+	 * Marks line {@code index} as commented or not and returns whether a comment is
+	 * still open afterwards.
+	 */
+	private static boolean applyComment(String line, boolean open, boolean insideFence, boolean[] mask, int index) {
+		if (insideFence) {
+			return open;
+		}
+		if (open) {
+			mask[index] = true;
+			return !line.contains(COMMENT_END);
+		}
+		mask[index] = line.startsWith(COMMENT_START) && !line.contains(COMMENT_END);
+		return mask[index];
 	}
 
 	/**

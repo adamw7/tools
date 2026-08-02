@@ -456,4 +456,16 @@ class ClaudeMdFormatRuleTest {
 		return rule;
 	}
 
+	@Test
+	void failsWhenSectionHeadingIsCommentedOut() {
+		// A section removed with an HTML comment is gone from the document, so the
+		// heading inside it must not satisfy the requirement it was written for.
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace(
+				"## Testing\nWrite unit tests for all new logic.\n",
+				"<!--\n## Testing\nWrite unit tests for all new logic.\n-->\n"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
+				exception.getMessage());
+	}
 }

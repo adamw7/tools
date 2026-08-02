@@ -44,7 +44,7 @@ class CloneStepTest {
 		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
 		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
-		assertEquals(List.of("git", "status", "--porcelain"), runner.commandAt(1));
+		assertEquals(List.of("git", "status", "--porcelain", "--untracked-files=all"), runner.commandAt(1));
 		assertEquals(List.of("git", "fetch", "origin"), runner.commandAt(2));
 		assertEquals(3, runner.count());
 	}
@@ -207,6 +207,139 @@ class CloneStepTest {
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
 				"?? CLAUDE.md" + System.lineSeparator() + " M pom.xml" + System.lineSeparator()
 						+ "?? .claude/settings.json");
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/**
+	 * The status is asked with {@code --untracked-files=all}, because git otherwise
+	 * collapses a wholly-untracked directory into one entry naming the directory. The
+	 * adoption creates {@code .claude/} in a repository that by definition had none,
+	 * so the default reported its own work as the single path {@code .claude/} —
+	 * which is not one of the files it writes, and the resume it is entitled to was
+	 * refused.
+	 */
+	@Test
+	void asksForEveryUntrackedFileRatherThanTheDirectoriesTheyAreIn(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
+
+		step.execute(existing, runner);
+
+		assertTrue(runner.commandAt(1).contains("--untracked-files=all"), runner.commandAt(1).toString());
+	}
+
+	/**
+	 * Every file the adoption writes into a directory the repository did not have, as
+	 * {@code --untracked-files=all} names them. This is the state a run that stopped
+	 * between {@link AssetsStep} and its commit leaves behind.
+	 */
+	@Test
+	void resumesReusedCheckoutWhoseAssetDirectoriesAreEntirelyNew(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"?? .claude/hooks/session-start.sh",
+				"?? .claude/settings.json",
+				"?? .github/workflows/claude.yml",
+				"?? .mcp.json",
+				"?? AGENTS.md",
+				"?? CLAUDE.md"));
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** The fallback guard's two files land under a {@code .github/} a project may equally not have had. */
+	@Test
+	void resumesReusedCheckoutCarryingTheFallbackGuardsOwnFiles(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"?? .github/claude-md-guard.sh",
+				"?? .github/workflows/claude-md-guard.yml"));
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** Both Gradle build files the guard may be appended to are the adoption's own edits. */
+	@Test
+	void resumesReusedCheckoutCarryingAnEditedGradleBuildFile(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				" M build.gradle" + System.lineSeparator() + " M build.gradle.kts");
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/**
+	 * A collapsed directory entry names no file the adoption writes, so it is refused
+	 * rather than guessed at: were the flag ever dropped, the resume would fail loudly
+	 * instead of sweeping whatever else that directory holds into the adoption's
+	 * commit.
+	 */
+	@Test
+	void refusesADirectoryEntryThatNamesNoFileTheAdoptionWrites(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", "?? .claude/");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains(".claude/"), failure.getMessage());
+	}
+
+	/**
+	 * One unrelated file among the adoption's own still stops the run, so the check
+	 * is not weakened into "some of this is mine".
+	 */
+	@Test
+	void refusesReusedCheckoutMixingTheAdoptionsChangesWithSomebodyElses(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"?? CLAUDE.md" + System.lineSeparator() + "?? .claude/settings.json" + System.lineSeparator()
+						+ "?? .claude/scratch.md");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains(".claude/scratch.md"), failure.getMessage());
+		assertFalse(failure.getMessage().contains("settings.json"), failure.getMessage());
+	}
+
+	/** A clean checkout reports nothing, and the blank transcript names no changed path. */
+	@Test
+	void readsAnEmptyStatusAsACleanCheckout(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				System.lineSeparator() + "   " + System.lineSeparator());
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** Staged and unstaged forms of the adoption's own files carry different status letters. */
+	@Test
+	void readsEveryStatusLetterTheAdoptionsOwnFilesArriveWith(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"A  CLAUDE.md",
+				"M  pom.xml",
+				" M AGENTS.md",
+				"MM .mcp.json",
+				"?? .claude/settings.json"));
 
 		step.execute(existing, runner);
 

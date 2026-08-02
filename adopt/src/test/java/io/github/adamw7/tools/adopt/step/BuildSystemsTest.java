@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -173,12 +174,49 @@ class BuildSystemsTest {
 	}
 
 	/**
-	 * The fallback guard runs through sh, which every supported platform provides
-	 * and which has no portable --version probe, so there is nothing to check.
+	 * The fallback guard runs through sh, so sh is what it probes. Answering "nothing
+	 * to check" assumed every host has a shell on its PATH — a stock Windows one has
+	 * not — and left that to be discovered at the verification, three steps and a
+	 * claude init later.
 	 */
 	@Test
-	void theFallbackRequiresNoToolOfItsOwn(@TempDir Path directory) {
-		assertEquals(Optional.empty(), new FallbackBuildSystem().toolProbe(directory));
+	void theFallbackProbesTheShellItsGuardRunsThrough(@TempDir Path directory) {
+		assertEquals(Optional.of(List.of("sh", "-c", "exit 0")),
+				new FallbackBuildSystem().toolProbe(directory));
+	}
+
+	/**
+	 * The probe asks the shell to do nothing rather than for its version, because
+	 * {@code sh --version} is not portable: dash exits non-zero, which would report a
+	 * perfectly good shell as unusable.
+	 */
+	@Test
+	void theFallbackProbeAsksNothingOfTheShellThatDashWouldRefuse(@TempDir Path directory) {
+		assertFalse(new FallbackBuildSystem().toolProbe(directory).orElseThrow().contains("--version"));
+	}
+
+	/** The shell probed and the shell the verification launches must be the one shell. */
+	@Test
+	void theFallbackProbesTheSameShellItVerifiesWith(@TempDir Path directory) {
+		FallbackBuildSystem fallback = new FallbackBuildSystem();
+		assertEquals(fallback.verifyCommand(directory).get(0), fallback.toolProbe(directory).orElseThrow().get(0));
+	}
+
+	/**
+	 * "Install github-actions on the PATH" names nothing installable, which is what
+	 * the step said before each build system answered for its own remedy.
+	 */
+	@Test
+	void theFallbackAdvisesAboutAShellRatherThanAboutItself() {
+		String advice = new FallbackBuildSystem().toolAdvice();
+		assertTrue(advice.contains("sh"), advice);
+		assertFalse(advice.contains("Install github-actions"), advice);
+	}
+
+	@Test
+	void aBuildToolIsAdvisedAboutByName() {
+		assertTrue(new MavenBuildSystem().toolAdvice().contains("maven"), "maven should name itself");
+		assertTrue(new GradleBuildSystem().toolAdvice().contains("gradle"), "gradle should name itself");
 	}
 
 	/**

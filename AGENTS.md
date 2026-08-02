@@ -70,7 +70,13 @@ Maven project. The notable capabilities are:
   refused with "Permission denied". `BuildSystem.toolProbe` answers the whole
   probe command rather than a program name so `BuildToolchainStep` probes that
   same launcher: `sh --version` is not portable, so probing the program alone
-  would answer for the shell instead of for the build tool. The pull request metadata — title, body,
+  would answer for the shell instead of for the build tool. The fallback guard's
+  own shell is probed too, with `sh -c 'exit 0'` for the same portability reason —
+  a shell is a tool like any other and is absent from a stock Windows `PATH`, and
+  assuming one left the adoption to discover that at `VerifyStep`, past the clone,
+  the `claude init`, and both commits. What to do about a probe that fails comes
+  from `BuildSystem.toolAdvice`, so a build-less repository is told to find a
+  shell rather than to "install github-actions on the PATH". The pull request metadata — title, body,
   reviewers, labels, assignees, and draft flag — is supplied through
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by

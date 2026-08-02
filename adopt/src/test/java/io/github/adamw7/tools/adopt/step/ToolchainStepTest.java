@@ -62,6 +62,24 @@ class ToolchainStepTest {
 		assertDoesNotThrow(() -> new ToolchainStep().execute(context, runner));
 	}
 
+	/**
+	 * The stronger, repository-scoped question is asked of a self-hosted GitHub on its
+	 * own port too. Reading the port as a path segment left the URL apparently
+	 * ownerless, so the step fell back to {@code gh api user} — the user-scoped call a
+	 * GitHub App installation token is refused by, and the very credential the ported
+	 * enterprise host is most likely to be driven with.
+	 */
+	@Test
+	void asksAboutTheRepositoryOfAHostReachedOnAPort() {
+		AdoptionContext ported = new AdoptionContext("https://ghe.example.com:8443/adamw7/tools.git",
+				Path.of("/tmp/workspace"));
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+
+		new ToolchainStep().execute(ported, runner);
+
+		assertEquals(List.of("gh", "api", "repos/adamw7/tools"), runner.commandAt(3));
+	}
+
 	/** A token GitHub answers, but not for this repository, cannot open the pull request either. */
 	@Test
 	void aTokenThatCannotSeeTheRepositoryAbortsTheAdoption() {

@@ -311,6 +311,20 @@ class CliArgumentsTest {
 	}
 
 	/**
+	 * A self-hosted GitHub reached on its own port names an owner like any other URL,
+	 * so it is a repository positional rather than a workspace mistaken for one.
+	 * Reading the port as a path segment made the check conclude it named no owner and
+	 * refuse the whole run, telling the operator to name the repository with the very
+	 * {@code --repo} they had already used for the others.
+	 */
+	@Test
+	void acceptsAPositionalUrlOnAPortAlongsideTheRepositoryFlags() {
+		String ported = "https://ghe.example.com:8443/owner/repo.git";
+		CliArguments cli = CliArguments.parse(new String[] { ported, "--repo", OTHER_URL });
+		assertEquals(List.of(ported, OTHER_URL), cli.repositoryUrls());
+	}
+
+	/**
 	 * A local path names no owner but is adoptable, so a run whose only repository is
 	 * the positional keeps working — the check only fires when the flags named one too.
 	 */

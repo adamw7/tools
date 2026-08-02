@@ -46,6 +46,18 @@ public class CloneStep extends AbstractCommandStep {
 	/** The two status letters and the space before the path in {@code git status --porcelain}. */
 	private static final int STATUS_PREFIX = 3;
 
+	/**
+	 * Makes {@code git status} name every untracked file rather than collapsing a
+	 * wholly-untracked directory into a single entry. Without it a checkout whose
+	 * {@code .claude/} the adoption had just created was reported as the one path
+	 * {@code .claude/}, which is not among {@link AdoptionAssets#WRITTEN_PATHS} — so a
+	 * resumed adoption was refused for changes that were its own. That is the common
+	 * case rather than a corner of one: a repository being adopted has no
+	 * {@code .claude/} to begin with, and the fallback guard's {@code .github/} is
+	 * often new too.
+	 */
+	private static final String UNTRACKED_FILES_ALL = "--untracked-files=all";
+
 	/** What {@code git status --porcelain} puts between a rename's old and new path. */
 	private static final String RENAME_ARROW = " -> ";
 
@@ -107,7 +119,7 @@ public class CloneStep extends AbstractCommandStep {
 	 */
 	private List<String> unrelatedChanges(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
-				List.of("git", "status", "--porcelain"));
+				List.of("git", "status", "--porcelain", UNTRACKED_FILES_ALL));
 		if (!result.succeeded()) {
 			throw new AdoptionException(context.repositoryDirectory() + " is a checkout whose status could not be"
 					+ " read, so it cannot be shown to be free of uncommitted work: "

@@ -22,6 +22,24 @@ public final class RepositoryUrl {
 	private static final String GIT_SUFFIX = ".git";
 
 	/**
+	 * The port ending a URL's authority: a {@code ':'} followed by digits and then
+	 * either the path or the end of the URL. It is dropped before the URL is split
+	 * into segments, because splitting on {@code ':'} — which the scp-like form needs
+	 * — otherwise reads the port as a path segment of its own. A
+	 * {@code https://ghe.example.com:8443/owner/repo} then yielded the segments
+	 * {@code [ghe.example.com, 8443, owner, repo]}, whose third-from-last is the port
+	 * rather than the host, so {@link #repositorySlug} concluded the URL named no
+	 * owner: {@code gh} lost its {@code --repo}, the toolchain check fell back to its
+	 * weaker credentials probe, and the command line refused the URL outright.
+	 *
+	 * <p>Only a URL carrying a scheme is treated this way. The scp-like
+	 * {@code git@host:owner/repo} has no scheme and cannot carry a port at all — that
+	 * is what {@code ssh://} exists for — so its {@code ':'} always separates a path,
+	 * even before an owner that happens to be all digits.
+	 */
+	private static final Pattern PORT = Pattern.compile("^([^/]*):\\d+(?=/|$)");
+
+	/**
 	 * The user information a URL carries before its host, ended by the last
 	 * {@code @} that precedes the path — the same reading {@link Redaction} takes,
 	 * but applied once the scheme is gone, so the scp-like {@code git@host:owner/repo}
@@ -107,6 +125,12 @@ public final class RepositoryUrl {
 	}
 
 	/**
+	 * A port is deliberately <em>not</em> dropped here, unlike in
+	 * {@link #authorityAndPath}: two URLs differing only in their port name two
+	 * servers, and answering them as one repository is the direction this comparison
+	 * must never err in — the caller goes on to commit to that checkout, push it, and
+	 * open its pull request. Reading the port as a path segment keeps them apart.
+	 *
 	 * @return the comparable form of a clone URL, or the empty string for text that
 	 *         names no repository at all — which never equals the identity of a
 	 *         parsed URL, since {@link #of} rejects a blank one
@@ -187,9 +211,22 @@ public final class RepositoryUrl {
 	}
 
 	private static List<String> segments(String url) {
-		return Stream.of(SEGMENT_SEPARATORS.split(SCHEME.matcher(url).replaceFirst("")))
+		return Stream.of(SEGMENT_SEPARATORS.split(authorityAndPath(url)))
 				.filter(segment -> !segment.isBlank())
 				.toList();
+	}
+
+	/**
+	 * The URL past its scheme, with any {@link #PORT} dropped, ready to be split on
+	 * the two separators git accepts.
+	 */
+	private static String authorityAndPath(String url) {
+		String withoutScheme = SCHEME.matcher(url).replaceFirst("");
+		return hasScheme(url) ? PORT.matcher(withoutScheme).replaceFirst("$1") : withoutScheme;
+	}
+
+	private static boolean hasScheme(String url) {
+		return SCHEME.matcher(url).find();
 	}
 
 	private static boolean isHost(String segment) {

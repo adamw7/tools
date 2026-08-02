@@ -350,6 +350,28 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void resolvesAReferenceWhosePathCarriesParentheses() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		writeString(tempDir.resolve("assets/logo(1).png"), "binary");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee ![logo](assets/logo(1).png).\n");
+		rule.setValidateFileReferences(true);
+
+		// Stopping at the first closing parenthesis truncated the target and reported
+		// the half of it that naturally does not exist.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillReportsTheSecondLinkOnALineAsMissing() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n[a](AGENTS.md) and [b](absent.md).\n");
+		rule.setValidateFileReferences(true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing file: absent.md"), exception.getMessage());
+	}
+
+	@Test
 	void ignoresExternalLinksWhenValidatingReferences() {
 		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [site](https://example.com) and [top](#project).\n");

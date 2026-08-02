@@ -235,6 +235,21 @@ class ImportGraphTest {
 		assertFalse(roundabout.getPath().equals(ImportGraph.normalized(roundabout).toString()));
 	}
 
+	@Test
+	void readsNoImportFromABareWordCarryingNeitherSeparatorNorExtension() {
+		File root = write("CLAUDE.md", "An @claude-mention workflow, opened by @adamw7.\n");
+
+		assertEquals(List.of(), graphFrom(root).importsOf(root));
+	}
+
+	@Test
+	void stillReadsAnImportNamedOnlyByItsExtension() {
+		write("AGENTS.md", "# Agents\n");
+		File root = write("CLAUDE.md", "See @AGENTS.md for the rest.\n");
+
+		assertEquals(List.of("AGENTS.md"), textOf(graphFrom(root).importsOf(root)));
+	}
+
 	private ImportGraph graphFrom(File root) {
 		return ImportGraph.from(root, NOTHING_IGNORED, unreadable::add);
 	}

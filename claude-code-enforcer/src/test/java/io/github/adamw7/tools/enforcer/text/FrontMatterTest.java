@@ -167,4 +167,50 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of("a | b"), frontMatter.value("description"));
 	}
+
+	@Test
+	void readsADoubleQuotedValueWithoutItsQuotes() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname: \"git-commit\"\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("git-commit"), frontMatter.value("name"));
+	}
+
+	@Test
+	void readsASingleQuotedValueWithoutItsQuotes() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname: 'git-commit'\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("git-commit"), frontMatter.value("name"));
+	}
+
+	/** A description carrying a {@code : } has to be quoted to parse as YAML at all. */
+	@Test
+	void readsAQuotedDescriptionCarryingAColon() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"Use when: committing.\"\n---\n")
+				.orElseThrow();
+
+		assertEquals(Optional.of("Use when: committing."), frontMatter.value("description"));
+	}
+
+	@Test
+	void resolvesTheEscapeOfEachQuotingStyle() {
+		assertEquals(Optional.of("a \" b"),
+				FrontMatter.parse("---\ndescription: \"a \\\" b\"\n---\n").orElseThrow().value("description"));
+		assertEquals(Optional.of("it's"),
+				FrontMatter.parse("---\ndescription: 'it''s'\n---\n").orElseThrow().value("description"));
+	}
+
+	/** The outer quotes of {@code "a" and "b"} are two pairs, not one wrapping the value. */
+	@Test
+	void keepsQuotesThatDoNotWrapTheWholeValue() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"a\" and \"b\"\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("\"a\" and \"b\""), frontMatter.value("description"));
+	}
+
+	@Test
+	void readsAnEmptyQuotedValueAsBlank() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"\"\n---\n").orElseThrow();
+
+		assertEquals(Optional.of(""), frontMatter.value("description"));
+	}
 }

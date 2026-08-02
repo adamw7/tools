@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -167,6 +168,31 @@ class SubAgentFormatRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
 		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
+	}
+
+	/** Quoting a value is ordinary YAML, so the name inside the quotes is the one checked. */
+	@Test
+	void acceptsAQuotedNameAndModel() {
+		writeString(tempDir.resolve("reviewer.md"), """
+				---
+				name: "reviewer"
+				description: "Reviews code. Use when: reviewing."
+				model: "opus"
+				---
+				# Reviewer
+				""");
+		SubAgentFormatRule rule = ruleFor(tempDir);
+		rule.setAllowedModels(List.of("opus"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void reportsADefinitionThatCannotBeReadAsText() {
+		writeBytes(tempDir.resolve("binary.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
 	}
 
 	private void createAgent(String name, String model) {

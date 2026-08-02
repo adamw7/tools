@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.definition;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import javax.inject.Named;
 
@@ -56,8 +57,19 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 		report("Command files are not well formed:", violations);
 	}
 
+	/**
+	 * A command that cannot be decoded as text is reported rather than read. The rule
+	 * scans a directory whose contents it does not control, and an
+	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
+	 * internal error instead of reporting the malformed command it exists to catch.
+	 */
 	private void collectCommandViolations(File command, List<String> violations) {
-		String content = MarkdownText.read(command, DEFINITION);
+		Optional<String> text = MarkdownText.readIfText(command);
+		if (text.isEmpty()) {
+			violations.add("Command definition cannot be read as text: " + command);
+			return;
+		}
+		String content = text.get();
 		if (content.isBlank()) {
 			violations.add("Command definition is empty: " + command);
 			return;

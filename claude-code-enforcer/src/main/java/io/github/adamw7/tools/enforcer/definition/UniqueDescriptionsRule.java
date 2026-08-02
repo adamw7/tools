@@ -43,12 +43,18 @@ public class UniqueDescriptionsRule extends MultiDefinitionRule {
 				.ifPresent(text -> descriptions.add(normalize(text), text, source.toString()));
 	}
 
+	/**
+	 * A definition that cannot be decoded as text declares no description here. The
+	 * format rules report the unreadable file; an
+	 * {@link java.io.UncheckedIOException} escaping this rule would abort the build
+	 * as an internal error instead.
+	 */
 	private Optional<String> descriptionOf(File definitionFile) {
 		if (!definitionFile.isFile()) {
 			return Optional.empty();
 		}
-		String content = MarkdownText.read(definitionFile, "definition");
-		return FrontMatter.parse(content)
+		return MarkdownText.readIfText(definitionFile)
+				.flatMap(FrontMatter::parse)
 				.flatMap(frontMatter -> frontMatter.value(DESCRIPTION_KEY))
 				.filter(value -> !value.isBlank());
 	}

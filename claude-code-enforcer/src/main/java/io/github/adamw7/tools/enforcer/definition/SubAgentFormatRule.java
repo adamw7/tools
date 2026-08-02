@@ -58,8 +58,20 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 		report("Sub-agent files are not well formed:", violations);
 	}
 
+	/**
+	 * A definition that cannot be decoded as text is reported rather than read. The
+	 * rule scans a directory whose contents it does not control, and an
+	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
+	 * internal error instead of reporting the malformed definition it exists to
+	 * catch.
+	 */
 	private void collectDefinitionViolations(File definition, List<String> violations) {
-		String content = MarkdownText.read(definition, DEFINITION);
+		Optional<String> text = MarkdownText.readIfText(definition);
+		if (text.isEmpty()) {
+			violations.add("Sub-agent definition cannot be read as text: " + definition);
+			return;
+		}
+		String content = text.get();
 		if (content.isBlank()) {
 			violations.add("Sub-agent definition is empty: " + definition);
 			return;

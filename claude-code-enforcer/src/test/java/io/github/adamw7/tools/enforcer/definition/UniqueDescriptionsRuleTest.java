@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -150,6 +151,25 @@ class UniqueDescriptionsRuleTest {
 				---
 				# %s
 				""".formatted(name, description, name));
+	}
+
+	/** The format rules report the unreadable file; this one must not abort the build over it. */
+	@Test
+	void skipsADefinitionThatCannotBeReadAsText() {
+		writeAgent("reviewer", "Reviews code.");
+		writeBytes(agentsDir().resolve("binary.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
+
+		assertDoesNotThrow(agentsRule()::execute);
+	}
+
+	/** A quoted description is the same description as its unquoted spelling. */
+	@Test
+	void comparesAQuotedDescriptionByItsText() {
+		writeAgent("reviewer", "Reviews code.");
+		writeAgent("checker", "\"Reviews code.\"");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
+		assertTrue(exception.getMessage().contains("checker.md"), exception.getMessage());
 	}
 
 	private UniqueDescriptionsRule agentsRule() {

@@ -35,7 +35,13 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
-	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)]+)\\)");
+	/**
+	 * A Markdown link, whose destination may carry one level of balanced parentheses
+	 * — {@code [img](assets/logo(1).png)} — as Markdown allows. Stopping at the first
+	 * closing parenthesis truncated such a target and reported the half of it that
+	 * naturally does not exist as a missing file.
+	 */
+	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(((?:[^()]|\\([^()]*\\))+)\\)");
 	private static final Pattern EXTERNAL_REFERENCE = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
 
 	private final String documentName;

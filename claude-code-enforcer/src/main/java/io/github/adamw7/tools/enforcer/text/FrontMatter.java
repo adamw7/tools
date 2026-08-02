@@ -25,11 +25,22 @@ import java.util.stream.Collectors;
  * definition claiming the same one-character description and escape any length cap.
  * The fold joins the continuation lines with single spaces, which is all the
  * length, blankness, and uniqueness checks need.
+ * <p>
+ * A value wrapped in matching quotes yields the text inside them, because that is
+ * the value YAML declares and the one Claude Code reads. Quoting is not decoration:
+ * a description containing {@code : } has to be quoted to parse at all. Returning
+ * the quotes as part of the value made a {@code name: "git-commit"} fail the
+ * kebab-case convention it follows, a quoted {@code model} miss its whitelist, and
+ * every description count two characters it does not have.
  */
 public final class FrontMatter {
 
 	private static final String DELIMITER = "---";
 	private static final char KEY_VALUE_SEPARATOR = ':';
+	private static final char DOUBLE_QUOTE = '"';
+	private static final char SINGLE_QUOTE = '\'';
+	private static final String ESCAPED_DOUBLE_QUOTE = "\\\"";
+	private static final String ESCAPED_SINGLE_QUOTE = "''";
 
 	/** A block scalar header: {@code >} or {@code |} with optional indentation and chomping indicators. */
 	private static final Pattern BLOCK_SCALAR = Pattern.compile("[>|][0-9+-]*");
@@ -67,8 +78,9 @@ public final class FrontMatter {
 
 	/**
 	 * The trimmed value declared for {@code key}, or empty when the key is absent.
-	 * A present key with no value yields an empty string, not an empty optional, and
-	 * a block scalar yields its folded continuation lines rather than the indicator.
+	 * A present key with no value yields an empty string, not an empty optional, a
+	 * block scalar yields its folded continuation lines rather than the indicator,
+	 * and a quoted scalar yields the text inside its quotes.
 	 */
 	public Optional<String> value(String key) {
 		int index = indexOfEntry(key);
@@ -76,7 +88,7 @@ public final class FrontMatter {
 			return Optional.empty();
 		}
 		String declared = valueOf(lines.get(index), key);
-		return Optional.of(isBlockScalar(declared) ? folded(index + 1) : declared);
+		return Optional.of(isBlockScalar(declared) ? folded(index + 1) : unquoted(declared));
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
@@ -153,6 +165,37 @@ public final class FrontMatter {
 	private String valueOf(String line, String key) {
 		String stripped = line.strip();
 		return stripped.substring((key + KEY_VALUE_SEPARATOR).length()).strip();
+	}
+
+	/**
+	 * The text inside a scalar's matching quotes, with the escape each quoting style
+	 * uses resolved, or the value unchanged when it is not quoted.
+	 */
+	private static String unquoted(String value) {
+		if (isWrapped(value, DOUBLE_QUOTE, ESCAPED_DOUBLE_QUOTE)) {
+			return interiorOf(value).replace(ESCAPED_DOUBLE_QUOTE, String.valueOf(DOUBLE_QUOTE));
+		}
+		if (isWrapped(value, SINGLE_QUOTE, ESCAPED_SINGLE_QUOTE)) {
+			return interiorOf(value).replace(ESCAPED_SINGLE_QUOTE, String.valueOf(SINGLE_QUOTE));
+		}
+		return value;
+	}
+
+	/**
+	 * True when {@code quote} opens and closes the whole value and appears inside it
+	 * only as {@code escaped}. An unescaped inner quote means the outer two are not a
+	 * pair — {@code "a" and "b"} opens and closes twice — and stripping them would
+	 * hand back text the author never wrote.
+	 */
+	private static boolean isWrapped(String value, char quote, String escaped) {
+		if (value.length() < 2 || value.charAt(0) != quote || value.charAt(value.length() - 1) != quote) {
+			return false;
+		}
+		return interiorOf(value).replace(escaped, "").indexOf(quote) < 0;
+	}
+
+	private static String interiorOf(String value) {
+		return value.substring(1, value.length() - 1);
 	}
 
 	private static int indexOfDelimiter(List<String> lines, int from) {

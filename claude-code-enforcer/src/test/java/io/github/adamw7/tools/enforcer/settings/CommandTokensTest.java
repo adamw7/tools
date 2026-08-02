@@ -67,69 +67,99 @@ class CommandTokensTest {
 	@Test
 	void readsTheProgramOfASingleCommand() {
 		assertEquals(List.of(".claude/hooks/session-start.sh"),
-				CommandTokens.programsOf(".claude/hooks/session-start.sh"));
+				CommandTokens.scriptCandidatesOf(".claude/hooks/session-start.sh"));
 	}
 
 	@Test
 	void readsTheProgramOfEveryChainedCommand() {
-		assertEquals(List.of("a.sh", "b.sh", "c.sh"), CommandTokens.programsOf("a.sh && b.sh; c.sh --flag"));
+		assertEquals(List.of("a.sh", "b.sh", "c.sh"), CommandTokens.scriptCandidatesOf("a.sh && b.sh; c.sh --flag"));
 	}
 
 	@Test
 	void doesNotReadAnArgumentAsAProgram() {
-		assertEquals(List.of("build.sh"), CommandTokens.programsOf("build.sh --out target/log.txt"));
+		assertEquals(List.of("build.sh"), CommandTokens.scriptCandidatesOf("build.sh --out target/log.txt"));
+	}
+
+	/** An interpreter names a script of its own, so both it and that script are candidates. */
+	@Test
+	void readsBothAnInterpreterAndTheScriptItRuns() {
+		assertEquals(List.of("bash", ".claude/hooks/run.sh"),
+				CommandTokens.scriptCandidatesOf("bash .claude/hooks/run.sh"));
 	}
 
 	@Test
-	void readsAnInterpreterAsTheProgramRatherThanTheScriptItRuns() {
-		assertEquals(List.of("bash"), CommandTokens.programsOf("bash .claude/hooks/run.sh"));
+	void skipsAnInterpretersOptionsToReachItsScript() {
+		assertEquals(List.of("bash", "run.sh"), CommandTokens.scriptCandidatesOf("bash -eu run.sh"));
+	}
+
+	/** The argument of {@code -c} is the script's text rather than a file to look for. */
+	@Test
+	void readsNoScriptFromAnInlineShellScript() {
+		assertEquals(List.of("sh"), CommandTokens.scriptCandidatesOf("sh -c \"run.sh --flag\""));
+	}
+
+	/** A shell reads {@code -ec} as {@code -e -c}, so the inline script is still text. */
+	@Test
+	void readsNoScriptFromAnInlineShellScriptInAFlagCluster() {
+		assertEquals(List.of("bash"), CommandTokens.scriptCandidatesOf("bash -ec \"run.sh --flag\""));
+	}
+
+	@Test
+	void recognisesAnInterpreterNamedByAnAbsolutePath() {
+		assertEquals(List.of("/usr/bin/bash", "run.sh"), CommandTokens.scriptCandidatesOf("/usr/bin/bash run.sh"));
+	}
+
+	/** Only an interpreter hands its argument on; any other program's arguments are its own. */
+	@Test
+	void readsNoScriptFromAnOrdinaryProgramsArgument() {
+		assertEquals(List.of("mkdir"), CommandTokens.scriptCandidatesOf("mkdir -p target/logs"));
 	}
 
 	@Test
 	void keepsAQuotedProgramWithASpaceWhole() {
-		assertEquals(List.of("\"my hook.sh\""), CommandTokens.programsOf("\"my hook.sh\" --flag"));
+		assertEquals(List.of("\"my hook.sh\""), CommandTokens.scriptCandidatesOf("\"my hook.sh\" --flag"));
 	}
 
 	@Test
 	void readsNoProgramFromAQuotedSeparator() {
-		assertEquals(List.of("echo"), CommandTokens.programsOf("echo \"a;b\""));
+		assertEquals(List.of("echo"), CommandTokens.scriptCandidatesOf("echo \"a;b\""));
 	}
 
 	@Test
 	void yieldsNoProgramsForABlankCommand() {
-		assertEquals(List.of(), CommandTokens.programsOf("   "));
+		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("   "));
 	}
 
 	@Test
 	void yieldsNoProgramsForOperatorsAlone() {
-		assertEquals(List.of(), CommandTokens.programsOf("&& ;| "));
+		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("&& ;| "));
 	}
 
 	/** A program is the first token of its own segment, however the operators are spaced. */
 	@Test
 	void readsTheProgramAfterAnOperatorWithNoSurroundingSpace() {
-		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh --flag&&b.sh --flag"));
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.scriptCandidatesOf("a.sh --flag&&b.sh --flag"));
 	}
 
 	@Test
 	void doesNotSplitASegmentOnAQuotedOperator() {
-		assertEquals(List.of("run.sh", "b.sh"), CommandTokens.programsOf("run.sh \"a;b\"; b.sh"));
+		assertEquals(List.of("run.sh", "b.sh"), CommandTokens.scriptCandidatesOf("run.sh \"a;b\"; b.sh"));
 	}
 
 	/** A hook written across several lines runs one program per line, not one in total. */
 	@Test
 	void readsAProgramFromEveryLineOfAMultiLineCommand() {
-		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh --flag\nb.sh"));
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.scriptCandidatesOf("a.sh --flag\nb.sh"));
 	}
 
 	@Test
 	void readsAProgramFromEveryLineSeparatedByACarriageReturn() {
-		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh\r\nb.sh"));
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.scriptCandidatesOf("a.sh\r\nb.sh"));
 	}
 
 	@Test
 	void readsTheProgramOfASubshellWithoutItsParentheses() {
-		assertEquals(List.of("a.sh"), CommandTokens.programsOf("(a.sh --flag)"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("(a.sh --flag)"));
 	}
 
 	@Test
@@ -139,22 +169,22 @@ class CommandTokensTest {
 
 	@Test
 	void skipsAVariableAssignmentToReachTheProgramItPrefixes() {
-		assertEquals(List.of("a.sh"), CommandTokens.programsOf("FOO=bar a.sh"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("FOO=bar a.sh"));
 	}
 
 	@Test
 	void skipsEveryLeadingAssignmentOfACommand() {
-		assertEquals(List.of("a.sh"), CommandTokens.programsOf("FOO=bar BAZ=1 a.sh --flag"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("FOO=bar BAZ=1 a.sh --flag"));
 	}
 
 	@Test
 	void yieldsNoProgramForAnAssignmentAlone() {
-		assertEquals(List.of(), CommandTokens.programsOf("FOO=bar"));
+		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("FOO=bar"));
 	}
 
 	/** A flag written as {@code --out=x} is an argument, and never the program of its segment. */
 	@Test
 	void doesNotMistakeAValuedFlagForAnAssignment() {
-		assertEquals(List.of("--out=x"), CommandTokens.programsOf("--out=x"));
+		assertEquals(List.of("--out=x"), CommandTokens.scriptCandidatesOf("--out=x"));
 	}
 }

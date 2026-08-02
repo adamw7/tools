@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import java.io.File;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -261,8 +263,30 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void addReferenceViolation(String localPath, File baseDir, List<String> violations) {
-		if (localPath != null && !new File(baseDir, localPath).exists()) {
+		if (localPath != null && !resolves(localPath, baseDir)) {
 			violations.add(documentName() + " references a missing file: " + localPath);
+		}
+	}
+
+	/**
+	 * True when the link lands on a file, read both as written and with its
+	 * percent-escapes decoded. A Markdown destination escapes the characters a URL
+	 * cannot carry raw — a space becomes {@code %20} — so a link to a real
+	 * {@code my doc.md} is written {@code my%20doc.md}, and matching only the literal
+	 * spelling reported every such file as missing. Both readings are accepted rather
+	 * than the decoded one alone, so a file whose name genuinely contains a percent
+	 * sign still resolves.
+	 */
+	private boolean resolves(String localPath, File baseDir) {
+		return new File(baseDir, localPath).exists() || new File(baseDir, decoded(localPath)).exists();
+	}
+
+	/** The path with its percent-escapes decoded, or unchanged when they are malformed. */
+	private String decoded(String localPath) {
+		try {
+			return URLDecoder.decode(localPath, StandardCharsets.UTF_8);
+		} catch (IllegalArgumentException e) {
+			return localPath;
 		}
 	}
 

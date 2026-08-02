@@ -89,6 +89,7 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
 		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, definition, violations);
 		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
+		checks.rejectDuplicateKeys();
 		checks.checkName(DefinitionFiles.baseName(definition));
 		checks.checkDescription(0);
 		checks.checkModel(allowedModels);

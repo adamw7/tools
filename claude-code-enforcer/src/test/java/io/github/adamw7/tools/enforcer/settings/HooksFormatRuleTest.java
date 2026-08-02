@@ -170,6 +170,34 @@ class HooksFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/** A hook wired as {@code bash <script>} references that script just as plainly. */
+	@Test
+	void treatsTheScriptAnInterpreterIsHandedAsReferenced() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("bash $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * An output path is an argument whichever spelling names it. Expanding every token
+	 * that mentioned the variable made the hooks directory's own scripts look
+	 * referenced by a path the hook was only about to write.
+	 */
+	@Test
+	void doesNotTreatAVariableRootedArgumentAsAScript() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(
+				".claude/hooks/session-start.sh --out $CLAUDE_PROJECT_DIR/.claude/hooks/generated.log"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	/** An argument is not a script, so it cannot mark one referenced or be required to exist. */
 	@Test
 	void doesNotTreatAnArgumentThatLooksLikeAPathAsAScript() {

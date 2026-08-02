@@ -574,7 +574,9 @@ profile:
   `requiredKeys`). The `name` must be lower-case kebab-case, at most 64
   characters, and match the skill's directory name; the `description` must be
   non-empty and within `maxDescriptionLength`. Setting `allowedFrontMatterKeys`
-  also reports unknown keys, catching typos such as `descripton`.
+  also reports unknown keys, catching typos such as `descripton`. A key declared
+  twice is reported too, and every check reads the last declaration, which is the
+  one a YAML loader keeps and so the one Claude Code acts on.
 - `SubAgentFormatRule` (`subAgentFormat`) applies the same front-matter checks to
   every `*.md` sub-agent definition under a configured `agentsDir`; the `name`
   must match the file name, and an optional `allowedModels` list rejects an
@@ -595,10 +597,14 @@ profile:
   `command` hook also a non-blank `command`). A project-local script command —
   rooted at `$CLAUDE_PROJECT_DIR`, or written as the plain repository-relative
   path Claude Code resolves the same way — is resolved against `projectDir` and
-  must exist on disk; only the program of each chained command is read as a
-  relative script, so an argument that looks like a path is not required to
-  exist. An optional `allowedEvents` list rejects mistyped events and
-  `validateScriptReferences` toggles the script-existence check.
+  must exist on disk. Both spellings are read from the same tokens: the program
+  of each chained command, plus the script an interpreter among them is handed
+  (`bash <script>`). An argument that merely looks like a path is not required to
+  exist whichever way it is spelled, so a hook writing
+  `--out $CLAUDE_PROJECT_DIR/target/log.txt` or creating a directory with
+  `mkdir -p` is not reported as referencing a missing script. An optional
+  `allowedEvents` list rejects mistyped events and `validateScriptReferences`
+  toggles the script-existence check.
 - `HooksFormatRule` (`hooksFormat`) validates the hook scripts under a configured
   `hooksDir` (e.g. `.claude/hooks`): every regular file must be non-empty, start
   with a `#!` shebang (`requireShebang`), and carry the executable bit
@@ -623,8 +629,10 @@ profile:
   an array of strings, `env` and `headers` must be objects whose values are all
   strings, a `url` must be a syntactically valid `http`/`https` URL (and `https`
   only when `requireHttps` is set), and a server must not mix transports by
-  declaring both a `command` and a `url`. Like `mcpServersValid` it treats an
-  absent file as a pass.
+  declaring both a `command` and a `url`. A `url` assembled from an environment
+  variable expansion (`https://${MCP_HOST}/mcp`) is left alone, since only the
+  shell that resolves it knows what it becomes. Like `mcpServersValid` it treats
+  an absent file as a pass.
 - `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
   sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
   `skillsDir` (file name for commands and sub-agents, directory name for skills)
@@ -723,7 +731,9 @@ The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks, and
 offer optional checks switched on from configuration: `forbiddenTokens`,
 `enforceSectionOrder`, `maxLineLength`, and `validateFileReferences` (Markdown
-links to local files must resolve on disk). Every rule extends a common
+links to local files must resolve on disk, read both as written and with their
+percent-escapes decoded, so a link to a real `my doc.md` written `my%20doc.md`
+resolves). Every rule extends a common
 `ClaudeCodeEnforcerRule` base that reports all violations together and supports a
 `severity` of `error` (default, fails the build) or `warn` (logs the same
 violations), so a new rule can be adopted gradually. An optional `reportFile`

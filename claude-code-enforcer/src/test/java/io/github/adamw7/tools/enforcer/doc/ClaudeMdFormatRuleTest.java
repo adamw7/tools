@@ -372,6 +372,41 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void resolvesAReferenceWhosePathIsPercentEncoded() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		writeString(tempDir.resolve("docs/my guide.md"), "# Guide");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [guide](docs/my%20guide.md).\n");
+		rule.setValidateFileReferences(true);
+
+		// A Markdown destination escapes the characters a URL cannot carry raw, so a
+		// link to a real file with a space in its name is written with %20 and must
+		// not be reported as missing.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void resolvesAReferenceWhosePathReallyContainsAPercentSign() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		writeString(tempDir.resolve("docs/100%25.md"), "# Percent");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [pct](docs/100%25.md).\n");
+		rule.setValidateFileReferences(true);
+
+		// Both readings are accepted, so decoding never hides a file whose name
+		// genuinely carries the escape.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void stillReportsAPercentEncodedReferenceThatResolvesToNothing() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [guide](docs/no%20such.md).\n");
+		rule.setValidateFileReferences(true);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing file: docs/no%20such.md"), exception.getMessage());
+	}
+
+	@Test
 	void ignoresExternalLinksWhenValidatingReferences() {
 		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [site](https://example.com) and [top](#project).\n");

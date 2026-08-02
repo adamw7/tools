@@ -213,4 +213,39 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of(""), frontMatter.value("description"));
 	}
+
+	/**
+	 * A YAML loader keeps the last declaration of a repeated key, so that is the
+	 * value Claude Code acts on. Reading the first validated a value the tool never
+	 * sees.
+	 */
+	@Test
+	void readsTheLastDeclarationOfARepeatedKey() {
+		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: first\ndescription: second\n---\n")
+				.orElseThrow();
+
+		assertEquals(Optional.of("second"), frontMatter.value("description"));
+	}
+
+	@Test
+	void reportsEachKeyDeclaredMoreThanOnce() {
+		FrontMatter frontMatter = FrontMatter
+				.parse("---\nname: a\ndescription: one\ndescription: two\nname: b\n---\n").orElseThrow();
+
+		assertEquals(List.of("description", "name"), frontMatter.duplicateKeys());
+	}
+
+	@Test
+	void namesARepeatedKeyOnceHoweverOftenItIsDeclared() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nmodel: a\nmodel: b\nmodel: c\n---\n").orElseThrow();
+
+		assertEquals(List.of("model"), frontMatter.duplicateKeys());
+	}
+
+	@Test
+	void reportsNoDuplicateWhenEveryKeyIsDeclaredOnce() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname: a\ndescription: d\n---\n").orElseThrow();
+
+		assertEquals(List.of(), frontMatter.duplicateKeys());
+	}
 }

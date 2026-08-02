@@ -105,6 +105,7 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 			List<String> violations) {
 		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, SKILL_FILE_NAME, skillFile, violations);
 		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
+		checks.rejectDuplicateKeys();
 		checks.allowOnlyKeys(allowedFrontMatterKeys);
 		checks.checkName(skillDirectory.getName());
 		checks.checkDescription(maxDescriptionLength);

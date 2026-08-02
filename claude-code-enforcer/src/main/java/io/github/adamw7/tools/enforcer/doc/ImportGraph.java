@@ -30,8 +30,10 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * the rule reads that answer instead of counting hops as it recurses.
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
- * by start-of-line or whitespace and followed by a path, outside fenced code
- * blocks and inline code spans, so {@code `@claude`} in prose is not an import. A
+ * by start-of-line or whitespace and followed by a path — one carrying a directory
+ * separator, an extension, or both — outside fenced code blocks and inline code
+ * spans, so neither {@code `@claude`} nor a bare {@code @claude} in prose is an
+ * import. A
  * home-relative import ({@code @~/...}) does not match the path syntax at all and
  * so is skipped, as is any import the {@code ignored} predicate accepts. A file
  * that cannot be read as text is treated as a leaf rather than a failure, because
@@ -45,6 +47,8 @@ final class ImportGraph {
 
 	private static final Pattern IMPORT = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9_./-]+)");
 	private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
+	private static final char PATH_SEPARATOR = '/';
+	private static final char EXTENSION_SEPARATOR = '.';
 
 	private final Map<Path, List<Reference>> references = new LinkedHashMap<>();
 	private final Map<Path, Integer> hops = new LinkedHashMap<>();
@@ -128,6 +132,7 @@ final class ImportGraph {
 		return IMPORT.matcher(MarkdownText.withoutCodeSpans(line))
 				.results()
 				.map(match -> withoutTrailingDots(match.group(1)))
+				.filter(ImportGraph::isPath)
 				.filter(imported -> !ignored.test(imported))
 				.map(imported -> new Reference(imported, resolve(file, imported)));
 	}
@@ -135,6 +140,19 @@ final class ImportGraph {
 	/** Drops sentence punctuation, so "see @docs/setup.md." imports {@code docs/setup.md}. */
 	private String withoutTrailingDots(String imported) {
 		return TRAILING_DOTS.matcher(imported).replaceAll("");
+	}
+
+	/**
+	 * True when the token names a path rather than a bare word: it carries a
+	 * directory separator, an extension, or both. An import is a path — Claude Code
+	 * loads a file by it — so {@code @docs/setup} and {@code @AGENTS.md} are imports
+	 * while the {@code @claude} of a mention workflow and the {@code @adamw7} of a
+	 * GitHub handle are prose. Reading those as imports failed the build over files
+	 * the author never meant to name, which no amount of backticking their every
+	 * occurrence could be relied on to prevent.
+	 */
+	private static boolean isPath(String imported) {
+		return imported.indexOf(PATH_SEPARATOR) >= 0 || imported.indexOf(EXTENSION_SEPARATOR) >= 0;
 	}
 
 	private File resolve(File file, String imported) {

@@ -115,4 +115,46 @@ class CommandTokensTest {
 	void doesNotSplitASegmentOnAQuotedOperator() {
 		assertEquals(List.of("run.sh", "b.sh"), CommandTokens.programsOf("run.sh \"a;b\"; b.sh"));
 	}
+
+	/** A hook written across several lines runs one program per line, not one in total. */
+	@Test
+	void readsAProgramFromEveryLineOfAMultiLineCommand() {
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh --flag\nb.sh"));
+	}
+
+	@Test
+	void readsAProgramFromEveryLineSeparatedByACarriageReturn() {
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.programsOf("a.sh\r\nb.sh"));
+	}
+
+	@Test
+	void readsTheProgramOfASubshellWithoutItsParentheses() {
+		assertEquals(List.of("a.sh"), CommandTokens.programsOf("(a.sh --flag)"));
+	}
+
+	@Test
+	void splitsOnParenthesesSoTheyDoNotStayGluedToAPath() {
+		assertEquals(List.of("a.sh"), CommandTokens.of("(a.sh)"));
+	}
+
+	@Test
+	void skipsAVariableAssignmentToReachTheProgramItPrefixes() {
+		assertEquals(List.of("a.sh"), CommandTokens.programsOf("FOO=bar a.sh"));
+	}
+
+	@Test
+	void skipsEveryLeadingAssignmentOfACommand() {
+		assertEquals(List.of("a.sh"), CommandTokens.programsOf("FOO=bar BAZ=1 a.sh --flag"));
+	}
+
+	@Test
+	void yieldsNoProgramForAnAssignmentAlone() {
+		assertEquals(List.of(), CommandTokens.programsOf("FOO=bar"));
+	}
+
+	/** A flag written as {@code --out=x} is an argument, and never the program of its segment. */
+	@Test
+	void doesNotMistakeAValuedFlagForAnAssignment() {
+		assertEquals(List.of("--out=x"), CommandTokens.programsOf("--out=x"));
+	}
 }

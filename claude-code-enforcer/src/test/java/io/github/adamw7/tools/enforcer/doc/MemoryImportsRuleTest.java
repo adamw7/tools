@@ -71,6 +71,12 @@ class MemoryImportsRuleTest {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nan `@claude`-mention workflow\n")::execute);
 	}
 
+	/** A mention is a word, not a path, so it names no file the build could be failed over. */
+	@Test
+	void ignoresABareMentionThatNamesNoPath() {
+		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nAn @claude-mention workflow, opened by @adamw7.\n")::execute);
+	}
+
 	@Test
 	void ignoresTokensNotPrecededByWhitespace() {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nMail adam@example.com about it.\n")::execute);

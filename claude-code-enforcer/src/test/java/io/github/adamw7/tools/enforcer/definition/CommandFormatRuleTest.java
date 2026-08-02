@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -176,6 +177,14 @@ class CommandFormatRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(readString(file).contains("---\nReview the diff."), readString(file));
+	}
+
+	@Test
+	void reportsACommandThatCannotBeReadAsText() {
+		writeBytes(tempDir.resolve("binary.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
 	}
 
 	private CommandFormatRule ruleFor(Path commandsDir) {

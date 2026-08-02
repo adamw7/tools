@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -255,6 +256,30 @@ class SkillFilesExistRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("exceeds 20 characters"), exception.getMessage());
+	}
+
+	/** Quoting a value is ordinary YAML, so the name inside the quotes is the one checked. */
+	@Test
+	void acceptsAQuotedName() {
+		Path skillDir = createDirectory(tempDir.resolve("git-commit"));
+		writeString(skillDir.resolve("SKILL.md"), """
+				---
+				name: "git-commit"
+				description: "Commits. Use when: committing."
+				---
+				# git-commit
+				""");
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
+	@Test
+	void reportsASkillFileThatCannotBeReadAsText() {
+		Path skillDir = createDirectory(tempDir.resolve("binary"));
+		writeBytes(skillDir.resolve("SKILL.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
 	}
 
 	private void createSkill(String name) {

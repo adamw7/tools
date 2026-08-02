@@ -340,6 +340,38 @@ class HooksFormatRuleTest {
 				.toList();
 	}
 
+	/** A hook written across two lines runs both scripts, so neither is unreferenced. */
+	@Test
+	void countsEveryLineOfAMultiLineCommandAsAReference() {
+		writeScript("a.sh", "#!/bin/sh\necho a\n", true);
+		writeScript("b.sh", "#!/bin/sh\necho b\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing(".claude/hooks/a.sh\\n.claude/hooks/b.sh"));
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void countsAScriptPrefixedByAVariableAssignmentAsAReference() {
+		writeScript("a.sh", "#!/bin/sh\necho a\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("LOG_LEVEL=debug .claude/hooks/a.sh"));
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void countsAScriptRunInASubshellAsAReference() {
+		writeScript("a.sh", "#!/bin/sh\necho a\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("(.claude/hooks/a.sh)"));
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	private HooksFormatRule ruleFor() {
 		HooksFormatRule rule = new HooksFormatRule();
 		rule.setHooksDir(hooksDir().toFile());

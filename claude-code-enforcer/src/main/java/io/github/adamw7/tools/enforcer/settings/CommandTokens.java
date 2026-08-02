@@ -2,15 +2,18 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.IntPredicate;
+import java.util.regex.Pattern;
 
 /**
  * Splits a hook command into the tokens a shell would see. Both hook rules need
  * this to find the script paths inside a command, so the splitting lives here
  * rather than in each of them.
  * <p>
- * Splitting is on whitespace and on the shell separators {@code ;}, {@code &} and
- * {@code |}, all <em>outside</em> quotes. Whitespace alone is not enough: a command
+ * Splitting is on whitespace and on the shell separators {@code ;}, {@code &},
+ * {@code |}, a newline, and the {@code (}/{@code )} of a subshell, all
+ * <em>outside</em> quotes. Whitespace alone is not enough: a command
  * chaining two hooks as {@code hook-a.sh; hook-b.sh} leaves the semicolon glued to
  * the first path, and the rules would then report a script that is really there as
  * missing. Quoting is honoured because a hook script path containing a space is
@@ -30,8 +33,25 @@ final class CommandTokens {
 	private static final char DOUBLE_QUOTE = '"';
 	private static final char SINGLE_QUOTE = '\'';
 
-	/** The shell operators that end a token just as whitespace does. */
-	private static final String OPERATORS = ";&|";
+	/**
+	 * The shell operators that end a token just as whitespace does, and that end one
+	 * command and begin the next. A newline is one of them: a hook command written
+	 * across several lines runs one program per line, and reading only the first
+	 * would leave the rest of its scripts unresolved — and, with
+	 * {@code reportUnreferencedScripts}, report a script the hook really does run as
+	 * referenced by nothing. The parentheses of a subshell are operators for the
+	 * same reason, and because gluing one to the path inside it invents a program
+	 * named {@code (script.sh)} that no file can match.
+	 */
+	private static final String OPERATORS = ";&|\n\r()";
+
+	/**
+	 * A {@code VAR=value} prefix, which sets a variable for the command that follows
+	 * rather than naming a program of its own. A shell skips over every such
+	 * assignment to find what it runs, so reading the first token blindly would take
+	 * {@code FOO=bar} for the program and leave the real script unresolved.
+	 */
+	private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
 
 	private CommandTokens() {
 	}
@@ -43,7 +63,8 @@ final class CommandTokens {
 
 	/**
 	 * The program each command in the string runs: the first token of every
-	 * {@code ;}/{@code &}/{@code |}-separated segment, in order.
+	 * operator-separated segment that is not a {@code VAR=value} assignment, in
+	 * order.
 	 * <p>
 	 * A hook chaining two scripts runs two programs, and only a program is a script
 	 * the rules may resolve as a bare relative path. An argument is not, however much
@@ -54,9 +75,14 @@ final class CommandTokens {
 	static List<String> programsOf(String command) {
 		return split(command, CommandTokens::isOperator).stream()
 				.map(CommandTokens::of)
-				.filter(tokens -> !tokens.isEmpty())
-				.map(List::getFirst)
+				.map(CommandTokens::programOf)
+				.flatMap(Optional::stream)
 				.toList();
+	}
+
+	/** The token a shell would run: the first that is not a leading {@code VAR=value} assignment. */
+	private static Optional<String> programOf(List<String> tokens) {
+		return tokens.stream().dropWhile(token -> ASSIGNMENT.matcher(token).matches()).findFirst();
 	}
 
 	/** Splits on every {@code separator} character outside quotes, dropping the empty pieces. */

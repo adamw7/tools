@@ -32,8 +32,10 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * violation depending on the order the imports happen to be written in.
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
- * by start-of-line or whitespace and followed by a path, outside fenced code
- * blocks and inline code spans, so {@code `@claude`} in prose is not an import. A
+ * by start-of-line or whitespace and followed by a path — one carrying a directory
+ * separator, an extension, or both — outside fenced code blocks and inline code
+ * spans, so neither {@code `@claude`} nor a bare {@code @claude} in prose is an
+ * import. A
  * home-relative import ({@code @~/...}) points at machine-specific state a build
  * cannot see and is skipped, as is any import listed in {@code ignoredImports}.
  * Each file is scanned once; all problems found are reported together.

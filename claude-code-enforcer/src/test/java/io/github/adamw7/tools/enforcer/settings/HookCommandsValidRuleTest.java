@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.settings;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -371,6 +372,37 @@ class HookCommandsValidRuleTest {
 		return """
 				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "%s" } ] } ] } }
 				""".formatted(command);
+	}
+
+	/** Every line of a multi-line hook runs a script, so a missing one on any line is reported. */
+	@Test
+	void checksTheScriptOnEveryLineOfAMultiLineCommand() {
+		writeString(tempDir.resolve("hooks/present.sh"), "#!/bin/sh\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("hooks/present.sh\\nhooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFalse(exception.getMessage().contains("present.sh"), exception.getMessage());
+	}
+
+	@Test
+	void readsTheScriptAVariableAssignmentPrefixes() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("LOG_LEVEL=debug hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
+	/** The parentheses belong to the shell, not to the path, so no file is named by them. */
+	@Test
+	void doesNotReadASubshellsParenthesesAsPartOfItsScript() {
+		writeString(tempDir.resolve("hooks/present.sh"), "#!/bin/sh\n");
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("(hooks/present.sh)"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
 	}
 
 	private HookCommandsValidRule ruleFor(String content) {

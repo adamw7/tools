@@ -73,8 +73,20 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
+	/**
+	 * A {@code SKILL.md} that cannot be decoded as text is reported rather than read.
+	 * The rule scans a directory whose contents it does not control, and an
+	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
+	 * internal error instead of reporting the malformed skill it exists to catch —
+	 * and would take the remaining skills' violations down with it.
+	 */
 	private void collectContentViolations(File skillDirectory, File skillFile, List<String> violations) {
-		String content = MarkdownText.read(skillFile, SKILL_FILE_NAME);
+		Optional<String> text = MarkdownText.readIfText(skillFile);
+		if (text.isEmpty()) {
+			violations.add(SKILL_FILE_NAME + " cannot be read as text: " + skillFile);
+			return;
+		}
+		String content = text.get();
 		if (content.isBlank()) {
 			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
 			return;

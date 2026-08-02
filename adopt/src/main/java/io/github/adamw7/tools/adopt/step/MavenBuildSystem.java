@@ -22,7 +22,8 @@ public class MavenBuildSystem implements BuildSystem {
 	private static final String MAVEN = "mvn";
 	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
 
-	private static final String POM = "pom.xml";
+	/** Package-visible so {@link AdoptionAssets} can name it among the files the adoption edits. */
+	static final String POM = "pom.xml";
 
 	private final PomEnforcerInstaller installer;
 	private final BuildWrapper wrapper;

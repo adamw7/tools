@@ -397,6 +397,26 @@ class CliArgumentsTest {
 		assertEquals(Optional.of("2.6.0"), options.pinnedRuleVersion());
 	}
 
+	/**
+	 * A flag that names something is never followed by another flag, so reading one as
+	 * the value hides the operator's mistake: {@code --branch --draft} created and
+	 * pushed a branch called {@code --draft} and silently dropped the draft.
+	 */
+	@Test
+	void refusesAFlagWhereANamingFlagsValueBelongs() {
+		assertUsageFailure(new String[] { REPO_URL, "--branch", "--draft" });
+		assertUsageFailure(new String[] { REPO_URL, "--workspace", "--assets" });
+		assertUsageFailure(new String[] { "--repo", "--dry-run" });
+		assertUsageFailure(new String[] { REPO_URL, "--timeout", "--dry-run" });
+	}
+
+	/** Prose is free-form, so a body or title that opens with dashes is the operator's business. */
+	@Test
+	void acceptsFreeFormProseThatLooksLikeAFlag() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--body", "--wip: do not merge" });
+		assertEquals("--wip: do not merge", cli.pullRequestOptions().body());
+	}
+
 	private void assertUsageFailure(String[] args) {
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> CliArguments.parse(args));

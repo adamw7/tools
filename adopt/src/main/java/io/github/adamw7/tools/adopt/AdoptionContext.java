@@ -36,7 +36,7 @@ public final class AdoptionContext {
 	public AdoptionContext(String repositoryUrl, Path workspace, String branchName) {
 		this.repository = RepositoryUrl.of(repositoryUrl);
 		this.workspace = requireWorkspace(workspace);
-		this.repositoryDirectory = workspace.resolve(repository.name());
+		this.repositoryDirectory = this.workspace.resolve(repository.name());
 		this.branchName = Text.required(branchName, "branchName");
 	}
 

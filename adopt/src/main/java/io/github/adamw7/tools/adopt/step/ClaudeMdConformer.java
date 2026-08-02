@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -49,6 +50,9 @@ public class ClaudeMdConformer {
 	private static final char TILDE = '~';
 	private static final int MIN_FENCE_LENGTH = 3;
 	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
+
+	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
+	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
 
 	/**
 	 * @return {@code content} reshaped so the {@code claudeMdFormat} rule passes,
@@ -329,6 +333,6 @@ public class ClaudeMdConformer {
 
 	/** Joins the lines under a single trailing newline, dropping any blank lines the reshape left at the end. */
 	private String join(List<String> lines) {
-		return String.join("\n", lines).replaceAll("\\n\\s*+\\z", "") + "\n";
+		return TRAILING_BLANK_LINES.matcher(String.join("\n", lines)).replaceAll("") + "\n";
 	}
 }

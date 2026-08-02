@@ -44,8 +44,9 @@ class CloneStepTest {
 		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
 		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
-		assertEquals(List.of("git", "fetch", "origin"), runner.commandAt(1));
-		assertEquals(2, runner.count());
+		assertEquals(List.of("git", "status", "--porcelain"), runner.commandAt(1));
+		assertEquals(List.of("git", "fetch", "origin"), runner.commandAt(2));
+		assertEquals(3, runner.count());
 	}
 
 	/**
@@ -58,7 +59,7 @@ class CloneStepTest {
 		AdoptionContext existing = checkedOut(existingWorkspace);
 		RecordingCommandRunner runner = origin("git@github.com:adamw7/Tools");
 		step.execute(existing, runner);
-		assertEquals(2, runner.count());
+		assertEquals(3, runner.count());
 	}
 
 	/**
@@ -98,7 +99,7 @@ class CloneStepTest {
 		RecordingCommandRunner runner = origin("warning: unable to access '/etc/gitconfig': Permission denied"
 				+ System.lineSeparator() + "https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
-		assertEquals(2, runner.count());
+		assertEquals(3, runner.count());
 	}
 
 	/** Noise on its own still names no repository, so the checkout is refused. */
@@ -122,7 +123,7 @@ class CloneStepTest {
 		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
 		step.execute(existing, runner);
 		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
-		assertEquals(2, runner.count());
+		assertEquals(3, runner.count());
 	}
 
 	/**
@@ -136,12 +137,16 @@ class CloneStepTest {
 	@Test
 	void readsTheConfiguredOriginRatherThanTheRewrittenOne(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);
-		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("--get-all")
-				? new CommandResult(command, 0, "https://github.com/adamw7/tools.git")
-				: new CommandResult(command, 0, "https://mirror.corp/github/adamw7/tools.git"));
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			if (command.contains("--get-all")) {
+				return new CommandResult(command, 0, "https://github.com/adamw7/tools.git");
+			}
+			return new CommandResult(command, 0, command.contains("status") ? ""
+					: "https://mirror.corp/github/adamw7/tools.git");
+		});
 		step.execute(existing, runner);
 		assertEquals(List.of("git", "config", "--get-all", "remote.origin.url"), runner.commandAt(0));
-		assertEquals(2, runner.count());
+		assertEquals(3, runner.count());
 	}
 
 	@Test
@@ -155,9 +160,13 @@ class CloneStepTest {
 	@Test
 	void failedFetchAbortsAdoption(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);
-		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("fetch")
-				? new CommandResult(command, 128, "fatal: could not read from remote repository")
-				: new CommandResult(command, 0, "https://github.com/adamw7/tools.git"));
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			if (command.contains("fetch")) {
+				return new CommandResult(command, 128, "fatal: could not read from remote repository");
+			}
+			return new CommandResult(command, 0, command.contains("status") ? ""
+					: "https://github.com/adamw7/tools.git");
+		});
 		assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
 	}
 
@@ -165,6 +174,69 @@ class CloneStepTest {
 	void failedCloneAbortsAdoption() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(128, "fatal: repository not found");
 		assertThrows(AdoptionException.class, () -> step.execute(context, runner));
+	}
+
+	/**
+	 * {@link CommitStep} stages the whole tree, so a contributor's work in progress in
+	 * a reused checkout would be committed to the adoption's branch and pushed for
+	 * review as part of adopting Claude Code.
+	 */
+	@Test
+	void refusesReusedCheckoutCarryingSomebodyElsesUncommittedWork(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				" M src/main/java/Service.java" + System.lineSeparator() + "?? notes.txt");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("src/main/java/Service.java"), failure.getMessage());
+		assertTrue(failure.getMessage().contains("notes.txt"), failure.getMessage());
+		assertEquals(2, runner.count(), "a checkout with unrelated work may not even be fetched into");
+	}
+
+	/**
+	 * An adoption that failed between writing a file and committing it leaves exactly
+	 * the adoption's own paths behind, and re-running it is the case most worth
+	 * resuming — it has already paid for a {@code claude init}.
+	 */
+	@Test
+	void resumesReusedCheckoutCarryingOnlyTheAdoptionsOwnChanges(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"?? CLAUDE.md" + System.lineSeparator() + " M pom.xml" + System.lineSeparator()
+						+ "?? .claude/settings.json");
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** A path with a space is quoted by git, and a rename names the path it ends at. */
+	@Test
+	void readsQuotedAndRenamedPathsAsGitReportsThem(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"R  old/name.txt -> \"my notes.txt\"");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("my notes.txt"), failure.getMessage());
+		assertFalse(failure.getMessage().contains("->"), failure.getMessage());
+	}
+
+	/** A status that cannot be read cannot show the checkout to be free of other work. */
+	@Test
+	void refusesReusedCheckoutWhoseStatusCannotBeRead(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> command.contains("status")
+				? new CommandResult(command, 128, "fatal: not a git repository")
+				: new CommandResult(command, 0, "https://github.com/adamw7/tools.git"));
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("status could not be read"), failure.getMessage());
 	}
 
 	@Test
@@ -179,8 +251,23 @@ class CloneStepTest {
 		return existing;
 	}
 
-	/** A runner answering every command with the URL git would report as the checkout's origin. */
+	/**
+	 * A runner answering the origin query with the URL git would report, and every
+	 * other command — the status check, the fetch — with a clean success. Only the
+	 * origin query is answered with the URL, because a status answered with one would
+	 * read as a changed file by that name.
+	 */
 	private RecordingCommandRunner origin(String url) {
-		return new RecordingCommandRunner(command -> new CommandResult(command, 0, url + System.lineSeparator()));
+		return answering(url, "");
+	}
+
+	/** A runner answering the origin query and the status check, in that order. */
+	private RecordingCommandRunner answering(String url, String status) {
+		return new RecordingCommandRunner(command -> {
+			if (command.contains("--get-all")) {
+				return new CommandResult(command, 0, url + System.lineSeparator());
+			}
+			return new CommandResult(command, 0, command.contains("status") ? status : "");
+		});
 	}
 }

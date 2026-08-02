@@ -1,10 +1,13 @@
 package io.github.adamw7.tools.adopt.step;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,11 +27,33 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * preserved. A missing configuration file is created, and a directory that is
  * already trusted is left untouched. The write itself goes through a temporary
  * file and a move, so the configuration is never seen half-written.
+ *
+ * <p>The read and the write are one exclusive section, because they are a
+ * read-modify-write of a file this process does not own. Two adoptions running at
+ * once — the MCP server serves calls in parallel — each read the document, each
+ * add their own directory, and each write the whole of it back, so the later write
+ * dropped the earlier one's entry. The adoption that lost it went on to run
+ * {@code claude} in a directory that was never trusted, where it blocked on the
+ * interactive prompt until the command timeout killed it. Atomicity of the write
+ * alone cannot prevent that: the two writes are each complete, and the second is
+ * simply built on a document read before the first landed.
  */
 public class ClaudeTrustStore {
 
 	private static final String PROJECTS = "projects";
 	private static final String TRUST_FLAG = "hasTrustDialogAccepted";
+
+	/** The suffix of the lock file guarding the configuration; see {@link #trust}. */
+	private static final String LOCK_SUFFIX = ".adopt-lock";
+
+	/**
+	 * Serialises the trust updates of this JVM. A {@link FileLock} is held by the
+	 * process rather than the thread, so it excludes a concurrent {@code claude} but
+	 * not a second thread of this adoption — which
+	 * {@link java.nio.channels.OverlappingFileLockException} would answer rather than
+	 * make wait. Both guards are needed, and this one is taken first.
+	 */
+	private static final Object IN_PROCESS_LOCK = new Object();
 
 	private final Path configFile;
 	private final ObjectMapper mapper = new ObjectMapper();
@@ -46,10 +71,37 @@ public class ClaudeTrustStore {
 	}
 
 	/**
+	 * Records the directory as trusted, excluding every other adoption — in this
+	 * process and outside it — for the whole read-modify-write.
+	 *
 	 * @return {@code true} when the directory was newly trusted, {@code false}
 	 *         when it was already trusted and the file was left unchanged.
 	 */
 	public boolean trust(Path directory) {
+		Path target = configFile.toAbsolutePath();
+		createConfigDirectory(target);
+		synchronized (IN_PROCESS_LOCK) {
+			return trustExclusively(directory, target);
+		}
+	}
+
+	/**
+	 * The lock is taken on a file beside the configuration rather than on the
+	 * configuration itself, because {@link #replace} moves a new file over that path:
+	 * a lock held on the old file would guard an inode nothing reads any more.
+	 */
+	private boolean trustExclusively(Path directory, Path target) {
+		Path lockFile = target.resolveSibling(target.getFileName() + LOCK_SUFFIX);
+		try (FileChannel channel = FileChannel.open(lockFile, StandardOpenOption.CREATE,
+				StandardOpenOption.WRITE); FileLock exclusive = channel.lock()) {
+			return update(directory);
+		} catch (IOException e) {
+			throw new AdoptionException("Could not lock the Claude config for update: " + configFile, e);
+		}
+	}
+
+	/** Runs under both locks: every read here decides a write that follows it. */
+	private boolean update(Path directory) {
 		String key = directory.toAbsolutePath().normalize().toString();
 		ObjectNode root = readRoot();
 		ObjectNode project = objectChild(objectChild(root, PROJECTS), key);
@@ -124,10 +176,18 @@ public class ClaudeTrustStore {
 	private void write(ObjectNode root) {
 		Path target = configFile.toAbsolutePath();
 		try {
-			Files.createDirectories(target.getParent());
 			replaceWith(root, temporaryBeside(target), target);
 		} catch (IOException e) {
 			throw new AdoptionException("Could not write Claude config: " + configFile, e);
+		}
+	}
+
+	/** Created before the lock file is opened beside it, and so before anything is read. */
+	private void createConfigDirectory(Path target) {
+		try {
+			Files.createDirectories(target.getParent());
+		} catch (IOException e) {
+			throw new AdoptionException("Could not create the Claude config directory: " + target.getParent(), e);
 		}
 	}
 

@@ -181,6 +181,41 @@ class BuildSystemsTest {
 		assertEquals(Optional.empty(), new FallbackBuildSystem().toolProbe(directory));
 	}
 
+	/**
+	 * {@link BuildSystem#toolProbe(Path)} is the default a new build system inherits,
+	 * and it reads the first word of the verify command. One that names no command has
+	 * nothing to probe, and must be told so rather than be handed an
+	 * {@link IndexOutOfBoundsException} several steps into an adoption.
+	 */
+	@Test
+	void aBuildSystemWithNoVerifyCommandHasNothingToProbe(@TempDir Path directory) {
+		assertEquals(Optional.empty(), new NoVerifyCommandBuildSystem().toolProbe(directory));
+	}
+
+	/** A build system that verifies nothing, standing in for one a contributor adds. */
+	private static final class NoVerifyCommandBuildSystem implements BuildSystem {
+
+		@Override
+		public String name() {
+			return "none";
+		}
+
+		@Override
+		public boolean matches(Path repositoryDirectory) {
+			return false;
+		}
+
+		@Override
+		public boolean install(Path repositoryDirectory) {
+			return false;
+		}
+
+		@Override
+		public List<String> verifyCommand(Path repositoryDirectory) {
+			return List.of();
+		}
+	}
+
 	private Path executable(Path wrapper) throws IOException {
 		Files.writeString(wrapper, "#!/bin/sh\n");
 		assertTrue(wrapper.toFile().setExecutable(true), "could not make " + wrapper + " executable");

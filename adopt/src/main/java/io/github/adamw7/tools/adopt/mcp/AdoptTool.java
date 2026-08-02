@@ -18,6 +18,7 @@ import io.github.adamw7.tools.adopt.AdoptionRun;
 import io.github.adamw7.tools.adopt.BatchAdoption;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
+import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
 import io.github.adamw7.tools.adopt.Workspaces;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
@@ -131,9 +132,22 @@ public class AdoptTool implements McpTool {
 
 	@Override
 	public ToolResult apply(Map<String, Object> arguments) {
-		log.info("Calling MCP adopt tool for {}", arguments);
+		log.info("Calling MCP adopt tool for {}", describe(arguments));
 		BatchAdoption batch = new BatchAdoption(pipeline.create(adoptionOptionsFrom(arguments)));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
+	}
+
+	/**
+	 * The call's arguments as they may be logged. A {@code repository_url} is the
+	 * one argument a client supplies with credentials in it — an adoption driven by
+	 * CI is handed {@code https://x-access-token:TOKEN@github.com/owner/repo.git} —
+	 * and this server is long-lived, so logging the map as it arrived wrote that
+	 * token to the log of every call. The pipeline below redacts the URL from its own
+	 * logs, messages, and report; the arguments have to be redacted here, before they
+	 * reach it.
+	 */
+	static String describe(Map<String, Object> arguments) {
+		return Redaction.of(String.valueOf(arguments));
 	}
 
 	/**

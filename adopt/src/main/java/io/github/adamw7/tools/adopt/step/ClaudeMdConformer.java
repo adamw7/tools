@@ -21,9 +21,9 @@ import java.util.stream.IntStream;
  * <p>The reshape is deterministic and conservative: a near-miss heading is
  * <em>renamed</em> in place so its body survives, only a genuinely absent section
  * is appended, and a required section left empty gets a stub body because the rule
- * fails an empty section just as it fails a missing one. Fenced code is left
- * alone, mirroring how the rule matches, and reshaping an already-conforming
- * document is a no-op.
+ * fails an empty section just as it fails a missing one. Fenced code and
+ * commented-out text are left alone, mirroring how the rule matches, and reshaping
+ * an already-conforming document is a no-op.
  */
 public class ClaudeMdConformer {
 
@@ -49,7 +49,19 @@ public class ClaudeMdConformer {
 	private static final char BACKTICK = '`';
 	private static final char TILDE = '~';
 	private static final int MIN_FENCE_LENGTH = 3;
+	private static final String COMMENT_START = "<!--";
+	private static final String COMMENT_END = "-->";
 	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
+
+	/**
+	 * One to six {@code #} characters, then whitespace and any text, or nothing at
+	 * all — the ATX heading the rule recognises. Reading a heading any more loosely
+	 * than the rule does makes the reshape act on prose the rule holds to be body: a
+	 * {@code #1 rule: run mvn install} was taken for a level-one heading that ended
+	 * the section above it, so a section that already had a body was given a stub in
+	 * front of the prose it already carried.
+	 */
+	private static final Pattern ATX_HEADING = Pattern.compile("#{1,6}(\\s.*)?");
 
 	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
 	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
@@ -61,6 +73,7 @@ public class ClaudeMdConformer {
 	public String conform(String content) {
 		List<String> lines = splitLines(content);
 		closeUnterminatedFence(lines);
+		closeUnterminatedComment(lines);
 		ensureTitle(lines);
 		canonicalizeHeadings(lines);
 		ensureRequiredSections(lines);
@@ -82,6 +95,24 @@ public class ClaudeMdConformer {
 		Delimiter open = scanFences(lines).openAtEnd();
 		if (open != null) {
 			lines.add(open.closing());
+		}
+	}
+
+	/**
+	 * Closes an HTML comment the document opened and never closed, for the same
+	 * reason {@link #closeUnterminatedFence} closes a fence: everything appended
+	 * below has to land outside the block. A section appended inside an open comment
+	 * is inert text the rule does not see, so the adoption would fail its own
+	 * {@link VerifyStep} on a section it had just added. A document whose comments
+	 * balance is returned untouched, keeping the reshape idempotent.
+	 *
+	 * <p>Fences are closed first, because a comment inside a fenced code block is
+	 * sample text rather than a comment — the same precedence the rule reads them
+	 * with.
+	 */
+	private void closeUnterminatedComment(List<String> lines) {
+		if (scanComments(lines, scanFences(lines).mask()).openAtEnd()) {
+			lines.add(COMMENT_END);
 		}
 	}
 
@@ -112,7 +143,7 @@ public class ClaudeMdConformer {
 	 * required section.
 	 */
 	private Set<Integer> reservedHeadings(Outline outline) {
-		return outline.matching(line -> REQUIRED_SECTIONS.contains(line.strip()))
+		return outline.structural(line -> REQUIRED_SECTIONS.contains(line.strip()))
 				.boxed()
 				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
@@ -129,7 +160,7 @@ public class ClaudeMdConformer {
 	}
 
 	private int firstNearMatch(Outline outline, String required, Set<Integer> claimed) {
-		return outline.matching(line -> isNearMatch(line.strip(), required))
+		return outline.structural(line -> isNearMatch(line.strip(), required))
 				.filter(index -> !claimed.contains(index))
 				.findFirst()
 				.orElse(-1);
@@ -189,23 +220,25 @@ public class ClaudeMdConformer {
 	}
 
 	private static boolean isHeading(String stripped) {
-		return stripped.startsWith("#");
+		return ATX_HEADING.matcher(stripped).matches();
 	}
 
 	/**
-	 * The document as the reshape reads it: the lines themselves, and which of them
-	 * sit inside a code fence. The two travel together because every search the
-	 * reshape makes is "outside fences", and a mask taken from lines other than the
-	 * ones it is applied to would quietly mis-answer — so a reshape that inserts or
-	 * removes lines takes a fresh outline rather than carrying this one on.
+	 * The document as the reshape reads it: the lines themselves, which of them sit
+	 * inside a code fence, and which sit inside an HTML comment. The three travel
+	 * together because every search the reshape makes is against one of those masks,
+	 * and a mask taken from lines other than the ones it is applied to would quietly
+	 * mis-answer — so a reshape that inserts or removes lines takes a fresh outline
+	 * rather than carrying this one on.
 	 *
-	 * <p>Renaming a line in place keeps the outline valid, since the mask is indexed
-	 * by line number and the count has not moved.
+	 * <p>Renaming a line in place keeps the outline valid, since the masks are
+	 * indexed by line number and the count has not moved.
 	 */
-	private record Outline(List<String> lines, boolean[] fence) {
+	private record Outline(List<String> lines, boolean[] fence, boolean[] comment) {
 
 		static Outline of(List<String> lines) {
-			return new Outline(lines, scanFences(lines).mask());
+			boolean[] fence = scanFences(lines).mask();
+			return new Outline(lines, fence, scanComments(lines, fence).mask());
 		}
 
 		/** The indices of the lines outside code fences whose text matches, in document order. */
@@ -213,9 +246,21 @@ public class ClaudeMdConformer {
 			return IntStream.range(0, lines.size()).filter(index -> !fence[index] && match.test(lines.get(index)));
 		}
 
-		/** @return the index of the heading outside code fences, or {@code -1} when absent */
+		/**
+		 * The indices of the lines that can carry document structure — outside code
+		 * fences and outside HTML comments alike — whose text matches. A heading is
+		 * only ever looked for, and only ever renamed, on one of these, because that
+		 * is where the rule recognises one: a section commented out with
+		 * {@code <!-- ... -->} is inert text, and counting it left the real section
+		 * unwritten while the rule went on demanding it.
+		 */
+		IntStream structural(Predicate<String> match) {
+			return matching(match).filter(index -> !comment[index]);
+		}
+
+		/** @return the index of the heading outside code fences and comments, or {@code -1} when absent */
 		int indexOfHeading(String heading) {
-			return matching(line -> line.strip().equals(heading)).findFirst().orElse(-1);
+			return structural(line -> line.strip().equals(heading)).findFirst().orElse(-1);
 		}
 
 		/**
@@ -236,9 +281,20 @@ public class ClaudeMdConformer {
 		boolean hasBody(int headingIndex) {
 			int level = headingLevel(lines.get(headingIndex).strip());
 			return IntStream.range(headingIndex + 1, lines.size())
-					.filter(index -> fence[index] || !lines.get(index).isBlank())
+					.filter(this::decidesBody)
 					.limit(1)
 					.anyMatch(index -> fence[index] || isBodyLine(lines.get(index).strip(), level));
+		}
+
+		/**
+		 * Whether the line settles the question of the section's body. A blank line
+		 * does not, and neither does a commented-out one: a section whose only content
+		 * is inside an HTML comment reads as empty to the rule, which is what commenting
+		 * it out meant, so the reshape has to give it a stub rather than conclude it
+		 * already has a body and leave the adoption to fail its own {@link VerifyStep}.
+		 */
+		private boolean decidesBody(int index) {
+			return fence[index] || (!comment[index] && !lines.get(index).isBlank());
 		}
 	}
 
@@ -282,6 +338,50 @@ public class ClaudeMdConformer {
 	 *                  document's fences balance
 	 */
 	private record Fences(boolean[] mask, Delimiter openAtEnd) {
+	}
+
+	/**
+	 * The outcome of reading the document's HTML comments: which lines are commented
+	 * out, and whether one is still open once the last line has been read.
+	 *
+	 * @param openAtEnd whether the document left a comment unterminated
+	 */
+	private record Comments(boolean[] mask, boolean openAtEnd) {
+	}
+
+	/**
+	 * Reads which lines an HTML comment spans. A comment that opens and closes on one
+	 * line masks nothing — {@code <!-- ## Testing -->} is not a heading to begin with
+	 * — while a block comment hides the lines it spans from every heading search.
+	 * This mirrors {@code MarkdownDocument} in the {@code claude-code-enforcer}
+	 * module, as {@link Delimiter} does; keep the two in sync.
+	 *
+	 * @param fence the fence mask, because a comment inside a fenced code block is
+	 *              sample text rather than a comment: the fence wins
+	 */
+	private static Comments scanComments(List<String> lines, boolean[] fence) {
+		boolean[] mask = new boolean[lines.size()];
+		boolean open = false;
+		for (int index = 0; index < lines.size(); index++) {
+			open = applyComment(lines.get(index).strip(), open, fence[index], mask, index);
+		}
+		return new Comments(mask, open);
+	}
+
+	/**
+	 * Marks whether the line is commented out and returns whether a comment is still
+	 * open after it.
+	 */
+	private static boolean applyComment(String line, boolean open, boolean insideFence, boolean[] mask, int index) {
+		if (insideFence) {
+			return open;
+		}
+		if (open) {
+			mask[index] = true;
+			return !line.contains(COMMENT_END);
+		}
+		mask[index] = line.startsWith(COMMENT_START) && !line.contains(COMMENT_END);
+		return mask[index];
 	}
 
 	private static Fences scanFences(List<String> lines) {

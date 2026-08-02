@@ -123,6 +123,82 @@ class RepositoryUrlTest {
 	}
 
 	/**
+	 * An enterprise host reached on its own port is the ordinary shape of a
+	 * self-hosted GitHub. Splitting on ':' — which the scp-like form needs — read the
+	 * port as a path segment of its own, so the host check landed on {@code 8443} and
+	 * the URL was reported as naming no owner at all.
+	 */
+	@Test
+	void derivesTheOwnerAndRepositoryFromAHostReachedOnAPort() {
+		assertEquals("adamw7/tools",
+				RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools.git").slug().orElseThrow());
+		assertEquals("adamw7/tools",
+				RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools").slug().orElseThrow());
+		assertEquals("adamw7/tools",
+				RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools/").slug().orElseThrow());
+	}
+
+	@Test
+	void derivesTheOwnerAndRepositoryFromAnSshUrlOnANonDefaultPort() {
+		assertEquals("adamw7/tools",
+				RepositoryUrl.of("ssh://git@ghe.example.com:2222/adamw7/tools.git").slug().orElseThrow());
+	}
+
+	/** The port sits behind the credentials, so both have to be stepped over at once. */
+	@Test
+	void derivesTheOwnerAndRepositoryFromACredentialledUrlOnAPort() {
+		assertEquals("adamw7/tools",
+				RepositoryUrl.of("https://x-access-token:secret@ghe.example.com:8443/adamw7/tools.git")
+						.slug().orElseThrow());
+	}
+
+	/** A port is no part of the checkout directory's name either. */
+	@Test
+	void derivesTheNameFromAHostReachedOnAPort() {
+		assertEquals("tools", RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools.git").name());
+		assertEquals("tools", RepositoryUrl.of("ssh://git@ghe.example.com:2222/adamw7/tools").name());
+	}
+
+	/** Dropping the port must not promote the host into the owner's slot. */
+	@Test
+	void aUrlOnAPortThatNamesNoOwnerStillNamesNone() {
+		assertTrue(RepositoryUrl.of("https://ghe.example.com:8443/tools.git").slug().isEmpty());
+	}
+
+	/**
+	 * The scp-like form carries no port — that is what {@code ssh://} is for — so its
+	 * ':' always separates a path, even before an owner that happens to read like one.
+	 * Stripping it here would have turned {@code 2222/tools} into a repository with no
+	 * owner.
+	 */
+	@Test
+	void anScpLikeUrlsColonIsAPathSeparatorEvenBeforeDigits() {
+		assertEquals("2222/tools", RepositoryUrl.of("git@github.com:2222/tools.git").slug().orElseThrow());
+		assertEquals("tools", RepositoryUrl.of("git@github.com:2222/tools.git").name());
+	}
+
+	/**
+	 * Two ports on one host are two servers. The comparison may only err towards
+	 * refusing a checkout, since accepting the wrong one commits to it, pushes it,
+	 * and opens its pull request.
+	 */
+	@Test
+	void twoPortsOnOneHostAreDifferentRepositories() {
+		RepositoryUrl url = RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools.git");
+		assertFalse(url.isSameRepositoryAs("https://ghe.example.com:9443/adamw7/tools.git"));
+		assertFalse(url.isSameRepositoryAs("https://ghe.example.com/adamw7/tools.git"));
+	}
+
+	/** The forms of one repository on a ported host still name that one repository. */
+	@Test
+	void everyFormOfOneRepositoryOnAPortedHostIsTheSameRepository() {
+		RepositoryUrl url = RepositoryUrl.of("https://ghe.example.com:8443/adamw7/tools.git");
+		assertTrue(url.isSameRepositoryAs("https://ghe.example.com:8443/adamw7/tools"));
+		assertTrue(url.isSameRepositoryAs("https://ghe.example.com:8443/adamw7/Tools.GIT"));
+		assertTrue(url.isSameRepositoryAs("https://token@ghe.example.com:8443/adamw7/tools.git"));
+	}
+
+	/**
 	 * A filesystem path names no owner, so reading its last two segments as one
 	 * would point a tool at a repository that does not exist. Reporting no slug
 	 * leaves the caller to fall back to its own inference.

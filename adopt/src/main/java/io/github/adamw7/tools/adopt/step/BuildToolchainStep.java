@@ -21,8 +21,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>The build system is detected through {@link AbstractBuildSystemStep} just as
  * {@link EnforcerStep} and {@link VerifyStep} detect it, so the tool probed is the
- * tool the verification runs. A build system that needs none — the
- * {@link FallbackBuildSystem}, whose guard runs through {@code sh} — is a no-op.
+ * tool the verification runs — including the {@link FallbackBuildSystem}'s shell,
+ * which is a tool like any other and absent from a stock Windows {@code PATH}. A
+ * build system that names no probe at all is a no-op.
  */
 public class BuildToolchainStep extends AbstractBuildSystemStep {
 
@@ -66,7 +67,6 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 		}
 		throw new AdoptionException(name() + " failed: " + repositoryDirectory + " builds with "
 				+ buildSystem.name() + " but " + CommandResult.describe(command) + " could not be run, so the"
-				+ " CLAUDE.md guard could not be verified. Install " + buildSystem.name() + " on the PATH, or"
-				+ " commit the project's build wrapper.");
+				+ " CLAUDE.md guard could not be verified. " + buildSystem.toolAdvice());
 	}
 }

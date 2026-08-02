@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,12 +64,75 @@ class BuildToolchainStepTest {
 		assertThrows(AdoptionException.class, () -> new BuildToolchainStep().execute(context, runner));
 	}
 
+	/**
+	 * A checkout with no recognised build file falls to the guard that runs through a
+	 * shell, so the shell is probed like any other build tool.
+	 */
 	@Test
-	void probesNothingForTheFallbackGuardWhichOnlyNeedsAShell(@TempDir Path workspace) throws IOException {
+	void probesTheShellTheFallbackGuardRunsThrough(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		new BuildToolchainStep().execute(context, runner);
-		assertEquals(0, runner.count());
+		assertEquals(List.of("sh", "-c", "exit 0"), runner.commandAt(0));
+		assertEquals(context.repositoryDirectory(), runner.invocations().get(0).workingDirectory());
+		assertEquals(1, runner.count());
+	}
+
+	/**
+	 * A host with no shell on its PATH — a stock Windows one, where the {@code sh.exe}
+	 * Git for Windows ships stays under its usr/bin unless the operator opted into the
+	 * Unix tools — used to run all the way to {@link VerifyStep} before finding out.
+	 */
+	@Test
+	void anAbsentShellAbortsTheAdoptionAtTheSecondStep(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			throw new AdoptionException("Could not start command: " + String.join(" ", command));
+		});
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> new BuildToolchainStep().execute(context, runner));
+
+		assertTrue(failure.getMessage().contains("build-toolchain failed"), failure.getMessage());
+		assertTrue(failure.getMessage().contains("sh"), failure.getMessage());
+	}
+
+	/**
+	 * The remedy comes from the build system, so a project with no build file is not
+	 * told to "install github-actions on the PATH", which names nothing installable.
+	 */
+	@Test
+	void theFallbacksFailureAdvisesAboutAShellRatherThanAboutGitHubActions(@TempDir Path workspace)
+			throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(127, "sh: not found");
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> new BuildToolchainStep().execute(context, runner));
+
+		assertFalse(failure.getMessage().contains("Install github-actions"), failure.getMessage());
+		assertTrue(failure.getMessage().contains("POSIX sh"), failure.getMessage());
+	}
+
+	/** A shell that answers the probe lets the adoption carry on. */
+	@Test
+	void aShellThatRunsLetsTheFallbackAdoptionProceed(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		assertDoesNotThrow(() -> new BuildToolchainStep().execute(context, runner));
+	}
+
+	/** A Maven checkout is still told to install Maven, not to find a shell. */
+	@Test
+	void aBuildToolsFailureStillAdvisesAboutThatBuildTool(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "pom.xml", "<project/>");
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(127, "mvn: not found");
+
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> new BuildToolchainStep().execute(context, runner));
+
+		assertTrue(failure.getMessage().contains("Install maven on the PATH"), failure.getMessage());
 	}
 
 	@Test

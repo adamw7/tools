@@ -91,6 +91,25 @@ class PullRequestStepTest {
 		assertFalse(runner.commandAt(1).contains("--repo"));
 	}
 
+	/**
+	 * A self-hosted GitHub reached on its own port names an owner like any other host.
+	 * Reading the port as a path segment left the URL apparently ownerless, so the
+	 * flag was dropped and {@code gh} was left to infer the repository from a remote
+	 * that an {@code insteadOf} rewrite or a proxied clone can make unreadable —
+	 * failing the last step of an otherwise complete adoption.
+	 */
+	@Test
+	void namesTheRepositoryOfAHostReachedOnAPort() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);
+		AdoptionContext ported = new AdoptionContext("https://ghe.example.com:8443/adamw7/tools.git",
+				Path.of("/tmp/workspace"));
+
+		new PullRequestStep().execute(ported, runner);
+
+		assertTrue(runner.commandAt(0).containsAll(List.of("--repo", "adamw7/tools")), runner.commandAt(0).toString());
+		assertTrue(runner.commandAt(1).containsAll(List.of("--repo", "adamw7/tools")), runner.commandAt(1).toString());
+	}
+
 	@Test
 	void usesConfiguredTitleAndBody() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::noOpenPullRequest);

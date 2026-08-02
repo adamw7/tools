@@ -18,7 +18,18 @@ import java.util.Optional;
  */
 public class FallbackBuildSystem implements BuildSystem {
 
-	static final List<String> VERIFY_COMMAND = List.of("sh", WorkflowGuardInstaller.SCRIPT_FILE);
+	/** The shell the guard script is run with, here and in the workflow that runs it in CI. */
+	static final String SHELL = "sh";
+
+	static final List<String> VERIFY_COMMAND = List.of(SHELL, WorkflowGuardInstaller.SCRIPT_FILE);
+
+	/**
+	 * Asks the shell to do nothing and exit zero, rather than for its version:
+	 * {@code sh --version} is not portable and exits non-zero under {@code dash}, so
+	 * probing with it would report a perfectly good shell as unusable. Every POSIX
+	 * shell answers this one.
+	 */
+	static final List<String> SHELL_PROBE = List.of(SHELL, "-c", "exit 0");
 
 	private final WorkflowGuardInstaller installer = new WorkflowGuardInstaller();
 
@@ -43,12 +54,24 @@ public class FallbackBuildSystem implements BuildSystem {
 	}
 
 	/**
-	 * The guard runs through {@code sh}, which every platform the adoption supports
-	 * already provides and which has no portable {@code --version} probe, so there is
-	 * nothing to check ahead of time.
+	 * The guard runs through {@code sh}, so that is what is probed. Answering "nothing
+	 * to check" instead assumed every host has a shell on its {@code PATH}, which a
+	 * Windows one generally has not: the {@code sh.exe} Git for Windows ships sits
+	 * under the install's {@code usr/bin} and is only on the {@code PATH} if the
+	 * operator opted into the Unix tools. The adoption then ran to
+	 * {@link VerifyStep} — past the clone, the {@code claude init}, and both commits —
+	 * before failing on a shell it could have missed at its second step.
 	 */
 	@Override
 	public Optional<List<String>> toolProbe(Path repositoryDirectory) {
-		return Optional.empty();
+		return Optional.of(SHELL_PROBE);
+	}
+
+	/** Nothing here is installable as "github-actions"; what is missing is a shell. */
+	@Override
+	public String toolAdvice() {
+		return "Put a POSIX " + SHELL + " on the PATH — on Windows, the one Git for Windows installs under"
+				+ " its usr/bin — or give the project a Maven or Gradle build file to wire the guard into"
+				+ " instead.";
 	}
 }

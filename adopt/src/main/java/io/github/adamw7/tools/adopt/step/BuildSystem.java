@@ -64,4 +64,17 @@ public interface BuildSystem {
 		}
 		return Optional.of(List.of(verify.get(0), ToolProbe.VERSION_FLAG));
 	}
+
+	/**
+	 * What an operator whose {@link #toolProbe(Path)} could not be run has to do
+	 * about it, named by the build system rather than by {@link BuildToolchainStep}:
+	 * the remedy is not the same for every one of them, and a step that spelled out
+	 * one of them told a project with no build file at all to "install github-actions
+	 * on the PATH", which names nothing installable.
+	 *
+	 * @return the remedy, as a sentence
+	 */
+	default String toolAdvice() {
+		return "Install " + name() + " on the PATH, or commit the project's build wrapper.";
+	}
 }

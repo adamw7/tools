@@ -508,6 +508,193 @@ class ClaudeMdConformerTest {
 				&& line.substring(run.length()).isBlank();
 	}
 
+	/**
+	 * A section the generated document had commented out is not a section the rule
+	 * can see, so the reshape has to append the real one. Reading the commented
+	 * heading as the document's own left the required section unwritten, and the rule
+	 * the adoption had just wired in then reported it missing — the adoption failing
+	 * its own verification on a document it had just reshaped to pass it.
+	 */
+	@Test
+	void doesNotTakeAHeadingInsideAnHtmlCommentForASection() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				<!--
+				## Testing
+
+				Removed for now.
+				-->
+
+				Intro.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+				"every required section must be a heading the rule can see:\n" + conformed);
+		assertTrue(conformed.contains("Removed for now."), "the commented-out text keeps its content:\n" + conformed);
+		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
+	}
+
+	/**
+	 * A near-miss heading inside a comment must not be renamed in place either: the
+	 * rename rewrote text its author had deliberately commented out and still left
+	 * the document without the section, since the rule reads neither as structure.
+	 */
+	@Test
+	void doesNotRenameANearMissHeadingInsideAnHtmlComment() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				<!--
+				## Testing strategy
+
+				Old notes.
+				-->
+
+				Intro.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(conformed.contains("## Testing strategy"), "the commented heading must be left alone:\n" + conformed);
+		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+				"the real section must still be appended:\n" + conformed);
+	}
+
+	/**
+	 * The rule fails a section whose only content is commented out just as it fails
+	 * an empty one, so a stub is owed here. Counting the comment as a body reported
+	 * the section as satisfied and the adoption failed its own verification.
+	 */
+	@Test
+	void givesASectionWhoseOnlyBodyIsAnHtmlCommentAStub() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Testing
+
+				<!--
+				Nothing yet.
+				-->
+
+				## Project
+
+				A repo.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(hasStructuralBody(conformed, "## Testing"),
+				"a section whose only content is commented out needs a stub:\n" + conformed);
+	}
+
+	/**
+	 * An unterminated comment swallows everything below it, so the sections appended
+	 * there were as invisible to the rule as the ones appended below an unterminated
+	 * fence — and as invisible to the next run's own check for them, which appended a
+	 * second unreachable copy of the whole skeleton.
+	 */
+	@Test
+	void closesAnUnterminatedHtmlCommentSoAppendedSectionsStayDocumentStructure() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				<!-- work in progress
+				## Testing
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+				"every appended section must be a heading, not commented-out text:\n" + conformed);
+		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
+	}
+
+	/** A comment inside a fenced code block is sample text, so the fence wins — as it does for the rule. */
+	@Test
+	void leavesAHeadingBelowACommentInsideAFenceAsDocumentStructure() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				```markdown
+				<!--
+				```
+
+				## Testing
+
+				JUnit 5.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(hasStructuralBody(conformed, "## Testing"),
+				"the section below the fence is structure, not a comment:\n" + conformed);
+		assertFalse(conformed.contains("## Testing\n\n" + "See [AGENTS.md](AGENTS.md)."),
+				"the section already had a body:\n" + conformed);
+	}
+
+	/**
+	 * A line that merely starts with a hash is prose to the rule, so the section it
+	 * sits in already has a body. Reading it as a shallower heading ended the section
+	 * above it, and a stub was inserted in front of the content the section carried.
+	 */
+	@Test
+	void treatsALineThatMerelyStartsWithAHashAsSectionBody() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Testing
+
+				#1 rule: run mvn install every time.
+
+				## Project
+
+				A repo.
+				""";
+		String conformed = conformer.conform(generated);
+		assertFalse(conformed.contains("## Testing\n\n" + "See [AGENTS.md](AGENTS.md)."),
+				"the section already had a body and needs no stub:\n" + conformed);
+		assertTrue(conformed.contains("#1 rule: run mvn install every time."),
+				"the prose keeps its place:\n" + conformed);
+	}
+
+	/**
+	 * The document's lines that can carry structure, read the way the enforcer's
+	 * {@code MarkdownDocument} reads them: outside code fences and outside HTML
+	 * comments alike. The counterpart of {@link #linesOutsideFences} for the tests
+	 * that ask what the rule would recognise as a heading.
+	 */
+	private List<String> structuralLines(String content) {
+		List<String> structural = new ArrayList<>();
+		boolean open = false;
+		for (String line : linesOutsideFences(content)) {
+			open = collectStructural(structural, line, open);
+		}
+		return structural;
+	}
+
+	/** Records the line unless a comment covers it, and answers whether one is still open after it. */
+	private boolean collectStructural(List<String> structural, String line, boolean open) {
+		if (open) {
+			return !line.contains("-->");
+		}
+		boolean opens = line.startsWith("<!--") && !line.contains("-->");
+		addUnlessCode(structural, line, opens);
+		return opens;
+	}
+
+	/** Whether the section carries a body the rule would count: prose outside fences and comments. */
+	private boolean hasStructuralBody(String content, String section) {
+		List<String> lines = structuralLines(content);
+		int start = lines.indexOf(section);
+		return start >= 0 && lines.stream().skip(start + 1L).dropWhile(String::isEmpty).findFirst()
+				.filter(line -> !line.startsWith("## ")).isPresent();
+	}
+
 	/** The leading run of fence characters a line declares, or {@code null} when it declares none. */
 	private String fenceRun(String line) {
 		if (line.isEmpty() || (line.charAt(0) != '`' && line.charAt(0) != '~')) {

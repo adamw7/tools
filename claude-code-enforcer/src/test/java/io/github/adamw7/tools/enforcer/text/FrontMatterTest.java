@@ -248,4 +248,47 @@ class FrontMatterTest {
 
 		assertEquals(List.of(), frontMatter.duplicateKeys());
 	}
+
+	@Test
+	void dropsATrailingCommentFromAPlainScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\nname: git-commit # the commit helper\n---\n");
+
+		assertEquals(Optional.of("git-commit"), frontMatter.orElseThrow().value("name"));
+	}
+
+	@Test
+	void dropsATrailingCommentAfterAQuotedScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"a: b\" # note\n---\n");
+
+		assertEquals(Optional.of("a: b"), frontMatter.orElseThrow().value("description"));
+	}
+
+	/** Only whitespace opens a comment, so a hash inside a value stays part of it. */
+	@Test
+	void keepsAHashThatDoesNotFollowWhitespace() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\nname: issue#7\n---\n");
+
+		assertEquals(Optional.of("issue#7"), frontMatter.orElseThrow().value("name"));
+	}
+
+	@Test
+	void keepsAHashInsideQuotes() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"tag # here\"\n---\n");
+
+		assertEquals(Optional.of("tag # here"), frontMatter.orElseThrow().value("description"));
+	}
+
+	@Test
+	void readsAValueThatIsNothingButACommentAsEmpty() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\nname: # to be decided\n---\n");
+
+		assertEquals(Optional.of(""), frontMatter.orElseThrow().value("name"));
+	}
+
+	@Test
+	void foldsABlockScalarAnnouncedWithATrailingComment() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: > # folded\n  one\n  two\n---\n");
+
+		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
+	}
 }

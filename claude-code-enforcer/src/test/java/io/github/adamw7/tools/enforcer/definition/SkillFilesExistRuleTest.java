@@ -319,6 +319,20 @@ class SkillFilesExistRuleTest {
 		assertTrue(exception.getMessage().contains("description exceeds 20 characters"), exception.getMessage());
 	}
 
+	/** A YAML loader ends a plain scalar at the comment, so the name Claude Code reads follows the convention. */
+	@Test
+	void ignoresATrailingCommentOnTheName() {
+		writeString(tempDir.resolve("git-commit").resolve("SKILL.md"), """
+				---
+				name: git-commit # the repository's commit helper
+				description: Generates commit messages.
+				---
+				# git-commit
+				""");
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
 	private void createSkill(String name) {
 		Path skillDir = createDirectory(tempDir.resolve(name));
 		writeString(skillDir.resolve("SKILL.md"), """

@@ -156,4 +156,19 @@ class FrontMatterFixerTest {
 		assertTrue(repaired.isPresent());
 		assertEquals("---\nname: reviewer\ndescription: Reviews code.\n---\n", repaired.get());
 	}
+
+	@Test
+	void keepsCarriageReturnLineFeedSeparatorsWhenRepairing() {
+		String content = "---\r\nname: reviewer\r\nBody one.\r\nBody two.\r\n";
+
+		assertEquals(Optional.of("---\r\nname: reviewer\r\n---\r\nBody one.\r\nBody two.\r\n"),
+				FrontMatterFixer.repair(content));
+	}
+
+	@Test
+	void keepsLineFeedSeparatorsWhenRepairing() {
+		String content = "---\nname: reviewer\nBody one.\n";
+
+		assertEquals(Optional.of("---\nname: reviewer\n---\nBody one.\n"), FrontMatterFixer.repair(content));
+	}
 }

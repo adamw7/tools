@@ -187,4 +187,36 @@ class CommandTokensTest {
 	void doesNotMistakeAValuedFlagForAnAssignment() {
 		assertEquals(List.of("--out=x"), CommandTokens.scriptCandidatesOf("--out=x"));
 	}
+
+	@Test
+	void skipsAReservedWordToReachTheCommandItIntroduces() {
+		assertEquals(List.of("[", "a.sh"),
+				CommandTokens.scriptCandidatesOf("if [ -n \"$CI\" ]; then a.sh; fi"));
+	}
+
+	/**
+	 * The loop variable takes the place of the program in the {@code for} segment,
+	 * which costs nothing: a bare word names no path, so no rule resolves it.
+	 */
+	@Test
+	void readsTheBodyOfALoopRatherThanItsKeyword() {
+		assertEquals(List.of("f", "a.sh"), CommandTokens.scriptCandidatesOf("for f in x; do a.sh; done"));
+	}
+
+	@Test
+	void readsBothBranchesOfAConditional() {
+		assertEquals(List.of("a.sh", "b.sh"),
+				CommandTokens.scriptCandidatesOf("if a.sh; then b.sh; fi"));
+	}
+
+	@Test
+	void yieldsNoProgramForAReservedWordAlone() {
+		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("fi; done; esac"));
+	}
+
+	/** {@code then} names the command that follows it, but a file really called {@code then} is a program. */
+	@Test
+	void stillReadsAReservedWordSpelledAsAPath() {
+		assertEquals(List.of("./then"), CommandTokens.scriptCandidatesOf("./then --flag"));
+	}
 }

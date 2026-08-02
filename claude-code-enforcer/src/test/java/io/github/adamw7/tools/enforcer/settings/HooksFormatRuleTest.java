@@ -400,6 +400,33 @@ class HooksFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A hook that guards its script with a condition still runs it. Reading
+	 * {@code then} as the program left the script the hook really does run reported
+	 * as referenced by nothing.
+	 */
+	@Test
+	void treatsAScriptInsideAConditionalAsReferenced() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("if [ -n \\\"$CI\\\" ]; then .claude/hooks/session-start.sh; fi"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWhenAConditionalHookReferencesAMissingScript() {
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("if true; then .claude/hooks/gone.sh; fi"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("references a missing hook script"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
 	private HooksFormatRule ruleFor() {
 		HooksFormatRule rule = new HooksFormatRule();
 		rule.setHooksDir(hooksDir().toFile());

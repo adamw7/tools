@@ -201,6 +201,88 @@ class MarkdownDocumentTest {
 		assertEquals(Set.of("# Title", "##"), document.headings());
 	}
 
+	@Test
+	void doesNotTreatAHeadingInsideAnHtmlCommentAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				## Testing
+				Body.
+				-->
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	@Test
+	void treatsAHeadingAfterAClosedHtmlCommentAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				A note.
+				-->
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+	}
+
+	/** A comment that opens and closes on one line masks nothing, and is no heading either. */
+	@Test
+	void leavesASingleLineHtmlCommentUnmasked() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!-- ## Testing -->
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	@Test
+	void treatsAnHtmlCommentInsideAFenceAsSampleCode() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				```
+				<!--
+				```
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	@Test
+	void readsASectionWhoseOnlyContentIsCommentedOutAsEmpty() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## Maven
+				<!--
+				Body.
+				-->
+
+				## Testing
+				Body.
+				""");
+
+		assertFalse(document.hasBody("## Maven"));
+		assertTrue(document.hasBody("## Testing"));
+	}
+
 	/** The indices of the lines the document masks as fenced code, in document order. */
 	private static List<Integer> fencedLines(MarkdownDocument document) {
 		return IntStream.range(0, document.lineCount()).filter(document::isInsideFence).boxed().toList();

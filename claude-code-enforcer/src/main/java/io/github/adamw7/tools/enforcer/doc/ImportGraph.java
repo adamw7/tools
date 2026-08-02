@@ -139,9 +139,21 @@ final class ImportGraph {
 
 	private File resolve(File file, String imported) {
 		if (imported.startsWith("/")) {
-			return new File(imported);
+			return rootedAt(file, imported);
 		}
 		return new File(file.getParentFile(), imported);
+	}
+
+	/**
+	 * A leading slash means the path starts at a file system root rather than at
+	 * the importing file. Which root that is comes from the importing file, so a
+	 * document resolves the same way wherever the build was launched from — on a
+	 * single-rooted file system the two are the same, but on Windows
+	 * {@code new File("/docs.md")} would pick whichever drive the build happened
+	 * to be started on.
+	 */
+	private File rootedAt(File file, String imported) {
+		return normalized(file).getRoot().resolve(imported.substring(1)).toFile();
 	}
 
 	/**

@@ -173,10 +173,21 @@ class ImportGraphTest {
 	@Test
 	void resolvesAnAbsoluteImportAsAnAbsolutePath() {
 		File absolute = write("elsewhere.md", "# Elsewhere\n");
-		File root = write("CLAUDE.md", "See @" + absolute.getAbsolutePath() + "\n");
+		File root = write("CLAUDE.md", "See @" + rooted(absolute) + "\n");
 
 		// A leading slash means the path is not relative to the importing file.
 		assertEquals(1, graphFrom(root).hopsTo(absolute));
+	}
+
+	@Test
+	void resolvesARootedImportAgainstTheImportingFilesRoot() {
+		File root = write("CLAUDE.md", "See @/elsewhere.md\n");
+
+		File target = graphFrom(root).importsOf(root).get(0).target();
+
+		// The root the importing file sits on, not the one the build was launched
+		// from — the two differ on a file system with more than one root.
+		assertEquals(tempDir.getRoot().resolve("elsewhere.md"), ImportGraph.normalized(target));
 	}
 
 	@Test
@@ -234,5 +245,16 @@ class ImportGraphTest {
 
 	private File write(String name, String content) {
 		return writeString(tempDir.resolve(name), content).toFile();
+	}
+
+	/**
+	 * The file as an import writes it: from the file system root, with forward
+	 * slashes. A platform's own absolute path is not import syntax — a Windows one
+	 * carries a drive letter and backslashes, neither of which an import path
+	 * matches.
+	 */
+	private String rooted(File file) {
+		Path path = file.toPath().toAbsolutePath();
+		return "/" + path.getRoot().relativize(path).toString().replace(File.separatorChar, '/');
 	}
 }

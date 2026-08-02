@@ -9,15 +9,22 @@ import java.util.regex.Pattern;
  * configuration — API keys pasted into an {@code env} block or a hook script —
  * and each carries a human-readable name so a violation says what kind of
  * secret it looks like without echoing the secret itself.
+ * <p>
+ * Deliberately <em>not</em> named after the {@code secretPatterns} parameter it
+ * serves. Plexus resolves the element type of a configured list from the child
+ * element name, trying the rule's own package first, so a class called
+ * {@code SecretPattern} would capture every {@code <secretPattern>} element a pom
+ * writes and fail the build trying to instantiate it — leaving the parameter
+ * configurable in a unit test but not in the builds it exists for.
  */
-record SecretPattern(String name, Pattern pattern) {
+record CredentialPattern(String name, Pattern pattern) {
 
-	static SecretPattern of(String name, String regex) {
-		return new SecretPattern(name, Pattern.compile(regex));
+	static CredentialPattern of(String name, String regex) {
+		return new CredentialPattern(name, Pattern.compile(regex));
 	}
 
 	/** The built-in credential shapes, scanned unless {@code useDefaultPatterns} is switched off. */
-	static List<SecretPattern> defaults() {
+	static List<CredentialPattern> defaults() {
 		return List.of(
 				of("Anthropic API key", "sk-ant-[A-Za-z0-9_-]{16,}"),
 				of("AWS access key ID", "(?<![A-Z0-9])AKIA[0-9A-Z]{16}(?![A-Z0-9])"),

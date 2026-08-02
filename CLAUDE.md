@@ -119,7 +119,7 @@ mvn install                       # faster incremental build
 mvn -pl data -am install          # one module plus the modules it depends on
 mvn -pl data -am test             # tests for a single module
 mvn -B package                    # build without installing (what CI runs)
-mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption
+mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption, enforcer builds
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
 mvn -Ppitest install              # PIT mutation testing (needs a phase past package)
 ```
@@ -217,13 +217,17 @@ paths.
   `ArchTests.in(...)`, so a module's own test states only what is specific to it.
   Keep new code within these rules.
 - **Integration tests** (`*IT`) are gated behind the `integration-tests` profile
-  and cover what needs something real: the MCP servers over HTTP, and `adopt`'s
+  and cover what needs something real: the MCP servers over HTTP; `adopt`'s
   `MultiRepoAdoptionIT`, which clones real GitHub sample repositories to prove a
-  batch gives each repository its own checkout. It stops at the branch step, so
-  it never pushes or opens a pull request. The profile is declared per module —
-  in `data`, `code/context`, and `adopt`, each wiring `maven-failsafe-plugin` —
-  not in the root pom, so a new module's `*IT`s stay unrun until that module
-  gets its own copy. See *Testing* in AGENTS.md.
+  batch gives each repository its own checkout (it stops at the branch step, so
+  it never pushes or opens a pull request); and `claude-code-enforcer`'s
+  `EnforcerRuleBuildIT`/`RepositoryEnforcementIT`, which run real Maven builds so
+  the pom-to-rule seam a unit test skips — artifact resolution, `@Named`
+  discovery, parameter binding — is exercised, and this repository's own wired
+  configuration is proved to catch a regression. The profile is declared per
+  module — in `data`, `code/context`, `adopt`, and `claude-code-enforcer`, each
+  wiring `maven-failsafe-plugin` — not in the root pom, so a new module's `*IT`s
+  stay unrun until that module gets its own copy. See *Testing* in AGENTS.md.
 
 ## Continuous integration and commits
 

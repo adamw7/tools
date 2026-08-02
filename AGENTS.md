@@ -467,7 +467,8 @@ longer and carry no timeout.
   one library, not six tests; an exemption means a module not importing a
   library, which stays visible in that module's test.
 - **Integration tests** are gated behind the `integration-tests` profile
-  (defined in `data`, `code/context`, and `adopt`) and are the tests that need
+  (defined in `data`, `code/context`, `adopt`, and `claude-code-enforcer`) and are
+  the tests that need
   something real: `mvn -P integration-tests verify`. Test classes ending in `IT`
   belong to this profile. `data` and `code/context` exercise their MCP servers
   over streamable HTTP; `adopt`'s `MultiRepoAdoptionIT` runs a multi-repository
@@ -483,6 +484,35 @@ longer and carry no timeout.
   over the network, a host with a git `url.<base>.insteadOf` rewrite records the
   rewritten remote, so the test identifies each checkout by the
   `owner/repository` its `origin` names rather than by the URL it was given.
+- **The enforcer's end-to-end tests** (`claude-code-enforcer`, package
+  `...enforcer.e2e`) run *real Maven builds*, because everything between a pom and
+  a rule's `execute()` is what a unit test assumes: Maven resolving the rule jar,
+  Sisu finding the class behind a `@Named` element, and Plexus binding each
+  configuration element to a field. A rule can be correct and still never run — a
+  misspelled parameter fails the build outright, a misspelled rule name never runs
+  at all — and none of that is visible from inside the rule. `EnforcerRuleBuildIT`
+  builds a throwaway project (`FixtureProject`) laid out like an adopted
+  repository and enforces `RuleConfiguration.complete()`, which configures **every**
+  shipped rule with **every** parameter it accepts; the configuration is held
+  against the compiled classes (`ShippedRules`, by reflection) so a new rule or
+  parameter that no fixture addresses is named rather than silently unexercised.
+  The same class pins the shared behaviours across the Maven boundary:
+  collect-then-report, `severity=warn` going green while still logging,
+  the HTML `reportFile` landing on disk, a `baselineFile` suppressing recorded
+  violations until a new one appears, and the build-setup checks that fail whatever
+  the severity. `RepositoryEnforcementIT` runs the repository's own
+  `mvn -N validate -DenforceClaudeMd`, checks every rule the
+  `claude-md-enforce` profile wires reported a pass, holds the shipped catalogue
+  against that profile (`subAgentFormat` and `commandFormat` are the documented
+  exemptions), and then breaks a *copy* of the repository — a skill losing its
+  `SKILL.md`, the two agent documents disagreeing about the Java version — to prove
+  the wiring bites. Two mechanics are worth knowing before changing them: the
+  `*IT`s run at `integration-test`, *before* this module is installed, so they
+  publish the freshly packaged jar into the local repository themselves
+  (`install-file`, with the flattened pom so the rule's own dependencies come with
+  it); and a forked test JVM cannot work out where Maven, the local repository or
+  that jar are, so the module's `integration-tests` profile passes each in as an
+  `enforcer.it.*` system property that `BuildEnvironment` reads.
 - **Coverage** is the opt-in `coverage` profile (JaCoCo): `mvn -Pcoverage verify`
   produces reports at `**/target/site/jacoco/` and **fails the build** if a
   bundle's instruction **or** branch coverage drops below **80%** (two
@@ -509,7 +539,7 @@ manually, or on a release.
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
 | `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
-| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, and the `adopt` multi-repository adoption against real GitHub URLs). |
+| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, the `adopt` multi-repository adoption against real GitHub URLs, and the enforcer's end-to-end Maven builds). |
 | `codeql.yml` | weekly (Saturdays) | CodeQL security/static analysis for Java (autobuild). |
 | `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
 | `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
@@ -723,6 +753,18 @@ delimiter — the rule rewrites the file in place and continues against the
 corrected content instead of failing. The repair is conservative: it only acts
 when the document opens with a dashes line enclosing real `key: value` entries, so
 a lone `---` thematic break is never mistaken for front matter.
+
+A `List<String>` parameter carries a trap worth knowing before naming a helper
+class. Plexus infers a configured list's element type from the **child element
+name**, trying the rule's own package first, so a class whose name matches the
+capitalised child name — `SecretPattern` for
+`<secretPatterns><secretPattern>…</secretPattern></secretPatterns>` — is chosen
+over `String` and the build fails trying to instantiate it. The parameter then
+works in a unit test, which calls the setter directly, and not in the builds it
+exists for. Keep a helper's name clear of the singular of any list parameter in
+its package: the credential shapes `noSecrets` scans for are a
+`CredentialPattern` for exactly this reason, and `EnforcerRuleBuildIT`, which
+configures every parameter from a pom, is what catches a reintroduction.
 
 The check is **opt-in**: the `claude-md-enforce` profile activates only when the
 `enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other

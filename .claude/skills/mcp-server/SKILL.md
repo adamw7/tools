@@ -85,8 +85,9 @@ A `Main.java` Spring Boot entry point sits next to the configuration
   tool — it is the file users configure their client from.
 - The servers are covered by `*IT` tests over real HTTP, gated behind the
   `integration-tests` profile: `mvn -P integration-tests verify`. The profile is
-  declared **per module** (`data`, `code/context`, `adopt`) — a new module's
-  `*IT`s do not run until that module gets its own copy.
+  declared **per module** (`data`, `code/context`, `adopt`,
+  `claude-code-enforcer`) — a new module's `*IT`s do not run until that module
+  gets its own copy.
 - Unit-test the tool directly as a function: build the argument map, assert on
   the `ToolResult` text and `isError`.
 

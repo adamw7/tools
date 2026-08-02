@@ -11,6 +11,44 @@
 	<packaging>jar</packaging>
 	<name>CLAUDE.md enforcer rule</name>
 	<description>Custom maven-enforcer rule that validates CLAUDE.md documents for structure and naming conventions during the build.</description>
+	<profiles>
+		<profile>
+			<id>integration-tests</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<!-- The *IT tests run real Maven builds against the rule jar
+							     this module has just packaged, which a forked test JVM
+							     cannot locate on its own: the local repository may have
+							     been relocated with -Dmaven.repo.local, and the jar's
+							     name comes from the build's finalName. Only the build
+							     knows all of that, so it hands each fact over rather
+							     than letting a test guess. -->
+							<systemPropertyVariables>
+								<enforcer.it.mavenHome>${maven.home}</enforcer.it.mavenHome>
+								<enforcer.it.localRepository>${settings.localRepository}</enforcer.it.localRepository>
+								<enforcer.it.version>${project.version}</enforcer.it.version>
+								<enforcer.it.jar>${project.build.directory}/${project.build.finalName}.jar</enforcer.it.jar>
+								<enforcer.it.pom>${project.basedir}/.flattened-pom.xml</enforcer.it.pom>
+								<enforcer.it.repositoryRoot>${project.basedir}/..</enforcer.it.repositoryRoot>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 	<!-- flatten-maven-plugin is inherited from the root pom, which flattens the
 	     CI-friendly ${revision} out of every module's pom. This module needs it
 	     because it is consumed as a maven-enforcer-plugin dependency resolved

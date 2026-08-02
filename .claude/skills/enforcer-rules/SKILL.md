@@ -98,6 +98,23 @@ to `report(...)`.
 - Cover: passes when correct, fails per violation kind, passes on an empty
   directory, and the always-fails build-setup cases (missing parameter/file).
 
+**A unit test cannot prove the rule runs.** It calls the setters itself, so it
+skips artifact resolution, `@Named` discovery, and Plexus binding — the ways a
+correct rule never runs at all. The `*IT`s in `…/enforcer/e2e` run real Maven
+builds and cover that seam; extend them alongside a new rule:
+`RuleConfiguration.complete()` must configure it with **every** parameter it
+accepts (that fixture is checked against the compiled classes, so a rule or
+parameter left out fails `EnforcerRuleBuildIT`), and `RepositoryEnforcementIT`
+compares the shipped catalogue against the root pom's profile. Run them with
+`mvn -pl claude-code-enforcer -am -P integration-tests verify`.
+
+**Naming trap for a `List<String>` parameter.** Plexus infers a configured
+list's element type from the *child element name*, trying the rule's own package
+first, so a class matching the capitalised child name — `SecretPattern` for
+`<secretPatterns><secretPattern>` — wins over `String` and the build fails
+trying to instantiate it. Keep helper names clear of the singular of any list
+parameter in the same package (hence `CredentialPattern`).
+
 ## Wiring it into the root pom
 Add the `@Named` element under the `claude-md-enforce` profile's `<rules>` block
 in the root `pom.xml`, with one child per parameter:
@@ -123,4 +140,5 @@ the moment one appears.
 - `AGENTS.md` — *CLAUDE.md enforcement* (source of truth, full rule catalogue)
 - `claude-code-enforcer/.../rule/ClaudeCodeEnforcerRule.java` — the base contract
 - `claude-code-enforcer/.../architecture/EnforcerArchitectureTest.java` — layering
+- `claude-code-enforcer/.../e2e/EnforcerRuleBuildIT.java` — the pom-to-rule seam
 - Root `pom.xml` — the `claude-md-enforce` profile

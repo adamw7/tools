@@ -53,7 +53,7 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 
 	@Override
 	public void execute() throws EnforcerRuleException {
-		List<SecretPattern> patterns = patterns();
+		List<CredentialPattern> patterns = patterns();
 		ScanTargets targets = new ScanTargets(files, directories);
 		targets.requireConfigured();
 		requirePatterns(patterns);
@@ -73,25 +73,25 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 				"Re-run the build to confirm no secrets remain.");
 	}
 
-	private void requirePatterns(List<SecretPattern> patterns) throws EnforcerRuleException {
+	private void requirePatterns(List<CredentialPattern> patterns) throws EnforcerRuleException {
 		if (patterns.isEmpty()) {
 			throw new EnforcerRuleException(
 					"Configure secretPatterns or leave useDefaultPatterns enabled, so there is something to scan for");
 		}
 	}
 
-	private Stream<String> scan(File file, List<SecretPattern> patterns) {
+	private Stream<String> scan(File file, List<CredentialPattern> patterns) {
 		List<String> lines = readTextLines(file);
 		return IntStream.range(0, lines.size())
 				.boxed()
 				.flatMap(index -> scanLine(file, lines.get(index), index + 1, patterns));
 	}
 
-	private Stream<String> scanLine(File file, String line, int lineNumber, List<SecretPattern> patterns) {
+	private Stream<String> scanLine(File file, String line, int lineNumber, List<CredentialPattern> patterns) {
 		return patterns.stream().flatMap(pattern -> matches(file, line, lineNumber, pattern));
 	}
 
-	private Stream<String> matches(File file, String line, int lineNumber, SecretPattern pattern) {
+	private Stream<String> matches(File file, String line, int lineNumber, CredentialPattern pattern) {
 		return pattern.pattern().matcher(line)
 				.results()
 				.map(match -> file + " line " + lineNumber + " contains what looks like a " + pattern.name()
@@ -112,10 +112,10 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		return content.map(text -> text.lines().toList()).orElseGet(List::of);
 	}
 
-	private List<SecretPattern> patterns() throws EnforcerRuleException {
-		List<SecretPattern> patterns = new ArrayList<>();
+	private List<CredentialPattern> patterns() throws EnforcerRuleException {
+		List<CredentialPattern> patterns = new ArrayList<>();
 		if (useDefaultPatterns) {
-			patterns.addAll(SecretPattern.defaults());
+			patterns.addAll(CredentialPattern.defaults());
 		}
 		List<String> configured = secretPatterns != null ? secretPatterns : List.of();
 		for (String regex : configured) {
@@ -129,9 +129,9 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 	 * mistake, so it fails with a message naming it rather than letting a
 	 * {@link PatternSyntaxException} escape as an internal build error.
 	 */
-	private SecretPattern compiled(String regex) throws EnforcerRuleException {
+	private CredentialPattern compiled(String regex) throws EnforcerRuleException {
 		try {
-			return SecretPattern.of(regex, regex);
+			return CredentialPattern.of(regex, regex);
 		} catch (PatternSyntaxException e) {
 			throw new EnforcerRuleException(
 					"secretPattern '" + regex + "' is not a valid regular expression: " + e.getDescription());

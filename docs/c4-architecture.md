@@ -539,7 +539,7 @@ flowchart TB
         end
 
         subgraph secRules ["secret"]
-            secrets["<b>NoSecretsRule / SecretPattern</b>"]
+            secrets["<b>NoSecretsRule / CredentialPattern</b>"]
         end
 
         subgraph textSupport ["text — parsing support"]

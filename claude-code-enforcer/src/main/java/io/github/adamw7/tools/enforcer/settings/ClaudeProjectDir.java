@@ -2,10 +2,9 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 /**
  * Resolves the project-local scripts a hook command runs, against the base
@@ -36,57 +35,47 @@ final class ClaudeProjectDir {
 	}
 
 	/**
-	 * The project-local scripts {@code command} runs: every token rooted at
-	 * {@code $CLAUDE_PROJECT_DIR}, plus the program of each chained command written
-	 * as a plain repository-relative path.
+	 * The project-local scripts {@code command} runs, whichever way each is spelled:
+	 * rooted at {@code $CLAUDE_PROJECT_DIR}, or as the plain repository-relative path
+	 * Claude Code resolves the same way.
 	 * <p>
 	 * Both spellings name the same file — Claude Code runs a hook from the project
 	 * directory, so {@code .claude/hooks/session-start.sh} resolves exactly where
 	 * {@code $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh} does — and a
-	 * settings.json is as likely to be written either way. Reading only the variable
-	 * left the relative spelling unchecked: a hook pointing at a script that had been
-	 * renamed passed, which is the very failure these rules exist to catch, and
-	 * {@code hooksFormat} reported the script it really did reference as referenced
-	 * by nothing.
+	 * settings.json is as likely to be written either way. They are therefore read
+	 * from the same tokens: the scripts of the command, as
+	 * {@link CommandTokens#scriptCandidatesOf} picks them out. Expanding <em>every</em>
+	 * token that mentioned the variable instead made the two spellings disagree, and
+	 * failed a build over an argument the hook was about to create: a
+	 * {@code mkdir -p "$CLAUDE_PROJECT_DIR/target/logs"} was reported as a missing
+	 * script, while the identical {@code mkdir -p target/logs} passed.
 	 * <p>
 	 * A command that names one script both ways yields it once. The separators are
 	 * normalised before the comparison because the two spellings are assembled
 	 * differently — an expansion keeps the separators the command was written with,
-	 * a relative program is resolved as a {@link File} — and on a platform where
-	 * those disagree the same script would otherwise be reported as two.
+	 * a relative path is resolved as a {@link File} — and on a platform where those
+	 * disagree the same script would otherwise be reported as two.
 	 */
 	List<String> scriptsIn(String command) {
-		return Stream.concat(expandAll(command).stream(), relativePrograms(command).stream())
+		return CommandTokens.scriptCandidatesOf(command).stream()
+				.map(this::resolveScript)
+				.flatMap(Optional::stream)
 				.map(path -> new File(path).getPath())
 				.distinct()
 				.toList();
 	}
 
-	/**
-	 * The paths every {@code $CLAUDE_PROJECT_DIR}-rooted token of {@code command}
-	 * resolves to. A command chains more than one script often enough — an
-	 * {@code &&} between two hooks — that stopping at the first reference would
-	 * leave the rest unchecked.
-	 */
-	List<String> expandAll(String command) {
-		return CommandTokens.of(command).stream().map(this::expand).filter(Objects::nonNull).toList();
+	/** The path a script token resolves to, or empty when it names no file this rule can see. */
+	private Optional<String> resolveScript(String token) {
+		String bare = withoutQuotes(token);
+		if (references(bare)) {
+			return Optional.of(expanded(bare));
+		}
+		return isRelativeScript(bare) ? Optional.of(new File(resolve(), bare).getPath()) : Optional.empty();
 	}
 
 	/**
-	 * Only a program is read as a relative script, never an argument — see
-	 * {@link CommandTokens#programsOf} — so a hook passing a path to the script it
-	 * runs does not have that path required to exist too.
-	 */
-	private List<String> relativePrograms(String command) {
-		return CommandTokens.programsOf(command).stream()
-				.map(this::withoutQuotes)
-				.filter(ClaudeProjectDir::isRelativeScript)
-				.map(program -> new File(resolve(), program).getPath())
-				.toList();
-	}
-
-	/**
-	 * Whether a program names a repository-relative script rather than a tool the
+	 * Whether a token names a repository-relative script rather than a tool the
 	 * shell finds for itself: {@code .claude/hooks/session-start.sh} and
 	 * {@code ./run.sh} do, while {@code bash}, {@code python3}, and {@code npx} name
 	 * no path at all and are looked up on the {@code PATH}. An absolute path, a
@@ -94,17 +83,13 @@ final class ClaudeProjectDir {
 	 * the repository's control — or one only a shell can resolve — so none of them is
 	 * a script this rule may require.
 	 */
-	private static boolean isRelativeScript(String program) {
-		return program.indexOf('/') > 0 && program.indexOf('$') < 0 && !program.startsWith("~")
-				&& !program.startsWith("-");
+	private static boolean isRelativeScript(String token) {
+		return token.indexOf('/') > 0 && token.indexOf('$') < 0 && !token.startsWith("~")
+				&& !token.startsWith("-");
 	}
 
-	/** The path {@code token} resolves to when it references the project dir, else null. */
-	String expand(String token) {
-		String bare = withoutQuotes(token);
-		if (!references(bare)) {
-			return null;
-		}
+	/** The path a project-dir reference expands to, with both spellings of the variable resolved. */
+	private String expanded(String bare) {
 		String root = resolve().getPath();
 		return PLAIN_REFERENCE.matcher(bare.replace(BRACED, root)).replaceAll(Matcher.quoteReplacement(root));
 	}

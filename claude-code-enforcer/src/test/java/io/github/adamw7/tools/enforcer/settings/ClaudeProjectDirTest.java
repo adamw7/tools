@@ -78,9 +78,41 @@ class ClaudeProjectDirTest {
 		assertEquals(List.of(resolved("build.d/build.sh")), scriptsIn("build.d/build.sh --out target/log.txt"));
 	}
 
+	/**
+	 * A hook wired as {@code bash <script>} names a file that must exist just as
+	 * plainly as one wired as {@code <script>}, so the interpreter's script argument
+	 * is resolved even though the interpreter itself is the program.
+	 */
 	@Test
-	void readsNoScriptFromAnInterpretersArgument() {
-		assertEquals(List.of(), scriptsIn("bash " + HOOK));
+	void resolvesTheScriptAnInterpreterIsHanded() {
+		assertEquals(List.of(resolved(HOOK)), scriptsIn("bash " + HOOK));
+	}
+
+	@Test
+	void resolvesTheScriptAnInterpreterIsHandedPastItsOptions() {
+		assertEquals(List.of(resolved(HOOK)), scriptsIn("bash -e " + HOOK));
+	}
+
+	/** The argument of {@code -c} is a script's text, not a path, so it names no file. */
+	@Test
+	void readsNoScriptFromAnInlineShellScript() {
+		assertEquals(List.of(), scriptsIn("bash -c \"" + HOOK + " --flag\""));
+	}
+
+	/**
+	 * The two spellings must agree about what is an argument: expanding every token
+	 * that mentioned the variable required a path the hook was about to create to
+	 * exist already, while the identical relative spelling passed.
+	 */
+	@Test
+	void readsNoScriptFromAnArgumentRootedAtTheProjectVariable() {
+		assertEquals(List.of(resolved("build.d/build.sh")),
+				scriptsIn("build.d/build.sh --out $CLAUDE_PROJECT_DIR/target/log.txt"));
+	}
+
+	@Test
+	void readsNoScriptFromADirectoryTheCommandCreates() {
+		assertEquals(List.of(), scriptsIn("mkdir -p ${CLAUDE_PROJECT_DIR}/target/logs"));
 	}
 
 	@Test

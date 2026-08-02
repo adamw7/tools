@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Splits a hook command into the tokens a shell would see. Both hook rules need
@@ -22,16 +23,29 @@ import java.util.regex.Pattern;
  * kept on the token, since {@link ClaudeProjectDir} strips them as part of expanding
  * it.
  * <p>
- * {@link #programsOf} answers the narrower question of which tokens a shell would
- * actually <em>run</em>, which is what a rule reading a bare relative path as a
- * script has to go on: only a program can be one, never an argument that happens to
- * look like a path.
+ * {@link #scriptCandidatesOf} answers the narrower question of which tokens name a
+ * file the shell would execute or read as a script, which is what a rule resolving
+ * a path on disk has to go on: a program is one, as is the script an interpreter is
+ * handed, but never an argument that merely happens to look like a path.
  */
 final class CommandTokens {
 
 	private static final char NONE = 0;
 	private static final char DOUBLE_QUOTE = '"';
 	private static final char SINGLE_QUOTE = '\'';
+	private static final char PATH_SEPARATOR = '/';
+	private static final String OPTION_PREFIX = "-";
+	private static final String LONG_OPTION_PREFIX = "--";
+	private static final char INLINE_SCRIPT_FLAG = 'c';
+
+	/**
+	 * The programs that run a script named by their first non-option argument rather
+	 * than being that script themselves. A hook wired as {@code bash <script>} names a
+	 * file that must exist just as plainly as one wired as {@code <script>}, and
+	 * reading only the program would leave it unchecked.
+	 */
+	private static final List<String> INTERPRETERS = List.of(
+			"bash", "sh", "zsh", "dash", "ksh", "python", "python3", "node", "ruby", "perl");
 
 	/**
 	 * The shell operators that end a token just as whitespace does, and that end one
@@ -62,27 +76,59 @@ final class CommandTokens {
 	}
 
 	/**
-	 * The program each command in the string runs: the first token of every
-	 * operator-separated segment that is not a {@code VAR=value} assignment, in
-	 * order.
+	 * The tokens of {@code command} that name a script file: the program each
+	 * operator-separated segment runs, plus the script an interpreter among them is
+	 * handed, in order.
 	 * <p>
-	 * A hook chaining two scripts runs two programs, and only a program is a script
-	 * the rules may resolve as a bare relative path. An argument is not, however much
-	 * it looks like one: a hook invoked as {@code .claude/hooks/build.sh --out
-	 * target/log.txt} names one script and one output file, and requiring the second
-	 * to exist would fail a build over a file the hook is about to write.
+	 * A hook chaining two scripts names two of them, so every segment is read. What is
+	 * deliberately left out is an ordinary argument, however much it looks like a path:
+	 * a hook invoked as {@code .claude/hooks/build.sh --out target/log.txt} names one
+	 * script and one output file, and requiring the second to exist would fail a build
+	 * over a file the hook is about to write. The same goes for the directory of a
+	 * {@code mkdir -p}.
 	 */
-	static List<String> programsOf(String command) {
+	static List<String> scriptCandidatesOf(String command) {
 		return split(command, CommandTokens::isOperator).stream()
 				.map(CommandTokens::of)
-				.map(CommandTokens::programOf)
-				.flatMap(Optional::stream)
+				.flatMap(CommandTokens::candidatesIn)
 				.toList();
 	}
 
-	/** The token a shell would run: the first that is not a leading {@code VAR=value} assignment. */
-	private static Optional<String> programOf(List<String> tokens) {
-		return tokens.stream().dropWhile(token -> ASSIGNMENT.matcher(token).matches()).findFirst();
+	/** The program of one segment, and the script it hands on when that program is an interpreter. */
+	private static Stream<String> candidatesIn(List<String> tokens) {
+		List<String> words = tokens.stream().dropWhile(token -> ASSIGNMENT.matcher(token).matches()).toList();
+		if (words.isEmpty()) {
+			return Stream.empty();
+		}
+		String program = words.getFirst();
+		return Stream.concat(Stream.of(program), interpretedScript(program, words.subList(1, words.size())).stream());
+	}
+
+	/**
+	 * The script an interpreter is handed: its first non-option argument. A segment
+	 * carrying the {@code -c} flag names no file at all — the argument is the script's
+	 * text — so it yields nothing rather than a path that was never meant to be one.
+	 */
+	private static Optional<String> interpretedScript(String program, List<String> arguments) {
+		if (!INTERPRETERS.contains(commandName(program)) || arguments.stream().anyMatch(CommandTokens::isInlineScript)) {
+			return Optional.empty();
+		}
+		return arguments.stream().filter(argument -> !argument.startsWith(OPTION_PREFIX)).findFirst();
+	}
+
+	/**
+	 * True for the {@code -c} flag, alone or inside a cluster of short ones. A shell
+	 * reads {@code -ec} as {@code -e -c} just as it reads {@code -c}, and missing the
+	 * cluster would take the inline script's text for a path on disk.
+	 */
+	private static boolean isInlineScript(String argument) {
+		return argument.startsWith(OPTION_PREFIX) && !argument.startsWith(LONG_OPTION_PREFIX)
+				&& argument.indexOf(INLINE_SCRIPT_FLAG) > 0;
+	}
+
+	/** The program's own name, so an interpreter is recognised however it was spelled on disk. */
+	private static String commandName(String program) {
+		return program.substring(program.lastIndexOf(PATH_SEPARATOR) + 1);
 	}
 
 	/** Splits on every {@code separator} character outside quotes, dropping the empty pieces. */

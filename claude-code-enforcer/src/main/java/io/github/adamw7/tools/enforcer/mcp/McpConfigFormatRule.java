@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import javax.inject.Named;
 
@@ -24,7 +25,9 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * <li>{@code env} and {@code headers} must be objects whose values are all
  * strings;</li>
  * <li>{@code url} must be a syntactically valid {@code http} or {@code https}
- * URL (and {@code https} only when {@code requireHttps} is set); and</li>
+ * URL (and {@code https} only when {@code requireHttps} is set), unless it is
+ * assembled from an environment variable expansion, which only the shell that
+ * resolves it can judge; and</li>
  * <li>a server must not declare both a {@code command} and a {@code url}, which
  * mixes a stdio and a remote transport in one entry.</li>
  * </ul>
@@ -45,6 +48,9 @@ public class McpConfigFormatRule extends JsonFileRule {
 	private static final String URL_KEY = "url";
 	private static final String HTTP_SCHEME = "http";
 	private static final String HTTPS_SCHEME = "https";
+
+	/** An environment variable expansion, in either spelling Claude Code resolves in {@code .mcp.json}. */
+	private static final Pattern EXPANSION = Pattern.compile("\\$\\{[^}]*\\}|\\$[A-Za-z_][A-Za-z0-9_]*");
 
 	/** The {@code .mcp.json} file to validate. Injected from the rule configuration. */
 	private File mcpFile;
@@ -133,7 +139,7 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	private void collectUrlViolations(String name, JsonNode server, List<String> violations) {
 		JsonNode url = server.get(URL_KEY);
-		if (url == null || !url.isTextual()) {
+		if (url == null || !url.isTextual() || isExpanded(url.asText())) {
 			return;
 		}
 		String scheme = schemeOf(url.asText());
@@ -144,17 +150,36 @@ public class McpConfigFormatRule extends JsonFileRule {
 		}
 	}
 
+	/**
+	 * True when the URL is assembled at load time from an environment variable, which
+	 * Claude Code expands before it ever reaches a URL parser. Only the shell knows
+	 * what {@code https://${MCP_HOST}/mcp} becomes, so there is nothing here to judge
+	 * — and judging it anyway reported a configuration Claude Code loads happily as
+	 * malformed, against the very advice {@code noSecrets} gives for keeping a
+	 * credential out of the file.
+	 */
+	private boolean isExpanded(String url) {
+		return EXPANSION.matcher(url).find();
+	}
+
 	/** Every violation names the server whose entry is malformed. */
 	private void add(String name, String problem, List<String> violations) {
 		violations.add("mcp.json server '" + name + "' " + problem);
 	}
 
-	/** The {@code http}/{@code https} scheme of a syntactically valid absolute URL, or null otherwise. */
+	/**
+	 * The {@code http}/{@code https} scheme of a syntactically valid absolute URL, or
+	 * null otherwise. Presence of an authority is what makes the URL absolute, read
+	 * from {@link URI#getAuthority()} rather than {@link URI#getHost()}: the latter is
+	 * null for a host name {@code java.net.URI} considers non-compliant, so an
+	 * underscore in it — routine in a container or service name — turned a URL Claude
+	 * Code connects to into a reported malformation.
+	 */
 	private String schemeOf(String url) {
 		try {
 			URI uri = new URI(url);
 			String scheme = uri.getScheme();
-			if (scheme == null || uri.getHost() == null) {
+			if (scheme == null || uri.getAuthority() == null || uri.getAuthority().isBlank()) {
 				return null;
 			}
 			String lower = scheme.toLowerCase(Locale.ROOT);

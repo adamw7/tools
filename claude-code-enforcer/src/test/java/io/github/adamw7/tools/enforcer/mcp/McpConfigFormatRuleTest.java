@@ -208,4 +208,32 @@ class McpConfigFormatRuleTest {
 		return rule;
 	}
 
+	/**
+	 * Claude Code expands an environment variable in {@code .mcp.json} before it ever
+	 * reaches a URL parser, and {@code noSecrets} tells authors to write one there
+	 * rather than a literal credential. Judging the unexpanded text reported a
+	 * configuration Claude Code loads happily as malformed.
+	 */
+	@Test
+	void passesWhenTheUrlIsAssembledFromABracedVariable() {
+		assertDoesNotThrow(ruleFor(
+				"{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"https://${MCP_HOST}/mcp\" } } }")::execute);
+	}
+
+	@Test
+	void passesWhenTheUrlIsAssembledFromAPlainVariable() {
+		assertDoesNotThrow(ruleFor(
+				"{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"$MCP_BASE/mcp\" } } }")::execute);
+	}
+
+	/**
+	 * {@code java.net.URI} reports no host for a name it considers non-compliant, so
+	 * reading the host turned a container or service name — where an underscore is
+	 * routine — into a reported malformation.
+	 */
+	@Test
+	void passesWhenTheUrlHostCarriesAnUnderscore() {
+		assertDoesNotThrow(ruleFor(
+				"{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"https://mcp_gateway:8080/mcp\" } } }")::execute);
+	}
 }

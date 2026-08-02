@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.enforcer.text;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,14 @@ import java.util.stream.Collectors;
  * the quotes as part of the value made a {@code name: "git-commit"} fail the
  * kebab-case convention it follows, a quoted {@code model} miss its whitelist, and
  * every description count two characters it does not have.
+ * <p>
+ * A key declared twice yields its <em>last</em> declaration, which is the one a YAML
+ * loader keeps and so the one Claude Code acts on. Reading the first instead
+ * validated a value the tool never sees — a second {@code description:} could
+ * lengthen a capped one, break a name convention, or collide with another
+ * definition, and every check would still be looking at the line above it.
+ * {@link #duplicateKeys()} reports the duplication itself, since a key written twice
+ * is a mistake whichever value wins.
  */
 public final class FrontMatter {
 
@@ -80,7 +90,8 @@ public final class FrontMatter {
 	 * The trimmed value declared for {@code key}, or empty when the key is absent.
 	 * A present key with no value yields an empty string, not an empty optional, a
 	 * block scalar yields its folded continuation lines rather than the indicator,
-	 * and a quoted scalar yields the text inside its quotes.
+	 * and a quoted scalar yields the text inside its quotes. A key declared more than
+	 * once yields its last declaration, the one a YAML loader keeps.
 	 */
 	public Optional<String> value(String key) {
 		int index = indexOfEntry(key);
@@ -94,6 +105,17 @@ public final class FrontMatter {
 	/** The declared keys, in document order, without their trailing colon. */
 	public List<String> keys() {
 		return lines.stream().map(this::entryKey).flatMap(Optional::stream).toList();
+	}
+
+	/**
+	 * The keys declared more than once, each named once, in the order they first
+	 * appear. Only the last of them takes effect, so the earlier lines say something
+	 * the tool never reads — the front matter equivalent of the duplicated JSON key
+	 * the configuration rules already reject.
+	 */
+	public List<String> duplicateKeys() {
+		Set<String> seen = new LinkedHashSet<>();
+		return keys().stream().filter(key -> !seen.add(key)).distinct().toList();
 	}
 
 	/**
@@ -132,8 +154,9 @@ public final class FrontMatter {
 		return !line.isEmpty() && Character.isWhitespace(line.charAt(0));
 	}
 
+	/** The last line declaring {@code key}, since that is the declaration YAML keeps. */
 	private int indexOfEntry(String key) {
-		for (int i = 0; i < lines.size(); i++) {
+		for (int i = lines.size() - 1; i >= 0; i--) {
 			if (isEntryFor(lines.get(i), key)) {
 				return i;
 			}

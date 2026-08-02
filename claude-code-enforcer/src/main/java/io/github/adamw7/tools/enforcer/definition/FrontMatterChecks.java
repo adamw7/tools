@@ -46,6 +46,17 @@ final class FrontMatterChecks {
 		}
 	}
 
+	/**
+	 * Reports every key declared more than once. Only the last declaration takes
+	 * effect, so an earlier one is a line the author wrote and Claude Code never
+	 * reads — a second {@code description:} silently replaces the one above it.
+	 */
+	void rejectDuplicateKeys() {
+		for (String key : frontMatter.duplicateKeys()) {
+			violations.add(label + " front matter declares '" + key + ":' more than once in: " + file);
+		}
+	}
+
 	/** Reports every declared key outside the whitelist, which catches a typo such as {@code descripton}. */
 	void allowOnlyKeys(List<String> allowedKeys) {
 		if (allowedKeys == null) {

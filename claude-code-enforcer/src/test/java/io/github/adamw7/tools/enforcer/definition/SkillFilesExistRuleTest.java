@@ -282,6 +282,43 @@ class SkillFilesExistRuleTest {
 		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
 	}
 
+	/**
+	 * Only the last declaration of a repeated key takes effect, so an earlier one is
+	 * a line the author wrote and Claude Code never reads.
+	 */
+	@Test
+	void failsWhenAKeyIsDeclaredTwice() {
+		writeString(tempDir.resolve("git-commit").resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description: Writes a commit message.
+				description: Writes a commit message, at length.
+				---
+				# git-commit
+				""");
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+		assertTrue(exception.getMessage().contains("declares 'description:' more than once"), exception.getMessage());
+	}
+
+	/** The cap applies to the declaration that wins, not to the one it replaced. */
+	@Test
+	void measuresTheDescriptionCapAgainstTheLastDeclaration() {
+		writeString(tempDir.resolve("git-commit").resolve("SKILL.md"), """
+				---
+				name: git-commit
+				description: Short.
+				description: Far longer than the cap allows on any reading of it.
+				---
+				# git-commit
+				""");
+		SkillFilesExistRule rule = ruleFor(tempDir);
+		rule.setMaxDescriptionLength(20);
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("description exceeds 20 characters"), exception.getMessage());
+	}
+
 	private void createSkill(String name) {
 		Path skillDir = createDirectory(tempDir.resolve(name));
 		writeString(skillDir.resolve("SKILL.md"), """

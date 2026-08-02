@@ -405,6 +405,51 @@ class HookCommandsValidRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A hook that writes a file names an output path, not a script. Expanding every
+	 * token that mentioned the variable required the path to exist already, so the two
+	 * spellings of the same argument disagreed: this one failed the build while the
+	 * identical {@code --out target/log.txt} passed.
+	 */
+	@Test
+	void passesWhenAnOutputPathIsWrittenWithTheProjectVariable() {
+		writeString(tempDir.resolve("run.sh"), "#!/bin/sh\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("$CLAUDE_PROJECT_DIR/run.sh --out $CLAUDE_PROJECT_DIR/target/log.txt"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void passesWhenTheHookCreatesTheDirectoryItThenWritesTo() {
+		writeString(tempDir.resolve("run.sh"), "#!/bin/sh\n");
+		HookCommandsValidRule rule = ruleFor(
+				hooksReferencing("mkdir -p ${CLAUDE_PROJECT_DIR}/target/logs && $CLAUDE_PROJECT_DIR/run.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** An interpreter's script is a file the hook really runs, whichever spelling names it. */
+	@Test
+	void failsWhenTheScriptAnInterpreterIsHandedIsMissing() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash $CLAUDE_PROJECT_DIR/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
+	@Test
+	void failsWhenTheScriptAnInterpreterIsHandedRelativelyIsMissing() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+	}
+
 	private HookCommandsValidRule ruleFor(String content) {
 		Path file = tempDir.resolve("settings.json");
 		writeString(file, content);

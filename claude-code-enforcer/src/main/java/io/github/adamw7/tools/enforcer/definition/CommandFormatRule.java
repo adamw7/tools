@@ -83,6 +83,7 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	private void collectFrontMatterViolations(File command, FrontMatter frontMatter, List<String> violations) {
 		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, command, violations);
+		checks.rejectDuplicateKeys();
 		checks.allowOnlyKeys(allowedFrontMatterKeys);
 		checks.checkDescription(0);
 		checks.checkModel(allowedModels);

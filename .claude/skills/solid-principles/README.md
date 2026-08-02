@@ -1,12 +1,16 @@
 # SOLID Principles
 
 **Load**: `view .claude/skills/solid-principles/SKILL.md`
+**Worked examples**: `view .claude/skills/solid-principles/examples.md`
 
 ---
 
 ## Description
 
-SOLID principles checklist with detailed Java examples. Each principle includes violation examples, refactored solutions, and detection patterns.
+SOLID checklist grounded in this repository: detection heuristics and the
+refactoring that fixes each violation, with the real examples from `data`,
+`adopt`, `code/context` and `mcp-common`. Full before/after code lives in
+`examples.md`, loaded only when a worked example is needed.
 
 ---
 
@@ -26,7 +30,7 @@ SOLID principles checklist with detailed Java examples. Each principle includes 
 ```
 > view .claude/skills/solid-principles/SKILL.md
 > "Review this UserService for SOLID principles"
-→ Identifies SRP violation, suggests extraction of validation and notification
+→ Identifies the SRP violation, suggests extracting validation and notification
 ```
 
 ---
@@ -43,11 +47,21 @@ SOLID principles checklist with detailed Java examples. Each principle includes 
 
 ---
 
+## Notes / Tips
+
+- `ColumnarDataSource` vs `IterableDataSource` is this repo's ISP in one line —
+  don't widen a contract to silence a compile error.
+- A field must never be `Optional` here (ArchUnit); as a return type it's fine.
+- Wiring is plain constructor injection — no Spring or CDI outside the MCP
+  adapters.
+
+---
+
 ## Related Skills
 
-- `design-patterns` - Implementation patterns
-- `clean-code` - DRY, KISS, YAGNI
-- `java-code-review` - Full review checklist
+- `java-code-review` — the full review checklist, led by the enforced rules
+- `testing-conventions` — the network-off tests these abstractions enable
+- `data-sources` — the schema contract used as the ISP example
 
 ---
 

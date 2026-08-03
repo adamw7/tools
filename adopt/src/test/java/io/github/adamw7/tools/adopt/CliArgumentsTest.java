@@ -194,6 +194,23 @@ class CliArgumentsTest {
 		assertTrue(options.draft());
 	}
 
+	/**
+	 * A blank value counts as not supplied for every other optional input, and the
+	 * MCP tool already read its own lists that way. The command line adds what it was
+	 * given without reading it, so a {@code --reviewer ""} used to reach {@code gh}
+	 * as an empty argument and fail the last step of an otherwise complete adoption.
+	 */
+	@Test
+	void dropsBlankRepeatableFlagValues() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL,
+				"--reviewer", "", "--reviewer", "octocat",
+				"--label", "   ", "--assignee", " adamw7 " });
+		PullRequestOptions options = cli.pullRequestOptions();
+		assertEquals(List.of("octocat"), options.reviewers());
+		assertEquals(List.of(), options.labels());
+		assertEquals(List.of("adamw7"), options.assignees());
+	}
+
 	@Test
 	void parsesAssetsAndReportFlags() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--assets", "--report", "/tmp/report.json" });

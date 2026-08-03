@@ -62,6 +62,52 @@ class PullRequestOptionsTest {
 		assertEquals(List.of("octocat"), options.reviewers());
 	}
 
+	/**
+	 * Every list entry becomes an argument of its own — {@code gh pr create
+	 * --reviewer <entry>} — so a blank one reached {@code gh} as an empty argument
+	 * and failed the adoption at its last step, with the branch already pushed. The
+	 * command line adds what it was given without reading it, so the rule belongs
+	 * here, where the MCP tool's own stripping already agreed with it.
+	 */
+	@Test
+	void dropsBlankListEntriesSoNoneReachesGhAsAnEmptyArgument() {
+		PullRequestOptions options = new PullRequestOptions(null, null, List.of("", "octocat"),
+				List.of("   ", "automation"), List.of("\t", "adamw7"), false);
+		assertEquals(List.of("octocat"), options.reviewers());
+		assertEquals(List.of("automation"), options.labels());
+		assertEquals(List.of("adamw7"), options.assignees());
+	}
+
+	@Test
+	void stripsListEntries() {
+		PullRequestOptions options = new PullRequestOptions(null, null, List.of("  octocat  "),
+				List.of("  automation  "), List.of("  adamw7  "), false);
+		assertEquals(List.of("octocat"), options.reviewers());
+		assertEquals(List.of("automation"), options.labels());
+		assertEquals(List.of("adamw7"), options.assignees());
+	}
+
+	/** A list of nothing but blanks requests nobody, exactly as an omitted one does. */
+	@Test
+	void requestsNobodyWhenEveryEntryIsBlank() {
+		PullRequestOptions options = new PullRequestOptions(null, null, List.of(" "), List.of(""),
+				List.of("  "), false);
+		assertTrue(options.reviewers().isEmpty());
+		assertTrue(options.labels().isEmpty());
+		assertTrue(options.assignees().isEmpty());
+	}
+
+	/**
+	 * {@code gh} treats naming a reviewer twice as naming them once, so a repeated
+	 * {@code --reviewer} is left alone rather than being second-guessed here.
+	 */
+	@Test
+	void keepsRepeatedEntriesAsTheyWereGiven() {
+		PullRequestOptions options = new PullRequestOptions(null, null, List.of("octocat", "octocat"),
+				List.of(), List.of(), false);
+		assertEquals(List.of("octocat", "octocat"), options.reviewers());
+	}
+
 	private PullRequestOptions options(String title, String body) {
 		return new PullRequestOptions(title, body, List.of(), List.of(), List.of(), false);
 	}

@@ -295,10 +295,11 @@ editing them:
   and `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
   `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
   `hookCommandsValid`, `hooksFormat`, `localSettingsIgnored`, `mcpServersValid`,
-  `mcpConfigFormat`, and `pluginFormat` cover the rest of the agent
-  configuration. The last three validate `.mcp.json` and
-  `.claude-plugin/plugin.json`, which this repository does not ship — they pass
-  on the absent file and start enforcing the moment one is added.
+  `mcpConfigFormat`, `pluginFormat`, and `okfBundleFormat` cover the rest of the
+  agent configuration. The last four validate `.mcp.json`,
+  `.claude-plugin/plugin.json` and an Open Knowledge Format bundle, none of which
+  this repository ships — they pass on the absent file and start enforcing the
+  moment one is added.
 - Two more rules ship but are **not** wired here: `subAgentFormat`
   (`.claude/agents`) and `commandFormat` (`.claude/commands`). Unlike
   `pluginFormat`, a *configured* definition directory must exist — an absent one

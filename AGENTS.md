@@ -638,6 +638,23 @@ profile:
   variable expansion (`https://${MCP_HOST}/mcp`) is left alone, since only the
   shell that resolves it knows what it becomes. Like `mcpServersValid` it treats
   an absent file as a pass.
+- `OkfBundleFormatRule` (`okfBundleFormat`) holds a bundle in Google's Open
+  Knowledge Format at `bundleDir` to the specification's own conformance
+  conditions: every non-reserved `.md` file carries a parseable YAML frontmatter
+  block, every block declares a non-empty `type` (the one mandatory field), and
+  the reserved names keep their structure — an `index.md` carries no frontmatter
+  beyond an `okf_version` at the bundle root, and a `log.md` groups entries under
+  ISO 8601 `YYYY-MM-DD` headings. Where the format defines a closed vocabulary the
+  value is checked too (`status` is `draft`/`stable`/`deprecated`, `stale_after`
+  is a real calendar date, a `generated` mapping names its actor); where it does
+  not, nothing is imposed — a `type` is not registered centrally, so an unknown
+  one passes. `requiredKeys` adds frontmatter keys every concept must declare,
+  `okfVersion` pins the version the bundle root declares, and `requireIndex`
+  demands a listing in every directory holding concepts (off by default, since a
+  consumer must tolerate a missing `index.md`). A bundle is optional, so an absent
+  `bundleDir` is a pass. The producer side is guarded separately: `code/context`'s
+  `OkfBundleConformanceTest` restates the same conditions against every bundle
+  `OkfBundler` emits, and runs in the ordinary `test` phase.
 - `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
   sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
   `skillsDir` (file name for commands and sub-agents, directory name for skills)

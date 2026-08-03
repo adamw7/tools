@@ -37,6 +37,7 @@ public class EnforcerArchitectureTest {
 			.layer("Definition").definedBy("..enforcer.definition..")
 			.layer("Doc").definedBy("..enforcer.doc..")
 			.layer("Mcp").definedBy("..enforcer.mcp..")
+			.layer("Okf").definedBy("..enforcer.okf..")
 			.layer("Secret").definedBy("..enforcer.secret..")
 			.layer("Settings").definedBy("..enforcer.settings..")
 			.whereLayer("Text").mayNotAccessAnyLayer()
@@ -44,6 +45,7 @@ public class EnforcerArchitectureTest {
 			.whereLayer("Definition").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Doc").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Mcp").mayOnlyAccessLayers("Rule", "Text")
+			.whereLayer("Okf").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Secret").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Settings").mayOnlyAccessLayers("Rule", "Text")
 			.as("text is the foundation, rule builds on it, and the feature packages "

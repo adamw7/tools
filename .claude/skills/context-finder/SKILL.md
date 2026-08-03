@@ -86,6 +86,15 @@ new OkfBundleWriter().write(bundle, Path.of("target/okf"));
 - Adding a frontmatter field → extend `OkfFrontmatter` (fixed render order,
   every scalar quoted), not the bundler.
 
+Two build-level checks guard this, and a change to the emitter has to keep both
+green:
+- `OkfBundleConformanceTest` (this module) restates the spec's conformance
+  conditions against every emitted bundle. It runs in the ordinary `test` phase,
+  so `mvn test` / `package` / `install` all catch drift.
+- The `okfBundleFormat` enforcer rule checks a bundle already on disk, at
+  `validate` under `-DenforceClaudeMd` — what `.github/workflows/maven.yml` runs
+  on every pull request. See the `enforcer-rules` skill to change it.
+
 ## MCP tools
 `project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` are the
 adapter over the above, in `…context.mcp`. `PathPolicy` confines them to allowed

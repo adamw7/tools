@@ -661,6 +661,14 @@
 										<mcpConfigFormat>
 											<mcpFile>${project.basedir}/.mcp.json</mcpFile>
 										</mcpConfigFormat>
+										<!-- This repository emits OKF bundles rather than
+										     shipping one, so the bundle root is absent and the
+										     rule passes; it starts enforcing the day a bundle
+										     is committed here. -->
+										<okfBundleFormat>
+											<bundleDir>${project.basedir}/okf</bundleDir>
+											<okfVersion>0.2</okfVersion>
+										</okfBundleFormat>
 										<crossDocConsistency>
 											<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
 											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>

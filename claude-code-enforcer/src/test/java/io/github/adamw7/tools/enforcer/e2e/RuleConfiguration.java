@@ -236,6 +236,14 @@ final class RuleConfiguration {
 									<mcpFile>${project.basedir}/.mcp.json</mcpFile>
 									<requireHttps>true</requireHttps>
 								</mcpConfigFormat>
+								<okfBundleFormat>
+									<bundleDir>${project.basedir}/okf</bundleDir>
+									<okfVersion>0.2</okfVersion>
+									<requiredKeys>
+										<requiredKey>title</requiredKey>
+									</requiredKeys>
+									<requireIndex>true</requireIndex>
+								</okfBundleFormat>
 			""";
 
 	private final String xml;

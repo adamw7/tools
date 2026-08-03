@@ -211,6 +211,33 @@ final class FixtureProject {
 			}
 			""";
 
+	/** A bundle-root listing: the one index allowed frontmatter, and only for the version. */
+	private static final String OKF_INDEX = """
+			---
+			okf_version: "0.2"
+			---
+
+			# Files
+
+			* [sample.md](sample.md) - a sample concept.
+			""";
+
+	private static final String OKF_CONCEPT = """
+			---
+			type: "Sample Concept"
+			title: "Sample"
+			description: "A conformant concept the enforcer rule reads."
+			tags: ["fixture"]
+			status: stable
+			stale_after: 2027-01-01
+			generated: { by: "fixture/1", at: "2026-08-03T10:15:30Z" }
+			---
+
+			# Body
+
+			Nothing here depends on anything.
+			""";
+
 	/**
 	 * The build itself. The rule jar is a plugin dependency rather than a project
 	 * dependency, because that is the only class path a maven-enforcer rule is loaded
@@ -299,6 +326,8 @@ final class FixtureProject {
 		write(".claude/commands/sample-command.md", COMMAND_MD);
 		write(".claude-plugin/plugin.json", PLUGIN_JSON);
 		write(".mcp.json", MCP_JSON);
+		write("okf/index.md", OKF_INDEX);
+		write("okf/sample.md", OKF_CONCEPT);
 		return this;
 	}
 

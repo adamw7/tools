@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt.step;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,6 +61,23 @@ public class CloneStep extends AbstractCommandStep {
 
 	/** What {@code git status --porcelain} puts between a rename's old and new path. */
 	private static final String RENAME_ARROW = " -> ";
+
+	/**
+	 * One entry of {@code git status --porcelain}: the index and work-tree status
+	 * letters — the alphabet git documents for the format — then the space before the
+	 * path.
+	 *
+	 * <p>The transcript merges the command's standard error into its standard output,
+	 * exactly as {@link #originTranscript} does, so it is not reliably status entries
+	 * and nothing else: a git that warns — about an unreadable system config, or a
+	 * directory it could not open — puts that line in there too. Reading every line as
+	 * an entry took the warning's fourth character onwards for a path, found it among
+	 * no path the adoption writes, and refused the resume this step promises for
+	 * changes the checkout did not have. A line that is not an entry is therefore
+	 * skipped rather than read as one, the same reading {@link #namesThisRepository}
+	 * takes of that transcript's noise.
+	 */
+	private static final Pattern STATUS_ENTRY = Pattern.compile("^[ MTADRCU?!]{2} .+");
 
 	@Override
 	public String name() {
@@ -123,10 +141,10 @@ public class CloneStep extends AbstractCommandStep {
 		if (!result.succeeded()) {
 			throw new AdoptionException(context.repositoryDirectory() + " is a checkout whose status could not be"
 					+ " read, so it cannot be shown to be free of uncommitted work: "
-					+ Redaction.of(result.output().strip()));
+					+ result.redactedOutput().strip());
 		}
 		return result.output().lines()
-				.filter(line -> line.length() > STATUS_PREFIX)
+				.filter(line -> STATUS_ENTRY.matcher(line).matches())
 				.map(this::changedPath)
 				.filter(path -> !AdoptionAssets.WRITTEN_PATHS.contains(path))
 				.toList();
@@ -195,7 +213,7 @@ public class CloneStep extends AbstractCommandStep {
 			throw new AdoptionException(context.repositoryDirectory() + " is a checkout with no '"
 					+ AdoptionContext.REMOTE
 					+ "' remote, so it can be neither confirmed to be " + context.displayUrl() + " nor pushed to it: "
-					+ Redaction.of(result.output().strip()));
+					+ result.redactedOutput().strip());
 		}
 		return result.output();
 	}

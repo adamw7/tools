@@ -301,11 +301,19 @@ public final class CliArguments {
 	 * run whose only repository is the positional has nothing else it could be. A
 	 * local path really is adoptable — only a URL with a host names an owner — so a
 	 * batch of local repositories names them all with {@code --repo}.
+	 *
+	 * <p>The argument is named through {@link Redaction}, as every other message the
+	 * adoption raises about a URL is. A URL naming no owner can still carry
+	 * credentials — {@code https://x-access-token:TOKEN@github.com/repo}, whose
+	 * userinfo and host collapse into one segment where the owner should be — and this
+	 * message is the last thing a run prints before it stops, so reporting the
+	 * argument verbatim wrote the token to the operator's terminal and to whatever
+	 * captured it.
 	 */
 	private void requirePositionalNamesARepository() {
 		if (positionalUrl != null && flagsNamedARepository && namesNoOwner(positionalUrl)) {
-			throw new IllegalArgumentException("The first argument is read as a repository URL, but " + positionalUrl
-					+ " names no repository owner. Name the workspace with --workspace,"
+			throw new IllegalArgumentException("The first argument is read as a repository URL, but "
+					+ Redaction.of(positionalUrl) + " names no repository owner. Name the workspace with --workspace,"
 					+ " or the repository with --repo. " + USAGE);
 		}
 	}

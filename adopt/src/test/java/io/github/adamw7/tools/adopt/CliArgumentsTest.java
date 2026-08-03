@@ -303,6 +303,21 @@ class CliArgumentsTest {
 				() -> CliArguments.parse(new String[] { "--repo", REPO_URL, "/tmp/ws" }));
 	}
 
+	/**
+	 * A URL that names no owner can still carry credentials — the userinfo and the
+	 * host of {@code https://x-access-token:TOKEN@github.com/repo} collapse into the
+	 * one segment where the owner should be — and this refusal is the last thing the
+	 * run prints, so it reports the argument through {@code Redaction} as every other
+	 * message about a URL does.
+	 */
+	@Test
+	void masksTheCredentialsOfARejectedPositional() {
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> CliArguments
+				.parse(new String[] { "https://x-access-token:SECRET@github.com/repo", "--repo", OTHER_URL }));
+		assertFalse(exception.getMessage().contains("SECRET"), exception.getMessage());
+		assertTrue(exception.getMessage().contains("https://***@github.com/repo"), exception.getMessage());
+	}
+
 	/** A positional URL beside the flags is the documented way to name the first repository. */
 	@Test
 	void acceptsARepositoryPositionalAlongsideTheRepositoryFlags() {

@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.Failures;
-import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -138,7 +137,7 @@ public class ClaudeInitStep extends AbstractCommandStep {
 			throw new AdoptionException(name() + " completed but " + CLAUDE_MD + " was not found in "
 					+ context.repositoryDirectory() + ". " + CommandResult.describe(claudeCommand)
 					+ " exited " + result.exitCode() + " and said:" + System.lineSeparator()
-					+ Redaction.of(result.output().strip()));
+					+ result.redactedOutput().strip());
 		}
 	}
 }

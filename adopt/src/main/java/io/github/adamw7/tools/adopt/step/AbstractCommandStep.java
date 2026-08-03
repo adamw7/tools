@@ -6,7 +6,6 @@ import java.util.Locale;
 import java.util.Optional;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
-import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
@@ -63,6 +62,6 @@ public abstract class AbstractCommandStep implements AdoptionStep {
 	 */
 	private AdoptionException failure(CommandResult result) {
 		return new AdoptionException(name() + " failed (exit " + result.exitCode() + ") running: " + result.describe()
-				+ System.lineSeparator() + Redaction.of(result.output()));
+				+ System.lineSeparator() + result.redactedOutput());
 	}
 }

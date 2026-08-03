@@ -197,7 +197,7 @@ tools (root pom, packaging=pom)
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
 │   └── context                     # regex-based class-usage context finder
-├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, enforcer, verify, push, PR)
+├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # runnable SampleApp distribution: launcher jar + lib/
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)

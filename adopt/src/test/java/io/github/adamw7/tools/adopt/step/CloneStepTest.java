@@ -372,6 +372,41 @@ class CloneStepTest {
 		assertTrue(failure.getMessage().contains("status could not be read"), failure.getMessage());
 	}
 
+	/**
+	 * The runner merges standard error into the transcript, so a git that warns puts
+	 * that line among the status entries. Read as an entry it named a path the
+	 * adoption does not write, and the resume this step promises was refused for
+	 * changes the checkout never had.
+	 */
+	@Test
+	void resumesReusedCheckoutWhoseStatusWarnedOnStandardError(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"warning: unable to access '/etc/gitconfig': Permission denied",
+				"?? CLAUDE.md"));
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** A warning is skipped, not read as a change — but a real entry beside it still stops the run. */
+	@Test
+	void refusesReusedCheckoutWhoseWarnedStatusAlsoNamesSomebodyElsesWork(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"warning: could not open directory 'vendor/': Permission denied",
+				" M src/Main.java"));
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("src/Main.java"), failure.getMessage());
+		assertFalse(failure.getMessage().contains("warning"), failure.getMessage());
+	}
+
 	@Test
 	void isNamedClone() {
 		assertEquals("clone", step.name());

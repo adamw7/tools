@@ -108,7 +108,7 @@ public class PullRequestStep extends AbstractCommandStep {
 		log.info("Opening pull request for branch {}", context.branchName());
 		runTolerating(runner, context.repositoryDirectory(), createCommand(context), TOLERATED_FAILURES)
 				.ifPresentOrElse(
-						result -> log.info("Opened pull request: {}", result.output().strip()),
+						result -> log.info("Opened pull request: {}", result.redactedOutput().strip()),
 						() -> log.info("Nothing to open a pull request for on branch {}; left unchanged",
 								context.branchName()));
 	}
@@ -134,6 +134,13 @@ public class PullRequestStep extends AbstractCommandStep {
 	 * the log of an adoption that went on to create a duplicate needs to see which
 	 * of the two it was.
 	 *
+	 * <p>The transcript is redacted for the same reason
+	 * {@link AbstractCommandStep#runOrFail} redacts the one it fails with: a
+	 * {@code gh} left without a {@code --repo} reads the checkout's remote through
+	 * {@code git}, and a {@code git} that cannot use it echoes the credentialled URL
+	 * back — {@code fatal: could not read Username for 'https://...@github.com'}.
+	 * This warning is written to the log, which outlives the run.
+	 *
 	 * @return the URL of the branch's open pull request, or empty when none is open
 	 *         or {@code gh} could not be queried
 	 */
@@ -141,7 +148,7 @@ public class PullRequestStep extends AbstractCommandStep {
 		CommandResult result = runner.run(context.repositoryDirectory(), listCommand(context));
 		if (!result.succeeded()) {
 			log.warn("Could not ask gh which pull requests are open for branch {} (exit {}): {}",
-					context.branchName(), result.exitCode(), result.output().strip());
+					context.branchName(), result.exitCode(), result.redactedOutput().strip());
 			return Optional.empty();
 		}
 		return extractUrl(result.output());

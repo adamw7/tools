@@ -15,7 +15,8 @@ import io.github.adamw7.tools.adopt.Redaction;
  *                 goes through {@link #describe()}
  * @param exitCode the code the command exited with, zero meaning success
  * @param output   the command's standard output and standard error, merged into
- *                 one ordered transcript
+ *                 one ordered transcript — the tool's own text, so anything that
+ *                 outlives the run reports it through {@link #redactedOutput()}
  */
 public record CommandResult(List<String> command, int exitCode, String output) {
 
@@ -25,6 +26,18 @@ public record CommandResult(List<String> command, int exitCode, String output) {
 
 	public String describe() {
 		return describe(command);
+	}
+
+	/**
+	 * The transcript with any clone credentials masked, for the logs, failure
+	 * messages, and JSON report a secret must not reach. A tool handed a
+	 * credentialled clone URL echoes it back when it cannot use it — {@code fatal:
+	 * could not read Username for 'https://...@github.com'} — so the transcript
+	 * carries one as readily as the command does, and masking it here rather than at
+	 * each caller keeps it out of the places a caller would forget.
+	 */
+	public String redactedOutput() {
+		return Redaction.of(output);
 	}
 
 	/**

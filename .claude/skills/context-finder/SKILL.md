@@ -1,20 +1,21 @@
 ---
 name: context-finder
-description: Assemble gen-AI context with the code/context module — the class-usage finders (name-based vs package-aware), the project-tree builder and its serializers, token estimation and budgeting, and the project_tree/find_context/estimate_tokens MCP tools. Use when gathering the classes a file depends on, scanning a project into a tree, sizing context for a model, or when the user says "find context", "project tree", or "estimate tokens".
+description: Assemble gen-AI context with the code/context module — the class-usage finders (name-based vs package-aware), the project-tree builder and its serializers, Open Knowledge Format (OKF) bundles, token estimation and budgeting, and the project_tree/find_context/estimate_tokens/okf_bundle MCP tools. Use when gathering the classes a file depends on, scanning a project into a tree, emitting an OKF bundle, sizing context for a model, or when the user says "find context", "project tree", "OKF", or "estimate tokens".
 ---
 
 # Context Finder Skill
 
 Use `code/context` to answer "which classes does this file actually need?" and
 "how many tokens will that cost?" — the module behind the `project_tree`,
-`find_context` and `estimate_tokens` MCP tools.
+`find_context`, `estimate_tokens` and `okf_bundle` MCP tools.
 
 ## When to Use
 - Collecting the dependency closure of a source file to feed a model
 - Scanning a project into a tree of folders, files and class dependencies
+- Emitting that tree as an Open Knowledge Format bundle
 - Sizing or trimming context against a token budget
 - Adding a language, a serializer, or a resolution strategy
-- The user says "find context" / "project tree" / "estimate tokens"
+- The user says "find context" / "project tree" / "estimate tokens" / "OKF"
 
 ## The core contract
 ```java
@@ -63,9 +64,33 @@ and symbol boundaries — the better default) and `HeuristicTokenEstimator`.
 builder — add a serializer or a factory rather than branching inside the
 builder.
 
+## Open Knowledge Format
+The `…context.okf` package emits the same tree as an **OKF v0.2** bundle — a
+directory of markdown files, not one document:
+
+```java
+OkfBundle bundle = new OkfBundler(Language.JAVA).bundle(tree);
+new OkfBundleWriter().write(bundle, Path.of("target/okf"));
+```
+
+- Every directory → the reserved `index.md` (no frontmatter; only a bundle-root
+  index may carry `okf_version`). Every file → a concept document.
+- `type` is the **one** mandatory frontmatter field; `title`, `description`,
+  `resource`, `tags` are recommended; v0.2 records production as
+  `generated: { by, at }` using the `<producer>/<version>` actor convention.
+- Cross-links use the bundle-relative `/`-prefixed form. A dependency is linked
+  only when its file name identifies exactly one concept — unresolved or
+  ambiguous names stay plain code rather than linking to a guess.
+- `OkfConcept` holds a concept's facts before rendering, so the index entry and
+  the frontmatter carry the same description, as the spec recommends.
+- Adding a frontmatter field → extend `OkfFrontmatter` (fixed render order,
+  every scalar quoted), not the bundler.
+
 ## MCP tools
-`project_tree`, `find_context` and `estimate_tokens` are the adapter over the
-above, in `…context.mcp`. `PathPolicy` confines them to allowed directories.
+`project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` are the
+adapter over the above, in `…context.mcp`. `PathPolicy` confines them to allowed
+directories, and the server is **read-only** — `okf_bundle` returns the bundle as
+JSON rather than writing it, so keep writing on the caller's side.
 **The core must never depend on the `mcp` package** — ArchUnit pins it. See the
 `mcp-server` skill before changing a tool, and update
 `code/context/.../mcp/MCP_USAGE.md` in the same change.
@@ -77,6 +102,8 @@ above, in `…context.mcp`. `PathPolicy` confines them to allowed directories.
   `findDirectDependencies`; traversal and depth-bounding are inherited.
 
 ## References
-- `code/context/.../mcp/MCP_USAGE.md` — the three tools and their parameters
+- `code/context/.../mcp/MCP_USAGE.md` — the four tools and their parameters
+- [OKF v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+  — conformance rules, frontmatter families, reserved filenames
 - `README.md` — *Context engineering* worked examples
 - `.claude/skills/mcp-server/SKILL.md` — for the adapter side

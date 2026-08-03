@@ -13,6 +13,7 @@ Library of tooling for various purposes.
   - [Scala code context build up](#scala-code-context-build-up)
   - [Project tree](#project-tree)
   - [Output formats](#output-formats)
+  - [Open Knowledge Format bundles](#open-knowledge-format-bundles)
   - [Token-budget-aware context](#token-budget-aware-context)
 - [Data](#data)
   - [Open-addressing map](#open-addressing-map)
@@ -509,6 +510,70 @@ String rendered = serializer.serialize(root);
   [Mermaid](https://mermaid.js.org/syntax/flowchart.html) `flowchart`, which
   renders inline on GitHub, in Markdown viewers and in many gen-AI agent surfaces
   without any external tooling.
+
+### Open Knowledge Format bundles
+
+The formats above render the tree as *one* document. Google's
+[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+(OKF) takes the other shape: a knowledge bundle is a **directory of markdown
+files with YAML frontmatter**, so an agent can navigate it file by file instead
+of swallowing the whole project at once, and no proprietary runtime is needed to
+read it — if you can `cat` a file, you can read OKF.
+
+`OkfBundler` maps a scanned tree onto that format. Every directory becomes the
+reserved `index.md` listing what it holds, and every file becomes a concept
+document:
+
+```java
+ProjectTreeNode tree = new ProjectTreeBuilder(Language.JAVA, 1).build(root);
+OkfBundle bundle = new OkfBundler(Language.JAVA).bundle(tree);
+new OkfBundleWriter().write(bundle, Path.of("target/okf"));
+```
+
+```
+target/okf
+├── index.md            <- okf_version: "0.2", then the listing
+└── pkg
+    ├── index.md
+    ├── A.java.md
+    └── B.java.md
+```
+
+A concept document names the file in frontmatter and links to what it depends
+on:
+
+```markdown
+---
+type: "Java Source File"
+title: "B.java"
+description: "Java source file with 1 project dependency."
+resource: "pkg/B.java"
+tags: ["source", "java"]
+generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+---
+
+# Dependencies
+
+* [`A.java`](/pkg/A.java.md)
+```
+
+- **`OkfBundler`** — maps a `ProjectTreeNode` tree onto bundle paths and
+  documents. A dependency is linked only when its file name identifies exactly
+  one concept in the bundle; an unresolved or ambiguous name stays plain code
+  rather than becoming a link to a guess. Links use the bundle-relative
+  (`/`-prefixed) form the specification recommends, which survives a document
+  being moved.
+- **`OkfConcept`** — one concept's facts (type, title, description, resource,
+  tags, dependencies) before they are rendered, so the same description serves
+  both the concept's frontmatter and the `index.md` entry linking to it.
+- **`OkfFrontmatter`** — renders the YAML block. OKF makes exactly one field
+  mandatory, `type`; the rest are recommended, and v0.2 records production as
+  `generated: { by, at }` with the `<producer>/<version>` actor convention.
+- **`OkfBundleWriter`** — writes the bundle out as plain files, ready to be
+  committed to a git repository or mounted into an agent's file system.
+
+The `okf_bundle` MCP tool exposes the same mapping; it *returns* the bundle as
+JSON rather than writing it, so the server stays read-only.
 
 ### Token-budget-aware context
 

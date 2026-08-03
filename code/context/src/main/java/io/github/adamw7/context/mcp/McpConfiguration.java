@@ -13,7 +13,7 @@ import io.github.adamw7.tools.mcp.McpTool;
 
 /**
  * Wires the context-engineering MCP server. It exposes the project-tree,
- * context-finder and token-estimate tools, confined to the configured
+ * context-finder, token-estimate and OKF-bundle tools, confined to the configured
  * {@code context.allowed-roots}; all transport wiring is inherited from
  * {@link AbstractMcpConfiguration}.
  */
@@ -35,6 +35,6 @@ public class McpConfiguration extends AbstractMcpConfiguration {
 		PathPolicy pathPolicy = new PathPolicy(allowedRoots);
 		log.info("Confining MCP file access to allowed roots: {}", pathPolicy.allowedRoots());
 		return List.of(new ProjectTreeTool(pathPolicy), new ContextFinderTool(pathPolicy),
-				new EstimateTokensTool(pathPolicy));
+				new EstimateTokensTool(pathPolicy), new OkfBundleTool(pathPolicy));
 	}
 }

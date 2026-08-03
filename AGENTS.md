@@ -22,9 +22,14 @@ Maven project. The notable capabilities are:
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
   builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
   that scans a whole Java project into a tree of folders, files and
-  dependencies, to assemble context for gen-AI agents working with Java code. An
-  **MCP server** (in the `io.github.adamw7.context.mcp` package) exposes the
-  project-tree and context-finder tools over stdio, streamable HTTP or stateless
+  dependencies, to assemble context for gen-AI agents working with Java code.
+  The same tree can also be emitted as a bundle in Google's **Open Knowledge
+  Format** (OKF) v0.2 — a directory of markdown concept documents with YAML
+  frontmatter, in the `io.github.adamw7.context.okf` package — so a consumer that
+  already speaks OKF can take this project's context without knowing anything
+  about the tree behind it. An **MCP server** (in the
+  `io.github.adamw7.context.mcp` package) exposes the project-tree,
+  context-finder and OKF-bundle tools over stdio, streamable HTTP or stateless
   HTTP.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet; in-memory and
   iterative loading). Parquet files are read through an in-process DuckDB engine,
@@ -196,7 +201,7 @@ tools (root pom, packaging=pom)
 ├── code
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
-│   └── context                     # regex-based class-usage context finder
+│   └── context                     # regex-based class-usage context finder + OKF bundles
 ├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # runnable SampleApp distribution: launcher jar + lib/
@@ -222,7 +227,7 @@ is `Main.java` and which supports stdio (default), streamable HTTP
   [MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md).
 - The context-engineering server in
   `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
-  `project_tree`, `find_context` and `estimate_tokens` tools; see its
+  `project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` tools; see its
   [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
 - The adoption server in
   `adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/`, exposing the

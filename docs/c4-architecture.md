@@ -116,7 +116,7 @@ flowchart TB
 
         subgraph agentTooling ["Agent tooling"]
             context["<b>code/context</b><br/><i>Library + MCP server</i><br/>Class-usage finder + ProjectTreeBuilder"]
-            contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens"])
+            contextMcp(["🟪 Context MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>project_tree · find_context · estimate_tokens · okf_bundle"])
             adopt["<b>adopt</b><br/><i>CLI + MCP server</i><br/>Adoption pipeline: toolchain → clone →<br/>branch → init → conform → guard →<br/>verify → push → PR"]
             adoptMcp(["🟪 Adopt MCP server<br/><i>Spring Boot · stdio / HTTP</i><br/>adopt_repo"])
         end
@@ -292,6 +292,7 @@ flowchart TB
             treeTool["<b>ProjectTreeTool</b><br/><i>project_tree</i>"]
             finderTool["<b>ContextFinderTool</b><br/><i>find_context</i>"]
             tokenTool["<b>EstimateTokensTool</b><br/><i>estimate_tokens</i>"]
+            okfTool["<b>OkfBundleTool</b><br/><i>okf_bundle</i>"]
         end
 
         subgraph core ["Core"]
@@ -300,6 +301,7 @@ flowchart TB
             treeBuilder["<b>ProjectTreeBuilder</b><br/><i>scans project → tree</i>"]
             treeNode["<b>ProjectTreeNode</b><br/><i>model</i>"]
             serializers["<b>ProjectTree*Serializer</b><br/>JSON · Markdown · DOT ·<br/>Mermaid · printer"]
+            okf["<b>OkfBundler / OkfBundle /<br/>OkfConcept / OkfBundleWriter</b><br/><i>Open Knowledge Format v0.2</i>"]
             tokens["<b>TokenEstimator impls</b><br/>heuristic · subword"]
             sources["<b>ProjectSources / Language</b>"]
         end
@@ -311,8 +313,12 @@ flowchart TB
     mcpMain --> treeTool
     mcpMain --> finderTool
     mcpMain --> tokenTool
+    mcpMain --> okfTool
 
     treeTool --> treeBuilder
+    okfTool --> treeBuilder
+    okfTool --> okf
+    okf --> treeNode
     finderTool --> context_
     finderTool --> finder
     tokenTool --> tokens
@@ -331,7 +337,7 @@ flowchart TB
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
     class agent person
-    class mcpMain,treeTool,finderTool,tokenTool,finder,context_,treeBuilder,treeNode,serializers,tokens,sources comp
+    class mcpMain,treeTool,finderTool,tokenTool,okfTool,finder,context_,treeBuilder,treeNode,serializers,okf,tokens,sources comp
     class projectSrc ext
     style context fill:#f2f7fc,stroke:#438dd5,color:#08427b
     style mcpLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b

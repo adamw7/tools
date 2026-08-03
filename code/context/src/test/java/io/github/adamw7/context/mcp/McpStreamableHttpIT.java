@@ -70,7 +70,7 @@ public class McpStreamableHttpIT {
 		McpSchema.ListToolsResult tools = client.listTools();
 
 		Set<String> names = tools.tools().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
-		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens"), names);
+		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens", "okf_bundle"), names);
 	}
 
 	@Test
@@ -132,6 +132,22 @@ public class McpStreamableHttpIT {
 		assertTrue(tree.contains("- `A.java`"));
 		assertTrue(tree.contains("- `B.java`"));
 		assertTrue(tree.contains("- depends on: `A.java`"));
+	}
+
+	@Test
+	void okfBundleToolReturnsAConformantBundle() {
+		McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder("okf_bundle")
+				.arguments(Map.of("path", projectRoot.toString()))
+				.build();
+
+		McpSchema.CallToolResult result = client.callTool(request);
+
+		JsonNode bundle = parse(singleTextResult(result));
+		assertEquals("0.2", bundle.get("okf_version").asText());
+		JsonNode documents = bundle.get("documents");
+		assertTrue(documents.get("index.md").asText().contains("okf_version: \"0.2\""));
+		assertTrue(documents.get("A.java.md").asText().contains("type: \"Java Source File\""));
+		assertTrue(documents.get("B.java.md").asText().contains("[`A.java`](/A.java.md)"));
 	}
 
 	@Test

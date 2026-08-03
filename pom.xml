@@ -31,7 +31,7 @@
 		     them apart let the generated code and the runtime it compiles against
 		     drift by two minor versions. -->
 		<protobuf.version>4.35.1</protobuf.version>
-		<grpc.version>1.83.0</grpc.version>
+		<grpc.version>1.83.1</grpc.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j2.version>2.26.1</log4j2.version>
 		<!-- Named maven.api.version, not maven.version: Maven itself exposes

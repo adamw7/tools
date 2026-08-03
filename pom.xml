@@ -145,7 +145,7 @@
 			<dependency>
 				<groupId>org.jsoup</groupId>
 				<artifactId>jsoup</artifactId>
-				<version>1.22.2</version>
+				<version>1.23.1</version>
 				<scope>test</scope>
 			</dependency>
 			<!-- log4j2.version and derby.version are Spring Boot's own property

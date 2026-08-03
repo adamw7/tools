@@ -45,4 +45,23 @@ class CommandResultTest {
 				List.of("git", "clone", "https://x-access-token:secret@github.com/owner/repo.git", "/tmp/repo"));
 		assertEquals("git clone https://***@github.com/owner/repo.git /tmp/repo", described);
 	}
+
+	/**
+	 * A tool handed a credentialled clone URL echoes it back when it cannot use it, so
+	 * the transcript carries a secret as readily as the command does — and the
+	 * transcript is what the failure messages and the warnings quote.
+	 */
+	@Test
+	void masksTheCredentialsAToolEchoedBackInItsTranscript() {
+		CommandResult result = new CommandResult(List.of("git", "fetch"), 128,
+				"fatal: could not read Username for 'https://x-access-token:secret@github.com'");
+		assertEquals("fatal: could not read Username for 'https://***@github.com'", result.redactedOutput());
+	}
+
+	/** A transcript carrying no credentials reads as the tool wrote it. */
+	@Test
+	void leavesATranscriptWithoutCredentialsAlone() {
+		assertEquals("nothing to commit", new CommandResult(List.of("git", "commit"), 1, "nothing to commit")
+				.redactedOutput());
+	}
 }

@@ -96,6 +96,24 @@ consistent and in their expected shape:
   `https` only when `requireHttps` is set), and a server must not mix transports
   by declaring both a `command` and a `url`. Like `mcpServersValid` it treats an
   absent file as a pass.
+- **`okfBundleFormat`** (`OkfBundleFormatRule`) — holds a bundle in Google's
+  [Open Knowledge Format](#open-knowledge-format-bundles) at `bundleDir` to the
+  specification's own conformance conditions: every non-reserved `.md` file
+  carries a parseable YAML front matter block, every block declares a non-empty
+  `type` (the one mandatory field), and the reserved names keep their structure —
+  an `index.md` carries no front matter beyond an `okf_version` at the bundle
+  root, and a `log.md` groups its entries under ISO 8601 `YYYY-MM-DD` headings.
+  Where the format defines a closed vocabulary the value is checked too: a
+  `status` must be `draft`, `stable` or `deprecated`, a `stale_after` must be a
+  real calendar date, and a `generated` mapping must name the actor that produced
+  the concept. Where the format leaves things open, nothing is imposed — `type`
+  values are not registered centrally, so an unknown one is not a violation.
+  Beyond that, `requiredKeys` adds front matter keys every concept must declare,
+  `okfVersion` pins the version the bundle root declares, and `requireIndex`
+  demands a listing in every directory holding concepts (off by default, since a
+  consumer must tolerate a missing `index.md`). A bundle is optional, so an absent
+  `bundleDir` is a pass and the rule starts enforcing the day a bundle is
+  committed.
 - **`hooksFormat`** (`HooksFormatRule`) — validates the hook scripts under a
   configured `hooksDir` (e.g. `.claude/hooks`): every regular file must be
   non-empty, start with a `#!` shebang (`requireShebang`), and carry the
@@ -574,6 +592,19 @@ generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
 
 The `okf_bundle` MCP tool exposes the same mapping; it *returns* the bundle as
 JSON rather than writing it, so the server stays read-only.
+
+Conformance is checked by the build, on both sides of the format:
+
+- **The producer.** `OkfBundleConformanceTest` holds every bundle `OkfBundler`
+  emits to the specification's conformance conditions, restated from the
+  specification rather than read back out of the bundler — a test that asked the
+  bundler what it meant to write would pass however far the output drifted. It
+  runs in the ordinary `test` phase, so `mvn test`, `mvn package` and `mvn
+  install` all catch a drifting emitter without opting into anything.
+- **A bundle on disk.** The
+  [`okfBundleFormat`](#claude-code-files-maven-enforcer) enforcer rule checks a
+  bundle a repository ships, at `validate` under `-DenforceClaudeMd` — the check
+  the pull-request workflow already runs.
 
 ### Token-budget-aware context
 

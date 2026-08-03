@@ -191,6 +191,38 @@ public class AdoptArchitectureTest {
 					+ "assembling steps is never made to translate an IOException step by step");
 
 	@ArchTest
+	static final ArchRule onlyTheAdopterAssemblesThePipeline = noClasses()
+			.that().resideOutsideOfPackage(STEP_PACKAGE)
+			.and().doNotHaveFullyQualifiedName(ADOPT_PACKAGE + ".GitHubRepoAdopter")
+			.should().dependOnClassesThat().areAssignableTo(AdoptionStep.class)
+			.because("the adopter is the single place the ordered pipeline is built, so the command line "
+					+ "and the MCP tool cannot drift into adopting a repository two different ways");
+
+	@ArchTest
+	static final ArchRule buildSystemsDescribeCommandsRatherThanRunThem = noClasses()
+			.that().areAssignableTo(BuildSystem.class)
+			.should().dependOnClassesThat().areAssignableTo(CommandRunner.class)
+			.because("a BuildSystem answers what a project's own build tool is called and how it is "
+					+ "invoked; the step it answers runs it, which is what keeps adding a build tool a "
+					+ "matter of adding a class rather than editing the steps");
+
+	@ArchTest
+	static final ArchRule onlyTheCommandPackageReadsTheEnvironment = noClasses()
+			.that().resideOutsideOfPackage(COMMAND_PACKAGE)
+			.should().callMethod(System.class, "getenv")
+			.orShould().callMethod(System.class, "getenv", String.class)
+			.because("a run is driven by the options it was given, not by the ambient environment; the one "
+					+ "exception is resolving an executable on PATH, which lives behind the command runner");
+
+	@ArchTest
+	static final ArchRule onlyTheCommandPackageNeedsConcurrency = noClasses()
+			.that().resideOutsideOfPackage(COMMAND_PACKAGE)
+			.should().dependOnClassesThat().resideInAPackage("java.util.concurrent..")
+			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.lang.Thread")
+			.because("the adoption is a sequential pipeline whose steps depend on the one before; only "
+					+ "spawning a process needs threads, to pump its output while a timeout runs");
+
+	@ArchTest
 	static final ArchRule packagesAreFreeOfCycles = slices()
 			.matching("io.github.adamw7.tools.adopt.(*)..")
 			.should().beFreeOfCycles();

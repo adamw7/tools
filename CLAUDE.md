@@ -202,8 +202,12 @@ paths.
   package and enforce package layering and coding rules — data-source contracts
   must not depend on their implementations, the uniqueness core must not depend
   on its MCP adapter, JDBC stays confined to the `source.db` package, the
-  adoption spawns processes only in its `command` package and only its clone
-  step reads the credentialled clone URL, loggers are
+  adoption spawns processes only in its `command` package, only its clone step
+  reads the credentialled clone URL and only `GitHubRepoAdopter` assembles the
+  pipeline, every enforcer rule is a public `@Named` type whose configured name
+  follows its class name and which neither spawns a process, reaches the network,
+  nor writes outside the report, the baseline and the front-matter fix, loggers
+  are
   `private static final`, abstract types carry an `Abstract` prefix, public
   fields are `final`, mutable static state is `volatile`, fields are never
   `Optional`, date/time uses `java.time` (not the legacy `Date`/`Calendar` API),
@@ -213,7 +217,9 @@ paths.
   conventions on the tests themselves — test methods must sit in `*Test`/`*IT`
   classes, no `@Disabled`, JUnit 5 only, no `System.out`/`err`, and no
   `Thread.sleep`; in `adopt` it also pins that step tests never spawn a real
-  process and the `*IT`s never push or open a pull request. The rules that apply
+  process and the `*IT`s never push or open a pull request, and in
+  `claude-code-enforcer` that only the `e2e` package forks a real Maven build,
+  and only from an `*IT`. The rules that apply
   to every module live once in `test-common` (`CommonCodingConventions`,
   `CommonNamingConventions`, `CommonTestConventions`) and are pulled in with
   `ArchTests.in(...)`, so a module's own test states only what is specific to it.

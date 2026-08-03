@@ -85,16 +85,16 @@ public class GitHubRepoAdopter {
 				new TrustStep(),
 				new ClaudeInitStep(),
 				new ClaudeMdConformanceStep(),
-				new CommitStep("Adopt Claude Code: add CLAUDE.md"),
+				new CommitStep("Adopt Claude Code: add CLAUDE.md", "claude-md"),
 				new EnforcerStep(buildSystems),
-				new CommitStep("Add claude-code-enforcer to the build"));
+				new CommitStep("Add claude-code-enforcer to the build", "guard"));
 	}
 
 	private static List<AdoptionStep> assetSteps(AdoptionOptions options) {
 		if (!options.includeAssets()) {
 			return List.of();
 		}
-		return List.of(new AssetsStep(), new CommitStep("Add Claude Code configuration assets"));
+		return List.of(new AssetsStep(), new CommitStep("Add Claude Code configuration assets", "assets"));
 	}
 
 	/**

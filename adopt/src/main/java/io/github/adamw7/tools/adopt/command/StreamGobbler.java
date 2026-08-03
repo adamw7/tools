@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -19,9 +18,12 @@ import org.apache.logging.log4j.Logger;
  * still recovered.
  *
  * <p>The stream is copied verbatim, so the transcript keeps the child's own line
- * terminators rather than a re-joined approximation. {@link #output()} bounds its
- * wait for the reader thread, because a descendant the child spawned can keep the
- * pipe open after the child itself has exited.
+ * terminators rather than a re-joined approximation — up to the bound
+ * {@link BoundedTranscript} holds it to, past which the middle of a very long
+ * transcript is dropped rather than the adoption growing with whatever the child
+ * chose to print. {@link #output()} bounds its wait for the reader thread, because
+ * a descendant the child spawned can keep the pipe open after the child itself has
+ * exited.
  */
 final class StreamGobbler {
 
@@ -34,10 +36,13 @@ final class StreamGobbler {
 	 */
 	static final Duration JOIN_TIMEOUT = Duration.ofSeconds(5);
 
+	/** How much is read from the stream at a time, before being appended to the transcript. */
+	private static final int BUFFER_SIZE = 8 * 1024;
+
 	private final Thread thread;
 
-	/** Written by the reader thread and read by {@link #output()}, so its buffer must be synchronized. */
-	private final StringWriter output = new StringWriter();
+	/** Written by the reader thread and read by {@link #output()}, so its appends are synchronized. */
+	private final BoundedTranscript output = new BoundedTranscript();
 
 	private StreamGobbler(InputStream stream) {
 		this.thread = new Thread(() -> drain(stream), "adopt-stream-gobbler");
@@ -58,7 +63,7 @@ final class StreamGobbler {
 	 */
 	String output() {
 		join();
-		return output.toString();
+		return output.text();
 	}
 
 	private void join() {
@@ -79,9 +84,23 @@ final class StreamGobbler {
 	 */
 	private void drain(InputStream stream) {
 		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-			reader.transferTo(output);
+			transfer(reader);
 		} catch (IOException e) {
 			log.debug("Stopped reading the command's output before end-of-stream", e);
+		}
+	}
+
+	/**
+	 * Reads in fixed chunks rather than with {@link Reader#transferTo}, which would
+	 * need a {@link java.io.Writer} to append to and so give up the bound
+	 * {@link BoundedTranscript} exists to keep.
+	 */
+	private void transfer(Reader reader) throws IOException {
+		char[] buffer = new char[BUFFER_SIZE];
+		int read = reader.read(buffer);
+		while (read >= 0) {
+			output.append(buffer, read);
+			read = reader.read(buffer);
 		}
 	}
 }

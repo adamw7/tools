@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -55,6 +56,33 @@ class CommitStepTest {
 	void commitFailureAborts() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::genuineCommitFailure);
 		assertThrows(AdoptionException.class, () -> new CommitStep("msg").execute(context, runner));
+	}
+
+	@Test
+	void reportsTheBareNameWhenUnqualified() {
+		assertEquals("commit", new CommitStep("msg").name());
+		assertEquals("commit", new CommitStep("msg", " ").name());
+		assertEquals("commit", new CommitStep("msg", null).name());
+	}
+
+	/**
+	 * The pipeline runs this step two or three times, so a report's
+	 * {@code completedSteps} has to say which of the adoption's commits landed rather
+	 * than repeating one name.
+	 */
+	@Test
+	void qualifiesTheStepNameWithWhatItCommits() {
+		assertEquals("commit:claude-md", new CommitStep("msg", "claude-md").name());
+		assertEquals("commit:guard", new CommitStep("msg", "  guard  ").name());
+	}
+
+	/** The qualified name is what a failing commit reports, so the failure names the same step. */
+	@Test
+	void namesTheQualifiedStepInAFailure() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::genuineCommitFailure);
+		AdoptionException failure = assertThrows(AdoptionException.class,
+				() -> new CommitStep("msg", "guard").execute(context, runner));
+		assertTrue(failure.getMessage().startsWith("commit:guard failed"), failure.getMessage());
 	}
 
 	private CommandResult stagedChanges(List<String> command) {

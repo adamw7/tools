@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.Text;
 import io.github.adamw7.tools.adopt.command.CommandLine;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
@@ -22,6 +23,12 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * aborts with "Author identity unknown". Each missing identity is supplied for the
  * commit alone with a {@code -c} override, so an identity the checkout already
  * configures stays in force.
+ *
+ * <p>The pipeline runs this step two or three times, so each one is qualified with
+ * what it commits. A report whose {@code completedSteps} read {@code commit} three
+ * times said only how far the run got by counting; qualified, it says which of the
+ * adoption's commits landed — the reading that matters for a run that stopped
+ * part-way, which is the only kind of report anyone reads closely.
  */
 public class CommitStep extends AbstractCommandStep {
 
@@ -30,15 +37,30 @@ public class CommitStep extends AbstractCommandStep {
 	static final String FALLBACK_NAME = "Claude Code Adopt";
 	static final String FALLBACK_EMAIL = "claude-code-adopt@users.noreply.github.com";
 
-	private final String message;
+	/** The step name an unqualified commit reports, and the prefix a qualified one carries. */
+	static final String NAME = "commit";
 
+	private final String message;
+	private final String name;
+
+	/** A commit that reports itself as the bare {@value #NAME}. */
 	public CommitStep(String message) {
+		this(message, null);
+	}
+
+	/**
+	 * @param message   the commit message
+	 * @param qualifier what this commit is for, reported as {@code commit:<qualifier>};
+	 *                  blank or {@code null} for a commit that names only itself
+	 */
+	public CommitStep(String message, String qualifier) {
 		this.message = message;
+		this.name = Text.isPresent(qualifier) ? NAME + ":" + qualifier.strip() : NAME;
 	}
 
 	@Override
 	public String name() {
-		return "commit";
+		return name;
 	}
 
 	@Override

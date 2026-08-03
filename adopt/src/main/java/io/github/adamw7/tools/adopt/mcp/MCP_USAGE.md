@@ -85,7 +85,9 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
   command may run before it is killed. Defaults to 10, and is bounded to a day —
   this server is long-lived, so a command it could never reclaim is refused
 
-**Returns** a JSON report:
+**Returns** a JSON report. Each commit the adoption makes is named for what it
+commits (`commit:claude-md`, `commit:guard`, `commit:assets`), so a run that
+stopped part-way says which of them landed:
 
 ```json
 {
@@ -95,8 +97,8 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
   "succeeded" : true,
   "failure" : null,
   "completedSteps" : [ "toolchain", "clone", "build-toolchain", "branch", "trust",
-    "claude-init", "conform", "commit", "enforcer", "commit", "verify", "push",
-    "pull-request" ]
+    "claude-init", "conform", "commit:claude-md", "enforcer", "commit:guard",
+    "verify", "push", "pull-request" ]
 }
 ```
 

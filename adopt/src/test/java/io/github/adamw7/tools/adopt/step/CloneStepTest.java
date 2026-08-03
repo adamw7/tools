@@ -359,6 +359,50 @@ class CloneStepTest {
 		assertFalse(failure.getMessage().contains("->"), failure.getMessage());
 	}
 
+	/**
+	 * A rename changes the path it starts at as much as the one it ends at. Reading
+	 * only the destination waved the whole entry through whenever that destination
+	 * was a path the adoption writes, so a contributor's staged
+	 * {@code git mv docs/CLAUDE.md CLAUDE.md} was swept into the adoption's commit
+	 * and pushed — which is what this guard exists to prevent.
+	 */
+	@Test
+	void refusesRenameOntoAnAdoptionPathBecauseItsSourceIsUnrelated(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"R  docs/CLAUDE.md -> CLAUDE.md");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("docs/CLAUDE.md"), failure.getMessage());
+	}
+
+	/** A copy leaves its source in place but is reported the same way, so it is read the same way. */
+	@Test
+	void refusesCopyOntoAnAdoptionPathBecauseItsSourceIsUnrelated(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"C  Feature.java -> pom.xml");
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
+
+		assertTrue(failure.getMessage().contains("Feature.java"), failure.getMessage());
+	}
+
+	/** Both sides being the adoption's own is a resume, not a contributor's work in progress. */
+	@Test
+	void resumesWhenBothSidesOfARenameAreTheAdoptionsOwn(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
+				"R  AGENTS.md -> CLAUDE.md");
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
 	/** A status that cannot be read cannot show the checkout to be free of other work. */
 	@Test
 	void refusesReusedCheckoutWhoseStatusCannotBeRead(@TempDir Path existingWorkspace) throws IOException {

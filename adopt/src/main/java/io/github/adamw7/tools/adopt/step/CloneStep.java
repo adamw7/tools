@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -132,8 +133,9 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * The changed paths the adoption does not own. A rename is reported as
-	 * {@code old -> new} and a path carrying a space or a quote is reported quoted, so
-	 * both are reduced to the path git would act on before it is compared.
+	 * {@code old -> new} and names two of them, and a path carrying a space or a quote
+	 * is reported quoted, so every entry is reduced to the paths git would act on
+	 * before they are compared.
 	 */
 	private List<String> unrelatedChanges(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
@@ -145,15 +147,28 @@ public class CloneStep extends AbstractCommandStep {
 		}
 		return result.output().lines()
 				.filter(line -> STATUS_ENTRY.matcher(line).matches())
-				.map(this::changedPath)
+				.flatMap(this::changedPaths)
 				.filter(path -> !AdoptionAssets.WRITTEN_PATHS.contains(path))
 				.toList();
 	}
 
-	private String changedPath(String statusLine) {
+	/**
+	 * The paths one entry changes. A rename or a copy is reported as
+	 * {@code old -> new} and changes <em>both</em> sides, so both are asked about:
+	 * reading only the destination waved the whole entry through whenever that
+	 * destination happened to be a path the adoption writes, and a
+	 * {@code git mv docs/CLAUDE.md CLAUDE.md} a contributor had staged was then swept
+	 * into {@link CommitStep}'s {@code git add -A} and pushed to the feature branch —
+	 * the very outcome this guard exists to prevent. A plain entry names one path.
+	 */
+	private Stream<String> changedPaths(String statusLine) {
 		String path = statusLine.substring(STATUS_PREFIX);
 		int rename = path.lastIndexOf(RENAME_ARROW);
-		return unquoted(rename < 0 ? path : path.substring(rename + RENAME_ARROW.length()));
+		if (rename < 0) {
+			return Stream.of(unquoted(path));
+		}
+		return Stream.of(unquoted(path.substring(0, rename)),
+				unquoted(path.substring(rename + RENAME_ARROW.length())));
 	}
 
 	private String unquoted(String path) {

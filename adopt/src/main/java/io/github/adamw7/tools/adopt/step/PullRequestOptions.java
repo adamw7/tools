@@ -15,6 +15,15 @@ import io.github.adamw7.tools.adopt.Text;
  * and the MCP tool map their arguments straight in and no {@code null} can reach
  * {@code gh}'s arguments.
  *
+ * <p>Each list entry is stripped, and a blank one is dropped rather than carried:
+ * every entry becomes an argument of its own — {@code gh pr create --reviewer
+ * <entry>} — so a blank one reached {@code gh} as an empty argument and failed the
+ * adoption at its very last step, with the branch already pushed. The MCP tool
+ * already read its arguments this way; doing it here rather than at each entry
+ * point is what keeps the command line from disagreeing with it about what an
+ * omitted value means. Duplicates are left alone, as {@code gh} treats naming a
+ * reviewer twice as naming them once.
+ *
  * @param title     the pull request's title, or blank for {@value #DEFAULT_TITLE}
  * @param body      the pull request's body, or blank for the adoption's own
  * @param reviewers the users to request a review from, empty to request nobody
@@ -32,9 +41,14 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 	public PullRequestOptions {
 		title = orDefault(title, DEFAULT_TITLE);
 		body = orDefault(body, DEFAULT_BODY);
-		reviewers = List.copyOf(reviewers);
-		labels = List.copyOf(labels);
-		assignees = List.copyOf(assignees);
+		reviewers = supplied(reviewers);
+		labels = supplied(labels);
+		assignees = supplied(assignees);
+	}
+
+	/** @return the entries that name something, stripped — the rule {@link Text} defines for every optional input */
+	private static List<String> supplied(List<String> values) {
+		return values.stream().filter(Text::isPresent).map(String::strip).toList();
 	}
 
 	/** The adoption's own title and body, requesting nobody and not a draft. */

@@ -328,6 +328,18 @@ well beyond its ~0.7s dedicated-core cost (measured up to ~3.9s), which is why
 the per-test timeout is sized at 5 s rather than a tighter bound — see *Testing,
 coverage & mutation testing*. Override with `-T1` for a fully serial build.
 
+**Do not raise the thread count above `-T1C`.** Oversubscribing was measured and
+does not pay: on a 4-core machine, 10 alternating `mvn -B clean package` runs per
+setting put `-T1C` at a 50.8 s median and `-T1.5C` (6 threads) at 51.5 s, with
+`-T1C` faster in 58 of 100 pairwise comparisons. Every module got individually
+slower under the extra threads — `data` 32.3 s → 35.6 s, `protogen-maven-plugin`
+34.5 s → 37.6 s, `adopt` 25.0 s → 30.3 s — and the wider overlap only just
+cancelled that out. Two things cap the gain: the reactor already sums ~161 s of
+module work into ~50 s of wall clock (3.2x on 4 cores, near saturation), and the
+critical path is pinned by a single ~35 s module, which no thread count shortens.
+The extra contention also eats into the margin the 5 s per-test timeout is sized
+against, so a higher count buys flaky tests rather than speed.
+
 **Shellcheck.** The root pom lints `scripts/**/*.sh` with
 `dev.dimlight:shellcheck-maven-plugin` (`check` goal). It is configured with
 `<binaryResolutionMethod>embedded</binaryResolutionMethod>`, so the `shellcheck`

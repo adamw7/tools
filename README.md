@@ -895,8 +895,11 @@ repository URL; a first positional that names no repository owner while the flag
 named repositories is rejected, since that is the workspace this reading invites.
 Two repositories that would clone into the same directory — `owner/tools` and
 `other-owner/tools`, or one repository named both with and without its `.git`
-suffix — are rejected before anything is cloned rather than adopted on top of each
-other:
+suffix — are refused rather than adopted on top of each other. The refusal belongs
+to the repository that raised it: each one claims its checkout directory inside its
+own adoption, so the second is recorded as *its* failure and the repositories
+around it are still adopted, rather than the whole batch aborting before its first
+clone:
 
 ```bash
 mvn -pl adopt exec:java \
@@ -931,6 +934,13 @@ single-repository run writes unwrapped:
 }
 ```
 
+`--assets` commits a set of starter Claude Code configuration files alongside the
+generated `CLAUDE.md`: an `AGENTS.md` pointer, a `.claude/settings.json` that
+denies reads of obvious secret files and wires a `.claude/hooks/session-start.sh`
+stub, a starter `.mcp.json`, and a GitHub Actions workflow answering `@claude`
+mentions. None of them ever overwrites a file the repository already carries, so
+the flag is safe on a project that has configured some of them already.
+
 The `claude-code-enforcer` version a Maven project's `pom.xml` is made to depend
 on defaults to the version of the `tools` build running the adoption;
 `--rule-version <version>` pins a different one. A `-SNAPSHOT` is refused either
@@ -961,14 +971,18 @@ The report is a parameter rather than a return value alone, so a run that fails
 part-way still leaves the caller holding the steps that did complete and the
 reason it stopped.
 
-`BatchAdoption` wraps that pipeline to work through a list of repositories, one
-`AdoptionContext` at a time, and answers with an `AdoptionRun` (the context and
-its report) per repository — a failing repository is recorded rather than
-allowed to abandon the rest:
+`BatchAdoption` wraps that pipeline to work through a list of repository URLs,
+handing each to a `Checkouts` that gives it its own directory under the run's
+shared workspace, and answers with an `AdoptionRun` (the redacted URL, the branch,
+and the report) per repository — a failing repository is recorded rather than
+allowed to abandon the rest. The context is claimed inside each repository's own
+adoption rather than for the whole run up front, so a URL that names no repository
+is that repository's recorded failure too:
 
 ```java
 GitHubRepoAdopter adopter = GitHubRepoAdopter.withDefaultPipeline(runner, AdoptionOptions.defaults());
-List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(contexts);
+Checkouts checkouts = new Checkouts(workspace, AdoptionContext.DEFAULT_BRANCH);
+List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(repositoryUrls, checkouts);
 ```
 
 The default pipeline runs these steps in order:
@@ -1009,9 +1023,21 @@ The default pipeline runs these steps in order:
    (`claude -p /init` by default; the invocation is configurable because the
    flags differ between environments) so it generates a `CLAUDE.md`, aborting if
    the file did not appear.
-7. **`CommitStep`** — commits the generated `CLAUDE.md` (`Adopt Claude Code: add
-   CLAUDE.md`).
-8. **`EnforcerStep`** — detects the checkout's build system and wires the
+7. **`ClaudeMdConformanceStep`** — reshapes that generated file so it satisfies
+   the `claudeMdFormat` rule the next step is about to wire in, and writes the
+   companion `AGENTS.md` the rule's reference has to resolve to. Without it the
+   adoption fails its own `VerifyStep`: a generic `claude init` writes natural,
+   project-specific headings and no `AGENTS.md` reference, while the rule demands
+   a fixed set of whole-line headings plus that reference. The reshape is
+   deterministic and conservative — a near-miss heading is *renamed in place* so
+   its body survives, only a genuinely absent section is appended, a required
+   section left empty gets a stub body because the rule fails an empty section
+   just as it fails a missing one, and fenced code and commented-out text are left
+   alone, mirroring how the rule matches. Reshaping an already-conforming document
+   is a no-op, so a re-adoption leaves the file untouched.
+8. **`CommitStep`** — commits the generated `CLAUDE.md` and its companion
+   (`Adopt Claude Code: add CLAUDE.md`), reported as `commit:claude-md`.
+9. **`EnforcerStep`** — detects the checkout's build system and wires the
    `CLAUDE.md` guard into it. A Maven project has the `claude-code-enforcer` added
    to its root `pom.xml` via `PomEnforcerInstaller` (the edit is done on the JDK's
    DOM — no third-party XML library — is namespace-aware, and is idempotent); a
@@ -1032,18 +1058,22 @@ The default pipeline runs these steps in order:
    the edited DOM out whole would normalise details a DOM does not record,
    collapsing a start tag spread over several lines and rewriting `<rule />` as
    `<rule/>`, turning a fourteen-line addition into a diff across the file.
-9. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
-   build`).
-10. **`VerifyStep`** — runs the detected build system's verification (a
+10. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
+   build`), reported as `commit:guard`.
+11. **`AssetsStep` → `CommitStep`** — *only on `--assets`* (`assets` on the MCP
+   tool): installs the starter configuration files described above and commits
+   them (`commit:assets`). Each asset is installed independently and never
+   overwrites an existing file, so the pair is idempotent.
+12. **`VerifyStep`** — runs the detected build system's verification (a
    non-recursive `mvn -N validate` for Maven, the `enforceClaudeMd` task for
    Gradle, the `.github/claude-md-guard.sh` script for the fallback) so the
    freshly wired guard actually executes against the generated `CLAUDE.md`,
    failing the adoption locally if the file is missing or malformed rather than
    after the pull request lands.
-11. **`PushStep`** — pushes the feature branch to origin and sets its upstream
+13. **`PushStep`** — pushes the feature branch to origin and sets its upstream
     (`git push -u origin <branch>`). Left out of a `--dry-run` pipeline, together
     with the step below it.
-12. **`PullRequestStep`** — opens a pull request from the branch with
+14. **`PullRequestStep`** — opens a pull request from the branch with
    `gh pr create`, targeting the repository's default branch as the base. The
    pull request metadata is supplied through `PullRequestOptions` — title, body,
    and optional reviewers, labels, and assignees to request, plus whether to open

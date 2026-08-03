@@ -144,14 +144,15 @@ class GitHubRepoAdopterTest {
 	@Test
 	void defaultPipelineBranchesCommitsPushesAndOpensAPullRequest() {
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "verify", "push", "pull-request"),
+				"commit:claude-md", "enforcer", "commit:guard", "verify", "push", "pull-request"),
 				stepNames(AdoptionOptions.defaults()));
 	}
 
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "assets", "commit", "verify", "push", "pull-request"),
+				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify", "push",
+				"pull-request"),
 				stepNames(withAssets()));
 	}
 
@@ -164,14 +165,15 @@ class GitHubRepoAdopterTest {
 	@Test
 	void aDryRunPipelineStopsAtTheVerification() {
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "verify"), stepNames(dryRun()));
+				"commit:claude-md", "enforcer", "commit:guard", "verify"), stepNames(dryRun()));
 	}
 
 	@Test
 	void aDryRunPipelineStillInstallsTheAssetsWhenAskedFor() {
 		AdoptionOptions options = new AdoptionOptions(PullRequestOptions.defaults(), true, null, true, null);
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit", "enforcer", "commit", "assets", "commit", "verify"), stepNames(options));
+				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify"),
+				stepNames(options));
 	}
 
 	private List<String> stepNames(AdoptionOptions options) {

@@ -13,6 +13,7 @@ Library of tooling for various purposes.
   - [Scala code context build up](#scala-code-context-build-up)
   - [Project tree](#project-tree)
   - [Output formats](#output-formats)
+  - [Open Knowledge Format bundles](#open-knowledge-format-bundles)
   - [Token-budget-aware context](#token-budget-aware-context)
 - [Data](#data)
   - [Open-addressing map](#open-addressing-map)
@@ -95,6 +96,24 @@ consistent and in their expected shape:
   `https` only when `requireHttps` is set), and a server must not mix transports
   by declaring both a `command` and a `url`. Like `mcpServersValid` it treats an
   absent file as a pass.
+- **`okfBundleFormat`** (`OkfBundleFormatRule`) — holds a bundle in Google's
+  [Open Knowledge Format](#open-knowledge-format-bundles) at `bundleDir` to the
+  specification's own conformance conditions: every non-reserved `.md` file
+  carries a parseable YAML front matter block, every block declares a non-empty
+  `type` (the one mandatory field), and the reserved names keep their structure —
+  an `index.md` carries no front matter beyond an `okf_version` at the bundle
+  root, and a `log.md` groups its entries under ISO 8601 `YYYY-MM-DD` headings.
+  Where the format defines a closed vocabulary the value is checked too: a
+  `status` must be `draft`, `stable` or `deprecated`, a `stale_after` must be a
+  real calendar date, and a `generated` mapping must name the actor that produced
+  the concept. Where the format leaves things open, nothing is imposed — `type`
+  values are not registered centrally, so an unknown one is not a violation.
+  Beyond that, `requiredKeys` adds front matter keys every concept must declare,
+  `okfVersion` pins the version the bundle root declares, and `requireIndex`
+  demands a listing in every directory holding concepts (off by default, since a
+  consumer must tolerate a missing `index.md`). A bundle is optional, so an absent
+  `bundleDir` is a pass and the rule starts enforcing the day a bundle is
+  committed.
 - **`hooksFormat`** (`HooksFormatRule`) — validates the hook scripts under a
   configured `hooksDir` (e.g. `.claude/hooks`): every regular file must be
   non-empty, start with a `#!` shebang (`requireShebang`), and carry the
@@ -509,6 +528,83 @@ String rendered = serializer.serialize(root);
   [Mermaid](https://mermaid.js.org/syntax/flowchart.html) `flowchart`, which
   renders inline on GitHub, in Markdown viewers and in many gen-AI agent surfaces
   without any external tooling.
+
+### Open Knowledge Format bundles
+
+The formats above render the tree as *one* document. Google's
+[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+(OKF) takes the other shape: a knowledge bundle is a **directory of markdown
+files with YAML frontmatter**, so an agent can navigate it file by file instead
+of swallowing the whole project at once, and no proprietary runtime is needed to
+read it — if you can `cat` a file, you can read OKF.
+
+`OkfBundler` maps a scanned tree onto that format. Every directory becomes the
+reserved `index.md` listing what it holds, and every file becomes a concept
+document:
+
+```java
+ProjectTreeNode tree = new ProjectTreeBuilder(Language.JAVA, 1).build(root);
+OkfBundle bundle = new OkfBundler(Language.JAVA).bundle(tree);
+new OkfBundleWriter().write(bundle, Path.of("target/okf"));
+```
+
+```
+target/okf
+├── index.md            <- okf_version: "0.2", then the listing
+└── pkg
+    ├── index.md
+    ├── A.java.md
+    └── B.java.md
+```
+
+A concept document names the file in frontmatter and links to what it depends
+on:
+
+```markdown
+---
+type: "Java Source File"
+title: "B.java"
+description: "Java source file with 1 project dependency."
+resource: "pkg/B.java"
+tags: ["source", "java"]
+generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+---
+
+# Dependencies
+
+* [`A.java`](/pkg/A.java.md)
+```
+
+- **`OkfBundler`** — maps a `ProjectTreeNode` tree onto bundle paths and
+  documents. A dependency is linked only when its file name identifies exactly
+  one concept in the bundle; an unresolved or ambiguous name stays plain code
+  rather than becoming a link to a guess. Links use the bundle-relative
+  (`/`-prefixed) form the specification recommends, which survives a document
+  being moved.
+- **`OkfConcept`** — one concept's facts (type, title, description, resource,
+  tags, dependencies) before they are rendered, so the same description serves
+  both the concept's frontmatter and the `index.md` entry linking to it.
+- **`OkfFrontmatter`** — renders the YAML block. OKF makes exactly one field
+  mandatory, `type`; the rest are recommended, and v0.2 records production as
+  `generated: { by, at }` with the `<producer>/<version>` actor convention.
+- **`OkfBundleWriter`** — writes the bundle out as plain files, ready to be
+  committed to a git repository or mounted into an agent's file system.
+
+The `okf_bundle` MCP tool exposes the same mapping; it *returns* the bundle as
+JSON rather than writing it, so the server stays read-only.
+
+Conformance is checked by the build, on both sides of the format:
+
+- **The producer.** `OkfBundleConformanceTest` holds every bundle `OkfBundler`
+  emits to the specification's conformance conditions, restated from the
+  specification rather than read back out of the bundler — a test that asked the
+  bundler what it meant to write would pass however far the output drifted. It
+  runs in the ordinary `test` phase, so `mvn test`, `mvn package` and `mvn
+  install` all catch a drifting emitter without opting into anything.
+- **A bundle on disk.** The
+  [`okfBundleFormat`](#claude-code-files-maven-enforcer) enforcer rule checks a
+  bundle a repository ships, at `validate` under `-DenforceClaudeMd` — the check
+  the pull-request workflow already runs.
 
 ### Token-budget-aware context
 

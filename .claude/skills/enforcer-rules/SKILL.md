@@ -134,7 +134,15 @@ directory does.** `subAgentFormat` (`.claude/agents`) and `commandFormat`
 configured-but-absent directory is treated as a build-setup mistake. Add the
 directory and the wiring in the same change. `pluginFormat`, `mcpServersValid`
 and `mcpConfigFormat` differ — they pass on the absent file and start enforcing
-the moment one appears.
+the moment one appears. `okfBundleFormat` follows that second pattern for a
+directory: an absent `bundleDir` is a pass, so it is wired here today against a
+bundle this repository does not yet ship.
+
+**A new rule must also be listed in
+`src/main/resources/META-INF/sisu/javax.inject.Named`.** The index is
+hand-maintained; a rule missing from it compiles, unit-tests green, and then
+fails a real build with "Failed to create enforcer rules with name: …". The
+`*IT`s are what catch it.
 
 ## References
 - `AGENTS.md` — *CLAUDE.md enforcement* (source of truth, full rule catalogue)

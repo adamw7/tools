@@ -77,7 +77,7 @@ public class McpStatelessHttpIT {
 		McpSchema.ListToolsResult tools = client.listTools();
 
 		Set<String> names = tools.tools().stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
-		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens"), names);
+		assertEquals(Set.of("project_tree", "find_context", "estimate_tokens", "okf_bundle"), names);
 	}
 
 	@Test

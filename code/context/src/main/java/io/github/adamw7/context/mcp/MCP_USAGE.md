@@ -7,7 +7,7 @@ Desktop, Cline, or any other MCP-compatible client.
 
 ## Overview
 
-The server exposes three tools:
+The server exposes four tools:
 
 - **`project_tree`** — scans a Java, Kotlin or Scala project into a tree of
   folders, files and the classes each file depends on, then serialises it as JSON
@@ -17,6 +17,10 @@ The server exposes three tools:
 - **`estimate_tokens`** — estimates the LLM token cost of the context assembled
   for a class (the class itself plus its dependencies), returning a per-class
   breakdown and the total.
+- **`okf_bundle`** — scans the same project into a bundle in Google's
+  [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+  (OKF) v0.2: a directory of markdown concept documents with YAML frontmatter,
+  portable to any consumer that speaks OKF.
 
 ## Architecture
 
@@ -27,7 +31,7 @@ The implementation lives in a package separate from the core finders:
    registers the tools.
 3. **ContextTool.java** — the abstraction every tool implements.
 4. **ProjectTreeTool.java** / **ContextFinderTool.java** / **EstimateTokensTool.java**
-   — the three tools.
+   / **OkfBundleTool.java** — the four tools.
 5. **LanguageArguments.java** — resolves the optional `language` argument; the
    generic argument parsing is shared from `mcp-common`'s `ToolArguments`.
 
@@ -125,6 +129,51 @@ class is reported as an error result.
 }
 ```
 
+### okf_bundle
+
+Scans a project into a bundle in Google's Open Knowledge Format (OKF) v0.2.
+
+**Parameters:**
+
+- `path` (string, required): absolute path to the project root directory
+- `language` (string, optional): `java` (default), `kotlin` or `scala`
+- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
+
+**Returns:** a JSON object with the targeted `okf_version` and a `documents` map
+from each bundle-relative path to that document's markdown. Every directory
+becomes a reserved `index.md` listing what it holds, and every file becomes a
+concept document — YAML frontmatter naming it, then a `# Dependencies` section
+linking to the concepts it relies on. The bundle is **returned, never written**:
+the server stays read-only, so a client cannot use it to create files on the
+host. Write it out with `OkfBundleWriter` on the consumer's side.
+
+**Example:**
+
+```json
+{
+  "path": "/path/to/project",
+  "language": "java",
+  "depth": 1
+}
+```
+
+A returned concept document looks like this:
+
+```markdown
+---
+type: "Java Source File"
+title: "B.java"
+description: "Java source file with 1 project dependency."
+resource: "pkg/B.java"
+tags: ["source", "java"]
+generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+---
+
+# Dependencies
+
+* [`A.java`](/pkg/A.java.md)
+```
+
 ## Running the Server
 
 ### stdio (default)
@@ -185,7 +234,8 @@ provider supports it, with no code change. See
 
 ## Security
 
-The tools read source files from disk, so access is constrained by design:
+The tools read source files from disk and never write to it, so access is
+constrained by design:
 
 - **Allowed roots.** Every `path` argument is resolved to its real location
   (symlinks followed, `..` collapsed) and must fall within a configured allowed
@@ -242,7 +292,7 @@ The tools read source files from disk, so access is constrained by design:
 
 The server advertises:
 
-- **Tools**: true (`project_tree`, `find_context`, `estimate_tokens`)
+- **Tools**: true (`project_tree`, `find_context`, `estimate_tokens`, `okf_bundle`)
 - **Resources**: false
 - **Prompts**: false
 

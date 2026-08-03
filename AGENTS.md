@@ -22,9 +22,14 @@ Maven project. The notable capabilities are:
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
   builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
   that scans a whole Java project into a tree of folders, files and
-  dependencies, to assemble context for gen-AI agents working with Java code. An
-  **MCP server** (in the `io.github.adamw7.context.mcp` package) exposes the
-  project-tree and context-finder tools over stdio, streamable HTTP or stateless
+  dependencies, to assemble context for gen-AI agents working with Java code.
+  The same tree can also be emitted as a bundle in Google's **Open Knowledge
+  Format** (OKF) v0.2 — a directory of markdown concept documents with YAML
+  frontmatter, in the `io.github.adamw7.context.okf` package — so a consumer that
+  already speaks OKF can take this project's context without knowing anything
+  about the tree behind it. An **MCP server** (in the
+  `io.github.adamw7.context.mcp` package) exposes the project-tree,
+  context-finder and OKF-bundle tools over stdio, streamable HTTP or stateless
   HTTP.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet; in-memory and
   iterative loading). Parquet files are read through an in-process DuckDB engine,
@@ -196,7 +201,7 @@ tools (root pom, packaging=pom)
 ├── code
 │   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
-│   └── context                     # regex-based class-usage context finder
+│   └── context                     # regex-based class-usage context finder + OKF bundles
 ├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # runnable SampleApp distribution: launcher jar + lib/
@@ -222,7 +227,7 @@ is `Main.java` and which supports stdio (default), streamable HTTP
   [MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md).
 - The context-engineering server in
   `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
-  `project_tree`, `find_context` and `estimate_tokens` tools; see its
+  `project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` tools; see its
   [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
 - The adoption server in
   `adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/`, exposing the
@@ -633,6 +638,23 @@ profile:
   variable expansion (`https://${MCP_HOST}/mcp`) is left alone, since only the
   shell that resolves it knows what it becomes. Like `mcpServersValid` it treats
   an absent file as a pass.
+- `OkfBundleFormatRule` (`okfBundleFormat`) holds a bundle in Google's Open
+  Knowledge Format at `bundleDir` to the specification's own conformance
+  conditions: every non-reserved `.md` file carries a parseable YAML frontmatter
+  block, every block declares a non-empty `type` (the one mandatory field), and
+  the reserved names keep their structure — an `index.md` carries no frontmatter
+  beyond an `okf_version` at the bundle root, and a `log.md` groups entries under
+  ISO 8601 `YYYY-MM-DD` headings. Where the format defines a closed vocabulary the
+  value is checked too (`status` is `draft`/`stable`/`deprecated`, `stale_after`
+  is a real calendar date, a `generated` mapping names its actor); where it does
+  not, nothing is imposed — a `type` is not registered centrally, so an unknown
+  one passes. `requiredKeys` adds frontmatter keys every concept must declare,
+  `okfVersion` pins the version the bundle root declares, and `requireIndex`
+  demands a listing in every directory holding concepts (off by default, since a
+  consumer must tolerate a missing `index.md`). A bundle is optional, so an absent
+  `bundleDir` is a pass. The producer side is guarded separately: `code/context`'s
+  `OkfBundleConformanceTest` restates the same conditions against every bundle
+  `OkfBundler` emits, and runs in the ordinary `test` phase.
 - `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
   sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
   `skillsDir` (file name for commands and sub-agents, directory name for skills)

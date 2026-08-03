@@ -20,8 +20,10 @@ run `mvn install` from the repository root. The main capabilities are:
   time** (proto2 `required`, proto3 presence-aware accessors, `oneof`
   discriminators).
 - **Context engineering** (`code/context`) — a regex-based class-usage finder and
-  project-tree builder that assembles context for gen-AI agents, plus an MCP
-  server exposing `project_tree`, `find_context`, and `estimate_tokens`.
+  project-tree builder that assembles context for gen-AI agents, an emitter for
+  Google's Open Knowledge Format (OKF v0.2 bundles of markdown concept documents,
+  in the `okf` package), plus an MCP server exposing `project_tree`,
+  `find_context`, `estimate_tokens`, and `okf_bundle`.
 - **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet via an in-process
   DuckDB engine, plus forward-only JSON/YAML/TOON), each in in-memory and
   iterative variants. Schema-aware sources implement the narrower
@@ -293,10 +295,11 @@ editing them:
   and `memoryImports`, `noSecrets`, `skillFilesExist`, `uniqueNames`,
   `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
   `hookCommandsValid`, `hooksFormat`, `localSettingsIgnored`, `mcpServersValid`,
-  `mcpConfigFormat`, and `pluginFormat` cover the rest of the agent
-  configuration. The last three validate `.mcp.json` and
-  `.claude-plugin/plugin.json`, which this repository does not ship — they pass
-  on the absent file and start enforcing the moment one is added.
+  `mcpConfigFormat`, `pluginFormat`, and `okfBundleFormat` cover the rest of the
+  agent configuration. The last four validate `.mcp.json`,
+  `.claude-plugin/plugin.json` and an Open Knowledge Format bundle, none of which
+  this repository ships — they pass on the absent file and start enforcing the
+  moment one is added.
 - Two more rules ship but are **not** wired here: `subAgentFormat`
   (`.claude/agents`) and `commandFormat` (`.claude/commands`). Unlike
   `pluginFormat`, a *configured* definition directory must exist — an absent one

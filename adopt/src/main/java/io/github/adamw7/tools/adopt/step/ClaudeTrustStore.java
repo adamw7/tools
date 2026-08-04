@@ -5,10 +5,12 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -37,6 +39,17 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * interactive prompt until the command timeout killed it. Atomicity of the write
  * alone cannot prevent that: the two writes are each complete, and the second is
  * simply built on a document read before the first landed.
+ *
+ * <p>That lock reaches every adoption and nothing else. {@code claude} writes this
+ * file too — an interactive session, or the {@code claude init} the adoption is
+ * about to run — and knows nothing of a lock this module invented, so it cannot be
+ * shut out of the read-modify-write the way another adoption can. What is done
+ * instead is to make the window it can land in small and to notice when it did:
+ * the configuration is read again immediately before the move, and an update built
+ * on a document that has since been replaced is thrown away and built again on the
+ * new one. Serialising the document — the slow part, and the whole of the window
+ * before — therefore happens outside it, leaving a read and a move; a write that
+ * would have dropped {@code claude}'s own change is retried rather than landing.
  */
 public class ClaudeTrustStore {
 
@@ -48,12 +61,22 @@ public class ClaudeTrustStore {
 
 	/**
 	 * Serialises the trust updates of this JVM. A {@link FileLock} is held by the
-	 * process rather than the thread, so it excludes a concurrent {@code claude} but
-	 * not a second thread of this adoption — which
+	 * process rather than the thread, so it excludes a second adoption process but
+	 * not a second thread of this one — which
 	 * {@link java.nio.channels.OverlappingFileLockException} would answer rather than
-	 * make wait. Both guards are needed, and this one is taken first.
+	 * make wait. Both guards are needed, and this one is taken first. Neither reaches
+	 * {@code claude}, which takes no lock of ours; see {@link #moveUnlessChanged}.
 	 */
 	private static final Object IN_PROCESS_LOCK = new Object();
+
+	/**
+	 * How many times the read-modify-write is rebuilt when another writer lands
+	 * inside it. Each attempt is a read and a move, so an adoption only exhausts
+	 * these against something rewriting the configuration continuously — at which
+	 * point saying so beats writing over it. Package-visible so a test can pin the
+	 * count: one attempt too many is a silent extra write to a live file.
+	 */
+	static final int WRITE_ATTEMPTS = 3;
 
 	private final Path configFile;
 	private final ObjectMapper mapper = new ObjectMapper();
@@ -72,7 +95,8 @@ public class ClaudeTrustStore {
 
 	/**
 	 * Records the directory as trusted, excluding every other adoption — in this
-	 * process and outside it — for the whole read-modify-write.
+	 * process and outside it — for the whole read-modify-write, and detecting the one
+	 * writer it cannot exclude: {@code claude} itself.
 	 *
 	 * @return {@code true} when the directory was newly trusted, {@code false}
 	 *         when it was already trusted and the file was left unchanged.
@@ -88,29 +112,57 @@ public class ClaudeTrustStore {
 	/**
 	 * The lock is taken on a file beside the configuration rather than on the
 	 * configuration itself, because {@link #replace} moves a new file over that path:
-	 * a lock held on the old file would guard an inode nothing reads any more.
+	 * a lock held on the old file would guard an inode nothing reads any more. That
+	 * file is left behind on the way out, since a lock file deleted by the process
+	 * releasing it is a lock the next one takes on an inode of its own.
 	 */
 	private boolean trustExclusively(Path directory, Path target) {
 		Path lockFile = target.resolveSibling(target.getFileName() + LOCK_SUFFIX);
 		try (FileChannel channel = FileChannel.open(lockFile, StandardOpenOption.CREATE,
 				StandardOpenOption.WRITE); FileLock exclusive = channel.lock()) {
-			return update(directory);
+			return update(directory, WRITE_ATTEMPTS);
 		} catch (IOException e) {
 			throw new AdoptionException("Could not lock the Claude config for update: " + configFile, e);
 		}
 	}
 
-	/** Runs under both locks: every read here decides a write that follows it. */
-	private boolean update(Path directory) {
-		String key = directory.toAbsolutePath().normalize().toString();
-		ObjectNode root = readRoot();
-		ObjectNode project = objectChild(objectChild(root, PROJECTS), key);
+	/**
+	 * Runs under both locks: every read here decides a write that follows it. The
+	 * document the decision was taken on is carried to the write as {@code observed},
+	 * so a write built on a document {@code claude} has since replaced is recognised
+	 * as stale rather than landing on top of it.
+	 */
+	private boolean update(Path directory, int attemptsLeft) {
+		String observed = readText();
+		ObjectNode root = parse(observed);
+		ObjectNode project = objectChild(objectChild(root, PROJECTS), key(directory));
 		if (project.path(TRUST_FLAG).asBoolean(false)) {
 			return false;
 		}
 		project.put(TRUST_FLAG, true);
-		write(root);
-		return true;
+		if (writeUnlessChanged(root, observed)) {
+			return true;
+		}
+		return retry(directory, attemptsLeft);
+	}
+
+	/**
+	 * Builds the update again on what the other writer left, rather than on the
+	 * document it replaced. Reading afresh is the whole point: the entry that writer
+	 * added is in the document this attempt starts from, so both survive.
+	 */
+	private boolean retry(Path directory, int attemptsLeft) {
+		if (attemptsLeft <= 1) {
+			throw new AdoptionException("Could not update the Claude config in " + WRITE_ATTEMPTS
+					+ " attempts because something else kept rewriting it, and overwriting it would discard"
+					+ " whatever that wrote. Close any running claude session and adopt again: " + configFile);
+		}
+		return update(directory, attemptsLeft - 1);
+	}
+
+	/** The {@code projects} key {@code claude} records a directory under. */
+	private static String key(Path directory) {
+		return directory.toAbsolutePath().normalize().toString();
 	}
 
 	/**
@@ -132,17 +184,39 @@ public class ClaudeTrustStore {
 				+ " expected a JSON object but found " + existing.getNodeType() + ": " + configFile);
 	}
 
-	private ObjectNode readRoot() {
+	/**
+	 * The configuration as text: the one read an update is built from, and the one it
+	 * is checked against just before the move. A file that is not there reads as the
+	 * empty string, which {@link #parse} starts fresh from and which a file appearing
+	 * in the meantime no longer equals — so a {@code claude} that created the
+	 * configuration inside the window is caught by the same comparison as one that
+	 * rewrote it.
+	 *
+	 * <p>Package-visible so a test can put a competing writer in that window; there
+	 * is no other way to land one between two reads this method makes.
+	 */
+	String readText() {
 		if (!Files.isRegularFile(configFile)) {
-			return mapper.createObjectNode();
+			return "";
 		}
-		return parse();
+		try {
+			return Files.readString(configFile);
+		} catch (NoSuchFileException e) {
+			return "";
+		} catch (IOException e) {
+			throw new AdoptionException("Could not read Claude config: " + configFile, e);
+		}
 	}
 
-	private ObjectNode parse() {
+	/**
+	 * The document is parsed from the text that was read rather than from the file
+	 * again, so what the update is built on and what it is compared against before
+	 * the move can never be two different reads of a file that changed between them.
+	 */
+	private ObjectNode parse(String text) {
 		try {
-			return asObjectOrFresh(mapper.readTree(configFile.toFile()));
-		} catch (IOException e) {
+			return asObjectOrFresh(mapper.readTree(text));
+		} catch (JsonProcessingException e) {
 			throw new AdoptionException("Could not read Claude config: " + configFile, e);
 		}
 	}
@@ -172,11 +246,15 @@ public class ClaudeTrustStore {
 	 * completing: a crash part-way through left a truncated document behind, and
 	 * this is a live file that an interactive session, or the {@code claude init}
 	 * the adoption is about to run, may be writing at the same moment.
+	 *
+	 * @param observed the configuration the document was built on
+	 * @return whether it landed, or {@code false} when the configuration changed
+	 *         under the update and it has to be built again
 	 */
-	private void write(ObjectNode root) {
+	private boolean writeUnlessChanged(ObjectNode root, String observed) {
 		Path target = configFile.toAbsolutePath();
 		try {
-			replaceWith(root, temporaryBeside(target), target);
+			return replaceUnlessChanged(root, temporaryBeside(target), target, observed);
 		} catch (IOException e) {
 			throw new AdoptionException("Could not write Claude config: " + configFile, e);
 		}
@@ -201,14 +279,40 @@ public class ClaudeTrustStore {
 	 * write that fails leaves the configuration directory as it found it rather than
 	 * scattering half-written documents beside the file {@code claude} reads.
 	 */
-	private void replaceWith(ObjectNode root, Path temporary, Path target) throws IOException {
+	private boolean replaceUnlessChanged(ObjectNode root, Path temporary, Path target, String observed)
+			throws IOException {
 		try {
 			mapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), root);
-			replace(temporary, target);
+			return moveUnlessChanged(temporary, target, observed);
 		} catch (IOException | RuntimeException e) {
 			Files.deleteIfExists(temporary);
 			throw e;
 		}
+	}
+
+	/**
+	 * Reads the configuration one last time and moves the new document over it only
+	 * if it is still the one the update was built on. This is what the lock cannot do
+	 * for {@code claude}: it takes no lock of ours, so the only way to keep its write
+	 * is to notice it. The check sits here, after the serialisation, so the span
+	 * between deciding what to write and writing it is a read and a move rather than
+	 * the whole read-modify-write — narrow enough that losing the race takes a writer
+	 * landing inside it, and cheap enough to simply try again when one does.
+	 *
+	 * <p>The temporary file is removed on the stale path too. It carries a document
+	 * that is never going to land, and leaving it beside the configuration would
+	 * scatter exactly the half-finished files {@link #replaceUnlessChanged} exists to
+	 * clean up.
+	 *
+	 * @return whether the document was moved over the configuration
+	 */
+	private boolean moveUnlessChanged(Path temporary, Path target, String observed) throws IOException {
+		if (!readText().equals(observed)) {
+			Files.deleteIfExists(temporary);
+			return false;
+		}
+		replace(temporary, target);
+		return true;
 	}
 
 	/**

@@ -241,6 +241,137 @@ class ClaudeTrustStoreTest {
 		assertTrue(trusted(root, second), "the second directory must survive the first adoption's write");
 	}
 
+	/**
+	 * A {@code ClaudeTrustStore} with another writer standing in the window between
+	 * the read the update is built on and the move that lands it. That writer is
+	 * {@code claude} itself, which writes {@code ~/.claude.json} and takes no lock of
+	 * the adoption's, so no lock can shut it out and only re-reading before the move
+	 * notices it — the case these tests exist for.
+	 *
+	 * @param competitor what the other writer leaves behind, written once, after the
+	 *                   store has read the configuration it is about to build on
+	 */
+	private static final class Contended extends ClaudeTrustStore {
+
+		private final Path config;
+		private final String competitor;
+		private boolean pending = true;
+
+		Contended(Path config, String competitor) {
+			super(config);
+			this.config = config;
+			this.competitor = competitor;
+		}
+
+		@Override
+		String readText() {
+			String text = super.readText();
+			if (pending) {
+				pending = false;
+				write(competitor);
+			}
+			return text;
+		}
+
+		private void write(String content) {
+			try {
+				Files.writeString(config, content);
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	/**
+	 * The update is built again on what the other writer left, rather than written
+	 * over it. Both entries have to survive: the adoption's, or its {@code claude
+	 * init} blocks on the trust prompt, and the other writer's, because this is
+	 * Claude Code's own per-user state and discarding a session's work is exactly
+	 * what the whole read-modify-write dance is for.
+	 */
+	@Test
+	void keepsAConcurrentWritersEntryByBuildingTheUpdateAgain(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		Path repo = dir.resolve("repo");
+		Path elsewhere = dir.resolve("elsewhere");
+		Files.writeString(config, "{}");
+
+		assertTrue(new Contended(config, trustDocument(elsewhere)).trust(repo));
+
+		JsonNode root = read(config);
+		assertTrue(trusted(root, repo), "the adoption's own directory must be recorded");
+		assertTrue(trusted(root, elsewhere), "the concurrent writer's entry must survive the retry");
+		assertEquals(List.of(config), strayFiles(dir), "the stale attempt's temporary file must not survive it");
+	}
+
+	/**
+	 * A configuration something is rewriting continuously is left alone rather than
+	 * written over. Giving up is the safe answer: the adoption fails with a message
+	 * naming the file, where overwriting it would silently discard whatever that
+	 * writer had put there.
+	 */
+	@Test
+	void refusesToOverwriteAConfigSomethingElseKeepsRewriting(@TempDir Path dir) throws IOException {
+		Path config = dir.resolve(".claude.json");
+		Path elsewhere = dir.resolve("elsewhere");
+		Files.writeString(config, "{}");
+		AlwaysContended store = new AlwaysContended(config, trustDocument(elsewhere));
+
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> store.trust(dir.resolve("repo")));
+
+		assertTrue(failure.getMessage().contains(config.toString()), "the failure must name the config: " + failure);
+		assertTrue(trusted(read(config), elsewhere), "the concurrent writer's document must be left as it was");
+		assertEquals(List.of(config), strayFiles(dir), "no attempt's temporary file may survive it");
+		assertEquals(2 * ClaudeTrustStore.WRITE_ATTEMPTS, store.reads(),
+				"each attempt reads once to build on and once to check before the move, and there are"
+						+ " WRITE_ATTEMPTS of them — an attempt more is another write aimed at a live file");
+	}
+
+	/** The other writer never stops, so every attempt reads a document the last one did not. */
+	private static final class AlwaysContended extends ClaudeTrustStore {
+
+		private final Path config;
+		private final String competitor;
+		private int writes;
+
+		AlwaysContended(Path config, String competitor) {
+			super(config);
+			this.config = config;
+			this.competitor = competitor;
+		}
+
+		/** How many reads the store made, which is two per attempt it gave the update. */
+		int reads() {
+			return writes;
+		}
+
+		@Override
+		String readText() {
+			String text = super.readText();
+			rewrite();
+			return text;
+		}
+
+		/**
+		 * Each rewrite differs from the last, so the comparison before the move fails
+		 * however the reads interleave — a writer that put back byte-for-byte what was
+		 * there has changed nothing and is right to be let through.
+		 */
+		private void rewrite() {
+			try {
+				writes++;
+				Files.writeString(config, competitor + " ".repeat(writes));
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	private String trustDocument(Path directory) {
+		return "{\"projects\":{\"" + directory.toAbsolutePath().normalize()
+				+ "\":{\"hasTrustDialogAccepted\":true}}}";
+	}
+
 	private Thread trusting(Path config, Path directory, CyclicBarrier startTogether) {
 		Thread thread = new Thread(() -> {
 			await(startTogether);

@@ -1,6 +1,6 @@
 # 5. Renovate for routine dependency version updates
 
-- **Status:** Proposed (decided; pending implementation)
+- **Status:** Accepted
 - **Date:** 2026-07-16
 - **Deciders:** Project maintainers
 - **Tags:** dependencies, automation, ci
@@ -8,9 +8,9 @@
 - **Superseded by:** —
 
 Refines the "keep dependencies current" pillar of
-[ADR 0002](0002-security-policy-and-supply-chain-posture.md). This record stays
-`Proposed` until the Renovate configuration lands and the app is enabled (see
-*Implementation status* below); it flips to `Accepted` at that point.
+[ADR 0002](0002-security-policy-and-supply-chain-posture.md). The decision is in
+force: the app is enabled and `.github/renovate.json` is committed (see
+*Implementation status* below).
 
 ## Context
 
@@ -42,12 +42,34 @@ own security remediation — that is Dependabot's role
 
 ### Implementation status
 
-This ADR records the decision. The Renovate configuration itself
-(`renovate.json` / `.github/renovate.json`, e.g. extending `config:recommended`
-with a schedule and grouping) is **not yet committed** and is a follow-up. Enabling
-the Renovate GitHub App on the repository is a prerequisite. Until that config
-lands, this ADR stays `Proposed`: the decision is made but not yet in force. The
-status flips to `Accepted` when the config is committed and the app is enabled.
+In force. The Renovate GitHub App is enabled on the repository and has been
+opening pull requests against the root pom for some time; the configuration now
+lives in [`.github/renovate.json`](../../.github/renovate.json). Until that file
+landed the app ran on its own defaults, which is why its earlier pull requests
+arrived ungrouped and unscheduled.
+
+The committed configuration extends `config:recommended` and adds only what this
+repository's shape calls for:
+
+- **`schedule` (Monday before 06:00 UTC) with concurrency limits** — batches the
+  noise the *Consequences* section anticipates into one weekly window.
+- **`vulnerabilityAlerts: { enabled: false }` and `osvVulnerabilityAlerts: false`**
+  — the division of labour above, expressed as configuration rather than
+  convention: Renovate declines security-driven bumps so Dependabot
+  ([ADR 0006](0006-dependabot-security-updates.md)) owns them without a duplicate
+  pull request.
+- **Grouping by what moves together** — Maven plugins, the coverage and mutation
+  tooling, the test libraries, and the protobuf toolchain each land as one pull
+  request, since every version they touch lives in the same two root-pom blocks.
+- **`dependencyDashboardApproval` on two major bumps** — the Maven API
+  (deliberately a Maven 4 artifact while the build is pinned to Maven 3.9.x) and
+  Spring Boot, which hosts the three MCP servers. Both stay visible on the
+  dashboard rather than arriving unannounced.
+- **This project's own `io.github.adamw7` modules disabled** — they resolve inside
+  the reactor at `${revision}`, so there is no release for Renovate to raise.
+
+Validate a change to that file with
+`npx --package renovate renovate-config-validator` before committing it.
 
 ## Consequences
 

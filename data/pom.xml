@@ -11,6 +11,12 @@
 	<packaging>jar</packaging>
 	<name>Tooling for data</name>
 	<description>Data sources (CSV, GZip, JDBC, Parquet; in-memory and iterative), a uniqueness-checking tool, data structures, and an MCP server exposing the uniqueness checker.</description>
+	<properties>
+		<!-- Mutation-score floor for this module, a few points under the 86% it
+		     measures today so an equivalent refactor cannot turn the build red.
+		     See the root pom's pitest.mutationThreshold. -->
+		<pitest.mutationThreshold>82</pitest.mutationThreshold>
+	</properties>
 	<build>
 		<plugins>
 			<!-- Expose the mockito-core jar path (it arrives transitively through

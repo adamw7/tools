@@ -11,6 +11,12 @@
 	<packaging>maven-plugin</packaging>
 	<name>protogen-maven-plugin</name>
 	<description>Maven plugin that generates fluent, type-safe builders for protobuf-generated message classes during the generate-sources phase.</description>
+	<properties>
+		<!-- Mutation-score floor for this module, a few points under the 87% it
+		     measures today so an equivalent refactor cannot turn the build red.
+		     See the root pom's pitest.mutationThreshold. -->
+		<pitest.mutationThreshold>84</pitest.mutationThreshold>
+	</properties>
 	<build>
 		<plugins>
 			<!-- Expose the mockito-core jar path so it can be pre-loaded as a Java

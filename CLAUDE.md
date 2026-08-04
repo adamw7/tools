@@ -123,7 +123,8 @@ mvn -pl data -am test             # tests for a single module
 mvn -B package                    # build without installing (what CI runs)
 mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption, enforcer builds
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
-mvn -Ppitest install              # PIT mutation testing (needs a phase past package)
+mvn -Ppitest install              # PIT mutation testing (fails under the module's
+                                  # pitest.mutationThreshold; needs a phase past package)
 ```
 
 **Always pair `-pl` with `-am`.** `mvn -pl data test` fails before compiling:

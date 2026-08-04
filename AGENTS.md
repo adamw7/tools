@@ -563,9 +563,35 @@ longer and carry no timeout.
   base 5 s), because JaCoCo's bytecode instrumentation slows first-use
   class-loading.
 - **Mutation testing** is the opt-in `pitest` profile (PIT + JUnit 5):
-  `mvn -Ppitest install` writes HTML/XML reports to `**/target/pit-reports/`. It
-  excludes `*IT` integration tests and does not fail when a class has no
-  mutations. Run it with `install` (or any phase past `package`), not with
+  `mvn -Ppitest install` writes HTML/XML reports to `**/target/pit-reports/` and
+  **fails the build** when a module's mutation score drops below its
+  `pitest.mutationThreshold`. The root pom sets the floor (**80**); a module that
+  scores well above it raises its own bar in its `<properties>`:
+
+  | Module | Threshold | Measured when set |
+  | --- | --- | --- |
+  | `code/context` | 92 | 95% |
+  | `adopt` | 88 | 91% |
+  | `claude-code-enforcer` | 88 | 91% |
+  | `code/protogen-maven-plugin` | 84 | 87% |
+  | `data` | 82 | 86% |
+  | `mcp-common` | 80 (the floor) | 84% |
+
+  Each number sits a few points under the measured score, so an equivalent
+  refactor — or a timed-out mutant, which PIT counts as killed — cannot turn a
+  green build red on its own. **Ratchet a threshold up** once a module's score
+  has settled above it; never down to make a red build pass. Two modules opt out
+  entirely with `pitest.skip` (beside the `jacoco.skip` they already set, for the
+  same reason): `grpc-example` and `code/protogen-maven-plugin-test` hold no
+  hand-written production Java, only protobuf and gRPC classes generated from
+  their `.proto` files, so PIT scored them at 14% and 10% while measuring a
+  generator's output rather than anybody's tests. The generator itself is mutated
+  in `protogen-maven-plugin`, which is where the logic under test lives.
+
+  The profile excludes `*IT` integration tests and does not fail when a class has
+  no mutations; PIT skips a module with no production code or no tests outright,
+  so a threshold never applies to one. Run it with `install` (or any phase past
+  `package`), not with
   `test`: PIT is bound to the `test` phase either way, but a `test`-only reactor
   build never packages `mcp-common`, so the `data` module's `requires
   tools.mcp.common` — an automatic module name derived from that **jar**'s file
@@ -584,7 +610,7 @@ manually, or on a release.
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, the `adopt` multi-repository adoption against real GitHub URLs, and the enforcer's end-to-end Maven builds). |
 | `codeql.yml` | weekly (Saturdays) | CodeQL security/static analysis for Java (autobuild). |
 | `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, uploads PIT mutation reports as an artifact. |
+| `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, which **fails** if a module's mutation score falls below its `pitest.mutationThreshold`, and uploads PIT mutation reports as an artifact. |
 | `maven-windows.yml` | weekly (Sundays); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
 | `docker.yml` | weekly (Saturdays); on GitHub release; manual dispatch | `mvn -B package`, then builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL findings). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR, tagged with the release version and `latest`, with SBOM and provenance. Deliberately **not** on pull requests — the image build costs minutes per review for a packaging path that changes rarely, so dispatch it by hand when touching `assembly` or the Dockerfile. |
 | `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |

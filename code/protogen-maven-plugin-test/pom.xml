@@ -13,8 +13,14 @@
 	<description>Integration test module that exercises the protogen-maven-plugin by generating and compiling protobuf builders end to end.</description>
 	<properties>
 		<!-- This module only exercises generated protobuf classes, so the
-		     instruction-coverage gate is not meaningful here. -->
+		     instruction-coverage gate is not meaningful here. The mutation gate is
+		     not meaningful for the same reason, and for a sharper one: every class
+		     here was written by protoc and the plugin, so PIT scored the module at
+		     10% — 3406 of its 4122 mutants uncovered — measuring a generator's
+		     output rather than anybody's tests. The generator itself is mutated in
+		     protogen-maven-plugin. -->
 		<jacoco.skip>true</jacoco.skip>
+		<pitest.skip>true</pitest.skip>
 		<!-- An integration-test harness for the protogen-maven-plugin, not a
 		     reusable library: it has no main Java sources (only src/main/proto),
 		     so its -sources.jar is empty and Central validation rejects it. Keep

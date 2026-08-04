@@ -60,6 +60,29 @@
 		     that never returns is caught by forkedProcessTimeoutInSeconds. The
 		     coverage profile raises it because JaCoCo instrumentation slows setup. -->
 		<unit.test.lifecycle.timeout>10 s</unit.test.lifecycle.timeout>
+		<!-- Minimum mutation score (percent of mutants killed) the pitest profile
+		     enforces, so the weekly run fails on a regression instead of merely
+		     recording one in an artifact nobody opens. This is the floor, sized on
+		     the weakest module at the time it was introduced (mcp-common, 84%); a
+		     module scoring comfortably above it raises the bar in its own
+		     <properties>, which is what makes the gate mean something module by
+		     module. Each number sits a few points under the measured score, so an
+		     equivalent refactor — or a timed-out mutant, which PIT counts as
+		     killed — cannot turn a green build red on its own. Ratchet a number up
+		     once a module's score has settled above it; never down to make a red
+		     build pass. PIT skips a module with no production code or no tests
+		     entirely, so the threshold never applies to one. -->
+		<pitest.mutationThreshold>80</pitest.mutationThreshold>
+		<!-- Whether the pitest profile skips this module. Mutating code nobody
+		     wrote says nothing about the tests: the two modules that opt out hold
+		     no hand-written production Java at all, only protobuf and gRPC classes
+		     generated from their .proto files, and PIT scored them at 10% and 14%
+		     purely because a generator's output has no unit tests aimed at it. The
+		     plugin that generates those builders is itself mutated, in
+		     protogen-maven-plugin, which is where the logic under test lives. A
+		     module that grows hand-written production code should clear this flag
+		     and take a threshold instead. -->
+		<pitest.skip>false</pitest.skip>
 		<!-- Whole-fork wall-clock cap (seconds). JUnit's per-method timeout only
 		     reports after a method returns; it cannot unwedge a thread that never
 		     yields (deadlock, non-daemon thread that never dies). Surefire kills the
@@ -800,8 +823,10 @@
 								<outputFormat>HTML</outputFormat>
 								<outputFormat>XML</outputFormat>
 							</outputFormats>
+							<skip>${pitest.skip}</skip>
 							<timestampedReports>false</timestampedReports>
 							<failWhenNoMutations>false</failWhenNoMutations>
+							<mutationThreshold>${pitest.mutationThreshold}</mutationThreshold>
 							<excludedTestClasses>
 								<excludedTestClass>*IT</excludedTestClass>
 							</excludedTestClasses>

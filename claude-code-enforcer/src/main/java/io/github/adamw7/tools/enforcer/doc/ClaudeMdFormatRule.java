@@ -58,7 +58,7 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
 	@Override
 	protected void collectAdditionalViolations(MarkdownDocument document, List<String> violations) {
-		if (!document.containsOutsideFences(AGENTS_REFERENCE)) {
+		if (!document.containsOnStructuralLine(AGENTS_REFERENCE)) {
 			violations.add("CLAUDE.md must reference " + AGENTS_REFERENCE + " as the source of truth");
 		}
 	}

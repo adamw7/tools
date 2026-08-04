@@ -39,7 +39,10 @@ import java.util.stream.Collectors;
  * {@code #} that follows whitespace outside quotes, so {@code name: git-commit # the
  * commit helper} declares {@code git-commit}. Reading the note as part of the value
  * failed a name over the kebab-case convention it follows and made every such
- * description count characters Claude Code never sees.
+ * description count characters Claude Code never sees. What quotes a scalar is a
+ * quote that <em>opens</em> it; a quote anywhere else is an ordinary character, so
+ * the apostrophe of {@code description: Claude's helper # a note} does not shelter
+ * the note from being dropped.
  * <p>
  * A key declared twice yields its <em>last</em> declaration, which is the one a YAML
  * loader keeps and so the one Claude Code acts on. Reading the first instead
@@ -208,24 +211,64 @@ public final class FrontMatter {
 	 * so Claude Code — never reads.
 	 */
 	private static String withoutComment(String value) {
-		char quote = NONE;
-		for (int i = 0; i < value.length(); i++) {
-			char character = value.charAt(i);
-			if (quote != NONE) {
-				i += isEscape(quote, character) ? 1 : 0;
-				quote = character == quote ? NONE : quote;
-			} else if (character == DOUBLE_QUOTE || character == SINGLE_QUOTE) {
-				quote = character;
-			} else if (character == COMMENT_START && startsComment(value, i)) {
-				return value.substring(0, i).strip();
-			}
-		}
-		return value;
+		int comment = commentStart(value);
+		return comment < 0 ? value : value.substring(0, comment).strip();
 	}
 
-	/** A backslash escapes the next character inside a double-quoted scalar, but not a single-quoted one. */
-	private static boolean isEscape(char quote, char character) {
-		return quote == DOUBLE_QUOTE && character == ESCAPE;
+	/** Where a trailing comment opens, or -1 when the value carries none. */
+	private static int commentStart(String value) {
+		for (int index = endOfScalar(value); index < value.length(); index++) {
+			if (value.charAt(index) == COMMENT_START && startsComment(value, index)) {
+				return index;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Where a comment could begin: past the closing quote of a scalar written as a
+	 * quoted one, or at the very start of a plain one. Only a quote that <em>opens</em>
+	 * the scalar quotes it — everywhere else a quote is an ordinary character, which
+	 * is what {@code description: Claude's helper} is made of. Treating that
+	 * apostrophe as the start of a quoted run left the scalar looking unterminated,
+	 * so the {@code # note} after it was read as part of the description Claude Code
+	 * never sees, and every such value counted characters it does not have.
+	 */
+	private static int endOfScalar(String value) {
+		char quote = openingQuote(value);
+		return quote == NONE ? 0 : endOfQuotedScalar(value, quote);
+	}
+
+	/** The quote a scalar opens with, or {@link #NONE} when it is a plain one. */
+	private static char openingQuote(String value) {
+		char first = value.isEmpty() ? NONE : value.charAt(0);
+		return first == DOUBLE_QUOTE || first == SINGLE_QUOTE ? first : NONE;
+	}
+
+	/**
+	 * The index just past the closing quote, or the value's length when the scalar
+	 * never closes. A {@code \"} inside a double-quoted scalar and a doubled
+	 * {@code ''} inside a single-quoted one are the escapes each style writes, not
+	 * the close.
+	 */
+	private static int endOfQuotedScalar(String value, char quote) {
+		int index = 1;
+		while (index < value.length() && !closesAt(value, index, quote)) {
+			index += isEscapeAt(value, index, quote) ? 2 : 1;
+		}
+		return index + 1;
+	}
+
+	private static boolean closesAt(String value, int index, char quote) {
+		return value.charAt(index) == quote && !isEscapeAt(value, index, quote);
+	}
+
+	/** True when the character at {@code index} escapes the one after it, in the style {@code quote} uses. */
+	private static boolean isEscapeAt(String value, int index, char quote) {
+		if (quote == DOUBLE_QUOTE) {
+			return value.charAt(index) == ESCAPE;
+		}
+		return value.charAt(index) == SINGLE_QUOTE && value.startsWith(ESCAPED_SINGLE_QUOTE, index);
 	}
 
 	/** A {@code #} opens a comment at the start of the value or after whitespace, never mid-token. */

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,18 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void failsWhenTheOnlyAgentsReferenceIsCommentedOut() {
+		// The reference is what makes CLAUDE.md defer to AGENTS.md; one an author
+		// commented out says nothing, so it must not satisfy the check.
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace(
+				"See [AGENTS.md](AGENTS.md) for the full agent guide.",
+				"<!--\nSee [AGENTS.md](AGENTS.md) for the full agent guide.\n-->"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("must reference AGENTS.md"), exception.getMessage());
+	}
+
+	@Test
 	void failsWhenARequiredSectionIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Quality"));
 
@@ -186,7 +199,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void failsWhenAForbiddenTokenAppears() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nTODO: finish this.\n");
-		rule.setForbiddenTokens(java.util.List.of("TODO"));
+		rule.setForbiddenTokens(List.of("TODO"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
@@ -195,7 +208,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void ignoresAForbiddenTokenInsideACodeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\nTODO inside code\n```\n");
-		rule.setForbiddenTokens(java.util.List.of("TODO"));
+		rule.setForbiddenTokens(List.of("TODO"));
 
 		assertDoesNotThrow(rule::execute);
 	}
@@ -203,7 +216,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void ignoresAForbiddenTokenInsideATildeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n~~~\nTODO inside code\n~~~\n");
-		rule.setForbiddenTokens(java.util.List.of("TODO"));
+		rule.setForbiddenTokens(List.of("TODO"));
 
 		assertDoesNotThrow(rule::execute);
 	}
@@ -245,7 +258,7 @@ class ClaudeMdFormatRuleTest {
 		// inner three-backtick delimiters and everything they wrap stay code.
 		ClaudeMdFormatRule rule = ruleFor(
 				VALID_CONTENT + "\n````markdown\n```java\nTODO in an example\n```\n````\n");
-		rule.setForbiddenTokens(java.util.List.of("TODO"));
+		rule.setForbiddenTokens(List.of("TODO"));
 
 		assertDoesNotThrow(rule::execute);
 	}
@@ -253,7 +266,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void scansTheContentThatFollowsANestedFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\n```java\n```\n\nTODO left behind\n");
-		rule.setForbiddenTokens(java.util.List.of("TODO"));
+		rule.setForbiddenTokens(List.of("TODO"));
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
@@ -404,6 +417,26 @@ class ClaudeMdFormatRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertTrue(exception.getMessage().contains("missing file: docs/no%20such.md"), exception.getMessage());
+	}
+
+	@Test
+	void ignoresACommentedOutReferenceWhenValidatingReferences() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n<!--\nSee [old plan](docs/old-plan.md).\n-->\n");
+		rule.setValidateFileReferences(true);
+
+		// A link an author commented out alongside the section that used it is no
+		// longer a reference, so requiring its target to exist failed the build over
+		// a file the document had deliberately stopped pointing at.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void ignoresAForbiddenTokenThatIsCommentedOut() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n<!--\nTODO: rewrite this section.\n-->\n");
+		rule.setForbiddenTokens(List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
 	}
 
 	@Test

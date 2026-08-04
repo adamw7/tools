@@ -31,9 +31,11 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
  * by start-of-line or whitespace and followed by a path — one carrying a directory
- * separator, an extension, or both — outside fenced code blocks and inline code
- * spans, so neither {@code `@claude`} nor a bare {@code @claude} in prose is an
- * import. A
+ * separator, an extension, or both — outside fenced code blocks, HTML comments and
+ * inline code spans, so neither {@code `@claude`} nor a bare {@code @claude} in
+ * prose is an import, and neither is one an author commented out: Claude Code never
+ * loads it, so demanding its target exist failed the build over a file the memory
+ * had deliberately stopped importing. A
  * home-relative import ({@code @~/...}) does not match the path syntax at all and
  * so is skipped, as is any import the {@code ignored} predicate accepts. A file
  * that cannot be read as text is treated as a leaf rather than a failure, because
@@ -122,7 +124,7 @@ final class ImportGraph {
 	private List<Reference> referencesIn(File file) {
 		MarkdownDocument document = MarkdownDocument.parse(readSafely(file));
 		return IntStream.range(0, document.lineCount())
-				.filter(index -> !document.isInsideFence(index))
+				.filter(document::carriesStructure)
 				.mapToObj(document::line)
 				.flatMap(line -> lineReferences(file, line))
 				.toList();

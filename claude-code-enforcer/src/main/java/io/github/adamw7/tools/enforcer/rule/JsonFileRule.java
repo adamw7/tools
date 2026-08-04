@@ -3,18 +3,21 @@ package io.github.adamw7.tools.enforcer.rule;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.github.adamw7.tools.enforcer.text.MarkdownText;
+
 /**
  * Base for enforcer rules that validate a single JSON configuration file. It owns
  * the scaffolding every such rule repeats: the file parameter must be configured,
  * the file must exist (unless the subclass treats absence as a pass), be non-empty,
- * and parse as JSON. A parse failure is collected as a violation rather than
- * thrown, so it is reported through the shared {@link #report} path alongside any
- * structural problems.
+ * and parse as JSON. A parse failure — and a file that cannot be decoded as UTF-8 at
+ * all — is collected as a violation rather than thrown, so it is reported through the
+ * shared {@link #report} path alongside any structural problems.
  * <p>
  * A subclass names its file parameter and the human-readable description used in
  * messages at construction, and contributes the file itself, the report header,
@@ -49,11 +52,35 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		List<String> violations = new ArrayList<>();
-		JsonNode root = JsonNodes.parseObject(requireContent(file, description), description, violations);
+		collectFileViolations(file, violations);
+		report(header(), violations);
+	}
+
+	/**
+	 * A file that cannot be decoded as UTF-8 is reported rather than read. A rule
+	 * whose file is optional meets whatever a repository put at that path, and an
+	 * {@link java.io.UncheckedIOException} escaping here aborted the build as an
+	 * internal error instead of reporting the malformed configuration the rule exists
+	 * to catch — the same outcome a parse failure is deliberately spared.
+	 */
+	private void collectFileViolations(File file, List<String> violations) throws EnforcerRuleException {
+		Optional<String> content = MarkdownText.readIfText(file);
+		if (content.isEmpty()) {
+			violations.add(description + " cannot be read as UTF-8 text: " + file);
+			return;
+		}
+		requireNotBlank(file, content.get());
+		JsonNode root = JsonNodes.parseObject(content.get(), description, violations);
 		if (root != null) {
 			collectViolations(root, violations);
 		}
-		report(header(), violations);
+	}
+
+	/** An empty file is a build-setup mistake, so it always fails regardless of severity. */
+	private void requireNotBlank(File file, String content) throws EnforcerRuleException {
+		if (content.isBlank()) {
+			throw new EnforcerRuleException(description + " is empty: " + file);
+		}
 	}
 
 	/** The JSON file to validate. Injected from the rule configuration. */

@@ -67,6 +67,14 @@ class MemoryImportsRuleTest {
 	}
 
 	@Test
+	void ignoresImportsInsideAnHtmlComment() {
+		// Claude Code never loads a commented-out import, so demanding its target
+		// exist failed the build over a file the memory had stopped importing.
+		assertDoesNotThrow(
+				ruleFor("# CLAUDE.md\n\n<!--\nWe used to import @docs/absent.md here.\n-->\n")::execute);
+	}
+
+	@Test
 	void ignoresImportsInInlineCodeSpans() {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nan `@claude`-mention workflow\n")::execute);
 	}

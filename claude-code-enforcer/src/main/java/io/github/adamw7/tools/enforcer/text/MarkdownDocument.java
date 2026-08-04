@@ -80,14 +80,21 @@ public final class MarkdownDocument {
 		return insideFence[index];
 	}
 
+	/**
+	 * True when the line at {@code index} says something about the document rather
+	 * than illustrating or retracting it: outside a fenced code block and outside an
+	 * HTML comment alike. A rule that reads a line for what it declares — a token it
+	 * forbids, a link it must resolve, a memory import it must follow — reads only
+	 * these, for the same reason {@link #headings()} does: sample text inside a fence
+	 * and text an author commented out are both inert.
+	 */
+	public boolean carriesStructure(int index) {
+		return !insideFence[index] && !insideComment[index];
+	}
+
 	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
 	public String firstNonBlankLine() {
 		return MarkdownText.firstNonBlankLine(lines.stream());
-	}
-
-	/** The indices of the lines outside fenced code blocks, in document order. */
-	private IntStream outsideFences() {
-		return IntStream.range(0, lines.size()).filter(index -> !insideFence[index]);
 	}
 
 	/**
@@ -96,12 +103,18 @@ public final class MarkdownDocument {
 	 * these.
 	 */
 	private IntStream structuralLines() {
-		return outsideFences().filter(index -> !insideComment[index]);
+		return IntStream.range(0, lines.size()).filter(this::carriesStructure);
 	}
 
-	/** True when {@code token} appears on a line outside a fenced code block. */
-	public boolean containsOutsideFences(String token) {
-		return outsideFences().anyMatch(index -> lines.get(index).contains(token));
+	/**
+	 * True when {@code token} appears on a line that carries document structure. A
+	 * mention inside a fenced code block is an example and one inside an HTML comment
+	 * is text its author removed, so neither states anything the document still says:
+	 * counting them let a commented-out reference satisfy the check that demands it,
+	 * and reported a commented-out token as forbidden content.
+	 */
+	public boolean containsOnStructuralLine(String token) {
+		return structuralLines().anyMatch(index -> lines.get(index).contains(token));
 	}
 
 	/** The heading lines outside fenced code blocks and HTML comments, in document order. */

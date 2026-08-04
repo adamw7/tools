@@ -151,7 +151,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(0, 1, 2), fencedLines(document));
-		assertTrue(document.containsOutsideFences("TODO"));
+		assertTrue(document.containsOnStructuralLine("TODO"));
 	}
 
 	@Test
@@ -164,7 +164,7 @@ class MarkdownDocumentTest {
 				````
 				""");
 
-		assertFalse(document.containsOutsideFences("TODO"));
+		assertFalse(document.containsOnStructuralLine("TODO"));
 	}
 
 	@Test
@@ -283,8 +283,43 @@ class MarkdownDocumentTest {
 		assertTrue(document.hasBody("## Testing"));
 	}
 
+	@Test
+	void doesNotFindATokenInsideAnHtmlComment() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				TODO dropped along with the section that used it.
+				-->
+
+				Body.
+				""");
+
+		assertFalse(document.containsOnStructuralLine("TODO"));
+	}
+
+	@Test
+	void doesNotCountACommentedLineAsCarryingStructure() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				@docs/removed.md
+				-->
+
+				@docs/kept.md
+				""");
+
+		assertEquals(List.of(0, 1, 5, 6), structuralLines(document));
+	}
+
 	/** The indices of the lines the document masks as fenced code, in document order. */
 	private static List<Integer> fencedLines(MarkdownDocument document) {
 		return IntStream.range(0, document.lineCount()).filter(document::isInsideFence).boxed().toList();
+	}
+
+	/** The indices of the lines that carry document structure, in document order. */
+	private static List<Integer> structuralLines(MarkdownDocument document) {
+		return IntStream.range(0, document.lineCount()).filter(document::carriesStructure).boxed().toList();
 	}
 }

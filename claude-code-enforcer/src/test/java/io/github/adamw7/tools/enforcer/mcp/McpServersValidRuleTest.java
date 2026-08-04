@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -147,6 +148,19 @@ class McpServersValidRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("mystery")), logger.warnings().toString());
+	}
+
+	@Test
+	void reportsAFileThatCannotBeReadAsTextInsteadOfAbortingTheBuild() {
+		Path file = tempDir.resolve(".mcp.json");
+		writeBytes(file, new byte[] { '{', (byte) 0xC3, (byte) 0x28, '}' });
+		McpServersValidRule rule = new McpServersValidRule();
+		rule.setMcpFile(file.toFile());
+
+		// An UncheckedIOException escaping here aborted the build as an internal error
+		// instead of reporting the malformed configuration the rule exists to catch.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as UTF-8 text"), exception.getMessage());
 	}
 
 	private McpServersValidRule ruleFor(String content) {

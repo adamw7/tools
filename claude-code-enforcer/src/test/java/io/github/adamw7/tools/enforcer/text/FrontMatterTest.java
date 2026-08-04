@@ -291,4 +291,40 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
 	}
+
+	/**
+	 * Only a quote that opens a scalar quotes it. An apostrophe mid-value is an
+	 * ordinary character, and reading it as the start of a quoted run left the
+	 * scalar looking unterminated, so the note after it was kept as part of the
+	 * description Claude Code never sees.
+	 */
+	@Test
+	void dropsATrailingCommentFromAValueCarryingAnApostrophe() {
+		Optional<FrontMatter> frontMatter = FrontMatter
+				.parse("---\ndescription: Claude's helper # the commit helper\n---\n");
+
+		assertEquals(Optional.of("Claude's helper"), frontMatter.orElseThrow().value("description"));
+	}
+
+	@Test
+	void dropsATrailingCommentFromAValueCarryingADoubleQuoteMidWord() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: say \"hi\" often # note\n---\n");
+
+		assertEquals(Optional.of("say \"hi\" often"), frontMatter.orElseThrow().value("description"));
+	}
+
+	@Test
+	void keepsAHashInsideASingleQuotedScalarThatEscapesItsQuote() {
+		Optional<FrontMatter> frontMatter = FrontMatter
+				.parse("---\ndescription: 'it''s # kept' # dropped\n---\n");
+
+		assertEquals(Optional.of("it's # kept"), frontMatter.orElseThrow().value("description"));
+	}
+
+	@Test
+	void keepsAValueWhoseOpeningQuoteNeverCloses() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"unterminated # note\n---\n");
+
+		assertEquals(Optional.of("\"unterminated # note"), frontMatter.orElseThrow().value("description"));
+	}
 }

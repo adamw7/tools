@@ -309,6 +309,20 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
+	void reportsASettingsFileThatCannotBeReadAsTextInsteadOfAbortingTheBuild() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		Path settings = tempDir.resolve(".claude/settings.json");
+		TestFiles.writeBytes(settings, new byte[] { '{', (byte) 0xC3, (byte) 0x28, '}' });
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settings.toFile());
+
+		// The settings file is optional here, so an UncheckedIOException escaping the
+		// rule aborted the build as an internal error over a file it only cross-checks.
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("cannot be read as UTF-8 text"), exception.getMessage());
+	}
+
+	@Test
 	void namesTheHooksDirectoryInItsDescription() {
 		HooksFormatRule rule = ruleFor();
 

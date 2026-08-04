@@ -140,8 +140,12 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 			violations.add("settings.json does not exist at " + settingsFile);
 			return;
 		}
-		String content = MarkdownText.read(settingsFile, "settings.json");
-		JsonNode settings = JsonNodes.parseObject(content, "settings.json", violations);
+		Optional<String> content = MarkdownText.readIfText(settingsFile);
+		if (content.isEmpty()) {
+			violations.add("settings.json cannot be read as UTF-8 text: " + settingsFile);
+			return;
+		}
+		JsonNode settings = JsonNodes.parseObject(content.get(), "settings.json", violations);
 		if (settings == null) {
 			return;
 		}

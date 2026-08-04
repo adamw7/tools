@@ -445,7 +445,38 @@ longer and carry no timeout.
   `BuildSystem`, `*CommandRunner` to `CommandRunner`, `*Tool` to `McpTool`); the
   only public `static void main` methods are the two `Main` entry points the pom
   names; and no public method declares a checked `IOException`, since the
-  pipeline reports failure with the unchecked `AdoptionException`. A companion
+  pipeline reports failure with the unchecked `AdoptionException`. Four more keep
+  the pipeline assembled in one place and driven by its options alone:
+  `GitHubRepoAdopter` is the only class outside the `step` package that may
+  depend on an `AdoptionStep`, so the command line and the MCP tool cannot drift
+  into adopting a repository two different ways; a `BuildSystem` describes the
+  commands its build tool needs but never depends on `CommandRunner`, leaving the
+  running to the step it answers; `System.getenv` is read only in the `command`
+  package, where resolving an executable on `PATH` is the one thing a run may
+  take from its environment; and `java.util.concurrent`/`Thread` stay there too,
+  since the pipeline is sequential and only pumping a spawned process's output
+  under a timeout needs threads.
+  `EnforcerArchitectureTest` pins, beyond the layering above, what a rule *is*
+  and what it may do while a build runs. What it is: every concrete rule is a
+  public `@Named` type, because maven-enforcer resolves a configured rule through
+  the Sisu index and an unannotated one tests green and then fails the build that
+  configures it with "rule not found"; its `@Named` value is derived from its
+  class name (the simple name minus the `Rule` suffix, decapitalised), which is
+  the string the poms, CLAUDE.md and AGENTS.md all use; every rule carries that
+  suffix, and — since this module trades the `Abstract` prefix for names poms
+  configure — an abstract type here must be a rule base. What it may do: read the
+  project and nothing else. No class depends on `ProcessBuilder`, `Process` or
+  `Runtime`, so `hookCommandsValid` and `permissionsFormat` check the commands a
+  repository asked Claude Code to run without ever running one; none reaches the
+  network (`java.net.http`, `javax.net`, `URL`, `URLConnection`, `Socket`), so the
+  checks work offline and a secret scanner cannot become the leak; and the only
+  classes that write through `java.nio.file.Files` are the three a build asks for
+  — `HtmlReport`, `Baseline`, and `MarkdownText`'s front-matter fix. Two more pin
+  the seams: `..enforcer.text..` stays free of the Maven API, `javax.inject` and
+  Jackson, which is what lets a rule be tested without a Maven session, and
+  `JsonNodes` is the only class depending on `ObjectMapper`, so every JSON rule
+  reads through the one mapper configured for the comments and trailing commas
+  Claude Code's own files allow. A companion
   `TestConventionsArchitectureTest` in the same `...architecture` package
   analyses only the *test* classes (via `ImportOption.OnlyIncludeTests`) and pins
   conventions on the tests themselves: every `@Testable` method must live in a
@@ -457,7 +488,13 @@ longer and carry no timeout.
   step test drives its step through the recording `CommandRunner` rather than
   spawning a real `git`, `claude` or `gh`, and no `*IT` may depend on `PushStep`
   or `PullRequestStep` — the integration tests run against real GitHub
-  repositories, so their pipeline stops at the branch step.
+  repositories, so their pipeline stops at the branch step. In
+  `claude-code-enforcer` it pins two more, both about the one thing there that
+  cannot be fast: `ProcessBuilder` is confined to the `e2e` package, since a rule
+  is unit-tested by calling `execute()` on it, and every `@Testable` method in
+  that package must sit in an `*IT` class — forking Maven belongs to failsafe and
+  the `integration-tests` profile, not to the pull-request build and its
+  120-second budget.
 - **Shared rule libraries.** The rules above that hold for *every* module are
   declared once in the `test-common` module and imported with ArchUnit's
   `ArchTests.in(...)`, so each module's architecture test states only what is

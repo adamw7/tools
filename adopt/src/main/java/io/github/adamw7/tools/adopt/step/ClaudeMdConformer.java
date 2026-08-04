@@ -32,7 +32,13 @@ public class ClaudeMdConformer {
 	 * claude-code-enforcer module: the title, the AGENTS.md reference, and the
 	 * required section headings the wired-in claudeMdFormat rule checks for. They
 	 * are duplicated here rather than imported because the adopt module does not
-	 * depend on the enforcer module; keep the two in sync.
+	 * depend on the enforcer module — a pipeline that shipped an enforcer rule
+	 * would force the maven-enforcer API on every consumer.
+	 *
+	 * The copy is not trusted to stay in step: ClaudeMdConformerContractTest runs
+	 * the real rule over this class's output, on a test-scoped dependency, so a
+	 * rule that asks for one more section fails this module's build rather than
+	 * some adopted repository's.
 	 */
 	static final String TITLE = "# CLAUDE.md";
 	static final String AGENTS_REFERENCE = "AGENTS.md";
@@ -304,8 +310,9 @@ public class ClaudeMdConformer {
 	 * delimiter, such as the {@code java} of {@code ```java}.
 	 *
 	 * <p>This mirrors {@code MarkdownDocument} in the {@code claude-code-enforcer}
-	 * module, the reader the wired-in {@code claudeMdFormat} rule uses; keep the two
-	 * in sync, as with {@link #REQUIRED_SECTIONS}. Reading fences any more loosely
+	 * module, the reader the wired-in {@code claudeMdFormat} rule uses, and is held
+	 * to it by the same contract test as {@link #REQUIRED_SECTIONS}. Reading fences
+	 * any more loosely
 	 * than the rule does makes the reshape act on lines the rule holds to be code: a
 	 * {@code ## Testing} inside a code sample was taken for the section the document
 	 * already had, so the real one was never appended and the adoption failed its own

@@ -55,7 +55,7 @@ decision, add a new ADR that supersedes it and set both records' `Supersedes` /
 | [0002](0002-security-policy-and-supply-chain-posture.md) | Security policy and supply-chain posture | Accepted | 2026-07-16 |
 | [0003](0003-require-tls-1.3.md) | Require TLS 1.3+ for HTTPS transports | Accepted | 2026-07-16 |
 | [0004](0004-codeql-code-scanning.md) | CodeQL static analysis for code scanning | Accepted | 2026-07-16 |
-| [0005](0005-renovate-dependency-updates.md) | Renovate for routine dependency version updates | Proposed | 2026-07-16 |
+| [0005](0005-renovate-dependency-updates.md) | Renovate for routine dependency version updates | Accepted | 2026-07-16 |
 | [0006](0006-dependabot-security-updates.md) | Dependabot for security-alert updates | Proposed | 2026-07-16 |
 | [0007](0007-duckdb-parquet-data-source.md) | DuckDB (JDBC) as the Parquet read engine | Accepted | 2026-07-16 |
 | [0008](0008-log4j2-logging.md) | log4j2 as the logging backend | Accepted | 2026-07-16 |

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "timezone": "UTC",
+  "schedule": [
+    "before 06:00 on monday"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "conflicted",
+  "vulnerabilityAlerts": {
+    "enabled": false
+  },
+  "osvVulnerabilityAlerts": false,
+  "packageRules": [
+    {
+      "description": "This project's own modules resolve inside the reactor at ${revision}; there is no released version for Renovate to raise.",
+      "matchPackageNames": [
+        "io.github.adamw7:**"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Every Maven plugin version lives in the root pom's pluginManagement, so one grouped PR is the whole change.",
+      "groupName": "maven plugins",
+      "matchPackageNames": [
+        "org.apache.maven.plugins:**",
+        "org.apache.maven.plugin-tools:**",
+        "org.codehaus.mojo:**",
+        "dev.dimlight:shellcheck-maven-plugin",
+        "io.github.ascopes:protobuf-maven-plugin",
+        "org.sonatype.central:central-publishing-maven-plugin"
+      ]
+    },
+    {
+      "description": "The quality gates move together: a JaCoCo or PIT bump changes what the coverage and pitest profiles enforce.",
+      "groupName": "coverage and mutation tooling",
+      "matchPackageNames": [
+        "org.jacoco:**",
+        "org.pitest:**"
+      ]
+    },
+    {
+      "description": "Test libraries land as one reviewable change rather than four.",
+      "groupName": "test libraries",
+      "matchPackageNames": [
+        "org.junit.jupiter:**",
+        "org.junit.platform:**",
+        "org.mockito:**",
+        "com.tngtech.archunit:**",
+        "org.jsoup:jsoup"
+      ]
+    },
+    {
+      "description": "protobuf-java and the protoc the plugin runs share one property; letting them drift apart cost two minor versions once already.",
+      "groupName": "protobuf toolchain",
+      "matchPackageNames": [
+        "com.google.protobuf:**"
+      ]
+    },
+    {
+      "description": "A Maven 4 API is wired in on purpose while the build itself is pinned to Maven 3.9.x, so a major move here is a deliberate one.",
+      "matchPackageNames": [
+        "org.apache.maven:maven-plugin-api",
+        "org.apache.maven:maven-model",
+        "org.apache.maven:maven-artifact"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "A major bump of the framework the three MCP servers boot on is a change to review on its own.",
+      "matchPackageNames": [
+        "org.springframework.boot:**"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

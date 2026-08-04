@@ -13,8 +13,12 @@
 	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
 	<properties>
 		<!-- This module only exercises generated protobuf/gRPC classes, so the
-		     instruction-coverage gate is not meaningful here. -->
+		     instruction-coverage gate is not meaningful here. The mutation gate is
+		     not meaningful for the same reason: with no hand-written production
+		     Java at all, PIT scored the module at 14% — 615 of its 776 mutants
+		     uncovered — measuring protoc's output rather than anybody's tests. -->
 		<jacoco.skip>true</jacoco.skip>
+		<pitest.skip>true</pitest.skip>
 		<!-- An example, not a reusable library, so keep it out of both
 		     publications: the GitHub Packages deployment maven-deploy-plugin
 		     performs on `mvn deploy`, and the Maven Central bundle the root pom's

@@ -33,6 +33,24 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 		super("CLAUDE.md", REQUIRED_SECTIONS);
 	}
 
+	/**
+	 * The rule configured exactly as a build wires it — the file to check and
+	 * nothing else — for a caller outside this package that has to prove a
+	 * {@code CLAUDE.md} it produced satisfies the check it is about to wire in.
+	 * The adopt module's conformer is written against this contract and duplicates
+	 * its constants, so its tests run the real rule over the real output rather
+	 * than trusting a copy to have stayed in step.
+	 *
+	 * @param claudeMdFile the {@code CLAUDE.md} to validate
+	 * @return a rule that validates {@code claudeMdFile} with the default title and
+	 *         required sections, every optional check left off
+	 */
+	public static ClaudeMdFormatRule validating(File claudeMdFile) {
+		ClaudeMdFormatRule rule = new ClaudeMdFormatRule();
+		rule.setClaudeMdFile(claudeMdFile);
+		return rule;
+	}
+
 	@Override
 	protected File documentFile() {
 		return claudeMdFile;

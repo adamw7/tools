@@ -11,6 +11,12 @@
 	<packaging>jar</packaging>
 	<name>Claude Code repository adoption</name>
 	<description>Adopts Claude Code into a GitHub repository: clones it, runs claude init to generate CLAUDE.md, commits and pushes, then wires the claude-code-enforcer into the project build.</description>
+	<properties>
+		<!-- Mutation-score floor for this module, a few points under the 91% it
+		     measures today so an equivalent refactor cannot turn the build red.
+		     See the root pom's pitest.mutationThreshold. -->
+		<pitest.mutationThreshold>88</pitest.mutationThreshold>
+	</properties>
 	<build>
 		<resources>
 			<!-- Default resources copied verbatim: log4j2.properties carries ${...}
@@ -123,6 +129,28 @@
 		<dependency>
 			<groupId>com.tngtech.archunit</groupId>
 			<artifactId>archunit-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Test scope only, so the pipeline stays a plain library that ships no
+		     enforcer rule: ClaudeMdConformerContractTest runs the real
+		     claudeMdFormat rule over the conformer's output, which is the only way
+		     the two can be held to the one contract they both spell out. A compile
+		     dependency would drag the maven-enforcer API into every consumer of
+		     adopt for a check that belongs to this module's tests. -->
+		<dependency>
+			<groupId>io.github.adamw7</groupId>
+			<artifactId>tools.claude-code-enforcer</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- The rule's execute() declares EnforcerRuleException, so the test that
+		     calls it needs the API on its classpath. It is managed as `provided`
+		     for the enforcer module, which maven-enforcer supplies at build time
+		     and which therefore does not travel with the rule jar; narrowed to
+		     `test` here so it stays off adopt's own compile classpath. -->
+		<dependency>
+			<groupId>org.apache.maven.enforcer</groupId>
+			<artifactId>enforcer-api</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

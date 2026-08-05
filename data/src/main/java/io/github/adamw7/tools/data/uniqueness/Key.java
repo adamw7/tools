@@ -9,25 +9,18 @@ public record Key(String[] values) {
 		return Arrays.toString(values);
 	}
 
+	/**
+	 * A record compares and hashes its array component by identity, which would make
+	 * two keys holding equal values distinct; both are answered by content instead, so
+	 * a key works as a map key and a set element.
+	 */
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + Arrays.hashCode(values);
-		return result;
+		return Arrays.hashCode(values);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Key other = (Key) obj;
-		return Arrays.equals(values, other.values);
+		return obj instanceof Key other && Arrays.equals(values, other.values);
 	}
-	
-	
 }

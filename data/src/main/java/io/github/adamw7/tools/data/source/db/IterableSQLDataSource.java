@@ -112,9 +112,15 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		}
 	}
 
+	/**
+	 * Releases the query resources directly rather than through {@link #close()}, so a
+	 * source that owns its connection — the Parquet ones, which close DuckDB in
+	 * {@code close()} — is re-read on the connection it already has instead of having
+	 * to override this method to say so.
+	 */
 	@Override
 	public void reset() {
-		close();
+		closeQueryResources();
 		hasMoreData = true;
 		open();
 	}

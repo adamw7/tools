@@ -14,19 +14,8 @@ public class InMemoryParquetDataSource extends InMemorySQLDataSource {
 	}
 
 	@Override
-	public void reset() {
-		releaseQueryResources();
-		hasMoreData = true;
-		open();
-	}
-
-	@Override
 	public void close() {
-		releaseQueryResources();
-		DuckDbParquet.close(connection);
-	}
-
-	private void releaseQueryResources() {
 		super.close();
+		DuckDbParquet.close(connection);
 	}
 }

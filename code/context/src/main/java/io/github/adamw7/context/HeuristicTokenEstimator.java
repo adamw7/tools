@@ -8,37 +8,18 @@ package io.github.adamw7.context;
  * without a tokenizer dependency. The estimate is rounded up so that any
  * non-empty text costs at least one token.
  */
-public class HeuristicTokenEstimator implements TokenEstimator {
-
-	public static final int DEFAULT_CHARACTERS_PER_TOKEN = 4;
-
-	private final int charactersPerToken;
+public class HeuristicTokenEstimator extends AbstractTokenEstimator {
 
 	public HeuristicTokenEstimator() {
 		this(DEFAULT_CHARACTERS_PER_TOKEN);
 	}
 
 	public HeuristicTokenEstimator(int charactersPerToken) {
-		requirePositive(charactersPerToken);
-		this.charactersPerToken = charactersPerToken;
-	}
-
-	private void requirePositive(int charactersPerToken) {
-		if (charactersPerToken <= 0) {
-			throw new IllegalArgumentException(
-					"charactersPerToken must be positive and received: " + charactersPerToken);
-		}
+		super(charactersPerToken);
 	}
 
 	@Override
-	public int estimate(String text) {
-		if (text == null || text.isEmpty()) {
-			return 0;
-		}
-		return ceilDivision(text.length(), charactersPerToken);
-	}
-
-	private int ceilDivision(int dividend, int divisor) {
-		return (dividend + divisor - 1) / divisor;
+	protected int count(String text) {
+		return tokensFor(text.length());
 	}
 }

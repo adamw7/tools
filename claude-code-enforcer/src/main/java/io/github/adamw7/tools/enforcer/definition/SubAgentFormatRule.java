@@ -12,7 +12,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when any sub-agent definition under the
@@ -32,7 +31,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
 public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String LABEL = "Sub-agent";
-	private static final String DEFINITION = "sub-agent definition";
+	private static final String DEFINITION = "Sub-agent definition";
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
 
 	/** The {@code .claude/agents} directory to scan. Injected from the rule configuration. */
@@ -58,28 +57,15 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 		report("Sub-agent files are not well formed:", violations);
 	}
 
-	/**
-	 * A definition that cannot be decoded as text is reported rather than read. The
-	 * rule scans a directory whose contents it does not control, and an
-	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
-	 * internal error instead of reporting the malformed definition it exists to
-	 * catch.
-	 */
 	private void collectDefinitionViolations(File definition, List<String> violations) {
-		Optional<String> text = MarkdownText.readIfText(definition);
-		if (text.isEmpty()) {
-			violations.add("Sub-agent definition cannot be read as text: " + definition);
-			return;
-		}
-		String content = text.get();
-		if (content.isBlank()) {
-			violations.add("Sub-agent definition is empty: " + definition);
-			return;
-		}
-		String fixed = FrontMatterAutoFix.apply(definition, DEFINITION, content, autoFix, getLog());
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(fixed);
+		DefinitionContent.of(definition, DEFINITION, autoFix, getLog(), violations)
+				.ifPresent(content -> collectParsedViolations(definition, content, violations));
+	}
+
+	private void collectParsedViolations(File definition, String content, List<String> violations) {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
 		if (frontMatter.isEmpty()) {
-			violations.add("Sub-agent definition must start with a YAML front matter block delimited by '---': "
+			violations.add(DEFINITION + " must start with a YAML front matter block delimited by '---': "
 					+ definition);
 		} else {
 			collectFrontMatterViolations(definition, frontMatter.get(), violations);

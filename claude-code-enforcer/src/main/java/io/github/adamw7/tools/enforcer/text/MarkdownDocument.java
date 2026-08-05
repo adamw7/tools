@@ -3,7 +3,6 @@ package io.github.adamw7.tools.enforcer.text;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -148,35 +147,28 @@ public final class MarkdownDocument {
 		return structuralLines().filter(index -> lines.get(index).strip().equals(section)).findFirst().orElse(-1);
 	}
 
+	/** The first line that settles the question decides it; a section nothing settles has no body. */
 	private boolean hasBodyAt(int headingIndex) {
 		int sectionLevel = headingLevel(lines.get(headingIndex).strip());
-		for (int i = headingIndex + 1; i < lines.size(); i++) {
-			Optional<Boolean> verdict = bodyVerdict(i, sectionLevel);
-			if (verdict.isPresent()) {
-				return verdict.get();
-			}
-		}
-		return false;
+		return IntStream.range(headingIndex + 1, lines.size())
+				.filter(this::decidesBody)
+				.limit(1)
+				.anyMatch(index -> insideFence[index] || isBody(lines.get(index).strip(), sectionLevel));
 	}
 
 	/**
-	 * Whether the line at {@code index} settles the question of the section's body,
-	 * or empty when it says nothing either way. A blank line does not, and neither
-	 * does a commented-out one: a section whose only content is inside an HTML
-	 * comment reads as empty, which is what commenting it out meant.
+	 * Whether the line at {@code index} settles the question of the section's body.
+	 * A blank line does not, and neither does a commented-out one: a section whose
+	 * only content is inside an HTML comment reads as empty, which is what commenting
+	 * it out meant.
 	 */
-	private Optional<Boolean> bodyVerdict(int index, int sectionLevel) {
-		if (insideComment[index]) {
-			return Optional.empty();
-		}
-		if (insideFence[index]) {
-			return Optional.of(Boolean.TRUE);
-		}
-		String line = lines.get(index).strip();
-		if (isHeading(line)) {
-			return Optional.of(headingLevel(line) > sectionLevel);
-		}
-		return line.isEmpty() ? Optional.empty() : Optional.of(Boolean.TRUE);
+	private boolean decidesBody(int index) {
+		return insideFence[index] || (!insideComment[index] && !lines.get(index).isBlank());
+	}
+
+	/** A deeper sub-heading continues the section; one at its level or shallower ends it. */
+	private static boolean isBody(String line, int sectionLevel) {
+		return !isHeading(line) || headingLevel(line) > sectionLevel;
 	}
 
 	private static boolean isHeading(String line) {
@@ -184,11 +176,7 @@ public final class MarkdownDocument {
 	}
 
 	private static int headingLevel(String heading) {
-		int level = 0;
-		while (level < heading.length() && heading.charAt(level) == HEADING_CHAR) {
-			level++;
-		}
-		return level;
+		return runLength(heading, HEADING_CHAR);
 	}
 
 	private static boolean[] fenceMask(List<String> lines) {
@@ -264,12 +252,9 @@ public final class MarkdownDocument {
 		return character == BACKTICK || character == TILDE;
 	}
 
+	/** How many times {@code character} repeats at the start of {@code line}. */
 	private static int runLength(String line, char character) {
-		int length = 0;
-		while (length < line.length() && line.charAt(length) == character) {
-			length++;
-		}
-		return length;
+		return (int) line.chars().takeWhile(candidate -> candidate == character).count();
 	}
 
 	/**

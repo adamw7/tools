@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
+import io.github.adamw7.tools.enforcer.rule.Violations;
 
 /**
  * Enforcer rule that fails the build when {@code .claude/settings.json} is
@@ -52,36 +53,16 @@ public class SettingsJsonValidRule extends JsonFileRule {
 			return;
 		}
 		List<String> allow = allowList(settings);
-		collectRequiredPermissions(allow, violations);
-		collectForbiddenPermissions(allow, violations);
+		Violations.each(requiredPermissions, permission -> !allow.contains(permission),
+				permission -> "settings.json is missing required permission: " + permission, violations);
+		Violations.each(forbiddenPermissions, allow::contains,
+				permission -> "settings.json contains forbidden permission: " + permission, violations);
 	}
 
 	private List<String> allowList(JsonNode settings) {
 		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
 		JsonNode allow = permissions != null ? JsonNodes.arrayAt(permissions, ALLOW_KEY) : null;
 		return allow != null ? allow.valueStream().map(JsonNode::asText).toList() : List.of();
-	}
-
-	private void collectRequiredPermissions(List<String> allow, List<String> violations) {
-		if (requiredPermissions == null) {
-			return;
-		}
-		for (String permission : requiredPermissions) {
-			if (!allow.contains(permission)) {
-				violations.add("settings.json is missing required permission: " + permission);
-			}
-		}
-	}
-
-	private void collectForbiddenPermissions(List<String> allow, List<String> violations) {
-		if (forbiddenPermissions == null) {
-			return;
-		}
-		for (String permission : forbiddenPermissions) {
-			if (allow.contains(permission)) {
-				violations.add("settings.json contains forbidden permission: " + permission);
-			}
-		}
 	}
 
 	void setSettingsFile(File settingsFile) {

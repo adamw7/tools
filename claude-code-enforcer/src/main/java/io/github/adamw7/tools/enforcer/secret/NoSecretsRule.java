@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.PatternSyntaxException;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -13,6 +12,7 @@ import javax.inject.Named;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.Patterns;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -38,6 +38,7 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
 public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 
 	private static final int VISIBLE_PREFIX_LENGTH = 8;
+	private static final String SECRET_PATTERN_PARAMETER = "secretPattern";
 
 	/** Files to scan. An entry that does not exist is skipped, since most targets are optional. */
 	private List<File> files;
@@ -112,30 +113,16 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		return content.map(text -> text.lines().toList()).orElseGet(List::of);
 	}
 
+	/** A configured pattern is reported under its own text, since only its author can name it. */
 	private List<CredentialPattern> patterns() throws EnforcerRuleException {
 		List<CredentialPattern> patterns = new ArrayList<>();
 		if (useDefaultPatterns) {
 			patterns.addAll(CredentialPattern.defaults());
 		}
-		List<String> configured = secretPatterns != null ? secretPatterns : List.of();
-		for (String regex : configured) {
-			patterns.add(compiled(regex));
+		for (String regex : secretPatterns != null ? secretPatterns : List.<String>of()) {
+			patterns.add(new CredentialPattern(regex, Patterns.compile(regex, SECRET_PATTERN_PARAMETER)));
 		}
 		return patterns;
-	}
-
-	/**
-	 * A configured pattern that is not a valid regular expression is a build-setup
-	 * mistake, so it fails with a message naming it rather than letting a
-	 * {@link PatternSyntaxException} escape as an internal build error.
-	 */
-	private CredentialPattern compiled(String regex) throws EnforcerRuleException {
-		try {
-			return CredentialPattern.of(regex, regex);
-		} catch (PatternSyntaxException e) {
-			throw new EnforcerRuleException(
-					"secretPattern '" + regex + "' is not a valid regular expression: " + e.getDescription());
-		}
 	}
 
 	void setFiles(List<File> files) {

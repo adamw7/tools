@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.doc.BoundedCharSequence.BacktrackLimitExceededException;
+import io.github.adamw7.tools.enforcer.rule.Patterns;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
@@ -34,6 +34,8 @@ final class DocumentConsistency {
 	 */
 	private static final long STEPS_PER_CHARACTER = 10_000L;
 	private static final long MINIMUM_STEPS = 1_000_000L;
+
+	private static final String PARAMETER = "consistentPattern";
 
 	/** A document to compare: its content, and the name shown in violation messages. */
 	private record Document(String name, String content) {
@@ -63,36 +65,25 @@ final class DocumentConsistency {
 		return violations;
 	}
 
-	private List<Pattern> compilePatterns() throws EnforcerRuleException {
-		List<Pattern> compiled = new ArrayList<>();
-		for (String pattern : patterns) {
-			compiled.add(verified(pattern));
-		}
-		return compiled;
-	}
-
 	/**
-	 * Each pattern must be a valid regular expression declaring a capturing group,
-	 * since comparison reads {@code group(1)}. Either mistake is a build-setup one,
-	 * so it fails with a message naming the pattern instead of letting an opaque
-	 * {@link java.util.regex.PatternSyntaxException} or
-	 * {@link IndexOutOfBoundsException} escape as an internal build error.
+	 * Each pattern must declare a capturing group, since comparison reads
+	 * {@code group(1)}. That is a build-setup mistake, so it fails with a message
+	 * naming the pattern instead of letting an opaque
+	 * {@link IndexOutOfBoundsException} escape as an internal build error — as
+	 * {@link Patterns} does for a pattern that does not compile at all.
 	 */
-	private Pattern verified(String pattern) throws EnforcerRuleException {
-		Pattern compiled = compile(pattern);
-		if (compiled.matcher("").groupCount() < 1) {
-			throw new EnforcerRuleException(
-					"consistentPattern '" + pattern + "' must declare a capturing group");
+	private List<Pattern> compilePatterns() throws EnforcerRuleException {
+		List<Pattern> compiled = Patterns.compileAll(patterns, PARAMETER);
+		for (Pattern pattern : compiled) {
+			requireCapturingGroup(pattern);
 		}
 		return compiled;
 	}
 
-	private Pattern compile(String pattern) throws EnforcerRuleException {
-		try {
-			return Pattern.compile(pattern);
-		} catch (PatternSyntaxException e) {
+	private void requireCapturingGroup(Pattern pattern) throws EnforcerRuleException {
+		if (pattern.matcher("").groupCount() < 1) {
 			throw new EnforcerRuleException(
-					"consistentPattern '" + pattern + "' is not a valid regular expression: " + e.getDescription());
+					PARAMETER + " '" + pattern.pattern() + "' must declare a capturing group");
 		}
 	}
 

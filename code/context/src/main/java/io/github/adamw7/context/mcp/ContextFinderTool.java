@@ -31,18 +31,7 @@ public class ContextFinderTool extends AbstractClassContextTool {
 
 	private final ToolDefinition toolDefinition = new ToolDefinition("find_context",
 			"Find the classes a given class depends on, within a Java, Kotlin or Scala project",
-			Map.of(
-					"type", "object",
-					"properties", Map.of(
-							"path", Map.of("type", "string",
-									"description", "absolute path to the project root directory"),
-							"class_name", Map.of("type", "string",
-									"description", "simple name of the class to inspect, e.g. Foo or Foo.java"),
-							"language", Map.of("type", "string",
-									"description", "source language: java (default), kotlin or scala"),
-							"depth", Map.of("type", "integer",
-									"description", "how many levels of transitive dependencies to resolve (default 1)")),
-					"required", List.of("path", "class_name")));
+			ContextToolSchema.singleClass());
 
 	@Override
 	public ToolDefinition getToolDefinition() {

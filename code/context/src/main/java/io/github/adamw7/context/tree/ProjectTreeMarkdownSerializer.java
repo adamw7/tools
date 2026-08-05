@@ -6,36 +6,26 @@ package io.github.adamw7.context.tree;
  * as indented child bullets. The result is a compact, Markdown-aware view well
  * suited to documents and chat-based gen-AI agents.
  */
-public class ProjectTreeMarkdownSerializer implements ProjectTreeSerializer {
+public class ProjectTreeMarkdownSerializer extends AbstractProjectTreeIndentedSerializer {
 
-	private static final String INDENT = "  ";
 	private static final String BULLET = "- ";
 	private static final String DIRECTORY_MARKER = "**";
 	private static final String DEPENDENCY_MARKER = "depends on: ";
 
 	@Override
-	public String serialize(ProjectTreeNode root) {
-		StringBuilder builder = new StringBuilder();
-		append(builder, root, "");
-		return builder.toString();
-	}
-
-	private void append(StringBuilder builder, ProjectTreeNode node, String indent) {
-		builder.append(indent).append(BULLET).append(label(node)).append(System.lineSeparator());
-		appendDependencies(builder, node, indent + INDENT);
-		node.children().forEach(child -> append(builder, child, indent + INDENT));
-	}
-
-	private void appendDependencies(StringBuilder builder, ProjectTreeNode node, String indent) {
-		node.dependencies().forEach(dependency ->
-				builder.append(indent).append(BULLET).append(DEPENDENCY_MARKER).append('`')
-						.append(dependency).append('`').append(System.lineSeparator()));
-	}
-
-	private String label(ProjectTreeNode node) {
+	protected String line(ProjectTreeNode node) {
 		if (node.isDirectory()) {
-			return DIRECTORY_MARKER + node.name() + DIRECTORY_MARKER;
+			return BULLET + DIRECTORY_MARKER + node.name() + DIRECTORY_MARKER;
 		}
-		return "`" + node.name() + "`";
+		return BULLET + code(node.name());
+	}
+
+	@Override
+	protected String dependencyLine(String dependency) {
+		return BULLET + DEPENDENCY_MARKER + code(dependency);
+	}
+
+	private String code(String text) {
+		return "`" + text + "`";
 	}
 }

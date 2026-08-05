@@ -1,5 +1,7 @@
 package io.github.adamw7.context.tree;
 
+import java.util.List;
+
 /**
  * Renders the dependency graph of a {@link ProjectTreeNode} tree as a Graphviz
  * <a href="https://graphviz.org/doc/info/lang.html">DOT</a> digraph: every file
@@ -9,34 +11,14 @@ package io.github.adamw7.context.tree;
  * classes depend on one another — complementary to the tree-shaped text, Markdown
  * and JSON serializers.
  */
-public class ProjectTreeDotSerializer implements ProjectTreeSerializer {
-
-	private static final String INDENT = "  ";
+public class ProjectTreeDotSerializer extends AbstractProjectTreeGraphSerializer {
 
 	@Override
-	public String serialize(ProjectTreeNode root) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("digraph project {").append(System.lineSeparator());
-		appendEdges(builder, root);
-		builder.append("}").append(System.lineSeparator());
-		return builder.toString();
-	}
-
-	private void appendEdges(StringBuilder builder, ProjectTreeNode node) {
-		appendNodeEdges(builder, node);
-		node.children().forEach(child -> appendEdges(builder, child));
-	}
-
-	private void appendNodeEdges(StringBuilder builder, ProjectTreeNode node) {
-		if (node.isDirectory()) {
-			return;
-		}
-		node.dependencies().forEach(dependency -> appendEdge(builder, node.name(), dependency));
-	}
-
-	private void appendEdge(StringBuilder builder, String from, String to) {
-		builder.append(INDENT).append(quote(from)).append(" -> ").append(quote(to)).append(";")
-				.append(System.lineSeparator());
+	protected String render(List<Edge> edges) {
+		StringBuilder builder = new StringBuilder("digraph project {").append(System.lineSeparator());
+		edges.forEach(edge -> builder.append(INDENT).append(quote(edge.from())).append(" -> ")
+				.append(quote(edge.to())).append(";").append(System.lineSeparator()));
+		return builder.append("}").append(System.lineSeparator()).toString();
 	}
 
 	private String quote(String label) {

@@ -9,21 +9,8 @@ public class NoMemoryUniquenessCheck extends AbstractUniqueness<ColumnarDataSour
 	}
 
 	@Override
-	public Result exec(String... keyCandidates) {
-		check(keyCandidates);
-		dataSource.open();
-		try {
-			return execOnOpenSource(keyCandidates);
-		} finally {
-			close(dataSource);
-		}
-	}
-
-	@Override
 	protected Result execOnOpenSource(String[] keyCandidates) {
-		checkIfCandidatesExistIn(keyCandidates, dataSource.getColumnNames());
-		int[] indices = getIndiciesOf(keyCandidates, dataSource.getColumnNames());
-		KeyFinder finder = new KeyFinder(indices);
+		KeyFinder finder = new KeyFinder(indicesOf(keyCandidates));
 		while (dataSource.hasMoreData()) {
 			String[] row = dataSource.nextRow();
 			if (finder.found(row)) {

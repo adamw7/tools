@@ -1,11 +1,7 @@
 package io.github.adamw7.context.mcp;
 
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.context.ClassContainer;
 import io.github.adamw7.context.Language;
@@ -15,48 +11,37 @@ import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * Shared skeleton for the MCP tools that operate on a single class within a
- * project. They all confine and resolve the project path, load every source of
- * the requested {@link Language}, and locate the target class by its simple name;
- * they differ only in what they compute from that class, which subclasses supply
- * through {@link #result}. Keeping the common steps here removes the duplication
- * between {@link ContextFinderTool} and {@link EstimateTokensTool} and keeps their
- * argument handling, class lookup and result envelopes identical.
+ * project. On top of the arguments {@link AbstractContextTool} resolves for every
+ * tool, they load every source of the requested {@link Language} and locate the
+ * target class by its simple name; they differ only in what they compute from that
+ * class, which subclasses supply through {@link #result}. Keeping those steps here
+ * removes the duplication between {@link ContextFinderTool} and
+ * {@link EstimateTokensTool} and keeps their class lookup and result envelopes
+ * identical.
  */
-abstract class AbstractClassContextTool implements ContextTool {
-
-	protected static final int DEFAULT_DEPTH = 1;
-	protected static final int MAX_DEPTH = 10;
-
-	private static final Logger log = LogManager.getLogger(AbstractClassContextTool.class);
-
-	protected final PathPolicy pathPolicy;
+abstract class AbstractClassContextTool extends AbstractContextTool {
 
 	protected AbstractClassContextTool(PathPolicy pathPolicy) {
-		this.pathPolicy = pathPolicy;
+		super(pathPolicy);
 	}
 
 	@Override
-	public ToolResult apply(Map<String, Object> arguments) {
-		log.info("Calling MCP {} tool for {}", getToolDefinition().name(), arguments);
-		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
-		Language language = LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA);
-		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
-		Set<ClassContainer> containers = Set.copyOf(new ProjectSources(language).load(root).values());
-
-		ClassContainer target = findTarget(containers, arguments, language);
+	protected final ToolResult answer(Scan scan, Map<String, Object> arguments) {
+		Set<ClassContainer> containers = Set.copyOf(new ProjectSources(scan.language()).load(scan.root()).values());
+		String className = ToolArguments.requiredString(arguments, "class_name");
+		ClassContainer target = findTarget(containers, className, scan.language());
 		if (target == null) {
-			return ToolResult.error("Class not found: " + ToolArguments.requiredString(arguments, "class_name"));
+			return ToolResult.error("Class not found: " + className);
 		}
-		return ToolResult.success(result(containers, target, language, depth));
+		return ToolResult.success(result(containers, target, scan.language(), scan.depth()));
 	}
 
 	/** Computes the tool's textual result from the located class within its project. */
 	protected abstract String result(Set<ClassContainer> containers, ClassContainer target,
 			Language language, int depth);
 
-	private ClassContainer findTarget(Set<ClassContainer> containers, Map<String, Object> arguments,
-			Language language) {
-		String fileName = fileNameOf(ToolArguments.requiredString(arguments, "class_name"), language);
+	private ClassContainer findTarget(Set<ClassContainer> containers, String className, Language language) {
+		String fileName = fileNameOf(className, language);
 		return containers.stream()
 				.filter(container -> container.className().equals(fileName))
 				.findFirst()

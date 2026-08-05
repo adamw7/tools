@@ -35,15 +35,7 @@ final class ToolProbe {
 	 *         absent tools at once.
 	 */
 	List<String> missingFrom(List<String> tools, Path directory, CommandRunner runner) {
-		return tools.stream().filter(tool -> !found(tool, directory, runner)).toList();
-	}
-
-	private boolean found(String tool, Path directory, CommandRunner runner) {
-		boolean installed = isInstalled(tool, directory, runner);
-		if (installed) {
-			log.info("Found required tool: {}", tool);
-		}
-		return installed;
+		return tools.stream().filter(tool -> !isInstalled(tool, directory, runner)).toList();
 	}
 
 	/**
@@ -52,7 +44,11 @@ final class ToolProbe {
 	 *         {@link BuildToolchainStep} cannot drift apart on it.
 	 */
 	boolean isInstalled(String tool, Path directory, CommandRunner runner) {
-		return succeeds(List.of(tool, VERSION_FLAG), directory, runner);
+		boolean installed = succeeds(List.of(tool, VERSION_FLAG), directory, runner);
+		if (installed) {
+			log.info("Found required tool: {}", tool);
+		}
+		return installed;
 	}
 
 	/**

@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.LogManager;
@@ -25,8 +27,25 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 		this.dataSource = dataSource;
 	}
 
-	protected void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
-		Set<String> all = new HashSet<>(Arrays.asList(toLower(allColumns)));
+	/**
+	 * The positions the named columns sit at in the open source, once it is confirmed
+	 * to declare every one of them. The two questions are asked of the same reading of
+	 * the column names, so a source that answers slowly is only asked once.
+	 */
+	protected int[] indicesOf(String[] keyCandidates) {
+		String[] allColumns = dataSource.getColumnNames();
+		checkIfCandidatesExistIn(keyCandidates, allColumns);
+		return IntStream.range(0, allColumns.length)
+				.flatMap(index -> Arrays.stream(keyCandidates)
+						.filter(candidate -> allColumns[index].equalsIgnoreCase(candidate))
+						.mapToInt(candidate -> index))
+				.toArray();
+	}
+
+	private void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
+		Set<String> all = Arrays.stream(allColumns)
+				.map(column -> column == null ? null : column.toLowerCase())
+				.collect(Collectors.toCollection(HashSet::new));
 
 		for (String candidate : keyCandidates) {
 			if (!all.contains(candidate.toLowerCase())) {
@@ -34,21 +53,8 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 			}
 		}
 	}
-	
-	protected String[] toLower(String[] items) {
-		return Arrays.stream(items)
-				.map(item -> item == null ? null : item.toLowerCase())
-				.toArray(String[]::new);
-	}
 
-	protected int[] getIndiciesOf(String[] keyCandidates, String[] allColumns) {
-		return IntStream.range(0, allColumns.length)
-				.flatMap(index -> Arrays.stream(keyCandidates)
-						.filter(candidate -> allColumns[index].equalsIgnoreCase(candidate))
-						.mapToInt(candidate -> index))
-				.toArray();
-	}
-	
+
 	protected void check(String[] keyCandidates) {
 		handleNullsAndEmpty(keyCandidates);
 		handleDuplicates(keyCandidates);
@@ -129,15 +135,34 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	 */
 	protected abstract Result execOnOpenSource(String[] keyCandidates);
 
+	/**
+	 * The columns are validated before the source is opened, since a caller's input is
+	 * wrong whatever the source holds, and a rejected call should leave the source as it
+	 * found it.
+	 */
 	@Override
-	public Result execForAllColumns() {
+	public final Result exec(String... keyCandidates) {
+		check(keyCandidates);
+		return onOpenSource(source -> keyCandidates);
+	}
+
+	/** The columns can only be named once the source is open, so they are checked there. */
+	@Override
+	public final Result execForAllColumns() {
+		return onOpenSource(source -> checked(source.getColumnNames()));
+	}
+
+	private Result onOpenSource(Function<T, String[]> keyCandidates) {
 		dataSource.open();
 		try {
-			String[] keyCandidates = dataSource.getColumnNames();
-			check(keyCandidates);
-			return execOnOpenSource(keyCandidates);
+			return execOnOpenSource(keyCandidates.apply(dataSource));
 		} finally {
 			close(dataSource);
 		}
+	}
+
+	private String[] checked(String[] keyCandidates) {
+		check(keyCandidates);
+		return keyCandidates;
 	}
 }

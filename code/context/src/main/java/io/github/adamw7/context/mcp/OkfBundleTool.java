@@ -1,11 +1,7 @@
 package io.github.adamw7.context.mcp;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -13,11 +9,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.okf.OkfBundle;
 import io.github.adamw7.context.okf.OkfBundler;
-import io.github.adamw7.context.tree.ProjectTreeBuilder;
 import io.github.adamw7.context.tree.ProjectTreeNode;
-import io.github.adamw7.tools.mcp.ToolArguments;
 import io.github.adamw7.tools.mcp.ToolDefinition;
-import io.github.adamw7.tools.mcp.ToolResult;
 
 /**
  * MCP tool that scans a Java, Kotlin or Scala project and returns it as a bundle
@@ -30,18 +23,12 @@ import io.github.adamw7.tools.mcp.ToolResult;
  * document, rather than written to disk: the server stays read-only, so a client
  * cannot use it to create files anywhere on the host.
  */
-public class OkfBundleTool implements ContextTool {
+public class OkfBundleTool extends AbstractProjectScanTool {
 
-	private static final Logger log = LogManager.getLogger(OkfBundleTool.class.getName());
-
-	private static final int DEFAULT_DEPTH = 1;
-	private static final int MAX_DEPTH = 10;
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
-	private final PathPolicy pathPolicy;
-
 	public OkfBundleTool(PathPolicy pathPolicy) {
-		this.pathPolicy = pathPolicy;
+		super(pathPolicy);
 	}
 
 	private final ToolDefinition toolDefinition = new ToolDefinition("okf_bundle",
@@ -63,16 +50,7 @@ public class OkfBundleTool implements ContextTool {
 	}
 
 	@Override
-	public ToolResult apply(Map<String, Object> arguments) {
-		log.info("Calling MCP okf_bundle tool for {}", arguments);
-		return ToolResult.success(buildBundle(arguments));
-	}
-
-	private String buildBundle(Map<String, Object> arguments) {
-		Path root = pathPolicy.resolve(ToolArguments.requiredString(arguments, "path"));
-		Language language = LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA);
-		int depth = ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH);
-		ProjectTreeNode tree = new ProjectTreeBuilder(language, depth).build(root);
+	protected String render(ProjectTreeNode tree, Language language, Map<String, Object> arguments) {
 		return toJson(new OkfBundler(language).bundle(tree));
 	}
 

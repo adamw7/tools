@@ -1,8 +1,6 @@
 package io.github.adamw7.context.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -11,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,18 +19,10 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
-import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -60,46 +49,10 @@ import io.modelcontextprotocol.spec.McpSchema;
 				"server.ssl.key-store-type=PKCS12",
 				"server.ssl.key-alias=mcp",
 				"context.allowed-roots=${java.io.tmpdir}" })
-public class McpStreamableHttpsIT {
+public class McpStreamableHttpsIT extends AbstractContextMcpIT {
 
 	static {
 		generateKeystore();
-	}
-
-	@LocalServerPort
-	private int port;
-
-	@TempDir
-	Path projectRoot;
-
-	private McpSyncClient client;
-
-	@BeforeEach
-	void setUp() throws IOException {
-		Files.writeString(projectRoot.resolve("A.java"), "public class A {}");
-		Files.writeString(projectRoot.resolve("B.java"), "public class B { A a; }");
-		HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport
-				.builder("https://localhost:" + port)
-				.customizeClient(builder -> builder.sslContext(testTrustContext()))
-				.build();
-		client = McpClient.sync(transport)
-				.clientInfo(McpSchema.Implementation.builder("integration-test-https-client", "1.0").build())
-				.build();
-		client.initialize();
-	}
-
-	@AfterEach
-	void tearDown() {
-		client.close();
-	}
-
-	@Test
-	void negotiatesTls13OnTheMcpEndpoint() throws IOException {
-		SSLSocketFactory factory = testTrustContext().getSocketFactory();
-		try (SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port)) {
-			socket.startHandshake();
-			assertEquals(TlsConfiguration.TLS_1_3, socket.getSession().getProtocol());
-		}
 	}
 
 	/**
@@ -118,6 +71,27 @@ public class McpStreamableHttpsIT {
 	 * merely being written to a system property.
 	 */
 	private static final String GROUP_OUTSIDE_PINNED_LIST = "secp521r1";
+
+	@Override
+	protected HttpClientStreamableHttpTransport transport() {
+		return HttpClientStreamableHttpTransport.builder("https://localhost:" + port)
+				.customizeClient(builder -> builder.sslContext(testTrustContext()))
+				.build();
+	}
+
+	@Override
+	protected String clientName() {
+		return "integration-test-https-client";
+	}
+
+	@Test
+	void negotiatesTls13OnTheMcpEndpoint() throws IOException {
+		SSLSocketFactory factory = testTrustContext().getSocketFactory();
+		try (SSLSocket socket = (SSLSocket) factory.createSocket("localhost", port)) {
+			socket.startHandshake();
+			assertEquals(TlsConfiguration.TLS_1_3, socket.getSession().getProtocol());
+		}
+	}
 
 	@Test
 	void acceptsAKeyExchangeGroupFromThePinnedList() throws IOException {
@@ -154,36 +128,11 @@ public class McpStreamableHttpsIT {
 
 	@Test
 	void findContextToolWorksOverTls13() {
-		McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder("find_context")
-				.arguments(Map.of("path", projectRoot.toString(), "class_name", "B"))
-				.build();
-
-		McpSchema.CallToolResult result = client.callTool(request);
+		McpSchema.CallToolResult result = call("find_context",
+				Map.of("path", projectRoot.toString(), "class_name", "B"));
 
 		JsonNode dependencies = parse(singleTextResult(result));
 		assertEquals(List.of("A.java"), textValues(dependencies));
-	}
-
-	private List<String> textValues(JsonNode array) {
-		List<String> values = new ArrayList<>();
-		array.forEach(node -> values.add(node.asText()));
-		return values;
-	}
-
-	private String singleTextResult(McpSchema.CallToolResult result) {
-		assertFalse(result.isError(), () -> "unexpected error result: " + result.content());
-		assertEquals(1, result.content().size(), "expected exactly one content element");
-		McpSchema.Content content = result.content().getFirst();
-		assertInstanceOf(McpSchema.TextContent.class, content);
-		return ((McpSchema.TextContent) content).text();
-	}
-
-	private JsonNode parse(String json) {
-		try {
-			return new ObjectMapper().readTree(json);
-		} catch (JsonProcessingException e) {
-			throw new IllegalStateException("Invalid JSON: " + json, e);
-		}
 	}
 
 	private static void generateKeystore() {

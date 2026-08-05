@@ -2,10 +2,13 @@ package io.github.adamw7.context;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A {@link Context} that resolves dependencies using each source's {@code package}
@@ -75,20 +78,17 @@ public class PackageAwareFinder extends AbstractFinder {
 		return dot < 0 ? reference : reference.substring(0, dot);
 	}
 
+	/** The candidates in order of preference; the first that resolves wins, and none resolving leaves the reference unresolved. */
 	private ClassContainer resolve(String simpleName, ResolutionScope scope) {
-		ClassContainer imported = resolveImported(simpleName, scope);
-		if (imported != null) {
-			return imported;
-		}
-		ClassContainer samePackage = containersByFqn.get(qualify(scope.packageName(), simpleName));
-		if (samePackage != null) {
-			return samePackage;
-		}
-		ClassContainer wildcard = resolveWildcard(simpleName, scope);
-		if (wildcard != null) {
-			return wildcard;
-		}
-		return resolveUniqueSimpleName(simpleName);
+		return Stream.<Supplier<ClassContainer>>of(
+						() -> resolveImported(simpleName, scope),
+						() -> containersByFqn.get(qualify(scope.packageName(), simpleName)),
+						() -> resolveWildcard(simpleName, scope),
+						() -> resolveUniqueSimpleName(simpleName))
+				.map(Supplier::get)
+				.filter(Objects::nonNull)
+				.findFirst()
+				.orElse(null);
 	}
 
 	private ClassContainer resolveImported(String simpleName, ResolutionScope scope) {
@@ -99,7 +99,7 @@ public class PackageAwareFinder extends AbstractFinder {
 	private ClassContainer resolveWildcard(String simpleName, ResolutionScope scope) {
 		return scope.wildcardPackages().stream()
 				.map(packageName -> containersByFqn.get(qualify(packageName, simpleName)))
-				.filter(container -> container != null)
+				.filter(Objects::nonNull)
 				.findFirst()
 				.orElse(null);
 	}

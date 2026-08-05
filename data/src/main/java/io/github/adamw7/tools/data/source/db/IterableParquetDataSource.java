@@ -18,19 +18,8 @@ public class IterableParquetDataSource extends IterableSQLDataSource {
 	}
 
 	@Override
-	public void reset() {
-		releaseQueryResources();
-		hasMoreData = true;
-		open();
-	}
-
-	@Override
 	public void close() {
-		releaseQueryResources();
-		DuckDbParquet.close(connection);
-	}
-
-	private void releaseQueryResources() {
 		super.close();
+		DuckDbParquet.close(connection);
 	}
 }

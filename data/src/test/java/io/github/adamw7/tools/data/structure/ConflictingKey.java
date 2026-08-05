@@ -1,31 +1,14 @@
 package io.github.adamw7.tools.data.structure;
 
-import java.util.Objects;
+/**
+ * A key whose hash collides with every other one, so a map test can drive the
+ * probe chain — insertion past a taken slot, and a live entry found past a
+ * tombstone — rather than hope a real hash produces the collision.
+ */
+public record ConflictingKey(int number, String string) {
 
-public class ConflictingKey {
-
-	private final int number;
-	private final String string;
-	
-	public ConflictingKey(int number, String string) {
-		this.number = number;
-		this.string = string;
-	}
-	
 	@Override
 	public int hashCode() {
 		return 1; // conflicting hash
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		ConflictingKey other = (ConflictingKey) obj;
-		return number == other.number && Objects.equals(string, other.string);
 	}
 }

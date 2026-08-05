@@ -11,37 +11,18 @@ package io.github.adamw7.context;
  * tokenizer more closely than {@link HeuristicTokenEstimator} on
  * punctuation-dense source code, while staying fast and tokenizer-free.
  */
-public class SubwordTokenEstimator implements TokenEstimator {
-
-	public static final int DEFAULT_CHARACTERS_PER_TOKEN = 4;
-
-	private final int charactersPerToken;
+public class SubwordTokenEstimator extends AbstractTokenEstimator {
 
 	public SubwordTokenEstimator() {
 		this(DEFAULT_CHARACTERS_PER_TOKEN);
 	}
 
 	public SubwordTokenEstimator(int charactersPerToken) {
-		requirePositive(charactersPerToken);
-		this.charactersPerToken = charactersPerToken;
-	}
-
-	private void requirePositive(int charactersPerToken) {
-		if (charactersPerToken <= 0) {
-			throw new IllegalArgumentException(
-					"charactersPerToken must be positive and received: " + charactersPerToken);
-		}
+		super(charactersPerToken);
 	}
 
 	@Override
-	public int estimate(String text) {
-		if (text == null || text.isEmpty()) {
-			return 0;
-		}
-		return countTokens(text);
-	}
-
-	private int countTokens(String text) {
+	protected int count(String text) {
 		int total = 0;
 		int wordLength = 0;
 		for (int index = 0; index < text.length(); index++) {
@@ -61,10 +42,7 @@ public class SubwordTokenEstimator implements TokenEstimator {
 	}
 
 	private int wordTokens(int wordLength) {
-		if (wordLength == 0) {
-			return 0;
-		}
-		return (wordLength + charactersPerToken - 1) / charactersPerToken;
+		return wordLength == 0 ? 0 : tokensFor(wordLength);
 	}
 
 	private int symbolTokens(char character) {

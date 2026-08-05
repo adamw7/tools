@@ -37,7 +37,9 @@ run `mvn install` from the repository root. The main capabilities are:
   and that `gh` is logged in, clone, check the cloned project's own build tool is
   installed too, create a feature branch, mark the checkout trusted, `claude
   init` to generate `CLAUDE.md`, conform that file (and add a companion
-  `AGENTS.md`) so it satisfies the guard about to be wired in, commit it, wire a
+  `AGENTS.md`) as far as the guard about to be wired in demands — only the Maven
+  path wires in the format rule, so only it gets that rule's Java and Maven
+  headings — commit it, wire a
   build-tool-aware `CLAUDE.md` guard into the repo (the `claude-code-enforcer`
   rule for Maven `pom.xml`, an `enforceClaudeMd` guard task for Gradle, and a
   GitHub Actions workflow plus `.github/claude-md-guard.sh` check as the
@@ -48,8 +50,10 @@ run `mvn install` from the repository root. The main capabilities are:
   hand to the pipeline factory; exposed as CLI flags such as `--title`,
   `--reviewer`, `--draft`, and `--timeout <minutes>`); the default branch is never
   written to directly. `--dry-run` (`dry_run` on the MCP tool) assembles the
-  pipeline without the push and pull-request steps, so a run can be rehearsed into
-  the workspace without writing to GitHub, and `--help` answers with the usage
+  pipeline without the push and pull-request steps — and so asks the toolchain
+  check only for the `git` and `claude` it will really run, not the `gh` the pull
+  request alone uses — so a run can be rehearsed into the workspace with no GitHub
+  credentials at all, and `--help` answers with the usage
   line. One run adopts a list of repositories — repeatable `--repo <url>` or
   `--repos <file>` on the command line, `repository_urls` on the MCP tool — each
   with its own report, and a repository that fails does not stop the rest — a

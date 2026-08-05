@@ -20,7 +20,9 @@ module's rules are unusually strict because it shells out to `git`, `gh` and
 `GitHubRepoAdopter.defaultSteps(options)` assembles:
 
 1. `ToolchainStep` — the pipeline's own tools: `git`, `claude`, `gh` (and `gh`
-   is logged in). Fails before any expensive work.
+   is logged in). Fails before any expensive work. A dry run is checked with
+   `ToolchainStep.forDryRun()` — `git` and `claude` only, since `gh` is used by
+   the pull request the run leaves out.
 2. `CloneStep` — clones into the workspace. **The only step allowed to read the
    credentialled URL.**
 3. `BuildToolchainStep` — the *cloned project's* build tool, checked as soon as
@@ -29,8 +31,9 @@ module's rules are unusually strict because it shells out to `git`, `gh` and
    default branch is never written to.
 5. `TrustStep` — marks the checkout trusted for Claude Code.
 6. `ClaudeInitStep` → `ClaudeMdConformanceStep` → `CommitStep` — generate
-   `CLAUDE.md`, conform it (plus a companion `AGENTS.md`) so it satisfies the
-   guard about to be wired in, commit.
+   `CLAUDE.md`, conform it (plus a companion `AGENTS.md`) as far as the guard
+   about to be wired in demands — `BuildSystem.requiredClaudeMdSections()`, so
+   only the Maven path adds the format rule's Java/Maven headings — commit.
 7. `EnforcerStep` → `CommitStep` — wire the build-tool-aware guard in and commit.
 8. *(optional)* `AssetsStep` → `CommitStep` — starter config assets, on `--assets`.
 9. `VerifyStep` — proves the guard passes on the generated file.

@@ -25,6 +25,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * {@link #authenticationProbe}. The adopted project's own build tool only becomes
  * known once the repository is cloned, so {@link BuildToolchainStep} probes it
  * there.
+ *
+ * <p>Which tools are required follows what the run will actually do: a dry run
+ * needs neither {@code gh} nor the credentials behind it, and is checked with
+ * {@link #forDryRun()}.
  */
 public class ToolchainStep implements AdoptionStep {
 
@@ -32,6 +36,14 @@ public class ToolchainStep implements AdoptionStep {
 
 	static final String GITHUB_CLI = "gh";
 	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", GITHUB_CLI);
+
+	/**
+	 * What a dry run actually shells out to. A dry run's pipeline is assembled
+	 * without {@link PushStep} and {@link PullRequestStep}, and {@code gh} is used
+	 * by the pull request alone — {@link PushStep} pushes with {@code git} — so a
+	 * rehearsal never calls it.
+	 */
+	static final List<String> DRY_RUN_TOOLS = List.of("git", "claude");
 
 	/**
 	 * The probe for a run whose URL names no owner, and so no repository to ask
@@ -49,6 +61,19 @@ public class ToolchainStep implements AdoptionStep {
 
 	public ToolchainStep(List<String> tools) {
 		this.tools = List.copyOf(tools);
+	}
+
+	/**
+	 * The check for a run that will not publish. Holding a rehearsal to the
+	 * credentials of the one capability it has been told not to exercise failed
+	 * {@code --dry-run} on its very first step, for want of a {@code gh} the run was
+	 * never going to call — on a host with no GitHub CLI installed, and on a token
+	 * that cannot read the repository, both of which leave the rest of the pipeline
+	 * perfectly runnable. Dropping {@code gh} from the list also settles the login
+	 * probe, which asks about GitHub only while the pull request is still ahead.
+	 */
+	public static ToolchainStep forDryRun() {
+		return new ToolchainStep(DRY_RUN_TOOLS);
 	}
 
 	@Override

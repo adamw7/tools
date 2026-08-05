@@ -68,7 +68,7 @@ public class GitHubRepoAdopter {
 	public static List<AdoptionStep> defaultSteps(AdoptionOptions options) {
 		List<BuildSystem> buildSystems = BuildSystems.defaults(options.pinnedRuleVersion());
 		return Stream.of(
-				adoptionSteps(buildSystems),
+				adoptionSteps(buildSystems, options),
 				assetSteps(options),
 				List.<AdoptionStep>of(new VerifyStep(buildSystems)),
 				publicationSteps(options))
@@ -76,18 +76,27 @@ public class GitHubRepoAdopter {
 				.toList();
 	}
 
-	private static List<AdoptionStep> adoptionSteps(List<BuildSystem> buildSystems) {
+	private static List<AdoptionStep> adoptionSteps(List<BuildSystem> buildSystems, AdoptionOptions options) {
 		return List.of(
-				new ToolchainStep(),
+				toolchainStep(options),
 				new CloneStep(),
 				new BuildToolchainStep(buildSystems),
 				new BranchStep(),
 				new TrustStep(),
 				new ClaudeInitStep(),
-				new ClaudeMdConformanceStep(),
+				new ClaudeMdConformanceStep(buildSystems),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md", "claude-md"),
 				new EnforcerStep(buildSystems),
 				new CommitStep("Add claude-code-enforcer to the build", "guard"));
+	}
+
+	/**
+	 * The toolchain check is asked for exactly what the assembled pipeline will run,
+	 * so the two stay in step: a dry run that leaves out the pull request is not held
+	 * to the {@code gh} that only the pull request uses.
+	 */
+	private static AdoptionStep toolchainStep(AdoptionOptions options) {
+		return options.dryRun() ? ToolchainStep.forDryRun() : new ToolchainStep();
 	}
 
 	private static List<AdoptionStep> assetSteps(AdoptionOptions options) {

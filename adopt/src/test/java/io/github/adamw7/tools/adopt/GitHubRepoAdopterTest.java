@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -174,6 +175,27 @@ class GitHubRepoAdopterTest {
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
 				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify"),
 				stepNames(options));
+	}
+
+	/**
+	 * The toolchain check and the pipeline it opens have to agree about {@code gh}.
+	 * They did not: a dry run assembled without the pull request was still held to
+	 * the GitHub CLI and the credentials behind it, so {@code --dry-run} aborted on
+	 * its very first step over the one capability the flag exists to leave out.
+	 */
+	@Test
+	void aDryRunsToolchainStepDoesNotRequireTheGitHubCli() {
+		AdoptionStep toolchain = GitHubRepoAdopter.defaultSteps(dryRun()).get(0);
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
+		assertDoesNotThrow(() -> toolchain.execute(context, runner));
+	}
+
+	/** A run that will open the pull request is still held to the tool that opens it. */
+	@Test
+	void aPublishingPipelinesToolchainStepStillRequiresTheGitHubCli() {
+		AdoptionStep toolchain = GitHubRepoAdopter.defaultSteps(withAssets()).get(0);
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
+		assertThrows(AdoptionException.class, () -> toolchain.execute(context, runner));
 	}
 
 	private List<String> stepNames(AdoptionOptions options) {

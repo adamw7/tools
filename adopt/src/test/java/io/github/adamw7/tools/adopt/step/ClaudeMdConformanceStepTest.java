@@ -31,6 +31,18 @@ class ClaudeMdConformanceStepTest {
 		return context.repositoryDirectory().resolve(AdoptionAssets.AGENTS_MD_FILE);
 	}
 
+	/**
+	 * A checkout the Maven guard is wired into, and so the one checkout held to the
+	 * {@code claudeMdFormat} rule's sections. A checkout with no build file gets the
+	 * workflow guard instead, which asks only that {@code CLAUDE.md} be there and
+	 * carry something.
+	 */
+	private AdoptionContext mavenCheckout(Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContexts.write(context, "pom.xml", "<project/>");
+		return context;
+	}
+
 	@Test
 	void isNamedConform() {
 		assertEquals("conform", new ClaudeMdConformanceStep().name());
@@ -38,13 +50,60 @@ class ClaudeMdConformanceStepTest {
 
 	@Test
 	void writesAgentsMdAndNormalisesClaudeMd(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContext context = mavenCheckout(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\n\n## Project purpose\n\nA repo.\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
 		assertTrue(Files.isRegularFile(agentsMd(context)), "a companion AGENTS.md must be written");
 		String claudeMd = claudeMd(context);
 		assertTrue(claudeMd.contains(ClaudeMdConformer.AGENTS_REFERENCE), "CLAUDE.md must reference AGENTS.md");
-		assertTrue(claudeMd.contains("## Project"), "CLAUDE.md must carry the required heading");
+		assertTrue(claudeMd.contains("## Project\n"), "CLAUDE.md must carry the required heading");
+	}
+
+	/**
+	 * The sections come from the guard being wired in, so a Maven checkout — the one
+	 * the {@code claudeMdFormat} rule is wired into — is held to all of them.
+	 */
+	@Test
+	void conformsAMavenCheckoutToEveryRequiredSection(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = mavenCheckout(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\n\nA repo.\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		String claudeMd = claudeMd(context);
+		ClaudeMdConformer.REQUIRED_SECTIONS.forEach(section -> assertTrue(claudeMd.contains(section + "\n"),
+				() -> section + " must be present: " + claudeMd));
+	}
+
+	/**
+	 * A repository with no Maven build gets the workflow guard, which asks only that
+	 * {@code CLAUDE.md} exist and carry something. Conforming it to the rule's
+	 * sections anyway stamped {@code ## Java version}, {@code ## Maven} and
+	 * {@code ## Principles for Java Development} onto projects that are neither Java
+	 * nor Maven — a static site among them — where nothing then checked them.
+	 */
+	@Test
+	void leavesANonMavenCheckoutFreeOfTheRulesJavaSections(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\n\n## Structure\n\nOne HTML page.\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		String claudeMd = claudeMd(context);
+		ClaudeMdConformer.REQUIRED_SECTIONS.forEach(section -> assertFalse(claudeMd.contains(section + "\n"),
+				() -> section + " must not be added to a project with no Maven guard: " + claudeMd));
+		assertTrue(claudeMd.contains("## Structure"), "the generated document's own sections must survive");
+		assertTrue(claudeMd.contains(ClaudeMdConformer.AGENTS_REFERENCE),
+				"the companion AGENTS.md must still be referenced");
+	}
+
+	/**
+	 * Conforming to no required section leaves the body {@code claude init} wrote,
+	 * blank line and all, so closing the inserted reference with a blank of its own
+	 * put a double blank into the first commit of every such adoption.
+	 */
+	@Test
+	void insertsTheAgentsReferenceWithoutDoublingABlankLine(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		writeClaudeMd(context, "# CLAUDE.md\n\nOne HTML page.\n");
+		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
+		assertFalse(claudeMd(context).contains("\n\n\n"), claudeMd(context));
 	}
 
 	@Test
@@ -78,7 +137,7 @@ class ClaudeMdConformanceStepTest {
 	 */
 	@Test
 	void keepsACrlfClaudeMdOnCrlf(@TempDir Path workspace) throws IOException {
-		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AdoptionContext context = mavenCheckout(workspace);
 		writeClaudeMd(context, "# CLAUDE.md\r\n\r\n## Project purpose\r\n\r\nA repo.\r\n");
 		new ClaudeMdConformanceStep().execute(context, new RecordingCommandRunner());
 		String claudeMd = claudeMd(context);

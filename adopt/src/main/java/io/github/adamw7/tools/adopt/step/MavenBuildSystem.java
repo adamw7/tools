@@ -65,6 +65,18 @@ public class MavenBuildSystem implements BuildSystem {
 		return installer.install(repositoryDirectory.resolve(POM));
 	}
 
+	/**
+	 * The only build system that demands sections, because it is the only one wiring
+	 * in the {@code claudeMdFormat} rule — the guard {@link #verifyCommand(Path)}
+	 * then runs, and the one that fails a {@code CLAUDE.md} for a missing section
+	 * rather than merely for being absent or blank. A Maven checkout is a JVM project,
+	 * so the rule's Java and Maven sections are ones it can answer.
+	 */
+	@Override
+	public List<String> requiredClaudeMdSections() {
+		return ClaudeMdConformer.REQUIRED_SECTIONS;
+	}
+
 	@Override
 	public List<String> verifyCommand(Path repositoryDirectory) {
 		return wrapper.commandIn(repositoryDirectory, MAVEN, VERIFY_ARGUMENTS);

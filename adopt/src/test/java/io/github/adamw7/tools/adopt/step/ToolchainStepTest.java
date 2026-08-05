@@ -109,6 +109,43 @@ class ToolchainStepTest {
 	}
 
 	/**
+	 * A dry run's pipeline is assembled without the push and the pull request, and
+	 * {@code gh} is used by the pull request alone — the push runs {@code git} — so
+	 * the rehearsal is checked for what it will really run.
+	 */
+	@Test
+	void aDryRunProbesOnlyTheToolsItWillActuallyRun() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		ToolchainStep.forDryRun().execute(context, runner);
+		assertEquals(List.of("git", "--version"), runner.commandAt(0));
+		assertEquals(List.of("claude", "--version"), runner.commandAt(1));
+		assertEquals(2, runner.count(), runner.invocations().toString());
+	}
+
+	/**
+	 * Asking GitHub whether the pull request could be opened failed {@code --dry-run}
+	 * on its first step, over the one capability the flag exists to leave out: a host
+	 * with no GitHub CLI, and a token that cannot read the repository, both leave the
+	 * rest of the rehearsal perfectly runnable.
+	 */
+	@Test
+	void aDryRunCompletesWithNoGitHubCliAtAll() {
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
+		assertDoesNotThrow(() -> ToolchainStep.forDryRun().execute(context, runner));
+		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("gh")),
+				runner.invocations().toString());
+	}
+
+	/** The rehearsal still needs the two tools it does run. */
+	@Test
+	void aDryRunStillAbortsWhenClaudeIsMissing() {
+		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("claude", 127, "claude: not found");
+		AdoptionException thrown = assertThrows(AdoptionException.class,
+				() -> ToolchainStep.forDryRun().execute(context, runner));
+		assertTrue(thrown.getMessage().contains("claude"), thrown.getMessage());
+	}
+
+	/**
 	 * {@code gh --version} succeeds for a GitHub CLI nobody is logged in to, so
 	 * without this the adoption would only find out at its very last step, after a
 	 * clone, a claude init, and a build have already run.

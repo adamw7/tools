@@ -45,7 +45,9 @@ Maven project. The notable capabilities are:
   uniqueness checker as a tool for AI assistants.
 - **Claude Code adoption** (`adopt`) — an ordered pipeline that adopts Claude
   Code into a GitHub repository: it first checks the required tools (`git`,
-  `claude`, `gh`) are on the `PATH` so a missing one fails fast, then clones the
+  `claude`, `gh`) are on the `PATH` so a missing one fails fast — and that `gh`
+  can reach the repository, since `gh --version` succeeds for a CLI nobody is
+  logged in to — then clones the
   repo, creates a feature branch,
   marks the checkout trusted in `~/.claude.json` so the headless CLI is not
   blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
@@ -62,7 +64,17 @@ Maven project. The notable capabilities are:
   verified by running that task; a repository with no recognised build file falls
   back to a GitHub Actions workflow and the portable `.github/claude-md-guard.sh`
   check it runs, verified by running that script — so a build-less repository
-  still keeps the guard. A checkout that ships a build wrapper (`mvnw`, `gradlew`,
+  still keeps the guard. How far `ClaudeMdConformanceStep` reshapes the generated
+  `CLAUDE.md` follows from that same choice, through
+  `BuildSystem.requiredClaudeMdSections`: only the Maven path wires in the format
+  rule, so only it demands the rule's Java and Maven headings, which a Maven
+  checkout can answer. The other two guards ask merely that the file exist and
+  carry something, and conforming to the rule's list regardless stamped
+  `## Java version`, `## Maven` and `## Principles for Java Development` — each
+  stubbed with a pointer to `AGENTS.md` — onto repositories that are neither Java
+  nor Maven, where nothing then checked them. The title and the `AGENTS.md`
+  reference are settled either way, since the step writes that companion file for
+  every adopted repository. A checkout that ships a build wrapper (`mvnw`, `gradlew`,
   or their Windows `.cmd`/`.bat` forms) is verified with that wrapper rather than
   with a build tool off the `PATH`, so the guard runs under the version the
   project pinned; most Gradle projects ship only the wrapper, so probing the
@@ -93,7 +105,12 @@ Maven project. The notable capabilities are:
   neither grows a parameter per switch and the two cannot drift apart on what an
   omitted option means. `--dry-run` (`dry_run` on the MCP tool) rehearses an
   adoption: the pipeline is assembled *without* `PushStep` and `PullRequestStep`
-  rather than with steps that decide to do nothing, so nothing is left that could
+  rather than with steps that decide to do nothing, and `ToolchainStep.forDryRun`
+  then asks only for the `git` and `claude` that a rehearsal really runs — `gh` is
+  used by the pull request alone, since the push runs `git`, so requiring it (and
+  the GitHub credentials the login probe wants behind it) aborted `--dry-run` on
+  its very first step over the one capability the flag exists to leave out —
+  so nothing is left that could
   push and the report's `completedSteps` ends at `verify` — everything before it
   still runs, leaving the adoption's commits in the workspace to be read before
   any of it reaches GitHub. `--timeout <minutes>` (`timeout_minutes`, bounded to a

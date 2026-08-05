@@ -30,6 +30,23 @@ public interface BuildSystem {
 	boolean install(Path repositoryDirectory);
 
 	/**
+	 * The {@code CLAUDE.md} sections the guard this build system wires in will hold
+	 * the generated file to, so {@link ClaudeMdConformanceStep} reshapes the file
+	 * only as far as {@link #install(Path)} and {@link #verifyCommand(Path)} between
+	 * them actually demand.
+	 *
+	 * <p>Empty by default, which is what a presence-and-non-empty guard wants: it
+	 * asks for no section in particular, so appending any is noise in the adoption's
+	 * first pull request rather than something the build would have rejected. A build
+	 * system wiring in a guard that does demand sections names them by overriding.
+	 *
+	 * @return the required headings, empty when the guard demands none
+	 */
+	default List<String> requiredClaudeMdSections() {
+		return List.of();
+	}
+
+	/**
 	 * Command that runs the wired guard so a missing or malformed {@code CLAUDE.md}
 	 * fails the build. The checkout is a parameter because the command depends on
 	 * what the checkout itself ships: a project carrying a build wrapper is built

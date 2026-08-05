@@ -40,16 +40,14 @@ public class Methods {
 	}
 
 	private String builderMethodName(FieldDescriptor field) {
-		String suffix = Utils.toUpperCamelCase(field.getName());
-		String method;
+		return accessorPrefix(field) + Utils.toUpperCamelCase(field.getName());
+	}
+
+	private String accessorPrefix(FieldDescriptor field) {
 		if (field.isMapField()) {
-			method = ".putAll";
-		} else if (field.isRepeated()) {
-			method = ".addAll";
-		} else {
-			method = ".set";
+			return ".putAll";
 		}
-		return method + suffix;
+		return field.isRepeated() ? ".addAll" : ".set";
 	}
 
 	public StringBuilder has(String classOrBuilder, FieldDescriptor field) {

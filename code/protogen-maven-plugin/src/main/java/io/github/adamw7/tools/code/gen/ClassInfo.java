@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.code.gen;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
@@ -24,48 +25,33 @@ public class ClassInfo {
 	private final String outputPkg;
 
 	public ClassInfo(Descriptor descriptor, String inputPkg, String outputPkg) {
-		mapFields = getMapFields(descriptor);
-		optionalFields = getOptionalFields(descriptor);
-		repeatedFields = getRepeatedFields(descriptor);
-		requiredFields = getRequiredFields(descriptor);
-		groupFields = getGroupFields(descriptor);
-		pureComplexFields = getPureComplexFields(descriptor);
+		mapFields = fieldsMatching(descriptor, FieldDescriptor::isMapField);
+		optionalFields = fieldsMatching(descriptor, ClassInfo::hasOptionalLabel);
+		repeatedFields = fieldsMatching(descriptor, ClassInfo::isPureRepeated);
+		requiredFields = fieldsMatching(descriptor, FieldDescriptor::isRequired);
+		groupFields = fieldsMatching(descriptor, ClassInfo::isGroup);
+		pureComplexFields = fieldsMatching(descriptor, field -> isComplexType(field) && isPure(field));
 		this.descriptor = descriptor;
 		this.nonOptionalFields = Stream.of(required(), map(), repeated()).flatMap(List::stream).toList();
 		this.inputPkg = inputPkg;
 		this.outputPkg = outputPkg;
 	}
 
-	private List<FieldDescriptor> getRepeatedFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(f -> f.isRepeated() && !f.isMapField()).toList();
+	/** The descriptor's fields the predicate accepts, in declaration order — how every field group here is derived. */
+	private static List<FieldDescriptor> fieldsMatching(Descriptor descriptor, Predicate<FieldDescriptor> accepted) {
+		return descriptor.getFields().stream().filter(accepted).toList();
 	}
 
-	private List<FieldDescriptor> getMapFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isMapField).toList();
-	}
-
-	private List<FieldDescriptor> getRequiredFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(FieldDescriptor::isRequired).toList();
-	}
-
-	private List<FieldDescriptor> getOptionalFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(ClassInfo::hasOptionalLabel).toList();
+	private static boolean isPureRepeated(FieldDescriptor field) {
+		return field.isRepeated() && !field.isMapField();
 	}
 
 	private static boolean hasOptionalLabel(FieldDescriptor field) {
 		return field.toProto().getLabel() == FieldDescriptorProto.Label.LABEL_OPTIONAL;
 	}
-	
-	private static List<FieldDescriptor> getPureComplexFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(ClassInfo::isComplexType).filter(ClassInfo::isPure).toList();
-	}
 
 	private static boolean isPure(FieldDescriptor field) {
 		return !isGroup(field) && !field.isMapField() && !field.isRepeated();
-	}
-
-	private static List<FieldDescriptor> getGroupFields(Descriptor descriptor) {
-		return descriptor.getFields().stream().filter(ClassInfo::isGroup).toList();
 	}
 
 	private static boolean isGroup(Descriptors.FieldDescriptor fieldDescriptor) {

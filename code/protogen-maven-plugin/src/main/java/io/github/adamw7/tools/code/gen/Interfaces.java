@@ -16,39 +16,35 @@ public class Interfaces extends AbstractStatements {
 	}
 	
 	public ClassContainer generateOptional() {
-		StringBuilder builder = new StringBuilder(header);
-		builder.append("public interface ").append(optionalIfcName).append(" {");
-		
+		StringBuilder builder = new StringBuilder(header)
+				.append("public interface ").append(optionalIfcName).append(" {");
+
 		for (FieldDescriptor optionalField : info.optional()) {
-			builder.append(methods.declareSetter(optionalField, optionalIfcName));
-			builder.append(methods.declareHas(optionalField));
-			String clearReturnType = Utils.getNextIfc(info.name(), info.nonOptional(), optionalField);
-			builder.append(methods.declareClear(optionalField, clearReturnType));
+			builder.append(methods.declareSetter(optionalField, optionalIfcName))
+					.append(methods.declareHas(optionalField))
+					.append(methods.declareClear(optionalField,
+							Utils.getNextIfc(info.name(), info.nonOptional(), optionalField)));
 		}
 
 		for (OneofDescriptor oneof : info.realOneofs()) {
-			builder.append(methods.declareOneofCaseGetter(oneof));
-			builder.append(methods.declareOneofClear(oneof, optionalIfcName));
+			builder.append(methods.declareOneofCaseGetter(oneof))
+					.append(methods.declareOneofClear(oneof, optionalIfcName));
 		}
 
 		builder.append(info.name()).append(" build();}");
-		
+
 		return new ClassContainer(optionalIfcName, builder);
 	}
-	
+
 	private ClassContainer generateInterface(FieldDescriptor requiredField) {
-		StringBuilder ifc = new StringBuilder(header);
-		ifc.append("public interface ");
-		String ifcName = info.name() + Utils.to(requiredField, "Ifc");
-		ifc.append(ifcName);
-		ifc.append(" {");
+		String ifcName = info.name() + Utils.to(requiredField, Utils.IFC_SUFFIX);
 		String returnType = Utils.getNextIfc(info.name(), info.nonOptional(), requiredField);
-		ifc.append(methods.declareSetter(requiredField, returnType));
-		ifc.append(methods.declareHas(requiredField));
-		ifc.append(methods.declareClear(requiredField, returnType));		
-		
-		ifc.append("}");
-				
+		StringBuilder ifc = new StringBuilder(header)
+				.append("public interface ").append(ifcName).append(" {")
+				.append(methods.declareSetter(requiredField, returnType))
+				.append(methods.declareHas(requiredField))
+				.append(methods.declareClear(requiredField, returnType))
+				.append("}");
 		return new ClassContainer(ifcName, ifc);
 	}
 }

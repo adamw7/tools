@@ -12,10 +12,6 @@ import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
-import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.Document;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.text.edits.TextEdit;
 
 public class UnusedImportsRemover implements ImportRemoverIfc {
 
@@ -71,13 +67,6 @@ public class UnusedImportsRemover implements ImportRemoverIfc {
 	}
 
 	private String applyRewrite(String code, ASTRewrite rewrite) {
-		IDocument document = new Document(code);
-		try {
-			TextEdit edits = rewrite.rewriteAST(document, null);
-			edits.apply(document);
-		} catch (BadLocationException e) {
-			throw new FormatException(e);
-		}
-		return document.get();
+		return Documents.edited(code, document -> rewrite.rewriteAST(document, null));
 	}
 }

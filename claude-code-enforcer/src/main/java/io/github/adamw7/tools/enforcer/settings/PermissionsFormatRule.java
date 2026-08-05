@@ -1,12 +1,10 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
@@ -17,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
+import io.github.adamw7.tools.enforcer.rule.Patterns;
 
 /**
  * Enforcer rule that validates the entries of the {@code permissions} lists in
@@ -53,6 +52,7 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private static final Pattern ENTRY_SYNTAX = Pattern
 			.compile("(mcp__[A-Za-z0-9_-]+|[A-Za-z][A-Za-z0-9_]*)(\\(.+\\))?");
 	private static final String MCP_TOOL_PREFIX = "mcp__";
+	private static final String FORBIDDEN_PATTERN_PARAMETER = "forbiddenEntryPattern";
 
 	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
 	private File settingsFile;
@@ -156,31 +156,9 @@ public class PermissionsFormatRule extends JsonFileRule {
 		if (forbiddenEntryPatterns == null) {
 			return;
 		}
-		List<Pattern> patterns = compiledForbiddenPatterns();
+		List<Pattern> patterns = Patterns.compileAll(forbiddenEntryPatterns, FORBIDDEN_PATTERN_PARAMETER);
 		for (String entry : textEntries(permissions, ALLOW_KEY)) {
 			addForbiddenEntryViolations(entry, patterns, violations);
-		}
-	}
-
-	/**
-	 * A configured pattern that is not a valid regular expression is a build-setup
-	 * mistake, so it fails with a message naming it rather than letting a
-	 * {@link PatternSyntaxException} escape as an internal build error.
-	 */
-	private List<Pattern> compiledForbiddenPatterns() throws EnforcerRuleException {
-		List<Pattern> patterns = new ArrayList<>();
-		for (String pattern : forbiddenEntryPatterns) {
-			patterns.add(compiled(pattern));
-		}
-		return patterns;
-	}
-
-	private Pattern compiled(String pattern) throws EnforcerRuleException {
-		try {
-			return Pattern.compile(pattern);
-		} catch (PatternSyntaxException e) {
-			throw new EnforcerRuleException("forbiddenEntryPattern '" + pattern
-					+ "' is not a valid regular expression: " + e.getDescription());
 		}
 	}
 

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
+import io.github.adamw7.tools.enforcer.rule.Violations;
 
 /**
  * Enforcer rule that fails the build when the project's {@code .mcp.json} is
@@ -75,8 +76,10 @@ public class McpServersValidRule extends JsonFileRule {
 		for (String name : JsonNodes.fieldNames(servers)) {
 			collectServerViolations(name, JsonNodes.objectAt(servers, name), violations);
 		}
-		collectRequiredServers(servers, violations);
-		collectForbiddenServers(servers, violations);
+		Violations.each(requiredServers, name -> !servers.has(name),
+				name -> "mcp.json is missing required server: " + name, violations);
+		Violations.each(forbiddenServers, servers::has,
+				name -> "mcp.json contains forbidden server: " + name, violations);
 	}
 
 	/**
@@ -124,28 +127,6 @@ public class McpServersValidRule extends JsonFileRule {
 	/** Every violation names the server whose entry is malformed. */
 	private void add(String name, String problem, List<String> violations) {
 		violations.add("mcp.json server '" + name + "' " + problem);
-	}
-
-	private void collectRequiredServers(JsonNode servers, List<String> violations) {
-		if (requiredServers == null) {
-			return;
-		}
-		for (String name : requiredServers) {
-			if (!servers.has(name)) {
-				violations.add("mcp.json is missing required server: " + name);
-			}
-		}
-	}
-
-	private void collectForbiddenServers(JsonNode servers, List<String> violations) {
-		if (forbiddenServers == null) {
-			return;
-		}
-		for (String name : forbiddenServers) {
-			if (servers.has(name)) {
-				violations.add("mcp.json contains forbidden server: " + name);
-			}
-		}
 	}
 
 	void setMcpFile(File mcpFile) {

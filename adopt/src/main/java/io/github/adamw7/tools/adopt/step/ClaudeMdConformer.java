@@ -119,8 +119,7 @@ public class ClaudeMdConformer {
 	 */
 	public String conform(String content) {
 		List<String> lines = splitLines(content);
-		closeUnterminatedFence(lines);
-		closeUnterminatedComment(lines);
+		closeUnterminatedBlocks(lines);
 		ensureTitle(lines);
 		canonicalizeHeadings(lines);
 		ensureRequiredSections(lines);
@@ -133,32 +132,24 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * Closes a fence the document opened and never closed — with a delimiter that
-	 * actually closes it, so a {@code ````} wrapper is not left open by a {@code ```}
-	 * line — so everything appended below lands outside the block. A document whose
-	 * fences balance is returned untouched, keeping the reshape idempotent.
-	 */
-	private void closeUnterminatedFence(List<String> lines) {
-		Delimiter open = scanFences(lines).openAtEnd();
-		if (open != null) {
-			lines.add(open.closing());
-		}
-	}
-
-	/**
-	 * Closes an HTML comment the document opened and never closed, for the same
-	 * reason {@link #closeUnterminatedFence} closes a fence: everything appended
-	 * below has to land outside the block. A section appended inside an open comment
-	 * is inert text the rule does not see, so the adoption would fail its own
-	 * {@link VerifyStep} on a section it had just added. A document whose comments
-	 * balance is returned untouched, keeping the reshape idempotent.
+	 * Closes a fence and an HTML comment the document opened and never closed, so
+	 * everything appended below lands outside the block. The fence is closed with a
+	 * delimiter that actually closes it, so a {@code ````} wrapper is not left open by
+	 * a {@code ```} line. A section appended inside an open comment is inert text the
+	 * rule does not see, so the adoption would fail its own {@link VerifyStep} on a
+	 * section it had just added. A document whose fences and comments balance is left
+	 * untouched, keeping the reshape idempotent.
 	 *
-	 * <p>Fences are closed first, because a comment inside a fenced code block is
+	 * <p>The fence is closed first, because a comment inside a fenced code block is
 	 * sample text rather than a comment — the same precedence the rule reads them
-	 * with.
+	 * with — and the outline is taken afresh afterwards so the added line counts.
 	 */
-	private void closeUnterminatedComment(List<String> lines) {
-		if (scanComments(lines, scanFences(lines).mask()).openAtEnd()) {
+	private void closeUnterminatedBlocks(List<String> lines) {
+		Delimiter openFence = Outline.of(lines).openFence();
+		if (openFence != null) {
+			lines.add(openFence.closing());
+		}
+		if (Outline.of(lines).openComment()) {
 			lines.add(COMMENT_END);
 		}
 	}
@@ -297,12 +288,30 @@ public class ClaudeMdConformer {
 	 *
 	 * <p>Renaming a line in place keeps the outline valid, since the masks are
 	 * indexed by line number and the count has not moved.
+	 *
+	 * @param openFence   the delimiter of a fence the document never closed, or
+	 *                    {@code null} when its fences balance
+	 * @param openComment whether the document left an HTML comment unterminated
 	 */
-	private record Outline(List<String> lines, boolean[] fence, boolean[] comment) {
+	private record Outline(List<String> lines, boolean[] fence, boolean[] comment, Delimiter openFence,
+			boolean openComment) {
 
+		/**
+		 * Both masks are read in one pass, because a comment inside a fenced code block
+		 * is sample text rather than a comment and so the comment scan needs the fence
+		 * verdict for the very line it is on — which the fence scan has just settled.
+		 */
 		static Outline of(List<String> lines) {
-			boolean[] fence = scanFences(lines).mask();
-			return new Outline(lines, fence, scanComments(lines, fence).mask());
+			boolean[] fence = new boolean[lines.size()];
+			boolean[] comment = new boolean[lines.size()];
+			Delimiter openFence = null;
+			boolean openComment = false;
+			for (int index = 0; index < lines.size(); index++) {
+				String line = lines.get(index).strip();
+				openFence = applyFence(line, openFence, fence, index);
+				openComment = applyComment(line, openComment, fence[index], comment, index);
+			}
+			return new Outline(lines, fence, comment, openFence, openComment);
 		}
 
 		/** The indices of the lines outside code fences whose text matches, in document order. */
@@ -396,46 +405,15 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * The outcome of reading the document's fences: which lines are code, and the
-	 * delimiter still open once the last line has been read.
-	 *
-	 * @param openAtEnd the unterminated fence's delimiter, or {@code null} when the
-	 *                  document's fences balance
-	 */
-	private record Fences(boolean[] mask, Delimiter openAtEnd) {
-	}
-
-	/**
-	 * The outcome of reading the document's HTML comments: which lines are commented
-	 * out, and whether one is still open once the last line has been read.
-	 *
-	 * @param openAtEnd whether the document left a comment unterminated
-	 */
-	private record Comments(boolean[] mask, boolean openAtEnd) {
-	}
-
-	/**
-	 * Reads which lines an HTML comment spans. A comment that opens and closes on one
-	 * line masks nothing — {@code <!-- ## Testing -->} is not a heading to begin with
-	 * — while a block comment hides the lines it spans from every heading search.
-	 * This mirrors {@code MarkdownDocument} in the {@code claude-code-enforcer}
-	 * module, as {@link Delimiter} does; keep the two in sync.
-	 *
-	 * @param fence the fence mask, because a comment inside a fenced code block is
-	 *              sample text rather than a comment: the fence wins
-	 */
-	private static Comments scanComments(List<String> lines, boolean[] fence) {
-		boolean[] mask = new boolean[lines.size()];
-		boolean open = false;
-		for (int index = 0; index < lines.size(); index++) {
-			open = applyComment(lines.get(index).strip(), open, fence[index], mask, index);
-		}
-		return new Comments(mask, open);
-	}
-
-	/**
 	 * Marks whether the line is commented out and returns whether a comment is still
-	 * open after it.
+	 * open after it. A comment that opens and closes on one line masks nothing —
+	 * {@code <!-- ## Testing -->} is not a heading to begin with — while a block
+	 * comment hides the lines it spans from every heading search. This mirrors
+	 * {@code MarkdownDocument} in the {@code claude-code-enforcer} module, as
+	 * {@link Delimiter} does; keep the two in sync.
+	 *
+	 * @param insideFence whether the line is code, because a comment inside a fenced
+	 *                    code block is sample text rather than a comment: the fence wins
 	 */
 	private static boolean applyComment(String line, boolean open, boolean insideFence, boolean[] mask, int index) {
 		if (insideFence) {
@@ -447,15 +425,6 @@ public class ClaudeMdConformer {
 		}
 		mask[index] = line.startsWith(COMMENT_START) && !line.contains(COMMENT_END);
 		return mask[index];
-	}
-
-	private static Fences scanFences(List<String> lines) {
-		boolean[] mask = new boolean[lines.size()];
-		Delimiter open = null;
-		for (int index = 0; index < lines.size(); index++) {
-			open = applyFence(lines.get(index).strip(), open, mask, index);
-		}
-		return new Fences(mask, open);
 	}
 
 	/**

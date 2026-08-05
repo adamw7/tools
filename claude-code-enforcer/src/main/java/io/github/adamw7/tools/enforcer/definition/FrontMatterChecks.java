@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.definition;
 import java.io.File;
 import java.util.List;
 
+import io.github.adamw7.tools.enforcer.rule.Violations;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
@@ -39,11 +40,8 @@ final class FrontMatterChecks {
 
 	/** Reports every required key the front matter does not declare. */
 	void requireKeys(List<String> requiredKeys) {
-		for (String key : requiredKeys) {
-			if (!frontMatter.hasKey(key)) {
-				violations.add(label + " front matter is missing '" + key + ":' in: " + file);
-			}
-		}
+		Violations.each(requiredKeys, key -> !frontMatter.hasKey(key),
+				key -> frontMatterProblem("is missing '" + key + ":'"), violations);
 	}
 
 	/**
@@ -52,21 +50,18 @@ final class FrontMatterChecks {
 	 * reads — a second {@code description:} silently replaces the one above it.
 	 */
 	void rejectDuplicateKeys() {
-		for (String key : frontMatter.duplicateKeys()) {
-			violations.add(label + " front matter declares '" + key + ":' more than once in: " + file);
-		}
+		frontMatter.duplicateKeys()
+				.forEach(key -> violations.add(frontMatterProblem("declares '" + key + ":' more than once")));
 	}
 
 	/** Reports every declared key outside the whitelist, which catches a typo such as {@code descripton}. */
 	void allowOnlyKeys(List<String> allowedKeys) {
-		if (allowedKeys == null) {
-			return;
-		}
-		for (String key : frontMatter.keys()) {
-			if (!allowedKeys.contains(key)) {
-				violations.add(label + " front matter has unknown key '" + key + ":' in: " + file);
-			}
-		}
+		Violations.eachDisallowed(frontMatter.keys(), allowedKeys,
+				key -> frontMatterProblem("has unknown key '" + key + ":'"), violations);
+	}
+
+	private String frontMatterProblem(String problem) {
+		return label + " front matter " + problem + " in: " + file;
 	}
 
 	/** Reports a declared {@code name} that breaks convention or does not match {@code expected}. */

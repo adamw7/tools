@@ -12,7 +12,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -73,26 +72,14 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	/**
-	 * A {@code SKILL.md} that cannot be decoded as text is reported rather than read.
-	 * The rule scans a directory whose contents it does not control, and an
-	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
-	 * internal error instead of reporting the malformed skill it exists to catch —
-	 * and would take the remaining skills' violations down with it.
-	 */
 	private void collectContentViolations(File skillDirectory, File skillFile, List<String> violations) {
-		Optional<String> text = MarkdownText.readIfText(skillFile);
-		if (text.isEmpty()) {
-			violations.add(SKILL_FILE_NAME + " cannot be read as text: " + skillFile);
-			return;
-		}
-		String content = text.get();
-		if (content.isBlank()) {
-			violations.add(SKILL_FILE_NAME + " is empty: " + skillFile);
-			return;
-		}
-		String fixed = FrontMatterAutoFix.apply(skillFile, SKILL_FILE_NAME, content, autoFix, getLog());
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(fixed);
+		DefinitionContent.of(skillFile, SKILL_FILE_NAME, autoFix, getLog(), violations)
+				.ifPresent(content -> collectParsedViolations(skillDirectory, skillFile, content, violations));
+	}
+
+	private void collectParsedViolations(File skillDirectory, File skillFile, String content,
+			List<String> violations) {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
 		if (frontMatter.isEmpty()) {
 			violations.add(SKILL_FILE_NAME + " must start with a YAML front matter block delimited by '---': "
 					+ skillFile);

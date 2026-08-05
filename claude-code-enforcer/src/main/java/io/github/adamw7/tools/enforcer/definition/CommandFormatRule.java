@@ -3,7 +3,6 @@ package io.github.adamw7.tools.enforcer.definition;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import javax.inject.Named;
 
@@ -11,7 +10,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -32,7 +30,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String LABEL = "Command";
-	private static final String DEFINITION = "command definition";
+	private static final String DEFINITION = "Command definition";
 
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
@@ -57,27 +55,15 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 		report("Command files are not well formed:", violations);
 	}
 
-	/**
-	 * A command that cannot be decoded as text is reported rather than read. The rule
-	 * scans a directory whose contents it does not control, and an
-	 * {@link java.io.UncheckedIOException} escaping here would abort the build as an
-	 * internal error instead of reporting the malformed command it exists to catch.
-	 */
 	private void collectCommandViolations(File command, List<String> violations) {
-		Optional<String> text = MarkdownText.readIfText(command);
-		if (text.isEmpty()) {
-			violations.add("Command definition cannot be read as text: " + command);
-			return;
-		}
-		String content = text.get();
-		if (content.isBlank()) {
-			violations.add("Command definition is empty: " + command);
-			return;
-		}
+		DefinitionContent.of(command, DEFINITION, autoFix, getLog(), violations)
+				.ifPresent(content -> collectNamedViolations(command, content, violations));
+	}
+
+	private void collectNamedViolations(File command, String content, List<String> violations) {
 		String baseName = DefinitionFiles.baseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
-		String fixed = FrontMatterAutoFix.apply(command, DEFINITION, content, autoFix, getLog());
-		FrontMatter.parse(fixed)
+		FrontMatter.parse(content)
 				.ifPresent(frontMatter -> collectFrontMatterViolations(command, frontMatter, violations));
 	}
 

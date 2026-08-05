@@ -20,6 +20,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
+import io.github.adamw7.tools.enforcer.rule.Violations;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
@@ -158,9 +159,8 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		frontMatter.duplicateKeys()
 				.forEach(key -> violations.add(name + " declares '" + key + "' more than once"));
-		requiredKeys().stream()
-				.filter(key -> isBlank(frontMatter, key))
-				.forEach(key -> violations.add(name + " declares no non-empty '" + key + "'"));
+		Violations.each(requiredKeys, key -> isBlank(frontMatter, key),
+				key -> name + " declares no non-empty '" + key + "'", violations);
 	}
 
 	private void collectStatusViolations(String name, FrontMatter frontMatter, List<String> violations) {
@@ -270,10 +270,6 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 				.filter(directory -> !indexed.contains(directory))
 				.forEach(directory -> violations.add(
 						relativeDirectory(directory) + " holds concepts but no " + INDEX));
-	}
-
-	private List<String> requiredKeys() {
-		return requiredKeys != null ? requiredKeys : List.of();
 	}
 
 	private boolean isBlank(FrontMatter frontMatter, String key) {

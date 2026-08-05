@@ -151,20 +151,17 @@ public final class CliArguments {
 			case "--rule-version" -> consumeName(args, index, value -> ruleVersion = optionalText(value));
 			case TIMEOUT_FLAG -> consumeName(args, index, value -> commandTimeout = optionalTimeout(value));
 			case "--report" -> consumeName(args, index, value -> reportFile = optionalPath(value));
-			case "--draft" -> {
-				draft = true;
-				yield index + 1;
-			}
-			case "--assets" -> {
-				assets = true;
-				yield index + 1;
-			}
-			case "--dry-run" -> {
-				dryRun = true;
-				yield index + 1;
-			}
+			case "--draft" -> switchOn(index, () -> draft = true);
+			case "--assets" -> switchOn(index, () -> assets = true);
+			case "--dry-run" -> switchOn(index, () -> dryRun = true);
 			default -> throw new IllegalArgumentException("Unknown option " + flag + ". " + USAGE);
 		};
+	}
+
+	/** A flag that carries no value: it is set, and the next argument is the one after it. */
+	private int switchOn(int index, Runnable target) {
+		target.run();
+		return index + 1;
 	}
 
 	private int consumeValue(String[] args, int index, Consumer<String> target) {

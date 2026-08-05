@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
+import io.github.adamw7.tools.enforcer.rule.Violations;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -65,30 +66,17 @@ public class PluginFormatRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode manifest, List<String> violations) {
-		collectMissingKeys(manifest, violations);
-		collectUnknownKeys(manifest, violations);
+		Violations.each(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS), key -> !manifest.has(key),
+				key -> keyProblem("is missing required key '" + key + "'"), violations);
+		Violations.eachDisallowed(JsonNodes.fieldNames(manifest), allowedKeys,
+				key -> keyProblem("has unknown key '" + key + "'"), violations);
 		collectNameViolations(manifest, violations);
 		collectVersionViolation(manifest, violations);
 		collectDescriptionViolation(manifest, violations);
 	}
 
-	private void collectMissingKeys(JsonNode manifest, List<String> violations) {
-		for (String key : Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS)) {
-			if (!manifest.has(key)) {
-				violations.add("plugin.json is missing required key '" + key + "' in: " + pluginFile);
-			}
-		}
-	}
-
-	private void collectUnknownKeys(JsonNode manifest, List<String> violations) {
-		if (allowedKeys == null) {
-			return;
-		}
-		for (String key : JsonNodes.fieldNames(manifest)) {
-			if (!allowedKeys.contains(key)) {
-				violations.add("plugin.json has unknown key '" + key + "' in: " + pluginFile);
-			}
-		}
+	private String keyProblem(String problem) {
+		return "plugin.json " + problem + " in: " + pluginFile;
 	}
 
 	/** A plugin name answers to no directory, so the convention check compares it only to itself. */

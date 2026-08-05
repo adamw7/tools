@@ -33,10 +33,11 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 @Named("hookCommandsValid")
 public class HookCommandsValidRule extends JsonFileRule {
 
-	private static final String HOOKS_KEY = "hooks";
-	private static final String TYPE_KEY = "type";
-	private static final String COMMAND_KEY = "command";
-	private static final String COMMAND_TYPE = "command";
+	/** The keys of the hooks section, named once in {@link HookCommands} and read the same way here. */
+	private static final String HOOKS_KEY = HookCommands.HOOKS_KEY;
+	private static final String TYPE_KEY = HookCommands.TYPE_KEY;
+	private static final String COMMAND_KEY = HookCommands.COMMAND_KEY;
+	private static final String COMMAND_TYPE = HookCommands.COMMAND_TYPE;
 
 	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
 	private File settingsFile;

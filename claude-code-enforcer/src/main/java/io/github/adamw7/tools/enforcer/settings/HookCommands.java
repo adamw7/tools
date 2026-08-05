@@ -18,10 +18,15 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  */
 final class HookCommands {
 
-	private static final String HOOKS_KEY = "hooks";
-	private static final String TYPE_KEY = "type";
-	private static final String COMMAND_KEY = "command";
-	private static final String COMMAND_TYPE = "command";
+	/*
+	 * The keys of the hooks section, shared with HookCommandsValidRule: this
+	 * collector reads the structure that rule validates, so the two must name it
+	 * identically or one would check a section the other never sees.
+	 */
+	static final String HOOKS_KEY = "hooks";
+	static final String TYPE_KEY = "type";
+	static final String COMMAND_KEY = "command";
+	static final String COMMAND_TYPE = "command";
 
 	private HookCommands() {
 	}

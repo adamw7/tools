@@ -1,6 +1,5 @@
 package io.github.adamw7.context.mcp;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -33,18 +32,8 @@ public class ProjectTreeTool extends AbstractProjectScanTool {
 
 	private final ToolDefinition toolDefinition = new ToolDefinition("project_tree",
 			"Scan a Java, Kotlin or Scala project into a tree of folders, files and class dependencies",
-			Map.of(
-					"type", "object",
-					"properties", Map.of(
-							"path", Map.of("type", "string",
-									"description", "absolute path to the project root directory"),
-							"language", Map.of("type", "string",
-									"description", "source language: java (default), kotlin or scala"),
-							"depth", Map.of("type", "integer",
-									"description", "how many levels of transitive dependencies to resolve (default 1)"),
-							"format", Map.of("type", "string",
-									"description", "output format: json (default), markdown, text, dot or mermaid")),
-					"required", List.of("path")));
+			ContextToolSchema.project(Map.of("format", ContextToolSchema.property("string",
+					"output format: json (default), markdown, text, dot or mermaid"))));
 
 	@Override
 	public ToolDefinition getToolDefinition() {

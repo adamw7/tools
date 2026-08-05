@@ -1,6 +1,5 @@
 package io.github.adamw7.context.mcp;
 
-import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,16 +32,7 @@ public class OkfBundleTool extends AbstractProjectScanTool {
 
 	private final ToolDefinition toolDefinition = new ToolDefinition("okf_bundle",
 			"Scan a Java, Kotlin or Scala project into an Open Knowledge Format (OKF) bundle of markdown documents",
-			Map.of(
-					"type", "object",
-					"properties", Map.of(
-							"path", Map.of("type", "string",
-									"description", "absolute path to the project root directory"),
-							"language", Map.of("type", "string",
-									"description", "source language: java (default), kotlin or scala"),
-							"depth", Map.of("type", "integer",
-									"description", "how many levels of transitive dependencies to resolve (default 1)")),
-					"required", List.of("path")));
+			ContextToolSchema.project(Map.of()));
 
 	@Override
 	public ToolDefinition getToolDefinition() {

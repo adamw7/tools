@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.file;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
@@ -36,12 +37,7 @@ final class ToonSyntax {
 
 	/** Splits a comma-separated tabular field list, trimming each field name. */
 	static String[] splitFields(String fieldsText) {
-		String[] raw = fieldsText.split(",");
-		String[] trimmed = new String[raw.length];
-		for (int i = 0; i < raw.length; i++) {
-			trimmed[i] = raw[i].trim();
-		}
-		return trimmed;
+		return Arrays.stream(fieldsText.split(",")).map(String::trim).toArray(String[]::new);
 	}
 
 	/** Emits the header pairs of a tabular array: its declared count, then each field as its own key. */
@@ -71,22 +67,13 @@ final class ToonSyntax {
 		}
 	}
 
+	/** A tab counts as two columns, so a document indented with either character nests the same way. */
 	static int indentationOf(String line) {
-		int count = 0;
-		int i = 0;
-		while (i < line.length() && isWhitespace(line.charAt(i))) {
-			count += whitespaceValue(line.charAt(i));
-			i++;
-		}
-		return count;
+		return line.chars().takeWhile(ToonSyntax::isWhitespace).map(character -> character == '\t' ? 2 : 1).sum();
 	}
 
-	private static boolean isWhitespace(char c) {
-		return c == ' ' || c == '\t';
-	}
-
-	private static int whitespaceValue(char c) {
-		return c == '\t' ? 2 : 1;
+	private static boolean isWhitespace(int character) {
+		return character == ' ' || character == '\t';
 	}
 
 	static String[] splitRow(String row) {

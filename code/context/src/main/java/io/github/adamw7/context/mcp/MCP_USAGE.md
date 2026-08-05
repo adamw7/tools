@@ -113,7 +113,7 @@ dependencies, to a bounded depth.
 - `path` (string, required): absolute path to the project root directory
 - `class_name` (string, required): simple name of the class to inspect, e.g. `Foo` or `Foo.java`
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
-- `depth` (integer, optional): levels of transitive dependencies to include (default `1`)
+- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
 
 **Returns:** a JSON object with the `total` token estimate and a `classes` array of
 `{ "class": ..., "tokens": ... }` entries, the target class first. An unknown

@@ -127,7 +127,7 @@ public abstract class AbstractMcpConfiguration {
 				.serverInfo(serverName(), SERVER_VERSION)
 				.capabilities(serverCapabilities())
 				.build();
-		registerStatelessTools(statelessServer);
+		tools().forEach(tool -> statelessServer.addTool(statelessSpecificationFor(tool)));
 		return statelessServer;
 	}
 
@@ -136,7 +136,7 @@ public abstract class AbstractMcpConfiguration {
 				.serverInfo(serverName(), SERVER_VERSION)
 				.capabilities(serverCapabilities())
 				.build();
-		registerTools(syncServer);
+		tools().forEach(tool -> syncServer.addTool(specificationFor(tool)));
 		return syncServer;
 	}
 
@@ -145,19 +145,11 @@ public abstract class AbstractMcpConfiguration {
 				.tools(true).resources(false, false).prompts(false).build();
 	}
 
-	private void registerTools(McpSyncServer server) {
-		tools().forEach(tool -> server.addTool(specificationFor(tool)));
-	}
-
 	private SyncToolSpecification specificationFor(McpTool tool) {
 		return SyncToolSpecification.builder()
 				.tool(sdkTool(tool.getToolDefinition()))
 				.callHandler((exchange, request) -> sdkResult(safeApply(tool, request.arguments())))
 				.build();
-	}
-
-	private void registerStatelessTools(McpStatelessSyncServer server) {
-		tools().forEach(tool -> server.addTool(statelessSpecificationFor(tool)));
 	}
 
 	private McpStatelessServerFeatures.SyncToolSpecification statelessSpecificationFor(McpTool tool) {

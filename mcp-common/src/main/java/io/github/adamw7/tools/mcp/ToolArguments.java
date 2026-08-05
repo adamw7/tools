@@ -16,19 +16,11 @@ public final class ToolArguments {
 	}
 
 	public static String requiredString(Map<String, Object> arguments, String key) {
-		Object value = arguments.get(key);
-		if (value == null) {
-			throw new IllegalArgumentException("Missing required argument: " + key);
-		}
-		return String.valueOf(value);
+		return String.valueOf(required(arguments, key));
 	}
 
 	public static int requiredInt(Map<String, Object> arguments, String key) {
-		Object value = arguments.get(key);
-		if (value == null) {
-			throw new IllegalArgumentException("Missing required argument: " + key);
-		}
-		return parseInt(key, value);
+		return parseInt(key, required(arguments, key));
 	}
 
 	public static String optionalString(Map<String, Object> arguments, String key, String defaultValue) {
@@ -51,6 +43,14 @@ public final class ToolArguments {
 		if (value < min || value > max) {
 			throw new IllegalArgumentException(
 					"Argument " + key + " must be between " + min + " and " + max + " but was " + value);
+		}
+		return value;
+	}
+
+	private static Object required(Map<String, Object> arguments, String key) {
+		Object value = arguments.get(key);
+		if (value == null) {
+			throw new IllegalArgumentException("Missing required argument: " + key);
 		}
 		return value;
 	}

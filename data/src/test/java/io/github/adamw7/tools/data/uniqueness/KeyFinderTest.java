@@ -79,7 +79,7 @@ public class KeyFinderTest {
 	public void keyProjectsConfiguredColumnsInOrder() {
 		KeyFinder finder = new KeyFinder(new int[] { 2, 0 });
 
-		Key key = finder.key(new String[] { "x", "y", "z" }, new int[] { 2, 0 });
+		Key key = finder.key(new String[] { "x", "y", "z" });
 
 		assertTrue(key.equals(new Key(new String[] { "z", "x" })));
 	}

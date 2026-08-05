@@ -1,7 +1,5 @@
 package io.github.adamw7.tools.data.source.db;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -20,11 +18,7 @@ final class DuckDbParquet {
 	}
 
 	static Connection connect() {
-		try {
-			return DriverManager.getConnection(IN_MEMORY_URL);
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
-		}
+		return Sql.answering(() -> DriverManager.getConnection(IN_MEMORY_URL));
 	}
 
 	static String readQuery(String filePath) {
@@ -39,12 +33,12 @@ final class DuckDbParquet {
 	}
 
 	static void close(Connection connection) {
-		try {
-			if (connection != null && !connection.isClosed()) {
-				connection.close();
-			}
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
+		Sql.running(() -> closeIfOpen(connection));
+	}
+
+	private static void closeIfOpen(Connection connection) throws SQLException {
+		if (connection != null && !connection.isClosed()) {
+			connection.close();
 		}
 	}
 }

@@ -2,7 +2,8 @@ package io.github.adamw7.tools.data.structure;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
@@ -188,23 +189,19 @@ public class IntKeyOpenAddressingMap<V> {
 	}
 
 	public int[] keys() {
-		int[] result = new int[size];
-		int next = 0;
-		for (int i = 0; i < state.length; ++i) {
-			if (state[i] == LIVE) {
-				result[next++] = keys[i];
-			}
-		}
-		return result;
+		return liveSlots().map(slot -> keys[slot]).toArray();
 	}
 
 	public Collection<V> values() {
-		List<V> result = new ArrayList<>(size);
-		for (int i = 0; i < state.length; ++i) {
-			if (state[i] == LIVE) {
-				result.add(values[i]);
-			}
-		}
-		return result;
+		return liveSlots().mapToObj(slot -> values[slot])
+				.collect(Collectors.toCollection(() -> new ArrayList<>(size)));
+	}
+
+	/**
+	 * The slots holding a live entry, in table order — how both views of the map's
+	 * contents are walked, so the {@link #LIVE} test is written once.
+	 */
+	private IntStream liveSlots() {
+		return IntStream.range(0, state.length).filter(slot -> state[slot] == LIVE);
 	}
 }

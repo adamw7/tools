@@ -20,50 +20,38 @@ public class Implementations extends AbstractStatements {
 		String classOrBuilder = Utils.firstToLower(info.name()) + "OrBuilder";
 		FieldDescriptor field = info.nonOptional().get(requiredFieldNumber);
 		String prefix = info.name() + Utils.firstToUpper(field.getName());
-		String ifcName = prefix + "Ifc";
-		String implName = prefix + "Impl";
-		StringBuilder builder = new StringBuilder(header);
-		builder.append("public class ").append(implName).append(" implements ").append(ifcName).append(" {");
-		builder.append("private final Builder ").append(classOrBuilder).append(";");
-		builder.append(methods.constructor(implName, classOrBuilder));
-		builder.append(methods.requiredSetter(classOrBuilder, field, info.nonOptional()));
-		builder.append(methods.has(classOrBuilder, field));	
-		String clearReturnType = Utils.getNextIfc(info.name(), info.nonOptional(), field);
-		builder.append(methods.clear(classOrBuilder, field, clearReturnType));					
-		builder.append("}");
-		
+		String ifcName = prefix + Utils.IFC_SUFFIX;
+		String implName = prefix + Utils.IMPL_SUFFIX;
+		StringBuilder builder = new StringBuilder(header)
+				.append("public class ").append(implName).append(" implements ").append(ifcName).append(" {")
+				.append("private final Builder ").append(classOrBuilder).append(";")
+				.append(methods.constructor(implName, classOrBuilder))
+				.append(methods.requiredSetter(classOrBuilder, field, info.nonOptional()))
+				.append(methods.has(classOrBuilder, field))
+				.append(methods.clear(classOrBuilder, field, Utils.getNextIfc(info.name(), info.nonOptional(), field)))
+				.append("}");
 		return new ClassContainer(implName, builder);
 	}
 
 	public ClassContainer generateOptional() {
-		StringBuilder builder = new StringBuilder(header);
-		builder.append("public class ");
-		builder.append(optionalImplName);
-		builder.append(" implements ");
-		builder.append(optionalIfcName);
-		builder.append(" {");
-		builder.append(generateOptionalBuilderField());
-		builder.append(generateOptionalBuilderConstructor(optionalImplName));
-		builder.append(generateMethods());
-		builder.append(methods.build());
-		builder.append("}");
+		StringBuilder builder = new StringBuilder(header)
+				.append("public class ").append(optionalImplName)
+				.append(" implements ").append(optionalIfcName).append(" {")
+				.append(generateOptionalBuilderField())
+				.append(generateOptionalBuilderConstructor(optionalImplName))
+				.append(generateMethods())
+				.append(methods.build())
+				.append("}");
 		return new ClassContainer(optionalImplName, builder);
 	}
-	
+
 	public StringBuilder generateOptionalBuilderDefaultConstructor(String name) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("public ").append(name);
-		builder.append("() {this.builder = ");
-		builder.append(info.name()).append(".newBuilder();");
-		builder.append("}");
-		return builder;
+		return new StringBuilder("public ").append(name)
+				.append("() {this.builder = ").append(info.name()).append(".newBuilder();}");
 	}
 
 	public StringBuilder generateOptionalBuilderConstructor(String name) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("public ").append(name);
-		builder.append("(Builder builder) {this.builder = builder;}");
-		return builder;
+		return new StringBuilder("public ").append(name).append("(Builder builder) {this.builder = builder;}");
 	}
 
 	public StringBuilder generateMethods() {

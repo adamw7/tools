@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.github.adamw7.context.Language;
 import io.github.adamw7.context.tree.ProjectTreeNode;
@@ -159,16 +161,23 @@ public class OkfBundler {
 	}
 
 	private List<String> directoryEntries(ProjectTreeNode node) {
-		return entries(node).stream()
-				.filter(ProjectTreeNode::isDirectory)
-				.map(child -> "[" + child.name() + "](" + child.name() + SEPARATOR + ") - " + describe(child))
-				.toList();
+		return indexEntries(node, ProjectTreeNode::isDirectory, child -> child.name() + SEPARATOR);
 	}
 
 	private List<String> fileEntries(ProjectTreeNode node) {
+		return indexEntries(node, child -> !child.isDirectory(), this::conceptName);
+	}
+
+	/**
+	 * One index line per accepted child: a markdown link to it, then what it holds.
+	 * A directory and a file differ only in which of them is accepted and where the
+	 * link points, so the line itself is written once.
+	 */
+	private List<String> indexEntries(ProjectTreeNode node, Predicate<ProjectTreeNode> accepted,
+			Function<ProjectTreeNode, String> target) {
 		return entries(node).stream()
-				.filter(child -> !child.isDirectory())
-				.map(child -> "[" + child.name() + "](" + conceptName(child) + ") - " + describe(child))
+				.filter(accepted)
+				.map(child -> "[" + child.name() + "](" + target.apply(child) + ") - " + describe(child))
 				.toList();
 	}
 

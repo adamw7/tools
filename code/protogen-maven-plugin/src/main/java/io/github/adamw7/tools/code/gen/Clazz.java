@@ -60,27 +60,22 @@ public class Clazz implements Generator {
 	}
 
 	private CharSequence handleOptionalMethods() {
-	    StringBuilder builder = new StringBuilder();
-	    builder.append(implementations.generateOptionalBuilderField());
-	    builder.append(implementations.generateOptionalBuilderDefaultConstructor(builderClassName));
-	    builder.append(implementations.generateOptionalBuilderConstructor(builderClassName));
-	    builder.append(implementations.generateMethods());
-	    builder.append(methods.build());
-	    return builder;
+		return new StringBuilder()
+				.append(implementations.generateOptionalBuilderField())
+				.append(implementations.generateOptionalBuilderDefaultConstructor(builderClassName))
+				.append(implementations.generateOptionalBuilderConstructor(builderClassName))
+				.append(implementations.generateMethods())
+				.append(methods.build());
 	}
 
 	private CharSequence handleRequiredMethods() {
-	    StringBuilder builder = new StringBuilder();
-	    builder.append(generateFields());
-
-	    FieldDescriptor firstNonOptionalField = info.nonOptional().getFirst();
-	    String builderName = Utils.firstToLower(builderClassName);
-
-	    builder.append(methods.has(builderName, firstNonOptionalField));
-	    builder.append(methods.requiredSetter(builderName, firstNonOptionalField, info.nonOptional()));
-	    builder.append(methods.clear(builderName, firstNonOptionalField, Utils.getNextIfc(info.name(), info.nonOptional(), firstNonOptionalField)));
-
-	    return builder;
+		FieldDescriptor first = info.nonOptional().getFirst();
+		String builderName = Utils.firstToLower(builderClassName);
+		return new StringBuilder()
+				.append(generateFields())
+				.append(methods.has(builderName, first))
+				.append(methods.requiredSetter(builderName, first, info.nonOptional()))
+				.append(methods.clear(builderName, first, Utils.getNextIfc(info.name(), info.nonOptional(), first)));
 	}
 
 	private String generatePackage() {
@@ -88,12 +83,9 @@ public class Clazz implements Generator {
 	}
 
 	private StringBuilder generateFields() {
-		StringBuilder builder = new StringBuilder("private final ");
-		builder.append(info.name()).append(".Builder ");
-
-		builder.append(Utils.firstToLower(builderClassName)).append(" = ");
-		builder.append(info.name()).append(".newBuilder();");
-		return builder;
+		return new StringBuilder("private final ").append(info.name()).append(".Builder ")
+				.append(Utils.firstToLower(builderClassName)).append(" = ")
+				.append(info.name()).append(".newBuilder();");
 	}
 
 	private StringBuilder generateFooter() {
@@ -101,29 +93,28 @@ public class Clazz implements Generator {
 	}
 
 	private StringBuilder generateHeader() {
-		StringBuilder builder = new StringBuilder("public class ").append(builderClassName).append(" implements ");
-		builder.append(firstInterface());
-		builder.append(" {");
-		return builder;
+		return new StringBuilder("public class ").append(builderClassName).append(" implements ")
+				.append(firstInterface()).append(" {");
 	}
 
 	private String firstInterface() {
-		return info.name() + (info.nonOptional().isEmpty() ? "OptionalIfc" : Utils.to(info.nonOptional().getFirst(), "Ifc"));
+		return info.name() + (info.nonOptional().isEmpty()
+				? "Optional" + Utils.IFC_SUFFIX
+				: Utils.to(info.nonOptional().getFirst(), Utils.IFC_SUFFIX));
 	}
 
 	private StringBuilder generateImports() {
-		StringBuilder builder = new StringBuilder();
-		StringBuilder prefix = new StringBuilder("import ").append(info.getInputPkg()).append(".");
-		builder.append(prefix).append("*;");
-		builder.append(prefix).append(info.fullName()).append(";");
-		builder.append(prefix).append(info.fullName()).append(".Builder").append(";");				
+		String prefix = "import " + info.getInputPkg() + ".";
+		StringBuilder builder = new StringBuilder()
+				.append(prefix).append("*;")
+				.append(prefix).append(info.fullName()).append(";")
+				.append(prefix).append(info.fullName()).append(".Builder;");
 		for (FieldDescriptor field : info.getGroupFields()) {
-			String fieldName = Utils.toUpperCamelCase(field.getName());
-			builder.append(prefix).append(info.name()).append(".").append(fieldName).append(";");
+			builder.append(prefix).append(info.name()).append(".")
+					.append(Utils.toUpperCamelCase(field.getName())).append(";");
 		}
 		for (FieldDescriptor field : info.getPureComplexFields()) {
-			String type = Utils.getClassName(field.toProto().getTypeName());
-			builder.append(prefix).append(type).append(";");
+			builder.append(prefix).append(Utils.getClassName(field.toProto().getTypeName())).append(";");
 		}
 		return builder;
 	}

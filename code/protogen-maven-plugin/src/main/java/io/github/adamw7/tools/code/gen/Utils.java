@@ -2,6 +2,7 @@ package io.github.adamw7.tools.code.gen;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -17,18 +18,26 @@ public class Utils {
 		return Utils.firstToUpper(fieldDescriptor.getName()) + suffix;
 	}
 
-	public static String firstToLower(String string) {
+	/**
+	 * Recases the first character and the rest independently, which is the whole of
+	 * what the three case helpers below differ in. An empty string has neither part
+	 * and is returned as it is: a leading, trailing or doubled underscore in a proto
+	 * name yields an empty split part, and it contributes nothing to the camel-case
+	 * name.
+	 */
+	private static String recased(String string, UnaryOperator<String> first, UnaryOperator<String> rest) {
 		if (string.isEmpty()) {
 			return string;
 		}
-		return string.substring(0, 1).toLowerCase() + string.substring(1);
+		return first.apply(string.substring(0, 1)) + rest.apply(string.substring(1));
+	}
+
+	public static String firstToLower(String string) {
+		return recased(string, String::toLowerCase, UnaryOperator.identity());
 	}
 
 	public static String firstToUpper(String string) {
-		if (string.isEmpty()) {
-			return string;
-		}
-		return string.substring(0, 1).toUpperCase() + string.substring(1);
+		return recased(string, String::toUpperCase, UnaryOperator.identity());
 	}
 
 	public static String toUpperCamelCase(String s) {
@@ -41,12 +50,7 @@ public class Utils {
 	}
 
 	static String toProperCase(String s) {
-		if (s.isEmpty()) {
-			// A leading, trailing or doubled underscore in a proto name yields an
-			// empty split part; it contributes nothing to the camel-case name.
-			return s;
-		}
-		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
+		return recased(s, String::toUpperCase, String::toLowerCase);
 	}
 	
 	public static String getNextIfc(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {
@@ -68,17 +72,26 @@ public class Utils {
 	
 	public static String getSuffixOf(String type, int howMany, String delimiter) {
 		String[] tokens = type.split(Pattern.quote(delimiter));
-		return String.join(delimiter, Arrays.copyOfRange(tokens, tokens.length - howMany, tokens.length));
+		return joinFrom(tokens, tokens.length - howMany, delimiter);
 	}
 
 	public static String getClassName(String fullName) {
 		String[] tokens = fullName.split(Pattern.quote("."));
 		for (int i = 0; i < tokens.length; ++i) {
-			if (!tokens[i].isEmpty() && Character.isUpperCase(tokens[i].charAt(0))) {
-				 return String.join(".", Arrays.copyOfRange(tokens, i, tokens.length));
+			if (startsUpperCase(tokens[i])) {
+				return joinFrom(tokens, i, ".");
 			}
 		}
 		return "";
+	}
+
+	/** The tokens from {@code first} onwards, rejoined with the delimiter they were split on. */
+	private static String joinFrom(String[] tokens, int first, String delimiter) {
+		return String.join(delimiter, Arrays.copyOfRange(tokens, first, tokens.length));
+	}
+
+	private static boolean startsUpperCase(String token) {
+		return !token.isEmpty() && Character.isUpperCase(token.charAt(0));
 	}
 
 }

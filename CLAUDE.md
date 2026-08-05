@@ -285,6 +285,8 @@ asked.**
 - Personal overrides belong in `.claude/settings.local.json`, which is
   gitignored — the `localSettingsIgnored` rule fails the build if that entry
   disappears.
+- See *Agent configuration* in AGENTS.md for what each skill covers, what the
+  hook does, and which agent files this repository deliberately does not ship.
 
 ## CLAUDE.md enforcement
 

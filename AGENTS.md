@@ -207,11 +207,23 @@ modules and MCP servers fit together, and
 visual walkthrough of how the generated builder chain shifts required-field
 validation from runtime to compile time.
 
+[docs/adr](docs/adr) holds the **architecture decision records** behind the
+standing choices — the foundational record, the security and supply-chain
+posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
+dependency-update bots, DuckDB as the Parquet engine, log4j2, MCP on Spring
+Boot, and documentation as an enforced contract. Read the relevant record before
+revisiting one of those decisions: a record is immutable once accepted, so a
+change means adding a new ADR that supersedes it and cross-linking the two,
+never editing the old one. [docs/adr/README.md](docs/adr/README.md) carries the
+numbering, template, and status vocabulary (a `Proposed` record is decided but
+not yet in force, and names what must land first).
+
 ## Module layout
 
 ```
 tools (root pom, packaging=pom)
-├── claude-code-enforcer        # custom maven-enforcer rule validating CLAUDE.md
+├── claude-code-enforcer        # custom maven-enforcer rules validating CLAUDE.md,
+│                               #   AGENTS.md, README.md and the .claude config
 ├── test-common                 # shared ArchUnit rule libraries, published as a test-jar
 ├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
@@ -635,6 +647,119 @@ manually, or on a release.
 
 Every workflow builds on JDK 25 (Temurin) and passes `-ntp` to keep the log
 free of artifact-transfer noise.
+
+### Dependency updates
+
+Version bumps arrive as pull requests from two bots with a deliberate division of
+labour ([ADR 0005](docs/adr/0005-renovate-dependency-updates.md),
+[ADR 0006](docs/adr/0006-dependabot-security-updates.md)): **Renovate** owns
+routine version currency, **Dependabot** owns security remediation. Renovate's
+configuration is `.github/renovate.json`; the parts worth knowing before editing
+a version by hand:
+
+- It runs on a **schedule** (Monday before 06:00 UTC, at most 5 open PRs and 2
+  per hour), so ordinary bumps arrive in one weekly batch rather than
+  continuously.
+- `vulnerabilityAlerts` and `osvVulnerabilityAlerts` are **off**, so Renovate
+  declines security-driven bumps and Dependabot raises them without a duplicate
+  pull request.
+- Artifacts that must move together are **grouped** into one PR: the Maven
+  plugins (all of whose versions live in the root `pluginManagement`), the
+  coverage and mutation tooling, the test libraries, and the protobuf toolchain —
+  the last because `protobuf-java` and the `protoc` the plugin runs share one
+  property, and letting them drift cost two minor versions once already.
+- This project's own `io.github.adamw7:**` modules are **disabled**: they resolve
+  inside the reactor at `${revision}`, so there is no version for Renovate to
+  raise.
+- A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
+  dashboard approval, because a Maven 4 API is wired in on purpose while the
+  build is pinned to Maven 3.9.x, and the framework the three MCP servers boot on
+  deserves a review of its own.
+
+Because every version lives in the root pom, these PRs are single-file changes
+that run through the normal `maven.yml` build; review them like any other change
+rather than merging on the bot's word.
+
+## Agent configuration
+
+This repository's own Claude Code configuration lives under `.claude/`, and every
+part of it is validated by the rules of the next section — a change here is a
+change the build checks.
+
+### Skills
+
+`.claude/skills/` holds **twelve** project skills, each a directory with a
+`SKILL.md` whose YAML front matter declares a `name` (lower-case kebab-case,
+matching the directory name) and a `description` saying both what the skill
+covers and when to load it. Skills are loaded on demand rather than into every
+session, which is why they, not `CLAUDE.md`, are where detail belongs: **prefer
+loading the relevant skill over re-deriving a convention** from the code.
+
+Six cover one module each:
+
+| Skill | Covers |
+| --- | --- |
+| `data-sources` | the `data` sources, the `ColumnarDataSource` vs forward-only contract, and the uniqueness/key checker |
+| `context-finder` | `code/context` — the class-usage finders, the project tree and its serializers, OKF bundles, token estimation, and the four MCP tools |
+| `protogen` | the `protogen-maven-plugin` — proto2 required-field enforcement, proto3 presence accessors, `oneof` discriminators |
+| `adopt-pipeline` | the `adopt` pipeline's ordered steps, step contract, CLI flags, and credential masking |
+| `mcp-server` | adding a tool or server on the `mcp-common` scaffolding — the `McpTool` SPI, the three transports, path confinement, `MCP_USAGE.md`, the `*IT`s |
+| `enforcer-rules` | writing, testing and wiring a `claude-code-enforcer` rule, including `severity`/`reportFile`/`baselineFile` |
+
+Six hold across the repository:
+
+| Skill | Covers |
+| --- | --- |
+| `doc-contract` | keeping `CLAUDE.md`, `AGENTS.md` and `README.md` inside the enforced documentation contract |
+| `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
+| `testing-conventions` | the Surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
+| `java-code-review` | review led by the rules the build fails on, then null safety, exceptions, concurrency, performance |
+| `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
+| `git-commit` | conventional commit messages using this repository's real module scopes |
+
+A new skill needs no wiring: `skillFilesExist`, `uniqueNames` and
+`uniqueDescriptions` already point at `.claude/skills`, so it is validated the
+moment it lands. Its `description` must not duplicate another's — Claude routes
+by matching intent against these descriptions, so two identical ones are
+ambiguous and one shadows the other.
+
+### Settings and hooks
+
+`.claude/settings.json` carries two sections:
+
+- `permissions.allow` pre-approves the commands a session runs constantly —
+  `mvn` (and `PowerShell(mvn *)` for the Windows path), the
+  `dependency:tree`/`dependency:analyze` reports, the `unzip -l`/`unzip -p`
+  archive inspection used to check what a built jar contains, and `Edit`. Each
+  entry must be a well-formed `Tool` or `Tool(specifier)`, and must not also
+  appear in `deny` (`permissionsFormat`).
+- `hooks.SessionStart` runs `$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh`.
+  The script exists on disk, which is what `hookCommandsValid` checks, and the
+  wiring is cross-checked from the other side by `hooksFormat`.
+
+`.claude/hooks/session-start.sh` provisions a web/remote session and returns
+immediately anywhere else: it exits at once unless `CLAUDE_CODE_REMOTE=true`,
+then installs `openjdk-25-jdk` when no JDK 25 is present, exports `JAVA_HOME` and
+`PATH` through `CLAUDE_ENV_FILE` so later tool calls see them, and warms the
+local repository with `mvn dependency:go-offline`. Keep it `set -euo pipefail`,
+executable, and opening with a `#!` shebang — `hooksFormat` requires the shebang
+and the executable bit, and the root pom lints it with shellcheck like every
+other `*.sh`.
+
+Personal overrides belong in `.claude/settings.local.json`, which is gitignored;
+`localSettingsIgnored` fails the build if that entry disappears, since committing
+it would impose one developer's choices on everyone.
+
+### What this repository does not ship
+
+Four agent-configuration files are absent by choice, which is why their rules
+behave the way the next section describes: there is no `.mcp.json` (the three
+servers here are *published* for other projects to configure, not consumed by
+this one), no `.claude-plugin/plugin.json`, no `.claude/agents` and no
+`.claude/commands`. The first two rules are wired and pass on the absent file, so
+they start enforcing the day one is added; `subAgentFormat` and `commandFormat`
+cannot be wired until the directory exists — add the directory and the rule
+together.
 
 ## CLAUDE.md enforcement
 

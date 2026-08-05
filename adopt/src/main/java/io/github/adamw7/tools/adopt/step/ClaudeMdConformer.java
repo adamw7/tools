@@ -24,6 +24,13 @@ import java.util.stream.IntStream;
  * fails an empty section just as it fails a missing one. Fenced code and
  * commented-out text are left alone, mirroring how the rule matches, and reshaping
  * an already-conforming document is a no-op.
+ *
+ * <p>Which sections it demands is the caller's to choose, because the guard being
+ * wired in differs by build system — see
+ * {@link BuildSystem#requiredClaudeMdSections()}. The title and the
+ * {@code AGENTS.md} reference are settled either way: the step writes a companion
+ * {@code AGENTS.md} for every adopted repository, and a document that never points
+ * at it leaves the pair pointing only one way.
  */
 public class ClaudeMdConformer {
 
@@ -42,6 +49,15 @@ public class ClaudeMdConformer {
 	 */
 	static final String TITLE = "# CLAUDE.md";
 	static final String AGENTS_REFERENCE = "AGENTS.md";
+
+	/**
+	 * The sections the {@code claudeMdFormat} rule demands, and so the sections to
+	 * conform to <em>where that rule is the guard being wired in</em> — the Maven
+	 * path, {@link MavenBuildSystem#requiredClaudeMdSections()}. They are Java and
+	 * Maven sections because the rule is a Java project's rule; a build system whose
+	 * guard asks only that the file exist and carry something does not want them, and
+	 * says so by requiring none.
+	 */
 	static final List<String> REQUIRED_SECTIONS = List.of(
 			"## Project",
 			"## Java version",
@@ -71,6 +87,31 @@ public class ClaudeMdConformer {
 
 	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
 	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
+
+	private final List<String> requiredSections;
+
+	/** Conforms to the full {@code claudeMdFormat} contract. */
+	public ClaudeMdConformer() {
+		this(REQUIRED_SECTIONS);
+	}
+
+	/**
+	 * Conforms only as far as the guard being wired in actually demands. Stamping the
+	 * {@code claudeMdFormat} sections onto every adopted repository put
+	 * {@code ## Java version}, {@code ## Maven} and
+	 * {@code ## Principles for Java Development} — each stubbed with a pointer to
+	 * {@code AGENTS.md} — into the {@code CLAUDE.md} of projects that are neither
+	 * Java nor Maven, where nothing then checked them: the Gradle and GitHub Actions
+	 * guards ask only that the file exist and carry something. The reshape is worth
+	 * making only where a guard would otherwise reject the file, so what to require
+	 * is the build system's to say.
+	 *
+	 * @param requiredSections the headings to canonicalize, append and give a body to,
+	 *                         empty for a guard that demands no particular section
+	 */
+	public ClaudeMdConformer(List<String> requiredSections) {
+		this.requiredSections = List.copyOf(requiredSections);
+	}
 
 	/**
 	 * @return {@code content} reshaped so the {@code claudeMdFormat} rule passes,
@@ -140,7 +181,7 @@ public class ClaudeMdConformer {
 	private void canonicalizeHeadings(List<String> lines) {
 		Outline outline = Outline.of(lines);
 		Set<Integer> claimed = reservedHeadings(outline);
-		REQUIRED_SECTIONS.forEach(required -> canonicalize(outline, required, claimed));
+		requiredSections.forEach(required -> canonicalize(outline, required, claimed));
 	}
 
 	/**
@@ -149,7 +190,7 @@ public class ClaudeMdConformer {
 	 * required section.
 	 */
 	private Set<Integer> reservedHeadings(Outline outline) {
-		return outline.structural(line -> REQUIRED_SECTIONS.contains(line.strip()))
+		return outline.structural(line -> requiredSections.contains(line.strip()))
 				.boxed()
 				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
@@ -191,7 +232,7 @@ public class ClaudeMdConformer {
 	 * an empty section just as it fails a missing one, so both are settled here.
 	 */
 	private void ensureRequiredSections(List<String> lines) {
-		REQUIRED_SECTIONS.forEach(required -> ensureSection(lines, required));
+		requiredSections.forEach(required -> ensureSection(lines, required));
 	}
 
 	/**
@@ -218,11 +259,28 @@ public class ClaudeMdConformer {
 		return (int) heading.chars().takeWhile(character -> character == '#').count();
 	}
 
+	/**
+	 * The reference is separated from what follows it only when that line is not
+	 * already blank. A document conformed to no required sections keeps the body
+	 * {@code claude init} wrote, blank line and all, and closing the insertion with
+	 * one of its own left a double blank in the first commit of every repository
+	 * whose guard demands no section.
+	 */
 	private void ensureAgentsReference(List<String> lines) {
 		Outline outline = Outline.of(lines);
-		if (outline.matching(line -> line.contains(AGENTS_REFERENCE)).findAny().isEmpty()) {
-			lines.addAll(outline.titleIndex() + 1, List.of("", AGENTS_REFERENCE_LINE, ""));
+		if (outline.matching(line -> line.contains(AGENTS_REFERENCE)).findAny().isPresent()) {
+			return;
 		}
+		int index = outline.titleIndex() + 1;
+		List<String> reference = new ArrayList<>(List.of("", AGENTS_REFERENCE_LINE));
+		if (!isBlankAt(lines, index)) {
+			reference.add("");
+		}
+		lines.addAll(index, reference);
+	}
+
+	private static boolean isBlankAt(List<String> lines, int index) {
+		return index < lines.size() && lines.get(index).isBlank();
 	}
 
 	private static boolean isHeading(String stripped) {

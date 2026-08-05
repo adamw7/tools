@@ -2,6 +2,7 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,10 +15,17 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 /**
  * Makes the adoption self-consistent: after {@link ClaudeInitStep} generates a
  * {@code CLAUDE.md}, this reshapes it with a {@link ClaudeMdConformer} so it
- * satisfies the {@code claudeMdFormat} rule {@link EnforcerStep} wires into the
- * build, and writes a companion {@code AGENTS.md} so the reference the rule
- * expects resolves to a real file. Without it the adoption fails its own
+ * satisfies the guard {@link EnforcerStep} wires into the build, and writes a
+ * companion {@code AGENTS.md} so the reference resolves to a real file. Without it
+ * an adoption whose guard is the {@code claudeMdFormat} rule fails its own
  * {@link VerifyStep}.
+ *
+ * <p>How much reshaping that takes is the detected {@link BuildSystem}'s to say,
+ * through {@link BuildSystem#requiredClaudeMdSections()}: the Maven path wires in
+ * the full format rule and gets the full set of sections, while a guard that asks
+ * only for a non-empty file leaves the generated document as {@code claude init}
+ * wrote it. Reshaping past what the guard checks would put a Java project's
+ * headings into repositories that are not one.
  *
  * <p>The step runs before the first commit so both files are committed together.
  * It never overwrites an {@code AGENTS.md} the project already carries, and
@@ -30,15 +38,20 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 
 	private static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
 
-	private final ClaudeMdConformer conformer;
+	private final List<BuildSystem> buildSystems;
 	private final AssetInstaller agentsMdInstaller;
 
+	/** Detects the checkout's build system among {@link BuildSystems#DEFAULTS}. */
 	public ClaudeMdConformanceStep() {
-		this(new ClaudeMdConformer(), AdoptionAssets.agentsMd());
+		this(BuildSystems.DEFAULTS);
 	}
 
-	ClaudeMdConformanceStep(ClaudeMdConformer conformer, AssetInstaller agentsMdInstaller) {
-		this.conformer = conformer;
+	public ClaudeMdConformanceStep(List<BuildSystem> buildSystems) {
+		this(buildSystems, AdoptionAssets.agentsMd());
+	}
+
+	ClaudeMdConformanceStep(List<BuildSystem> buildSystems, AssetInstaller agentsMdInstaller) {
+		this.buildSystems = List.copyOf(buildSystems);
 		this.agentsMdInstaller = agentsMdInstaller;
 	}
 
@@ -64,13 +77,29 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 	private void conformClaudeMd(Path checkout) {
 		Path claudeMd = checkout.resolve(CLAUDE_MD);
 		String original = read(claudeMd);
-		String conformed = LineTerminators.matching(conformer.conform(original), original);
+		String conformed = LineTerminators.matching(conformer(checkout).conform(original), original);
 		if (conformed.equals(original)) {
 			log.info("{} already satisfies the claudeMdFormat rule; left unchanged", CLAUDE_MD);
 		} else {
 			AdoptionFiles.write(claudeMd, conformed, CLAUDE_MD);
 			log.info("Normalised {} to satisfy the claudeMdFormat rule", CLAUDE_MD);
 		}
+	}
+
+	/**
+	 * Reshapes to the contract of the guard {@link EnforcerStep} is about to wire
+	 * into this very checkout, detected from the same build-system list that step is
+	 * given, so the two never disagree about what the file has to carry.
+	 *
+	 * <p>A list detection comes up empty on — one configured without a catch-all,
+	 * since {@link BuildSystems#DEFAULTS} always matches — leaves no guard to satisfy
+	 * and so demands no section, the same answer as a guard that only wants the file
+	 * to be there.
+	 */
+	private ClaudeMdConformer conformer(Path checkout) {
+		return new ClaudeMdConformer(BuildSystems.detect(buildSystems, checkout)
+				.map(BuildSystem::requiredClaudeMdSections)
+				.orElseGet(List::of));
 	}
 
 	private String read(Path claudeMd) {

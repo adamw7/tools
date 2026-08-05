@@ -1,7 +1,5 @@
 package io.github.adamw7.tools.data.source.db;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -36,28 +34,26 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	private void closeQueryResources() {
 		try {
-			if (resultSet != null) {
-				resultSet.close();
-			}
-			if (statement != null) {
-				statement.close();
-			}
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
+			Sql.running(this::closeOpenResources);
 		} finally {
 			resultSet = null;
 			statement = null;
 		}
 	}
 
+	private void closeOpenResources() throws SQLException {
+		if (resultSet != null) {
+			resultSet.close();
+		}
+		if (statement != null) {
+			statement.close();
+		}
+	}
+
 	@Override
 	public String[] getColumnNames() {
 		checkIfOpen();
-		try {
-			return getColumnsFrom(resultSet);
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
-		}
+		return Sql.answering(() -> getColumnsFrom(resultSet));
 	}
 
 	private void checkIfOpen() {
@@ -69,24 +65,24 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 	@Override
 	public void open() {
 		closeQueryResources();
-		try {
-			statement = connection.createStatement();
-			log.info("Executing query: {}", query);
-			resultSet = statement.executeQuery(query);
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
-		}
+		Sql.running(this::executeQuery);
+	}
+
+	private void executeQuery() throws SQLException {
+		statement = connection.createStatement();
+		log.info("Executing query: {}", query);
+		resultSet = statement.executeQuery(query);
 	}
 
 	@Override
 	public String[] nextRow() {
 		checkIfOpen();
-		try {
-			hasMoreData = resultSet.next();
-			return hasMoreData ? getNextFrom(resultSet) : null;
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
-		}
+		return Sql.answering(this::readRow);
+	}
+
+	private String[] readRow() throws SQLException {
+		hasMoreData = resultSet.next();
+		return hasMoreData ? getNextFrom(resultSet) : null;
 	}
 
 	@Override
@@ -105,11 +101,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 			return;
 		}
 		checkIfOpen();
-		try {
-			resultSet.setFetchSize(batchSize);
-		} catch (SQLException e) {
-			throw new UncheckedIOException(new IOException(e));
-		}
+		Sql.running(() -> resultSet.setFetchSize(batchSize));
 	}
 
 	/**
@@ -126,21 +118,31 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 	}
 
 	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
-		int columnCount = resultSet.getMetaData().getColumnCount();
-		String[] row = new String[columnCount];
-		for (int i = 0; i < columnCount; ++i) {
-			row[i] = resultSet.getString(i + 1);
-		}
-		return row;
+		return byColumn(resultSet.getMetaData().getColumnCount(), resultSet::getString);
 	}
 
 	protected static String[] getColumnsFrom(ResultSet resultSet) throws SQLException {
 		ResultSetMetaData meta = resultSet.getMetaData();
-		String[] columns = new String[meta.getColumnCount()];
-		for (int i = 0; i < columns.length; ++i) {
-			columns[i] = meta.getColumnName(i + 1);
+		return byColumn(meta.getColumnCount(), meta::getColumnName);
+	}
+
+	/**
+	 * Reads one value per column into an array, translating this class's zero-based
+	 * indexing to JDBC's one-based. A row and a header differ only in which accessor
+	 * supplies the value, so the walk lives here rather than in each of them.
+	 */
+	private static String[] byColumn(int columnCount, ColumnValue value) throws SQLException {
+		String[] values = new String[columnCount];
+		for (int i = 0; i < columnCount; ++i) {
+			values[i] = value.at(i + 1);
 		}
-		return columns;
+		return values;
+	}
+
+	/** A value read from a one-based JDBC column: a row's cell, or a column's name. */
+	@FunctionalInterface
+	private interface ColumnValue {
+		String at(int column) throws SQLException;
 	}
 
 }

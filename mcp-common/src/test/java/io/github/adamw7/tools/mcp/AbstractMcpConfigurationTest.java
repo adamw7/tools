@@ -110,6 +110,27 @@ public class AbstractMcpConfigurationTest {
 		inputWriter.close();
 	}
 
+	/**
+	 * The handshake must name the build the server was packaged from, so a client can
+	 * tell which release it is talking to.
+	 */
+	@Test
+	public void mcpSyncServerStreamableAdvertisesTheBuildVersion() {
+		TestMcpConfiguration config = new TestMcpConfiguration();
+		McpSyncServer server = config.mcpSyncServerStreamable(config.streamableServerTransport());
+		assertEquals(ServerVersion.current(), server.getServerInfo().version());
+		assertEquals(SERVER_NAME, server.getServerInfo().name());
+		server.close();
+	}
+
+	@Test
+	public void mcpStatelessSyncServerAdvertisesTheBuildVersion() {
+		TestMcpConfiguration config = new TestMcpConfiguration();
+		McpStatelessSyncServer server = config.mcpStatelessSyncServer(config.statelessServerTransport());
+		assertEquals(ServerVersion.current(), server.getServerInfo().version());
+		server.close();
+	}
+
 	@Test
 	public void mcpSyncServerStreamableHasTools() {
 		TestMcpConfiguration config = new TestMcpConfiguration();

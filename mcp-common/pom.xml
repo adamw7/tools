@@ -12,6 +12,22 @@
 	<name>Shared MCP server scaffolding</name>
 	<description>Shared MCP server scaffolding providing transport wiring and the tool SPI reused by the repository's MCP servers.</description>
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<!-- A dedicated directory that IS filtered, so the project version is
+			     baked into mcp-common-build.properties and advertised in every MCP
+			     handshake (see ServerVersion). The spring-boot-starter parent filters
+			     with the @...@ delimiter, which that file uses. Kept separate from
+			     src/main/resources because overlapping filtered and unfiltered
+			     entries on one directory are unreliable, and because a future
+			     log4j2.properties here must stay unfiltered. -->
+			<resource>
+				<directory>src/main/filtered-resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
 		<plugins>
 			<!-- This module has no module-info.java, so the JPMS name that
 			     `requires tools.mcp.common` in tools.data resolves against was being

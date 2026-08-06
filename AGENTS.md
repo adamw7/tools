@@ -1060,20 +1060,38 @@ These are hard requirements for any code you add or modify:
   It is satisfied when *any* project in the reactor declares the id, which is
   what lets the per-module `integration-tests` profile be requested from the
   root.
-- The build is **reproducible**: the root pom sets
-  `project.build.outputTimestamp` to a fixed instant, so every archive-producing
-  plugin (jar, source, javadoc, assembly, plugin descriptor, Spring Boot
-  repackage) stamps that instant on its entries and writes them in a stable
-  order. Two clean builds of one commit produce byte-identical artifacts, which
-  is what lets a consumer rebuild a Maven Central release and diff it against
-  the published jars — the supply-chain posture of
-  [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md). Verify
-  a change has not broken it by building twice and comparing:
+- Published builds are **reproducible**. Setting `project.build.outputTimestamp`
+  makes every archive-producing plugin (jar, source, javadoc, assembly, plugin
+  descriptor, Spring Boot repackage) stamp one fixed instant on its entries and
+  write them in a stable order, so two builds of a commit come out
+  byte-identical — which is what lets a consumer rebuild a Maven Central release
+  and diff it against the published jars, the supply-chain posture of
+  [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md).
+
+  The property is **not declared in the pom**: a literal there is a date somebody
+  has to remember to bump, and releases here are a `revision` edit rather than a
+  `maven-release-plugin` run, so nothing would bump it. The publishing workflows
+  (`central-publish.yml`, `maven-publish.yml`, and `docker.yml` for the jars that
+  go into the image) derive it from the released commit instead and pass it as a
+  user property, which overrides the pom cleanly:
 
   ```bash
-  mvn -B clean package -DskipTests
+  mvn ... -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"
+  ```
+
+  Pinning it to the commit rather than to the clock is the point: anyone can
+  check out the tag, run the same command, and get the published bytes. An
+  ordinary `mvn install` passes nothing and is *not* reproducible, which costs
+  nothing — those artifacts are never published.
+
+  Verify a change has not broken reproducibility by building twice with the same
+  timestamp and comparing:
+
+  ```bash
+  stamp="$(git log -1 --format=%cI)"
+  mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
   find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum > /tmp/build1.sha
-  mvn -B clean package -DskipTests
+  mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
   find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum | diff /tmp/build1.sha -
   ```
 
@@ -1088,15 +1106,14 @@ To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is currently
    a `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
-2. Set `project.build.outputTimestamp` in the root `pom.xml` to the release
-   date (`YYYY-MM-DDT00:00:00Z`), so the reproducible-build timestamp the
-   artifacts carry matches the release rather than a previous one. Releases here
-   are a `revision` edit rather than a `maven-release-plugin` run, which is what
-   would otherwise have updated the property automatically. A forgotten bump
-   costs only stale entry dates — the artifacts stay reproducible either way.
-3. Commit and push.
-4. Confirm all builds pass.
-5. Release and mark as latest in GitHub.
+2. Commit and push.
+3. Confirm all builds pass.
+4. Release and mark as latest in GitHub.
+
+Nothing about the reproducible-build timestamp is a manual step: both publishing
+workflows derive `project.build.outputTimestamp` from the released commit and
+pass it to Maven (see *Maven conventions*), failing the release outright if the
+commit timestamp cannot be read.
 
 Creating the GitHub release fires two separate workflows:
 
@@ -1128,8 +1145,11 @@ configures on the `central-publishing-maven-plugin`, and the plugin honours it
 per module, so the exclusion holds with or without the workflow's `-pl` filter.
 The same modules set `maven.deploy.skip` to stay out of GitHub Packages too.
 
-To publish from a workstation: `mvn -P release deploy` with the same `central`
-server credentials in `~/.m2/settings.xml` and a GPG key on the keyring.
+To publish from a workstation:
+`mvn -P release deploy -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"`
+with the same `central` server credentials in `~/.m2/settings.xml` and a GPG key
+on the keyring. The workflows pass that property for you; a hand-run deploy that
+omits it still publishes, but the artifacts will not be reproducible.
 
 ### Staged-only dry run (validate without releasing)
 

@@ -44,8 +44,23 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Derive the reproducible-build timestamp
+        # The pom declares no project.build.outputTimestamp on purpose, so that no
+        # literal date has to be bumped by hand at release time. Passing the
+        # built commit's own timestamp keeps the jars that go into the image
+        # byte-identical to what anyone who checks out this commit and rebuilds
+        # gets. See "Releasing" in AGENTS.md.
+        run: |
+          timestamp="$(git log -1 --format=%cI)"
+          if [ -z "${timestamp}" ]; then
+            echo "::error::Could not read the commit timestamp, so the image contents would not be reproducible."
+            exit 1
+          fi
+          echo "Building with project.build.outputTimestamp=${timestamp}"
+          echo "BUILD_OUTPUT_TIMESTAMP=${timestamp}" >> "$GITHUB_ENV"
+
       - name: Build with Maven
-        run: mvn -B -ntp -DskipTests package
+        run: mvn -B -ntp -DskipTests package -Dproject.build.outputTimestamp="${BUILD_OUTPUT_TIMESTAMP}"
 
       # Build metadata baked into the image as OCI labels, so a running
       # container can be traced back to the commit it was built from.

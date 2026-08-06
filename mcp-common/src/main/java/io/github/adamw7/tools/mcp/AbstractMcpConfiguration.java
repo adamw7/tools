@@ -45,7 +45,7 @@ public abstract class AbstractMcpConfiguration {
 
 	protected static final String MCP_ENDPOINT = "/mcp";
 
-	private static final String SERVER_VERSION = "0.0.1";
+	private static final String SERVER_VERSION = ServerVersion.current();
 
 	private static final Logger log = LogManager.getLogger(AbstractMcpConfiguration.class);
 

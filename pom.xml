@@ -26,6 +26,22 @@
 		     of the number is a copy that can drift. -->
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- project.build.outputTimestamp — which makes the build reproducible by
+		     having every archive-producing plugin (jar, source, javadoc, assembly,
+		     plugin descriptor, Spring Boot repackage) stamp one fixed instant on
+		     its entries and write them in a stable order — is deliberately *not*
+		     declared here. A literal in the pom is a date somebody has to remember
+		     to bump, and releases here are a `revision` edit rather than a
+		     maven-release-plugin run, so nothing would bump it automatically.
+
+		     The publishing workflows pass it instead, deriving it from the released
+		     commit's own timestamp (`git log -1` with an ISO date format) and
+		     handing it to Maven as a user property, which overrides the pom
+		     cleanly. Pinning it to the commit rather than to the clock is what lets
+		     anyone check out the tag, rebuild, and get artifacts byte-identical to
+		     the published ones — the supply-chain posture in docs/adr/0002. See
+		     "Releasing" in AGENTS.md for the exact command and its local
+		     equivalent. -->
 		<!-- One version for the whole protobuf toolchain: the protobuf-java
 		     runtime below and the protoc that protobuf-maven-plugin runs. Keeping
 		     them apart let the generated code and the runtime it compiles against

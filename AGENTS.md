@@ -1060,6 +1060,27 @@ These are hard requirements for any code you add or modify:
   It is satisfied when *any* project in the reactor declares the id, which is
   what lets the per-module `integration-tests` profile be requested from the
   root.
+- The build is **reproducible**: the root pom sets
+  `project.build.outputTimestamp` to a fixed instant, so every archive-producing
+  plugin (jar, source, javadoc, assembly, plugin descriptor, Spring Boot
+  repackage) stamps that instant on its entries and writes them in a stable
+  order. Two clean builds of one commit produce byte-identical artifacts, which
+  is what lets a consumer rebuild a Maven Central release and diff it against
+  the published jars — the supply-chain posture of
+  [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md). Verify
+  a change has not broken it by building twice and comparing:
+
+  ```bash
+  mvn -B clean package -DskipTests
+  find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum > /tmp/build1.sha
+  mvn -B clean package -DskipTests
+  find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum | diff /tmp/build1.sha -
+  ```
+
+  `mvn artifact:check-buildplan` answers the related question — whether every
+  plugin in the build plan supports reproducible builds — and needs the repo's
+  own `protogen-maven-plugin` installed first (`mvn install -DskipTests`), since
+  it resolves the plan's plugins from the local repository.
 
 ## Releasing
 
@@ -1067,9 +1088,15 @@ To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is currently
    a `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
-2. Commit and push.
-3. Confirm all builds pass.
-4. Release and mark as latest in GitHub.
+2. Set `project.build.outputTimestamp` in the root `pom.xml` to the release
+   date (`YYYY-MM-DDT00:00:00Z`), so the reproducible-build timestamp the
+   artifacts carry matches the release rather than a previous one. Releases here
+   are a `revision` edit rather than a `maven-release-plugin` run, which is what
+   would otherwise have updated the property automatically. A forgotten bump
+   costs only stale entry dates — the artifacts stay reproducible either way.
+3. Commit and push.
+4. Confirm all builds pass.
+5. Release and mark as latest in GitHub.
 
 Creating the GitHub release fires two separate workflows:
 

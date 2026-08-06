@@ -26,6 +26,21 @@
 		     of the number is a copy that can drift. -->
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- Makes the build reproducible: every archive-producing plugin (jar,
+		     source, javadoc, assembly, plugin descriptor) stamps this fixed instant
+		     on its entries and writes them in a stable order, instead of stamping
+		     the moment the build ran. Two builds of the same commit then produce
+		     byte-identical artifacts, so a consumer can rebuild what was published
+		     to Maven Central and diff it against the release — the point of the
+		     supply-chain posture in docs/adr/0002. Without it the timestamps alone
+		     make every rebuild differ.
+
+		     It must be a fixed value, not something derived at build time, and it
+		     is bumped by hand as part of a release (see "Releasing" in AGENTS.md)
+		     because releases here are a `revision` edit rather than a
+		     maven-release-plugin run, which would have updated it automatically.
+		     A stale value costs nothing but entry dates that lag the release. -->
+		<project.build.outputTimestamp>2026-08-06T00:00:00Z</project.build.outputTimestamp>
 		<!-- One version for the whole protobuf toolchain: the protobuf-java
 		     runtime below and the protoc that protobuf-maven-plugin runs. Keeping
 		     them apart let the generated code and the runtime it compiles against

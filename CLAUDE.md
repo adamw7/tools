@@ -273,12 +273,12 @@ asked.**
 
 ## Agent configuration
 
-- `.claude/skills/` holds twelve project skills that carry the detail this file
+- `.claude/skills/` holds thirteen project skills that carry the detail this file
   only summarises — per module: `data-sources`, `context-finder`, `protogen`,
   `adopt-pipeline`, `mcp-server`, `enforcer-rules`; across the repo:
   `doc-contract`, `git-commit`, `java-code-review`, `maven-conventions`,
-  `solid-principles`, and `testing-conventions`. Prefer loading the relevant
-  skill over re-deriving a convention.
+  `solid-principles`, `testing-conventions`, and `text-parsers`. Prefer loading
+  the relevant skill over re-deriving a convention.
 - `.claude/settings.json` allows the `mvn` and archive-inspection Bash commands
   and wires the `SessionStart` hook; `.claude/hooks/session-start.sh` provisions
   the JDK and warms the Maven cache in web/remote sessions.

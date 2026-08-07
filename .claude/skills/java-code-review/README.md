@@ -6,7 +6,7 @@
 
 ## Description
 
-Systematic code review checklist for Java projects. Covers null safety, exception handling, collections, concurrency, idioms, resource management, API design, and performance.
+Systematic code review for this repo. Leads with the rules the build fails on, then the five defect shapes this repository actually ships fixes for, then the general Java checks: null safety, exception handling, collections, concurrency, idioms, resource management, API design, and performance.
 
 ---
 
@@ -31,6 +31,7 @@ Systematic code review checklist for Java projects. Covers null safety, exceptio
 
 ## Checklist Categories
 
+0. **Enforced repo rules** - what ArchUnit and Surefire fail the build on
 1. **Null Safety** - NPE risks, Optional usage
 2. **Exception Handling** - Swallowed exceptions, stack traces
 3. **Collections & Streams** - Iteration, mutability
@@ -39,11 +40,14 @@ Systematic code review checklist for Java projects. Covers null safety, exceptio
 6. **Resource Management** - try-with-resources
 7. **API Design** - Boolean params, validation
 8. **Performance** - String concat, N+1 queries
+9. **Defect shapes** - hand-rolled readers, drifting duplicate implementations,
+   command transcripts, success reported for work never done, credential paths
 
 ---
 
 ## Notes / Tips
 
+- Section 9 is the high-yield pass here; sections 1–8 are the generic checks
 - Works best on focused changes (single class or PR)
 - Includes positive feedback section for good practices
 - Suggests tests for edge cases found during review

@@ -1,6 +1,6 @@
 ---
 name: java-code-review
-description: Systematic Java code review for the tools repo — leads with the ArchUnit-enforced rules the build fails on, then null safety, exceptions, concurrency, and performance. Use when the user says "review code", "check this PR", "code review", or before merging changes.
+description: Systematic Java code review for the tools repo — leads with the ArchUnit-enforced rules the build fails on, then the five defect shapes this repository actually ships fixes for, then null safety, exceptions, concurrency, and performance. Use when the user says "review code", "check this PR", "code review", or before merging changes.
 ---
 
 # Java Code Review Skill
@@ -15,11 +15,13 @@ fails the build, not just review — then work through the general Java checks.
 - After implementing a feature
 
 ## Review Strategy
-1. **Enforced-rules pass first** — anything below fails the build, so flag it as
-   Critical regardless of how the code otherwise reads.
-2. **Checklist pass** — null safety, exceptions, collections, concurrency,
+1. **Enforced-rules pass first** (section 0) — anything there fails the build, so
+   flag it as Critical regardless of how the code otherwise reads.
+2. **Defect-shapes pass** (section 9) — the five shapes this repo actually ships
+   fixes for. Highest yield after section 0; a generic checklist misses all five.
+3. **Checklist pass** — null safety, exceptions, collections, concurrency,
    idioms, resources, API, performance.
-3. **Summary** — findings by severity (Critical → Minor), with line references.
+4. **Summary** — findings by severity (Critical → Minor), with line references.
 
 ## Output Format
 
@@ -202,6 +204,110 @@ access patterns, object churn in tight loops, not using primitive streams
 
 ---
 
+## 9. The defect shapes this repo actually ships
+
+Sections 1–8 are the general Java checks. They are worth running, but on the
+evidence of this repository's own history they are not where its bugs are: of the
+last 26 `fix(...)` commits, **almost none** would have been caught by them. These
+five shapes would have been. Review for them explicitly.
+
+### 9.1 A hand-rolled reader meeting real input
+
+The largest class by a distance — `FrontMatter`, `CommandTokens`,
+`MarkdownDocument`, `ImportGraph` and `MarkdownFormatRule` account for most of
+the fix commits here. Every one was input the reader was not written for: a
+comment opened after text on its line, an apostrophe read as an opening quote, a
+newline inside a hook command, `[logo](assets/logo(1).png)`, a bare `@claude`
+mention read as a memory import.
+
+**Ask:**
+- Does this track state across the whole line, or does it `startsWith` /
+  `contains` and hope? A delimiter can appear anywhere, and twice.
+- Does the regex stop at the *first* closing delimiter when the content can nest?
+- Is markup matched *after* `withoutCodeSpans` and the fence/comment masks, or
+  before?
+- Does an unterminated construct at end of file leave the mask in a sane state?
+
+**Load the `text-parsers` skill** before changing any of these — it carries each
+reader's invariants and the full adversarial-input checklist.
+
+### 9.2 Two implementations of one format, drifting
+
+`ClaudeMdConformer` duplicates `claudeMdFormat`'s reading of a Markdown document
+because `adopt` must not ship the maven-enforcer API. #536 was four defects from
+exactly that copy drifting: the conformer produced a document the rule it exists
+to satisfy rejects, so the adoption failed its own `VerifyStep` on a file it had
+just reshaped to pass. #557 is the same shape one level up — detection asked
+whether a pom *depended on* the enforcer artifact rather than whether it
+*configures the rule*, so a project running `noSecrets` and no CLAUDE.md guard at
+all was reported as already guarded.
+
+**Ask:**
+- Is there a second implementation of this format, constant, or predicate
+  anywhere in the reactor? Search before assuming not.
+- Is there a test that runs the **real** other side over this side's output —
+  not a copy of what the other side is believed to want? See
+  `ClaudeMdConformerContractTest`.
+- Does the check test for the *thing it cares about*, or for a proxy that
+  correlates with it?
+
+### 9.3 Reading a command transcript
+
+The runner merges stderr into the transcript. A `git` that warns about an
+unreadable system config puts that line in with the `--porcelain` entries, and
+#539 read its fourth character onwards as a changed path — refusing a resume the
+step promises. That was the *second* time: the fix commit notes the identical
+defect had already been fixed for the origin query beside it.
+
+**Ask:**
+- Is this parsing output that can carry stderr noise? Skip lines that are not
+  well-formed entries rather than reading them as one — while still letting a
+  real entry beside the warning take effect.
+- Is captured output bounded?
+- Is the exit code checked, or only the text?
+
+### 9.4 Success reported for work that never happened
+
+The most expensive shape, because nothing downstream catches it. `git add -A`
+skips an ignored path in silence, so a file the adoption wrote stayed in the
+working tree — where `VerifyStep` went on finding it and passing — while the
+pushed branch carried nothing of it. `okfBundleFormat` returned early for an
+absent bundle and never reached `report()`, leaving a previous failing run's HTML
+on disk claiming a failure for a check that had just passed.
+
+**Ask:**
+- Does the verification read the same state the operation actually wrote — the
+  commit, not the working tree; the remote, not the local branch?
+- Does **every** exit path, including the early and empty ones, go through the
+  reporting call?
+- Can this succeed by doing nothing? Does a test assert the input was rejected
+  *before* the operation, so a no-op cannot pass it?
+
+### 9.5 A new path for a credential
+
+Three separate commits: a token in a rejected-positional message, in a `gh`
+transcript logged raw, in an MCP argument log. A `gh` without `--repo` reads the
+remote through git, which echoes a credentialled clone URL back.
+
+**Ask:**
+- Does any new message, log line, exception, or report field carry a URL or a
+  command transcript? It goes through `Redaction`.
+- Is the masking **structural** — on the type that holds the value, like
+  `CommandResult.redactedOutput()` — or does it depend on every call site
+  remembering? Prefer the former; the latter is what leaked.
+
+### Quick pass
+
+| If the diff touches… | Check |
+|---|---|
+| a parser / regex / mask | 9.1 — and load `text-parsers` |
+| a constant or predicate that exists twice | 9.2 — is there a contract test? |
+| `CommandResult`, `--porcelain`, `gh`, `git` output | 9.3, 9.5 |
+| a step that verifies, reports, or commits | 9.4 |
+| any log, message, exception, or report field | 9.5 |
+
+---
+
 ## Severity Guidelines
 
 | Severity | Criteria |
@@ -220,4 +326,7 @@ access patterns, object churn in tight loops, not using primitive streams
 - `CLAUDE.md` / `AGENTS.md` — source of truth for the enforced rules
 - Module `.architecture` tests (e.g. `ProtogenArchitectureTest`,
   `ContextArchitectureTest`, `TestConventionsArchitectureTest`)
-- Related skills: `solid-principles`, `testing-conventions`, `maven-conventions`
+- `git log --grep='^fix'` — the source of section 9; each commit body names the
+  input that broke the code and why
+- Related skills: `text-parsers` (section 9.1), `solid-principles`,
+  `testing-conventions`, `maven-conventions`

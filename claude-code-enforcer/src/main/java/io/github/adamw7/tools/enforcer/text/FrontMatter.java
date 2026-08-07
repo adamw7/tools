@@ -1,83 +1,73 @@
 package io.github.adamw7.tools.enforcer.text;
 
+import java.io.StringReader;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.nodes.MappingNode;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.NodeTuple;
+import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.SequenceNode;
 
 /**
  * The YAML front matter block at the top of a Markdown document: the lines
  * between a leading {@code ---} delimiter and the next {@code ---} delimiter.
  * <p>
- * This is a deliberately small reader, not a full YAML parser. It reads the
- * {@code key: value} entries a block declares and answers each one as a single
- * line of text, which is all the rules need: they check a value's length,
- * blankness, uniqueness, or shape, never its structure. Parsing is shared here so
- * every rule agrees on what counts as front matter, which keys it declares, and
- * each key's value.
+ * The block is read by SnakeYAML, the same kind of loader Claude Code itself
+ * reads front matter with, so what a rule validates is what the tool acts on.
+ * Parsing stops at {@link Yaml#compose}, which answers the document's node tree
+ * rather than constructing Java objects from it: a rule needs the text an author
+ * declared, not a typed value. That distinction is not cosmetic — composing keeps
+ * {@code okf_version: 0.20} the string {@code 0.20} instead of rounding it to a
+ * double, and it keeps a duplicated key visible, which every loader that builds a
+ * {@code Map} collapses.
  * <p>
- * A key is only recognised where YAML puts one: at the start of a line, with no
- * indentation. An indented line continues the value above it, so reading a key out
- * of one would invent entries an author never declared — the {@code Use this when:}
- * of a wrapped description would be reported as an unknown key.
+ * Each entry is answered as a single line of text, which is all the rules need:
+ * they check a value's length, blankness, uniqueness, or shape, never its
+ * structure. A value written across several lines — a block scalar, a wrapped
+ * plain scalar, a nested mapping or sequence — is folded into one line joined by
+ * single spaces, because the alternative is to answer the empty string for a value
+ * written out in full on the lines below its key. Folding a mapping is lossy on
+ * purpose: {@code by: agent/1} reads back as text rather than as a nested entry. A
+ * rule that needs the structure itself should ask SnakeYAML for it directly.
  * <p>
- * A value the key's own line does not carry is read from the indented lines below
- * it, folded into one line joined by single spaces. That covers the three ways YAML
- * continues a value downwards — a block scalar ({@code description: >} or
- * {@code |}), a plain scalar wrapped onto the next line, and a nested mapping or
- * sequence — because the alternative is to read every one of them as the empty
- * string. Doing so left each block scalar claiming the same one-character
- * description and escaping any length cap, and it failed an OKF concept whose
- * {@code generated:} mapping named its actor on the very next line for not naming
- * one. A key with nothing below it still yields the empty string, so a bare
- * {@code key:} is unchanged.
+ * A block YAML cannot read at all — an unterminated quoted scalar, or a value such
+ * as {@code "a" and "b"} whose quotes do not wrap it — is read as plain text
+ * instead: its {@code key:} lines name the keys, and each key's value is the text
+ * that follows it, verbatim. Guessing at what the malformed line meant is what a
+ * loader will not do either, so the rules see the characters the author actually
+ * wrote and can report on them, rather than a value invented here.
  * <p>
- * Folding a mapping is lossy on purpose: {@code by: agent/1} reads back as text
- * rather than as a nested entry. A rule that needs the structure itself wants a
- * YAML parser, not this.
- * <p>
- * A value wrapped in matching quotes yields the text inside them, because that is
- * the value YAML declares and the one Claude Code reads. Quoting is not decoration:
- * a description containing {@code : } has to be quoted to parse at all. Returning
- * the quotes as part of the value made a {@code name: "git-commit"} fail the
- * kebab-case convention it follows, a quoted {@code model} miss its whitelist, and
- * every description count two characters it does not have.
- * <p>
- * A trailing comment is not part of the value. YAML ends a plain scalar at a
- * {@code #} that follows whitespace outside quotes, so {@code name: git-commit # the
- * commit helper} declares {@code git-commit}. Reading the note as part of the value
- * failed a name over the kebab-case convention it follows and made every such
- * description count characters Claude Code never sees.
- * <p>
- * A key declared twice yields its <em>last</em> declaration, which is the one a YAML
- * loader keeps and so the one Claude Code acts on. Reading the first instead
+ * A key declared twice yields its <em>last</em> declaration, which is the one a
+ * YAML loader keeps and so the one Claude Code acts on. Reading the first instead
  * validated a value the tool never sees — a second {@code description:} could
  * lengthen a capped one, break a name convention, or collide with another
  * definition, and every check would still be looking at the line above it.
- * {@link #duplicateKeys()} reports the duplication itself, since a key written twice
- * is a mistake whichever value wins.
+ * {@link #duplicateKeys()} reports the duplication itself, since a key written
+ * twice is a mistake whichever value wins.
  */
 public final class FrontMatter {
 
 	private static final String DELIMITER = "---";
-	private static final char NONE = 0;
 	private static final char KEY_VALUE_SEPARATOR = ':';
-	private static final char COMMENT_START = '#';
-	private static final char ESCAPE = '\\';
-	private static final char DOUBLE_QUOTE = '"';
-	private static final char SINGLE_QUOTE = '\'';
-	private static final String ESCAPED_DOUBLE_QUOTE = "\\\"";
-	private static final String ESCAPED_SINGLE_QUOTE = "''";
 
-	/** A block scalar header: {@code >} or {@code |} with optional indentation and chomping indicators. */
-	private static final Pattern BLOCK_SCALAR = Pattern.compile("[>|][0-9+-]*");
+	/** How much of one entry is rendered before the walk gives up. See {@link #folded}. */
+	private static final int MAX_VALUE_LENGTH = 8192;
 
 	private final List<String> lines;
 
-	private FrontMatter(List<String> lines) {
+	/** The block's entries as YAML read them, or null when YAML cannot read the block. */
+	private final MappingNode mapping;
+
+	private FrontMatter(List<String> lines, MappingNode mapping) {
 		this.lines = lines;
+		this.mapping = mapping;
 	}
 
 	/**
@@ -97,12 +87,13 @@ public final class FrontMatter {
 		if (end < 0) {
 			return Optional.empty();
 		}
-		return Optional.of(new FrontMatter(allLines.subList(1, end)));
+		List<String> block = allLines.subList(1, end);
+		return Optional.of(new FrontMatter(block, compose(block)));
 	}
 
 	/** True when a {@code key:} entry is present, regardless of its value. */
 	public boolean hasKey(String key) {
-		return indexOfEntry(key) >= 0;
+		return keys().contains(key);
 	}
 
 	/**
@@ -110,22 +101,16 @@ public final class FrontMatter {
 	 * A present key whose value is neither on its own line nor below it yields an
 	 * empty string, not an empty optional; a value continued on the lines below —
 	 * a block scalar, a wrapped plain scalar, or a nested mapping — yields those
-	 * lines folded into one; and a quoted scalar yields the text inside its quotes.
-	 * A key declared more than once yields its last declaration, the one a YAML
-	 * loader keeps.
+	 * lines folded into one. A key declared more than once yields its last
+	 * declaration, the one a YAML loader keeps.
 	 */
 	public Optional<String> value(String key) {
-		int index = indexOfEntry(key);
-		if (index < 0) {
-			return Optional.empty();
-		}
-		String declared = withoutComment(valueOf(lines.get(index), key));
-		return Optional.of(continuesBelow(declared) ? folded(index + 1) : unquoted(declared));
+		return mapping == null ? textValue(key) : composedValue(key);
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
 	public List<String> keys() {
-		return lines.stream().map(this::entryKey).flatMap(Optional::stream).toList();
+		return mapping == null ? textKeys() : composedKeys();
 	}
 
 	/**
@@ -140,14 +125,140 @@ public final class FrontMatter {
 	}
 
 	/**
-	 * The key a line declares, or empty when the line is not a {@code key:} entry.
-	 * This shares its definition with {@link #hasKey} and {@link #value}, so the
-	 * three never disagree about whether a line declares a key: a bare {@code key:}
-	 * or a {@code key: value} (or {@code key:\tvalue}) counts, while {@code key:value}
-	 * without a separating space, comments, list items, and indented continuation
-	 * lines do not.
+	 * The block as YAML reads it, or null when it does not read as a mapping —
+	 * either because it is malformed, or because it is not a mapping at all, which
+	 * is how a loader reads a {@code name:value} that lacks the space a YAML entry
+	 * needs. Both fall back to reading the lines as text.
 	 */
-	private Optional<String> entryKey(String line) {
+	private static MappingNode compose(List<String> lines) {
+		try {
+			Node composed = new Yaml().compose(new StringReader(String.join("\n", lines)));
+			return composed instanceof MappingNode entries ? entries : null;
+		} catch (YAMLException e) {
+			return null;
+		}
+	}
+
+	/** The keys of the composed mapping, duplicates and all, in document order. */
+	private List<String> composedKeys() {
+		return mapping.getValue().stream().map(entry -> folded(entry.getKeyNode())).toList();
+	}
+
+	/** The last declaration of {@code key}, since that is the one a YAML loader keeps. */
+	private Optional<String> composedValue(String key) {
+		return mapping.getValue().stream()
+				.filter(entry -> folded(entry.getKeyNode()).equals(key))
+				.reduce((first, last) -> last)
+				.map(entry -> folded(entry.getValueNode()));
+	}
+
+	/**
+	 * One node as a single line of text: a scalar as YAML resolved it, and a mapping
+	 * or sequence rendered into the {@code key: value} and {@code - item} shape a
+	 * YAML block writes them in. Every result is folded onto one line, so a literal
+	 * block scalar's newlines read the same way a folded one's do.
+	 * <p>
+	 * The rendering stops at {@value #MAX_VALUE_LENGTH} characters. Composing is
+	 * linear in the size of the document, but the node graph it answers is a graph
+	 * rather than a tree — an alias is the node it names, not a copy of it — so
+	 * walking it is not. Nine aliases nested nine deep is a few lines of YAML that
+	 * expands to hundreds of millions of characters, the shape known as a billion
+	 * laughs, and a rule that reads a repository's own files should not be the thing
+	 * that expands it. The cap is far above any value a rule meaningfully checks: a
+	 * description this long has already failed whatever length it was held to.
+	 */
+	private static String folded(Node node) {
+		StringBuilder text = new StringBuilder();
+		render(node, text);
+		return onOneLine(text.length() > MAX_VALUE_LENGTH ? text.substring(0, MAX_VALUE_LENGTH) : text.toString());
+	}
+
+	private static void render(Node node, StringBuilder text) {
+		if (node instanceof ScalarNode scalar) {
+			text.append(scalar.getValue());
+		} else if (node instanceof MappingNode entries) {
+			entries.getValue().stream().takeWhile(entry -> hasRoom(text))
+					.forEach(entry -> renderEntry(entry, text));
+		} else if (node instanceof SequenceNode items) {
+			items.getValue().stream().takeWhile(item -> hasRoom(text)).forEach(item -> renderItem(item, text));
+		}
+	}
+
+	private static void renderEntry(NodeTuple entry, StringBuilder text) {
+		separate(text);
+		render(entry.getKeyNode(), text);
+		text.append(KEY_VALUE_SEPARATOR).append(' ');
+		render(entry.getValueNode(), text);
+	}
+
+	private static void renderItem(Node item, StringBuilder text) {
+		separate(text);
+		text.append("- ");
+		render(item, text);
+	}
+
+	/** Separates one entry or item from the one before it, never doubling a space already there. */
+	private static void separate(StringBuilder text) {
+		if (!text.isEmpty() && text.charAt(text.length() - 1) != ' ') {
+			text.append(' ');
+		}
+	}
+
+	/**
+	 * Whether there is still room to render into {@code text}. Tested by the
+	 * collections rather than only on entry to {@link #render}, so a walk that has
+	 * filled the budget stops iterating instead of merely stopping appending — the
+	 * iteration is the part an alias graph multiplies.
+	 */
+	private static boolean hasRoom(StringBuilder text) {
+		return text.length() < MAX_VALUE_LENGTH;
+	}
+
+	/**
+	 * The text folded onto one line: each line stripped, the blank ones dropped, and
+	 * the rest joined by single spaces. A value already on one line is only
+	 * stripped, so its own spacing survives.
+	 */
+	private static String onOneLine(String value) {
+		return value.lines().map(String::strip).filter(line -> !line.isEmpty()).collect(Collectors.joining(" "));
+	}
+
+	/**
+	 * The keys a malformed block declares, read from its lines. A key is only
+	 * recognised where YAML puts one: at the start of a line, with no indentation,
+	 * followed by a colon and whitespace or nothing at all. An indented line
+	 * continues the value above it, so reading a key out of one would invent entries
+	 * an author never declared.
+	 */
+	private List<String> textKeys() {
+		return lines.stream().map(FrontMatter::entryKey).flatMap(Optional::stream).toList();
+	}
+
+	/** The text following {@code key} in a malformed block, verbatim, folded onto one line. */
+	private Optional<String> textValue(String key) {
+		int index = indexOfEntry(key);
+		if (index < 0) {
+			return Optional.empty();
+		}
+		String declared = valueOf(lines.get(index), key);
+		return Optional.of(declared.isEmpty() ? foldedBelow(index + 1) : declared);
+	}
+
+	/**
+	 * The entry's continuation lines from {@code from}, folded onto one line. They
+	 * run until the next entry at the block's own level, so blank lines inside them
+	 * are kept as separators and dropped from the result.
+	 */
+	private String foldedBelow(int from) {
+		return onOneLine(String.join("\n",
+				lines.subList(from, lines.size()).stream().takeWhile(FrontMatter::isContinuation).toList()));
+	}
+
+	private static boolean isContinuation(String line) {
+		return line.isBlank() || isIndented(line);
+	}
+
+	private static Optional<String> entryKey(String line) {
 		String stripped = line.strip();
 		if (isIndented(line) || stripped.startsWith("#") || stripped.startsWith("-")) {
 			return Optional.empty();
@@ -160,7 +271,7 @@ public final class FrontMatter {
 		return isEntryFor(line, key) ? Optional.of(key) : Optional.empty();
 	}
 
-	private boolean isEntryFor(String line, String key) {
+	private static boolean isEntryFor(String line, String key) {
 		if (isIndented(line)) {
 			return false;
 		}
@@ -171,7 +282,7 @@ public final class FrontMatter {
 	}
 
 	/** True when the line is a continuation of the entry above rather than one of its own. */
-	private boolean isIndented(String line) {
+	private static boolean isIndented(String line) {
 		return !line.isEmpty() && Character.isWhitespace(line.charAt(0));
 	}
 
@@ -185,154 +296,9 @@ public final class FrontMatter {
 		return -1;
 	}
 
-	/**
-	 * Whether the key's own line leaves its value to the lines below: it declares a
-	 * block scalar indicator, or it declares nothing at all — the shape a nested
-	 * mapping and a wrapped plain scalar share.
-	 */
-	private boolean continuesBelow(String declared) {
-		return declared.isEmpty() || BLOCK_SCALAR.matcher(declared).matches();
-	}
-
-	/**
-	 * The entry's continuation lines from {@code from}, joined with single spaces.
-	 * They run until the next entry at the block's own level, so blank lines inside
-	 * them are kept as separators and dropped from the result. An entry with no
-	 * continuation lines folds to the empty string, which is what a bare {@code key:}
-	 * declares.
-	 */
-	private String folded(int from) {
-		return lines.subList(from, lines.size()).stream()
-				.takeWhile(this::isContinuation)
-				.map(String::strip)
-				.filter(line -> !line.isEmpty())
-				.collect(Collectors.joining(" "));
-	}
-
-	private boolean isContinuation(String line) {
-		return line.isBlank() || isIndented(line);
-	}
-
-	private String valueOf(String line, String key) {
+	private static String valueOf(String line, String key) {
 		String stripped = line.strip();
 		return stripped.substring((key + KEY_VALUE_SEPARATOR).length()).strip();
-	}
-
-	/**
-	 * The value with a trailing YAML comment removed. A {@code #} that opens a
-	 * comment stands outside a quoted scalar and follows whitespace, which is what
-	 * separates the note in {@code name: git-commit # the commit helper} from the
-	 * value in {@code version: 1.0#2}. Keeping the note made a name break the
-	 * kebab-case convention it follows and a description count characters a YAML
-	 * loader — and so Claude Code — never reads.
-	 * <p>
-	 * Only a quote that opens the value quotes it, as YAML reads it: a {@code '}
-	 * anywhere else is an apostrophe in a plain scalar. Treating every quote
-	 * character as an opening one left {@code Don't stop # a note} inside a scalar
-	 * that never closed, and the note was kept as part of the description — the very
-	 * characters this exists to drop.
-	 */
-	private static String withoutComment(String value) {
-		int comment = indexOfComment(value);
-		return comment < 0 ? value : value.substring(0, comment).strip();
-	}
-
-	/**
-	 * Where a trailing comment begins, or {@code -1} when the value carries none. The
-	 * search starts past a quoted scalar, since a {@code #} inside quotes is content;
-	 * a quoted scalar that never closes is malformed, so nothing after it is read as a
-	 * comment either.
-	 */
-	private static int indexOfComment(String value) {
-		int from = endOfQuotedScalar(value);
-		if (from < 0) {
-			return -1;
-		}
-		for (int i = from; i < value.length(); i++) {
-			if (value.charAt(i) == COMMENT_START && startsComment(value, i)) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	/**
-	 * The index just past the value's opening quoted scalar, {@code 0} when it opens
-	 * with no quote, or {@code -1} when the scalar it opens never closes.
-	 */
-	private static int endOfQuotedScalar(String value) {
-		char quote = value.isEmpty() ? NONE : value.charAt(0);
-		if (quote != DOUBLE_QUOTE && quote != SINGLE_QUOTE) {
-			return 0;
-		}
-		return indexOfClosingQuote(value, 1, quote);
-	}
-
-	/**
-	 * The index just past the {@code quote} that closes a scalar opened at the start
-	 * of {@code value}, or {@code -1} when none does. The escape each quoting style
-	 * uses is stepped over rather than read as that closing quote.
-	 */
-	private static int indexOfClosingQuote(String value, int from, char quote) {
-		int index = from;
-		while (index < value.length() && !closesAt(value, index, quote)) {
-			index += isEscapeAt(value, index, quote) ? 2 : 1;
-		}
-		return index < value.length() ? index + 1 : -1;
-	}
-
-	/** True when the character at {@code index} is the quote that ends the scalar. */
-	private static boolean closesAt(String value, int index, char quote) {
-		return value.charAt(index) == quote && !isEscapeAt(value, index, quote);
-	}
-
-	/**
-	 * True when the character at {@code index} opens an escape: a backslash inside a
-	 * double-quoted scalar, or the first of the doubled quotes a single-quoted one
-	 * writes an apostrophe with.
-	 */
-	private static boolean isEscapeAt(String value, int index, char quote) {
-		char character = value.charAt(index);
-		if (quote == DOUBLE_QUOTE) {
-			return character == ESCAPE;
-		}
-		return character == SINGLE_QUOTE && value.startsWith(ESCAPED_SINGLE_QUOTE, index);
-	}
-
-	/** A {@code #} opens a comment at the start of the value or after whitespace, never mid-token. */
-	private static boolean startsComment(String value, int index) {
-		return index == 0 || Character.isWhitespace(value.charAt(index - 1));
-	}
-
-	/**
-	 * The text inside a scalar's matching quotes, with the escape each quoting style
-	 * uses resolved, or the value unchanged when it is not quoted.
-	 */
-	private static String unquoted(String value) {
-		if (isWrapped(value, DOUBLE_QUOTE, ESCAPED_DOUBLE_QUOTE)) {
-			return interiorOf(value).replace(ESCAPED_DOUBLE_QUOTE, String.valueOf(DOUBLE_QUOTE));
-		}
-		if (isWrapped(value, SINGLE_QUOTE, ESCAPED_SINGLE_QUOTE)) {
-			return interiorOf(value).replace(ESCAPED_SINGLE_QUOTE, String.valueOf(SINGLE_QUOTE));
-		}
-		return value;
-	}
-
-	/**
-	 * True when {@code quote} opens and closes the whole value and appears inside it
-	 * only as {@code escaped}. An unescaped inner quote means the outer two are not a
-	 * pair — {@code "a" and "b"} opens and closes twice — and stripping them would
-	 * hand back text the author never wrote.
-	 */
-	private static boolean isWrapped(String value, char quote, String escaped) {
-		if (value.length() < 2 || value.charAt(0) != quote || value.charAt(value.length() - 1) != quote) {
-			return false;
-		}
-		return interiorOf(value).replace(escaped, "").indexOf(quote) < 0;
-	}
-
-	private static String interiorOf(String value) {
-		return value.substring(1, value.length() - 1);
 	}
 
 	private static int indexOfDelimiter(List<String> lines, int from) {

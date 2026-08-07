@@ -98,6 +98,18 @@ Maven project. The notable capabilities are:
   `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
   repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
   `CliArguments` alongside the positional URL, workspace, and branch arguments).
+  `CliArguments` declares that command line to **picocli** rather than walking the
+  argument array itself: each option is bound to a method, because picocli calls a
+  method option once per occurrence in the order it was written, and a batch mixing
+  `--repo` with `--repos` must adopt and report its repositories in that order.
+  `setOverwrittenOptionsAllowed` is what lets those flags repeat and what makes the
+  last `--workspace`/`--branch` win over an earlier one or its positional. The
+  refusals come with it too — an unknown option, a fourth positional, a value
+  missing, and an option written where a naming flag's value belongs
+  (`--branch --draft`) — each re-raised as the `IllegalArgumentException` carrying
+  the usage line that the entry points already expect. That usage line stays
+  hand-written: picocli can render a synopsis, but it orders one by reflecting over
+  the methods and the JVM does not promise that order.
   That record and the rest of a run's configuration — the starter assets, the rule
   version, the dry-run flag, and the per-command timeout — are grouped into an
   `AdoptionOptions`, which both entry points build and hand to
@@ -714,7 +726,7 @@ Seven hold across the repository:
 | `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
 | `testing-conventions` | the Surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
 | `java-code-review` | review led by the rules the build fails on, then the five defect shapes this repository ships fixes for, then null safety, exceptions, concurrency, performance |
-| `text-parsers` | the invariants of the hand-rolled readers — `MarkdownDocument`, `FrontMatter`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy — and the adversarial input that has broken each |
+| `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy, and the SnakeYAML-backed `FrontMatter` — and the adversarial input that has broken each |
 | `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
 | `git-commit` | conventional commit messages using this repository's real module scopes |
 
@@ -1005,6 +1017,21 @@ delimiter — the rule rewrites the file in place and continues against the
 corrected content instead of failing. The repair is conservative: it only acts
 when the document opens with a dashes line enclosing real `key: value` entries, so
 a lone `---` thematic break is never mistaken for front matter.
+
+The front matter those rules read comes from `FrontMatter`, which delimits the
+`---` block itself and hands the block to **SnakeYAML**. It stops at
+`Yaml.compose`, which answers the document's node tree rather than constructing
+Java objects from it: a rule wants the text an author declared, not a typed value.
+That is not cosmetic — composing keeps `okf_version: 0.20` the string `0.20`
+instead of rounding it to a double, and it keeps a key declared twice visible,
+which every loader that builds a `Map` collapses and which `duplicateKeys()`
+exists to report. Each value is folded onto one line, so a block scalar, a wrapped
+plain scalar and a nested mapping all read back as text. A block YAML cannot read
+at all — an unterminated quoted scalar, or a `description: "a" and "b"` whose
+quotes do not wrap it — falls back to being read as plain text, so the rules
+report the characters the author actually wrote rather than a value invented for
+them. This replaced a reader that scanned quotes, trailing comments and block
+scalars by hand, and had been fixed for real input six or seven times.
 
 A `List<String>` parameter carries a trap worth knowing before naming a helper
 class. Plexus infers a configured list's element type from the **child element

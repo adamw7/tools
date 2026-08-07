@@ -354,4 +354,84 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of(""), frontMatter.orElseThrow().value("name"));
 	}
+
+	/**
+	 * A double-quoted scalar is the one style that carries escapes, and a YAML
+	 * loader resolves them. Reading the two characters {@code \n} literally counted
+	 * a description Claude Code never sees and could fail a name over a backslash
+	 * that is not in it.
+	 */
+	@Test
+	void resolvesTheEscapeSequencesOfADoubleQuotedScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"one\\ntwo\"\n---\n");
+
+		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
+	}
+
+	/** A mapping written inline is the same mapping as one written on the lines below its key. */
+	@Test
+	void foldsAMappingWrittenInFlowStyle() {
+		Optional<FrontMatter> frontMatter = FrontMatter
+				.parse("---\ngenerated: {by: agent/1, at: 2026-01-01}\n---\n");
+
+		assertEquals(Optional.of("by: agent/1 at: 2026-01-01"), frontMatter.orElseThrow().value("generated"));
+	}
+
+	/**
+	 * The block is composed rather than loaded, so a value stays the text its author
+	 * wrote. Constructing it into a Java object would answer {@code 0.2} for a
+	 * version declared as {@code 0.20} — and the OKF rule compares that string
+	 * against the version it demands.
+	 */
+	@Test
+	void answersAVersionAsTheTextItWasWrittenAs() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nokf_version: 0.20\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("0.20"), frontMatter.value("okf_version"));
+	}
+
+	/**
+	 * A block no YAML loader can read is read as plain text, so the rules still see
+	 * the keys their author declared and can report on them, rather than being told
+	 * the block declares nothing at all.
+	 */
+	@Test
+	void namesTheKeysOfABlockThatYamlCannotRead() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname: demo\ndescription: \"a\" and \"b\"\n---\n")
+				.orElseThrow();
+
+		assertEquals(List.of("name", "description"), frontMatter.keys());
+		assertEquals(Optional.of("demo"), frontMatter.value("name"));
+	}
+
+	/**
+	 * An alias is the node it names, not a copy of it, so a handful of nested
+	 * aliases describe a value of hundreds of millions of characters. Rendering one
+	 * stops at the cap instead of expanding it, which is what keeps a rule reading a
+	 * repository's files from being the thing that runs out of memory.
+	 */
+	@Test
+	void stopsRenderingAnAliasThatExpandsWithoutBound() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				a: &a [x, x, x, x, x, x, x, x, x]
+				b: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]
+				c: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b]
+				d: &d [*c, *c, *c, *c, *c, *c, *c, *c, *c]
+				e: &e [*d, *d, *d, *d, *d, *d, *d, *d, *d]
+				f: [*e, *e, *e, *e, *e, *e, *e, *e, *e]
+				---
+				""").orElseThrow();
+
+		assertTrue(frontMatter.value("f").orElseThrow().length() <= 8192, "the expansion must be capped");
+	}
+
+	/** Reading a malformed block as text still folds a value written below its key. */
+	@Test
+	void foldsAValueBelowItsKeyInABlockThatYamlCannotRead() {
+		FrontMatter frontMatter = FrontMatter
+				.parse("---\ndescription: \"oops\ngenerated:\n  by: agent/1\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("by: agent/1"), frontMatter.value("generated"));
+	}
 }

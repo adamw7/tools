@@ -456,6 +456,20 @@ class CliArgumentsTest {
 		assertUsageFailure(new String[] { REPO_URL, "--timeout", "--dry-run" });
 	}
 
+	/**
+	 * A flag and its value may be written as one argument. Nothing in the pipeline
+	 * needs it, but it is the form operators reach for and the form a shell
+	 * completes, so a run that used it no longer fails on an unknown option.
+	 */
+	@Test
+	void acceptsAFlagJoinedToItsValueByAnEqualsSign() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--branch=feature/x",
+				"--workspace=/tmp/ws", "--timeout=45" });
+		assertEquals("feature/x", cli.branchName());
+		assertEquals(Path.of("/tmp/ws"), cli.workspace().orElseThrow());
+		assertEquals(Duration.ofMinutes(45), cli.adoptionOptions().commandTimeout());
+	}
+
 	/** Prose is free-form, so a body or title that opens with dashes is the operator's business. */
 	@Test
 	void acceptsFreeFormProseThatLooksLikeAFlag() {

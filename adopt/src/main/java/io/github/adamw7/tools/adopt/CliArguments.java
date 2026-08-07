@@ -5,9 +5,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.ParameterException;
 
 /**
  * Parses the adoption command line. The first three non-flag arguments are the
@@ -27,12 +31,39 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * line rather than being ignored — as does {@code --help}, which asks for that
  * line and so is answered with it instead.
  *
+ * <p>The arguments are matched by picocli rather than by a loop of this module's
+ * own: the option names, their values, the three positional slots and the
+ * refusals are all declared, so what the parser accepts is readable in one place
+ * instead of being spelled out twice — once in the loop and once in the usage
+ * line. Each option is bound to a method rather than to a field, because picocli
+ * calls a method option once per occurrence, in the order the operator wrote it.
+ * That order is the one thing a batch cannot lose: a run mixing {@code --repo}
+ * with {@code --repos} adopts its repositories, and reports them, in the order
+ * they were named.
+ *
  * <p>The positional slots keep their meaning whatever else is on the command line
  * — the first is always a repository URL, never a workspace — so a run driven
  * entirely by {@code --repo}/{@code --repos} names its workspace and branch with
  * {@code --workspace} and {@code --branch}. A flag and its positional write the
- * same value, so naming one twice is the last one winning rather than an error.
+ * same value, so naming one twice is the last one winning rather than an error:
+ * that is what {@code setOverwrittenOptionsAllowed} buys, and it is the same
+ * setting that lets the repeatable flags be named again and again.
+ *
+ * <p>A flag that names something is never followed by another flag, and picocli
+ * refuses one that is: {@code --branch --draft} named a branch called
+ * {@code --draft}, created it, and pushed it, with the draft the operator asked
+ * for silently dropped. {@code --title} and {@code --body} take free-form prose,
+ * and prose that merely looks like a flag is still prose — the refusal is for a
+ * value that is an option of this command, not for any word opening with dashes.
+ *
+ * <p>The usage line is written out rather than generated from the declarations
+ * below. picocli can render a synopsis, but it orders one by reflecting over the
+ * methods, and the JVM does not promise the order it reports them in — the line
+ * an operator reads would then differ between runs. This one is ordered to be
+ * read: the positionals first, then the flags that name what to adopt, then the
+ * pull request's metadata.
  */
+@Command(name = "adopt")
 public final class CliArguments {
 
 	static final String USAGE = "Usage: [<github-repo-url>] [workspace-directory] [branch-name]"
@@ -46,6 +77,7 @@ public final class CliArguments {
 	static final String HELP_SHORTHAND = "-h";
 
 	private static final String TIMEOUT_FLAG = "--timeout";
+	private static final String REPOS_FLAG = "--repos";
 
 	private final List<String> repositoryUrls = new ArrayList<>();
 	private Path workspace;
@@ -62,7 +94,6 @@ public final class CliArguments {
 	private Duration commandTimeout;
 	private Path reportFile;
 	private boolean help;
-	private int positionals;
 	private String positionalUrl;
 	private boolean flagsNamedARepository;
 
@@ -71,10 +102,11 @@ public final class CliArguments {
 
 	public static CliArguments parse(String[] args) {
 		CliArguments cli = new CliArguments();
-		String[] arguments = args == null ? new String[0] : args;
-		int index = 0;
-		while (index < arguments.length) {
-			index = cli.consume(arguments, index);
+		try {
+			new CommandLine(cli).setOverwrittenOptionsAllowed(true)
+					.parseArgs(args == null ? new String[0] : args);
+		} catch (ParameterException e) {
+			throw refusal(e);
 		}
 		cli.requireSomethingToAdopt();
 		return cli;
@@ -119,96 +151,119 @@ public final class CliArguments {
 	}
 
 	/**
-	 * {@code -h} is tested before the {@code --} prefix, since it carries none and
-	 * would otherwise be read as the run's first positional — a repository URL,
-	 * which is the one reading of it nobody means.
+	 * The refusal to raise for an argument picocli would not accept. A failure
+	 * raised by one of the methods below — an unreadable repository list, a blank
+	 * flag value — is already the failure this module means, and picocli wraps it
+	 * only because it was the one calling; it travels on unchanged so a caller
+	 * still sees an {@link AdoptionException} for a file it could not read. Anything
+	 * else is the parser's own complaint about the command line, which is answered
+	 * with the usage line as every other bad argument is.
 	 */
-	private int consume(String[] args, int index) {
-		String argument = args[index];
-		if (HELP_FLAG.equals(argument) || HELP_SHORTHAND.equals(argument)) {
-			help = true;
-			return index + 1;
+	private static RuntimeException refusal(ParameterException e) {
+		if (e.getCause() instanceof RuntimeException raised) {
+			return raised;
 		}
-		if (argument.startsWith("--")) {
-			return consumeFlag(args, index);
-		}
-		consumePositional(argument);
-		return index + 1;
-	}
-
-	private int consumeFlag(String[] args, int index) {
-		String flag = args[index];
-		return switch (flag) {
-			case "--repo" -> consumeName(args, index, this::addFlaggedRepository);
-			case "--repos" -> consumeName(args, index, value -> addFlaggedRepositories(readList(value)));
-			case "--workspace" -> consumeName(args, index, value -> workspace = optionalPath(value));
-			case "--branch" -> consumeName(args, index, value -> branchName = optionalText(value));
-			case "--title" -> consumeValue(args, index, value -> title = value);
-			case "--body" -> consumeValue(args, index, value -> body = value);
-			case "--reviewer" -> consumeName(args, index, reviewers::add);
-			case "--label" -> consumeName(args, index, labels::add);
-			case "--assignee" -> consumeName(args, index, assignees::add);
-			case "--rule-version" -> consumeName(args, index, value -> ruleVersion = optionalText(value));
-			case TIMEOUT_FLAG -> consumeName(args, index, value -> commandTimeout = optionalTimeout(value));
-			case "--report" -> consumeName(args, index, value -> reportFile = optionalPath(value));
-			// A flag carrying no value: it is set, and the next argument is the one after it.
-			case "--draft" -> { draft = true; yield index + 1; }
-			case "--assets" -> { assets = true; yield index + 1; }
-			case "--dry-run" -> { dryRun = true; yield index + 1; }
-			default -> throw new IllegalArgumentException("Unknown option " + flag + ". " + USAGE);
-		};
-	}
-
-	private int consumeValue(String[] args, int index, Consumer<String> target) {
-		if (index + 1 >= args.length) {
-			throw new IllegalArgumentException(args[index] + " requires a value. " + USAGE);
-		}
-		target.accept(args[index + 1]);
-		return index + 2;
+		return new IllegalArgumentException(e.getMessage() + ". " + USAGE, e);
 	}
 
 	/**
-	 * Reads the value of a flag that names something — a URL, a path, a branch, a
-	 * user, a number — none of which is ever spelled as a flag. A missing value would
-	 * otherwise swallow the next flag as the value: {@code --branch --draft} named a
-	 * branch called {@code --draft}, created it, and pushed it, with the draft the
-	 * operator asked for silently dropped. {@code --title} and {@code --body} take
-	 * free-form prose and so keep {@link #consumeValue}, which accepts whatever
-	 * follows.
+	 * The first positional is always a repository URL, never a workspace, so it is
+	 * read as one whatever else is on the command line.
 	 */
-	private int consumeName(String[] args, int index, Consumer<String> target) {
-		if (index + 1 < args.length && args[index + 1].startsWith("--")) {
-			throw new IllegalArgumentException(args[index] + " requires a value, but was followed by the option "
-					+ args[index + 1] + ". " + USAGE);
-		}
-		return consumeValue(args, index, target);
-	}
-
-	/**
-	 * A blank workspace or branch positional counts as not supplied — the rule
-	 * {@link Text} defines for every optional input, and the one every optional flag
-	 * value follows too — so it falls back to its default rather than resolving the
-	 * empty path or being rejected as an invalid branch. A blank repository
-	 * positional is dropped the same way, leaving the run with whatever the
-	 * {@code --repo} and {@code --repos} flags named.
-	 */
-	private void consumePositional(String argument) {
-		switch (positionals) {
-			case 0 -> addPositionalRepository(argument);
-			case 1 -> workspace = optionalPath(argument);
-			case 2 -> branchName = optionalText(argument);
-			default -> throw new IllegalArgumentException("Unexpected argument " + argument + ". " + USAGE);
-		}
-		positionals++;
-	}
-
-	private void addPositionalRepository(String url) {
+	@Parameters(index = "0", arity = "0..1", paramLabel = "<github-repo-url>")
+	private void positionalRepository(String url) {
 		positionalUrl = optionalText(url);
 		addRepository(url);
 	}
 
-	private void addFlaggedRepositories(List<String> urls) {
-		urls.forEach(this::addFlaggedRepository);
+	@Parameters(index = "1", arity = "0..1", paramLabel = "<workspace-directory>")
+	private void positionalWorkspace(String value) {
+		workspace = optionalPath(value);
+	}
+
+	@Parameters(index = "2", arity = "0..1", paramLabel = "<branch-name>")
+	private void positionalBranch(String value) {
+		branchName = optionalText(value);
+	}
+
+	@Option(names = "--repo", paramLabel = "<github-repo-url>")
+	private void repository(String url) {
+		addFlaggedRepository(url);
+	}
+
+	@Option(names = REPOS_FLAG, paramLabel = "<file>")
+	private void repositoryList(String file) {
+		RepositoryUrls.fromFile(Path.of(Text.required(file, REPOS_FLAG))).forEach(this::addFlaggedRepository);
+	}
+
+	@Option(names = "--workspace", paramLabel = "<directory>")
+	private void workspace(String value) {
+		workspace = optionalPath(value);
+	}
+
+	@Option(names = "--branch", paramLabel = "<name>")
+	private void branch(String value) {
+		branchName = optionalText(value);
+	}
+
+	@Option(names = "--title", paramLabel = "<title>")
+	private void title(String value) {
+		title = value;
+	}
+
+	@Option(names = "--body", paramLabel = "<body>")
+	private void body(String value) {
+		body = value;
+	}
+
+	@Option(names = "--reviewer", paramLabel = "<user>")
+	private void reviewer(String value) {
+		reviewers.add(value);
+	}
+
+	@Option(names = "--label", paramLabel = "<label>")
+	private void label(String value) {
+		labels.add(value);
+	}
+
+	@Option(names = "--assignee", paramLabel = "<user>")
+	private void assignee(String value) {
+		assignees.add(value);
+	}
+
+	@Option(names = "--rule-version", paramLabel = "<version>")
+	private void ruleVersion(String value) {
+		ruleVersion = optionalText(value);
+	}
+
+	@Option(names = TIMEOUT_FLAG, paramLabel = "<minutes>")
+	private void timeout(String value) {
+		commandTimeout = optionalTimeout(value);
+	}
+
+	@Option(names = "--report", paramLabel = "<file>")
+	private void report(String value) {
+		reportFile = optionalPath(value);
+	}
+
+	@Option(names = "--draft")
+	private void draft(boolean on) {
+		draft = on;
+	}
+
+	@Option(names = "--assets")
+	private void assets(boolean on) {
+		assets = on;
+	}
+
+	@Option(names = "--dry-run")
+	private void dryRun(boolean on) {
+		dryRun = on;
+	}
+
+	@Option(names = { HELP_FLAG, HELP_SHORTHAND })
+	private void help(boolean on) {
+		help = on;
 	}
 
 	private void addFlaggedRepository(String url) {
@@ -216,14 +271,15 @@ public final class CliArguments {
 		addRepository(url);
 	}
 
+	/**
+	 * A blank repository is dropped rather than adopted — the rule {@link Text}
+	 * defines for every optional input, and the one every optional flag value
+	 * follows too — leaving the run with whatever the other arguments named.
+	 */
 	private void addRepository(String url) {
 		if (Text.isPresent(url)) {
 			repositoryUrls.add(url.strip());
 		}
-	}
-
-	private List<String> readList(String file) {
-		return RepositoryUrls.fromFile(Path.of(Text.required(file, "--repos")));
 	}
 
 	private Path optionalPath(String value) {

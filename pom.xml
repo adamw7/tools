@@ -260,6 +260,17 @@
 				<artifactId>reflections</artifactId>
 				<version>0.10.2</version>
 			</dependency>
+			<!-- The adoption command-line parser. Declared here rather than left to
+			     the Spring Boot parent, which does not manage it: the BOM covers the
+			     web and JSON stack the MCP servers are built on, not a CLI library.
+			     snakeyaml, which claude-code-enforcer reads front matter with, needs
+			     no entry for the opposite reason — Boot already pins it, and pinning
+			     it a second time here is a copy that can fall behind the parent. -->
+			<dependency>
+				<groupId>info.picocli</groupId>
+				<artifactId>picocli</artifactId>
+				<version>4.7.7</version>
+			</dependency>
 			<dependency>
 				<groupId>io.grpc</groupId>
 				<artifactId>grpc-protobuf</artifactId>

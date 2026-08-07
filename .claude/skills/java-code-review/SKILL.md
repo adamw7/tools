@@ -220,6 +220,12 @@ comment opened after text on its line, an apostrophe read as an opening quote, a
 newline inside a hook command, `[logo](assets/logo(1).png)`, a bare `@claude`
 mention read as a memory import.
 
+The strongest fix for this shape is not a better hand-rolled reader but no
+hand-rolled reader: `FrontMatter` now composes its block with SnakeYAML, and the
+quoting, comment and block-scalar rules that had cost it six or seven fix commits
+came with it. Ask whether the format under review has a parser worth depending on
+before reviewing the scanning loop line by line.
+
 **Ask:**
 - Does this track state across the whole line, or does it `startsWith` /
   `contains` and hope? A delimiter can appear anywhere, and twice.

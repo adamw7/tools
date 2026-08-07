@@ -291,4 +291,33 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
 	}
+
+	/**
+	 * A nested mapping leaves the key's own line empty, and reading it literally
+	 * answered the empty string for a value written out in full on the lines below —
+	 * so a rule looking for something in it reported it missing while it was there.
+	 */
+	@Test
+	void foldsAMappingWrittenOnTheLinesBelowItsKey() {
+		Optional<FrontMatter> frontMatter = FrontMatter
+				.parse("---\ngenerated:\n  by: agent/1\n  at: 2026-01-01\n---\n");
+
+		assertEquals(Optional.of("by: agent/1 at: 2026-01-01"), frontMatter.orElseThrow().value("generated"));
+	}
+
+	/** YAML continues a plain scalar on the indented lines below it, and so does this. */
+	@Test
+	void foldsAPlainScalarWrappedOntoTheNextLine() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription:\n  one\n  two\n---\n");
+
+		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
+	}
+
+	/** A key with nothing below it still declares nothing, which is what the format rules report. */
+	@Test
+	void readsABareKeyWithNothingBelowItAsEmpty() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\nname:\ndescription: d\n---\n");
+
+		assertEquals(Optional.of(""), frontMatter.orElseThrow().value("name"));
+	}
 }

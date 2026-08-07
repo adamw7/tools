@@ -4,9 +4,13 @@ import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -66,6 +70,31 @@ class OkfBundleFormatRuleTest {
 		rule.setBundleDir(tempDir.resolve("no-bundle-here").toFile());
 
 		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * An absent bundle is the ordinary state of a rule wired before a repository
+	 * emits one, and returning early on it skipped the reporting the pass goes
+	 * through — leaving a previous run's failing HTML report on disk, claiming a
+	 * failure for a check that had just passed.
+	 */
+	@Test
+	void anAbsentBundleRefreshesTheReportRatherThanLeavingTheLastFailure() throws IOException {
+		File report = tempDir.resolve("report.html").toFile();
+		OkfBundleFormatRule failing = rule();
+		failing.setReportFile(report);
+		writeString(bundle.resolve("A.java.md"), "# Dependencies\n");
+		assertThrows(EnforcerRuleException.class, failing::execute);
+
+		Files.delete(bundle.resolve("A.java.md"));
+		Files.delete(bundle);
+		OkfBundleFormatRule absent = rule();
+		absent.setReportFile(report);
+
+		assertDoesNotThrow(absent::execute);
+		String html = Files.readString(report.toPath());
+		assertTrue(html.contains("Check passed"), html);
+		assertFalse(html.contains("Check failed"), html);
 	}
 
 	@Test
@@ -160,6 +189,42 @@ class OkfBundleFormatRuleTest {
 	void failsWhenGeneratedNamesNoActor() {
 		writeString(bundle.resolve("A.java.md"),
 				"---\ntype: \"Java Source File\"\ngenerated: { at: 2026-08-03T10:15:30Z }\n---\n\n# Dependencies\n");
+
+		assertTrue(failure().contains("declares a 'generated' without the actor that produced it"));
+	}
+
+	/**
+	 * YAML writes a mapping in flow or block style, and OKF prefers neither. Reading
+	 * only the flow spelling failed a conformant concept for not naming the actor
+	 * standing on the very next line.
+	 */
+	@Test
+	void acceptsAGeneratedMappingWrittenInBlockStyle() {
+		writeString(bundle.resolve("A.java.md"), """
+				---
+				type: "Java Source File"
+				generated:
+				  by: "tools.code.context/1"
+				  at: "2026-08-03T10:15:30Z"
+				---
+
+				# Dependencies
+				""");
+
+		assertDoesNotThrow(rule()::execute);
+	}
+
+	@Test
+	void failsWhenAGeneratedMappingInBlockStyleNamesNoActor() {
+		writeString(bundle.resolve("A.java.md"), """
+				---
+				type: "Java Source File"
+				generated:
+				  at: "2026-08-03T10:15:30Z"
+				---
+
+				# Dependencies
+				""");
 
 		assertTrue(failure().contains("declares a 'generated' without the actor that produced it"));
 	}

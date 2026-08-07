@@ -171,11 +171,29 @@ public final class RepositoryUrl {
 	 * rather than several steps later on a checkout directory nobody intended.
 	 */
 	private static String requireName(String name, String repositoryUrl) {
-		if (name.isEmpty() || ".".equals(name) || "..".equals(name) || isPath(name)) {
+		if (name.isEmpty() || ".".equals(name) || "..".equals(name) || isPath(name) || isUserInfo(name)) {
 			throw new IllegalArgumentException(
 					"repositoryUrl must end in a repository name but was: " + Redaction.of(repositoryUrl));
 		}
 		return name;
+	}
+
+	/**
+	 * A last segment that ends at an {@code @} is the URL's user information and
+	 * nothing else — {@code https://token@} names credentials and no repository at
+	 * all. Only a URL with no path past its authority reaches this, since every other
+	 * form has a separator after the {@code @} for {@link #lastSegment} to cut at, so
+	 * a checkout directory legitimately containing an {@code @} is unaffected.
+	 *
+	 * <p>What it protects is {@link #identity}, which strips exactly that user
+	 * information: such a URL reduced to the empty identity that
+	 * {@link #isSameRepositoryAs} answers for text naming no repository, so the two
+	 * compared equal and a checkout of <em>any</em> other repository — or one whose
+	 * {@code origin} could not be read at all — was accepted as this one, then
+	 * branched, committed, and pushed.
+	 */
+	private static boolean isUserInfo(String name) {
+		return name.endsWith("@");
 	}
 
 	/**

@@ -97,15 +97,27 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		requireConfigured(bundleDir, "bundleDir");
+		report("The OKF bundle at " + bundleDir + " is not conformant:", violations());
+	}
+
+	/**
+	 * An absent bundle is answered as no violations rather than by returning early,
+	 * so the pass still goes through {@link #report}. That is what writes a
+	 * configured {@code reportFile}: skipping it left the HTML report of a previous,
+	 * failing run on disk claiming the check had failed, for a rule that had just
+	 * passed — and this is the ordinary state of the rule, wired before a repository
+	 * emits a bundle so it starts enforcing the day one is committed.
+	 */
+	private List<String> violations() {
 		if (!bundleDir.isDirectory()) {
-			return;
+			return List.of();
 		}
 		List<File> documents = markdownFiles();
 		List<String> violations = new ArrayList<>();
 		documents.forEach(document -> collectDocumentViolations(document, violations));
 		collectVersionViolations(documents, violations);
 		collectMissingIndexViolations(documents, violations);
-		report("The OKF bundle at " + bundleDir + " is not conformant:", violations);
+		return violations;
 	}
 
 	@Override

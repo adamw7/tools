@@ -113,7 +113,7 @@ final class PomDocument {
 	 * declared only there is a rule no build ever runs.
 	 */
 	List<Element> boundPlugins() {
-		return preOrder(root()).stream()
+		return selfAndDescendants(root()).stream()
 				.filter(element -> "plugin".equals(element.getLocalName()))
 				.filter(element -> !isManaged(element))
 				.toList();
@@ -283,7 +283,7 @@ final class PomDocument {
 	}
 
 	private static Map<Element, Span> spansOf(Document document, String original) {
-		List<Element> elements = preOrder(document.getDocumentElement());
+		List<Element> elements = selfAndDescendants(document.getDocumentElement());
 		List<Span> spans = XmlElementSpans.of(original);
 		if (elements.size() != spans.size()) {
 			throw new AdoptionException("Could not map the POM's " + elements.size() + " parsed elements onto the "
@@ -294,7 +294,13 @@ final class PomDocument {
 		return byElement;
 	}
 
-	private static List<Element> preOrder(Element root) {
+	/**
+	 * The element and every element below it, in document order — what a caller asks
+	 * for when the thing it is looking for may sit at any depth, such as the rule
+	 * inside a plugin's {@code configuration/rules} that
+	 * {@link PomEnforcerInstaller} looks for.
+	 */
+	static List<Element> selfAndDescendants(Element root) {
 		List<Element> elements = new ArrayList<>();
 		collect(root, elements);
 		return List.copyOf(elements);

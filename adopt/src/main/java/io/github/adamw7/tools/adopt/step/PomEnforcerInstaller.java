@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
@@ -28,6 +29,15 @@ public class PomEnforcerInstaller {
 	private static final String RULE_GROUP_ID = "io.github.adamw7";
 	private static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
 
+	/**
+	 * The rule the adoption wires in, named once so the declaration it writes and the
+	 * declaration it looks for cannot spell it differently.
+	 */
+	static final String CLAUDE_MD_RULE = "claudeMdFormat";
+
+	/** The element a maven-enforcer rule is configured under; see {@link #runsClaudeMdRule}. */
+	private static final String RULES = "rules";
+
 	/** The one place a plugin both runs from and is added to; see {@link #enforcerPluginOfTheBuild}. */
 	private static final List<String> BUILD_PLUGINS = List.of("build", "plugins");
 
@@ -45,12 +55,12 @@ public class PomEnforcerInstaller {
 			  </goals>
 			  <configuration>
 			    <rules>
-			      <claudeMdFormat>
-			        <claudeMdFile>%s</claudeMdFile>
-			      </claudeMdFormat>
+			      <%1$s>
+			        <claudeMdFile>%2$s</claudeMdFile>
+			      </%1$s>
 			    </rules>
 			  </configuration>
-			</execution>""".formatted(CLAUDE_MD_FILE);
+			</execution>""".formatted(CLAUDE_MD_RULE, CLAUDE_MD_FILE);
 
 	private final Supplier<String> ruleVersion;
 
@@ -83,12 +93,11 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * @return {@code true} when the rule was wired in, {@code false} when the POM
-	 *         already declared the {@code claude-code-enforcer} rule and was left
-	 *         unchanged.
+	 *         already runs the {@code claudeMdFormat} rule and was left unchanged.
 	 */
 	public boolean install(Path pomFile) {
 		PomDocument pom = PomDocument.read(pomFile);
-		if (declaresClaudeRule(pom)) {
+		if (alreadyRunsTheRule(pom)) {
 			return false;
 		}
 		enforcerPluginOfTheBuild(pom).ifPresentOrElse(
@@ -110,9 +119,38 @@ public class PomEnforcerInstaller {
 	 * with none and the pull request still claiming one — the same silent outcome
 	 * {@link #enforcerPluginOfTheBuild} refuses to produce from the other direction,
 	 * since {@link VerifyStep}'s {@code mvn -N validate} passes either way.
+	 *
+	 * <p>What counts as already running it is the rule being configured, not the
+	 * artifact that supplies it being on the plugin — see {@link #runsClaudeMdRule}.
 	 */
-	private boolean declaresClaudeRule(PomDocument pom) {
-		return pom.boundPlugins().stream().anyMatch(this::declaresRuleDependency);
+	private boolean alreadyRunsTheRule(PomDocument pom) {
+		return pom.boundPlugins().stream().anyMatch(this::runsClaudeMdRule);
+	}
+
+	/**
+	 * Whether the plugin actually configures the {@code claudeMdFormat} rule, rather
+	 * than merely carrying the artifact that supplies it. The two are not the same
+	 * question: {@value #RULE_ARTIFACT_ID} ships a rule per document and per piece of
+	 * agent configuration, so a project that wired in {@code noSecrets} or
+	 * {@code settingsJsonValid} has the dependency and no {@code CLAUDE.md} guard at
+	 * all. Reading the dependency as the guard left that project's POM untouched, and
+	 * {@link VerifyStep} confirmed nothing — its {@code mvn -N validate} passes on the
+	 * rule the project already had — so the adoption ran to the end and opened a pull
+	 * request claiming a guard the build does not run.
+	 *
+	 * <p>The rule is looked for at any depth below the plugin, because it is
+	 * configured either on an execution or on the plugin itself, and only directly
+	 * under a {@code rules} element, so a project whose own configuration happens to
+	 * name an element the same way elsewhere is not mistaken for one running it.
+	 */
+	private boolean runsClaudeMdRule(Element plugin) {
+		return PomDocument.selfAndDescendants(plugin).stream().anyMatch(this::isClaudeMdRule);
+	}
+
+	private boolean isClaudeMdRule(Element element) {
+		Node parent = element.getParentNode();
+		return CLAUDE_MD_RULE.equals(element.getLocalName()) && parent != null
+				&& RULES.equals(parent.getLocalName());
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {
@@ -124,7 +162,7 @@ public class PomEnforcerInstaller {
 	/**
 	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
 	 * one. Where the rule is <em>looked for</em> is every plugin the POM binds — see
-	 * {@link #declaresClaudeRule} — but where it is <em>added</em> cannot be: an
+	 * {@link #alreadyRunsTheRule} — but where it is <em>added</em> cannot be: an
 	 * execution spliced into {@code pluginManagement} only configures a plugin the
 	 * build never runs, and one spliced into a profile runs only when that profile is
 	 * activated. Neither enforces anything, and neither shows up as a failure —
@@ -145,9 +183,16 @@ public class PomEnforcerInstaller {
 	 * the build already declares — reusing its {@code dependencies} and
 	 * {@code executions} when it has them — so the project keeps a single enforcer
 	 * plugin entry and the rules it already ran keep running.
+	 *
+	 * <p>A plugin that already depends on {@value #RULE_ARTIFACT_ID} for a rule of its
+	 * own keeps the dependency it declared, at the version it pinned: only the
+	 * execution is missing, and adding a second dependency on the same artifact would
+	 * leave the plugin's classpath deciding between two versions of it.
 	 */
 	private void augment(PomDocument pom, Element plugin) {
-		pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
+		if (!declaresRuleDependency(plugin)) {
+			pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
+		}
 		pom.insertUnder(plugin, List.of("executions"), EXECUTION);
 	}
 

@@ -172,6 +172,27 @@ class PomEnforcerInstallerTest {
 			</project>
 			""".formatted(PROFILED_ENFORCER, MANAGED_ENFORCER);
 
+	/** The rule as a project configures it: the artifact that supplies it, and the rule itself. */
+	private static final String CLAUDE_RULE_DECLARATION = """
+			          <dependencies>
+			            <dependency>
+			              <groupId>io.github.adamw7</groupId>
+			              <artifactId>tools.claude-code-enforcer</artifactId>
+			              <version>1.0.0</version>
+			            </dependency>
+			          </dependencies>
+			          <executions>
+			            <execution>
+			              <id>enforce-claude-md</id>
+			              <goals><goal>enforce</goal></goals>
+			              <configuration>
+			                <rules>
+			                  <claudeMdFormat/>
+			                </rules>
+			              </configuration>
+			            </execution>
+			          </executions>""";
+
 	/** The rule pinned where nothing runs it: {@code pluginManagement} binds no plugin to any phase. */
 	private static final String POM_WITH_RULE_ONLY_MANAGED = """
 			<project xmlns="http://maven.apache.org/POM/4.0.0">
@@ -181,19 +202,13 @@ class PomEnforcerInstallerTest {
 			      <plugins>
 			        <plugin>
 			          <artifactId>maven-enforcer-plugin</artifactId>
-			          <dependencies>
-			            <dependency>
-			              <groupId>io.github.adamw7</groupId>
-			              <artifactId>tools.claude-code-enforcer</artifactId>
-			              <version>1.0.0</version>
-			            </dependency>
-			          </dependencies>
+			%s
 			        </plugin>
 			      </plugins>
 			    </pluginManagement>
 			  </build>
 			</project>
-			""";
+			""".formatted(CLAUDE_RULE_DECLARATION);
 
 	/** Wires the rule the way this repository does: behind an opt-in profile, not in the build. */
 	private static final String POM_WITH_RULE_IN_A_PROFILE = """
@@ -206,18 +221,47 @@ class PomEnforcerInstallerTest {
 			        <plugins>
 			          <plugin>
 			            <artifactId>maven-enforcer-plugin</artifactId>
-			            <dependencies>
-			              <dependency>
-			                <groupId>io.github.adamw7</groupId>
-			                <artifactId>tools.claude-code-enforcer</artifactId>
-			                <version>1.0.0</version>
-			              </dependency>
-			            </dependencies>
+			%s
 			          </plugin>
 			        </plugins>
 			      </build>
 			    </profile>
 			  </profiles>
+			</project>
+			""".formatted(CLAUDE_RULE_DECLARATION);
+
+	/**
+	 * Runs a rule of the {@code claude-code-enforcer}'s <em>other</em> kind, so the
+	 * artifact is on the plugin's classpath and no {@code CLAUDE.md} guard exists.
+	 */
+	private static final String POM_WITH_THE_ARTIFACT_FOR_ANOTHER_RULE = """
+			<project xmlns="http://maven.apache.org/POM/4.0.0">
+			  <artifactId>demo</artifactId>
+			  <build>
+			    <plugins>
+			      <plugin>
+			        <artifactId>maven-enforcer-plugin</artifactId>
+			        <dependencies>
+			          <dependency>
+			            <groupId>io.github.adamw7</groupId>
+			            <artifactId>tools.claude-code-enforcer</artifactId>
+			            <version>1.0.0</version>
+			          </dependency>
+			        </dependencies>
+			        <executions>
+			          <execution>
+			            <id>enforce-no-secrets</id>
+			            <goals><goal>enforce</goal></goals>
+			            <configuration>
+			              <rules>
+			                <noSecrets/>
+			              </rules>
+			            </configuration>
+			          </execution>
+			        </executions>
+			      </plugin>
+			    </plugins>
+			  </build>
 			</project>
 			""";
 
@@ -378,6 +422,38 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_RULE_IN_A_PROFILE);
 		assertFalse(installer.install(pom), "the rule is already wired in, in the profile");
 		assertEquals(POM_WITH_RULE_IN_A_PROFILE, Files.readString(pom), "the POM must not have been touched");
+	}
+
+	/**
+	 * The artifact is not the guard. {@value PomEnforcerInstaller#CLAUDE_MD_RULE} is
+	 * one of the rules {@code tools.claude-code-enforcer} ships, so a project running
+	 * any of the others already depends on it and has no {@code CLAUDE.md} guard.
+	 * Reading the dependency as the guard left such a POM untouched and
+	 * {@link VerifyStep} confirmed nothing — its {@code mvn -N validate} passes on the
+	 * rule the project already had — so the pull request advertised a guard the build
+	 * does not run.
+	 */
+	@Test
+	void wiresTheRuleInWhenTheArtifactIsOnlyThereForAnotherRule(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_THE_ARTIFACT_FOR_ANOTHER_RULE);
+		assertTrue(installer.install(pom), "the artifact is present but no CLAUDE.md guard is");
+		String result = Files.readString(pom);
+		assertTrue(result.contains(PomEnforcerInstaller.CLAUDE_MD_RULE), "the rule must be wired in:\n" + result);
+		assertTrue(result.contains("noSecrets"), "the rule the project already ran must keep running");
+	}
+
+	/**
+	 * The plugin keeps the one dependency it declared, at the version it pinned: a
+	 * second dependency on the same artifact would leave the plugin's classpath
+	 * deciding between two versions of it.
+	 */
+	@Test
+	void reusesADependencyOnTheRuleArtifactThePluginAlreadyDeclares(@TempDir Path dir) throws IOException {
+		String result = install(dir, POM_WITH_THE_ARTIFACT_FOR_ANOTHER_RULE);
+		assertEquals(1, countOccurrences(result, "<artifactId>tools.claude-code-enforcer</artifactId>"),
+				"the artifact must be declared once:\n" + result);
+		assertTrue(result.contains("<version>1.0.0</version>"), "the project's pinned version must survive");
+		assertFalse(result.contains("9.9.9"), "a second, differently pinned dependency must not be added:\n" + result);
 	}
 
 	/**

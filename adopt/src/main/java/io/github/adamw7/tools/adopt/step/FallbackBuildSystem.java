@@ -44,6 +44,11 @@ public class FallbackBuildSystem implements BuildSystem {
 	}
 
 	@Override
+	public List<String> writtenPaths() {
+		return List.of(WorkflowGuardInstaller.WORKFLOW_FILE, WorkflowGuardInstaller.SCRIPT_FILE);
+	}
+
+	@Override
 	public boolean install(Path repositoryDirectory) {
 		return installer.install(repositoryDirectory);
 	}

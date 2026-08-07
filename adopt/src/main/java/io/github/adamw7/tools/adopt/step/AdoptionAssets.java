@@ -117,26 +117,24 @@ public final class AdoptionAssets {
 
 	/**
 	 * Every checkout-relative path an adoption may write or edit: the starter assets,
-	 * the generated {@code CLAUDE.md}, the fallback guard's two files, and the build
-	 * files the guard is wired into.
+	 * the generated {@code CLAUDE.md}, and whatever build file each supported build
+	 * system wires its guard into.
 	 *
 	 * <p>{@link CloneStep} reads this to tell the adoption's own work apart from a
-	 * contributor's, so a path missing from it is a file the adoption writes and
-	 * cannot account for. Extend it when the adoption learns to write a new one — the
-	 * asset installers and the two guard installers are read from their own constants
-	 * here, so only a genuinely new file has to be added by hand.
+	 * contributor's, and {@link CommitStep} refuses to commit while the checkout
+	 * ignores one of them, so a path missing from it is a file the adoption writes and
+	 * cannot account for. Nothing has to be added by hand for a new build system: the
+	 * asset installers name their own paths and each {@link BuildSystem} is asked for
+	 * {@link BuildSystem#writtenPaths()}, which it has to answer.
 	 */
 	public static final List<String> WRITTEN_PATHS = writtenPaths();
 
 	private static List<String> writtenPaths() {
-		return Stream.concat(
+		return Stream.of(
 				DEFAULTS.stream().map(AssetInstaller::relativePath),
-				Stream.of(CLAUDE_MD_FILE,
-						WorkflowGuardInstaller.WORKFLOW_FILE,
-						WorkflowGuardInstaller.SCRIPT_FILE,
-						MavenBuildSystem.POM,
-						GradleBuildSystem.GROOVY_BUILD_FILE,
-						GradleBuildSystem.KOTLIN_BUILD_FILE))
+				Stream.of(CLAUDE_MD_FILE),
+				BuildSystems.DEFAULTS.stream().map(BuildSystem::writtenPaths).flatMap(List::stream))
+				.flatMap(paths -> paths)
 				.distinct()
 				.toList();
 	}

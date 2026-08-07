@@ -41,7 +41,7 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 
 	public AdoptionOptions {
 		pullRequest = pullRequest == null ? PullRequestOptions.defaults() : pullRequest;
-		ruleVersion = Text.isPresent(ruleVersion) ? ruleVersion.strip() : null;
+		ruleVersion = Text.orDefault(ruleVersion, null);
 		commandTimeout = commandTimeout == null ? ProcessCommandRunner.DEFAULT_TIMEOUT : requirePositive(commandTimeout);
 	}
 

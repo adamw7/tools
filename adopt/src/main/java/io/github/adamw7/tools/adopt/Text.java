@@ -27,4 +27,19 @@ public final class Text {
 	public static boolean isPresent(String value) {
 		return value != null && !value.isBlank();
 	}
+
+	/**
+	 * Reads an optional value: the value stripped when it carries text, the fallback
+	 * when it is blank. Every optional input the adoption takes — a flag, a
+	 * positional, an MCP argument — falls back the same way, so the rule lives here
+	 * rather than being re-typed at each of them.
+	 *
+	 * @param value    the supplied value, possibly {@code null} or blank
+	 * @param fallback what an absent value means, {@code null} when absence is the
+	 *                 answer the caller wants back
+	 * @return the stripped value, or {@code fallback}
+	 */
+	public static String orDefault(String value, String fallback) {
+		return isPresent(value) ? value.strip() : fallback;
+	}
 }

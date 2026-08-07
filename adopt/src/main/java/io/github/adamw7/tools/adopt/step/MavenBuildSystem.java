@@ -22,7 +22,6 @@ public class MavenBuildSystem implements BuildSystem {
 	private static final String MAVEN = "mvn";
 	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
 
-	/** Package-visible so {@link AdoptionAssets} can name it among the files the adoption edits. */
 	static final String POM = "pom.xml";
 
 	private final PomEnforcerInstaller installer;
@@ -58,6 +57,11 @@ public class MavenBuildSystem implements BuildSystem {
 	@Override
 	public boolean matches(Path repositoryDirectory) {
 		return Files.isRegularFile(repositoryDirectory.resolve(POM));
+	}
+
+	@Override
+	public List<String> writtenPaths() {
+		return List.of(POM);
 	}
 
 	@Override

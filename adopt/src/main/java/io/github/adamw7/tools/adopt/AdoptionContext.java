@@ -85,7 +85,7 @@ public final class AdoptionContext {
 	 *         back to the default instead of being rejected as an invalid branch.
 	 */
 	public static String branchOrDefault(String branchName) {
-		return Text.isPresent(branchName) ? branchName.strip() : DEFAULT_BRANCH;
+		return Text.orDefault(branchName, DEFAULT_BRANCH);
 	}
 
 	private static Path requireWorkspace(Path workspace) {

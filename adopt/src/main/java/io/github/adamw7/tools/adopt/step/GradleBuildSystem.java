@@ -48,6 +48,16 @@ public class GradleBuildSystem implements BuildSystem {
 		return locate(repositoryDirectory).isPresent();
 	}
 
+	/**
+	 * Both build scripts, not merely the one {@link #locate} would pick: the checkout
+	 * carrying either is a file the adoption may edit, and which of them it is is not
+	 * known until a repository is in hand.
+	 */
+	@Override
+	public List<String> writtenPaths() {
+		return List.of(GROOVY_BUILD_FILE, KOTLIN_BUILD_FILE);
+	}
+
 	@Override
 	public boolean install(Path repositoryDirectory) {
 		Path buildFile = locate(repositoryDirectory)

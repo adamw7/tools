@@ -99,6 +99,11 @@ class VerifyStepTest {
 		}
 
 		@Override
+		public List<String> writtenPaths() {
+			return List.of();
+		}
+
+		@Override
 		public boolean install(Path repositoryDirectory) {
 			return true;
 		}

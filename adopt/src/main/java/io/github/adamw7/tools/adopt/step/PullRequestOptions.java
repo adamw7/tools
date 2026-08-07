@@ -39,8 +39,8 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 			+ "into the build so the file keeps being validated.";
 
 	public PullRequestOptions {
-		title = orDefault(title, DEFAULT_TITLE);
-		body = orDefault(body, DEFAULT_BODY);
+		title = Text.orDefault(title, DEFAULT_TITLE);
+		body = Text.orDefault(body, DEFAULT_BODY);
 		reviewers = supplied(reviewers);
 		labels = supplied(labels);
 		assignees = supplied(assignees);
@@ -54,9 +54,5 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 	/** The adoption's own title and body, requesting nobody and not a draft. */
 	public static PullRequestOptions defaults() {
 		return new PullRequestOptions(null, null, List.of(), List.of(), List.of(), false);
-	}
-
-	private static String orDefault(String value, String fallback) {
-		return Text.isPresent(value) ? value.strip() : fallback;
 	}
 }

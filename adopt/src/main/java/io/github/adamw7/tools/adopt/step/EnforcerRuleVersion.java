@@ -29,6 +29,11 @@ final class EnforcerRuleVersion {
 	 * actually being edited — keeps merely constructing the default
 	 * {@link BuildSystems#DEFAULTS} list, or adopting a repository that builds with
 	 * something other than Maven, from depending on the running build's version.
+	 *
+	 * <p>Re-read for each repository of a batch rather than remembered, so this class
+	 * keeps the immutability every step here is held to: caching a classpath read
+	 * that costs nothing beside the clone and the {@code claude init} it sits between
+	 * would buy back no time worth holding mutable state for.
 	 */
 	static String release() {
 		return requireRelease(fromBuildMetadata());
@@ -70,6 +75,13 @@ final class EnforcerRuleVersion {
 		}
 	}
 
+	/**
+	 * Refuses metadata that reached the classpath unfiltered as firmly as metadata
+	 * that is missing: an unsubstituted token would otherwise be wired into the
+	 * adopted POM as if it were a version. Both delimiters are rejected — the
+	 * resource is written with {@code @...@}, which is what this build filters, and
+	 * {@code ${...}} is what it would carry had that configuration changed.
+	 */
 	private static String read(InputStream stream) throws IOException {
 		if (stream == null) {
 			throw new AdoptionException("Build metadata not on the classpath: " + BUILD_PROPERTIES
@@ -78,7 +90,7 @@ final class EnforcerRuleVersion {
 		Properties properties = new Properties();
 		properties.load(stream);
 		String version = properties.getProperty(RULE_VERSION_KEY, "").strip();
-		if (version.isEmpty() || version.startsWith("${")) {
+		if (version.isEmpty() || version.startsWith("@") || version.startsWith("${")) {
 			throw new AdoptionException(
 					RULE_VERSION_KEY + " was not filtered into " + BUILD_PROPERTIES + " (found: '" + version + "')");
 		}

@@ -21,6 +21,22 @@ public interface BuildSystem {
 	boolean matches(Path repositoryDirectory);
 
 	/**
+	 * Every checkout-relative path {@link #install(Path)} may write or edit, named by
+	 * the build system that writes it so {@link AdoptionAssets} can account for the
+	 * adoption's own files without keeping a second copy of each name.
+	 *
+	 * <p>Deliberately not defaulted. {@link AdoptionAssets#WRITTEN_PATHS} is what
+	 * {@link CloneStep} tells the adoption's work apart with and what
+	 * {@link CommitStep} refuses an ignored path over, so a build system that wrote a
+	 * file this list did not name would have it silently dropped from the branch. A
+	 * default of "none" would let a new build system be added without anyone noticing
+	 * that gap; requiring an answer makes the compiler ask.
+	 *
+	 * @return the paths, listed whether or not the checkout happens to carry them
+	 */
+	List<String> writtenPaths();
+
+	/**
 	 * Wires the {@code CLAUDE.md} guard into the checkout's build file so the
 	 * generated file keeps being validated on every build.
 	 *

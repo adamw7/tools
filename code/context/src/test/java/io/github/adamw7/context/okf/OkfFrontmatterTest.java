@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.yaml.snakeyaml.Yaml;
 
 public class OkfFrontmatterTest {
 
@@ -17,7 +19,7 @@ public class OkfFrontmatterTest {
 		String rendered = new OkfFrontmatter("Java Source File").render();
 
 		assertTrue(rendered.startsWith("---"));
-		assertTrue(rendered.contains("type: \"Java Source File\""));
+		assertEquals("Java Source File", fieldsOf(rendered).get("type"));
 		assertTrue(rendered.trim().endsWith("---"));
 	}
 
@@ -51,10 +53,11 @@ public class OkfFrontmatterTest {
 				.tags(List.of("source", "java"))
 				.render();
 
-		assertTrue(rendered.contains("title: \"A.java\""));
-		assertTrue(rendered.contains("description: \"Java source file with no project dependencies.\""));
-		assertTrue(rendered.contains("resource: \"src/A.java\""));
-		assertTrue(rendered.contains("tags: [\"source\", \"java\"]"));
+		Map<String, Object> fields = fieldsOf(rendered);
+		assertEquals("A.java", fields.get("title"));
+		assertEquals("Java source file with no project dependencies.", fields.get("description"));
+		assertEquals("src/A.java", fields.get("resource"));
+		assertEquals(List.of("source", "java"), fields.get("tags"));
 	}
 
 	@Test
@@ -63,8 +66,8 @@ public class OkfFrontmatterTest {
 				.generated("tools.code.context/1", Instant.parse("2026-08-03T10:15:30Z"))
 				.render();
 
-		assertTrue(rendered.contains(
-				"generated: { by: \"tools.code.context/1\", at: \"2026-08-03T10:15:30Z\" }"));
+		assertEquals(Map.of("by", "tools.code.context/1", "at", "2026-08-03T10:15:30Z"),
+				fieldsOf(rendered).get("generated"));
 	}
 
 	@Test
@@ -73,23 +76,35 @@ public class OkfFrontmatterTest {
 				.generated("tools.code.context/1", Instant.parse("2026-08-03T10:15:30.123456Z"))
 				.render();
 
-		assertTrue(rendered.contains("at: \"2026-08-03T10:15:30Z\""));
+		assertEquals("2026-08-03T10:15:30Z", generatedAt(rendered));
 	}
 
+	/**
+	 * The emitter decides how to quote; what matters is that the block still reads
+	 * back as the value it was given, colon, hash, quote, backslash and all. Asserting
+	 * the exact quoting instead would pin a choice that is SnakeYAML's to make.
+	 */
 	@Test
-	void quotesAValueThatWouldOtherwiseChangeTheMeaningOfTheBlock() {
-		String rendered = new OkfFrontmatter("Project File")
-				.description("Reads a: b # not a comment")
-				.render();
+	void survivesValuesThatWouldOtherwiseChangeTheMeaningOfTheBlock() {
+		String awkward = "Reads a: b # not a comment, \"quoted\" and back\\slashed";
 
-		assertTrue(rendered.contains("description: \"Reads a: b # not a comment\""));
+		String rendered = new OkfFrontmatter("Project File").description(awkward).render();
+
+		assertEquals(awkward, fieldsOf(rendered).get("description"));
 	}
 
+	/**
+	 * A newline in a title used to be written straight into the middle of a
+	 * double-quoted scalar, leaving a block that no longer parsed as YAML. The
+	 * break is written as YAML represents one, so the title reads back whole. It is
+	 * spelled {@code \n} rather than taken from the platform because that is what a
+	 * loader answers on either one.
+	 */
 	@Test
-	void escapesQuotesAndBackslashes() {
-		String rendered = new OkfFrontmatter("Project File").title("a\"b\\c").render();
+	void survivesAValueCarryingALineBreak() {
+		String rendered = new OkfFrontmatter("Project File").title("first\nsecond").render();
 
-		assertTrue(rendered.contains("title: \"a\\\"b\\\\c\""));
+		assertEquals("first\nsecond", fieldsOf(rendered).get("title"));
 	}
 
 	@Test
@@ -99,6 +114,16 @@ public class OkfFrontmatterTest {
 		tags.add("leaked");
 
 		assertFalse(frontmatter.render().contains("leaked"));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> fieldsOf(String rendered) {
+		return new Yaml().load(rendered.replace("---", ""));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static String generatedAt(String rendered) {
+		return ((Map<String, String>) fieldsOf(rendered).get("generated")).get("at");
 	}
 
 	@Test
@@ -112,6 +137,6 @@ public class OkfFrontmatterTest {
 				.render();
 
 		assertEquals(List.of("type", "title", "description", "resource", "tags", "generated"),
-				rendered.lines().filter(line -> line.contains(":")).map(line -> line.split(":")[0]).toList());
+				List.copyOf(fieldsOf(rendered).keySet()));
 	}
 }

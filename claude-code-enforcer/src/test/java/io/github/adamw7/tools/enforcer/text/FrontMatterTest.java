@@ -199,14 +199,6 @@ class FrontMatterTest {
 				FrontMatter.parse("---\ndescription: 'it''s'\n---\n").orElseThrow().value("description"));
 	}
 
-	/** The outer quotes of {@code "a" and "b"} are two pairs, not one wrapping the value. */
-	@Test
-	void keepsQuotesThatDoNotWrapTheWholeValue() {
-		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"a\" and \"b\"\n---\n").orElseThrow();
-
-		assertEquals(Optional.of("\"a\" and \"b\""), frontMatter.value("description"));
-	}
-
 	@Test
 	void readsAnEmptyQuotedValueAsBlank() {
 		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"\"\n---\n").orElseThrow();
@@ -297,12 +289,15 @@ class FrontMatterTest {
 		assertEquals(Optional.of("it's here"), frontMatter.orElseThrow().value("description"));
 	}
 
-	/** A scalar whose quote never closes is malformed, so nothing after it is read as a comment either. */
+	/**
+	 * A block no YAML loader can read is no front matter: Claude Code's loader fails
+	 * on it exactly as this one does, so there is nothing here to validate. The rules
+	 * report its absence, which says more than a guess at the malformed line could.
+	 */
 	@Test
-	void keepsEverythingAfterAnUnclosedQuotedScalar() {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"oops # a note\n---\n");
-
-		assertEquals(Optional.of("\"oops # a note"), frontMatter.orElseThrow().value("description"));
+	void readsNoFrontMatterFromABlockYamlCannotRead() {
+		assertTrue(FrontMatter.parse("---\ndescription: \"a\" and \"b\"\n---\n").isEmpty());
+		assertTrue(FrontMatter.parse("---\ndescription: \"oops # a note\n---\n").isEmpty());
 	}
 
 	@Test
@@ -391,17 +386,14 @@ class FrontMatterTest {
 	}
 
 	/**
-	 * A block no YAML loader can read is read as plain text, so the rules still see
-	 * the keys their author declared and can report on them, rather than being told
-	 * the block declares nothing at all.
+	 * A block that reads but is not a mapping is present and declares nothing, which
+	 * is not the same as one no loader can read at all.
 	 */
 	@Test
-	void namesTheKeysOfABlockThatYamlCannotRead() {
-		FrontMatter frontMatter = FrontMatter.parse("---\nname: demo\ndescription: \"a\" and \"b\"\n---\n")
-				.orElseThrow();
+	void readsABlockThatIsNotAMappingAsDeclaringNothing() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname:git-commit\n---\n").orElseThrow();
 
-		assertEquals(List.of("name", "description"), frontMatter.keys());
-		assertEquals(Optional.of("demo"), frontMatter.value("name"));
+		assertEquals(List.of(), frontMatter.keys());
 	}
 
 	/**
@@ -426,12 +418,4 @@ class FrontMatterTest {
 		assertTrue(frontMatter.value("f").orElseThrow().length() <= 8192, "the expansion must be capped");
 	}
 
-	/** Reading a malformed block as text still folds a value written below its key. */
-	@Test
-	void foldsAValueBelowItsKeyInABlockThatYamlCannotRead() {
-		FrontMatter frontMatter = FrontMatter
-				.parse("---\ndescription: \"oops\ngenerated:\n  by: agent/1\n---\n").orElseThrow();
-
-		assertEquals(Optional.of("by: agent/1"), frontMatter.value("generated"));
-	}
 }

@@ -25,6 +25,12 @@ import java.util.regex.Pattern;
  * left untouched, and one that is repaired keeps the line separator it was written
  * with, so repairing two delimiter lines does not rewrite every other line of a
  * CRLF file.
+ * <p>
+ * A repair that changes nothing is no repair, and is reported as none. Not every
+ * block {@link FrontMatter} declines to read is one this fixer can mend — a block
+ * whose delimiters are already canonical and whose <em>YAML</em> is malformed is
+ * beyond it — and returning that document unchanged would have the caller write the
+ * file it already had, and log a fix, on every build.
  */
 public final class FrontMatterFixer {
 
@@ -61,7 +67,8 @@ public final class FrontMatterFixer {
 		if (open < 0 || !isDelimiterLike(lines.get(open))) {
 			return Optional.empty();
 		}
-		return repairDelimiters(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content));
+		return repairDelimiters(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content))
+				.filter(repaired -> !repaired.equals(content));
 	}
 
 	/** The lines with any blank lines before the opening delimiter removed, so the block starts on line one. */

@@ -171,4 +171,15 @@ class FrontMatterFixerTest {
 
 		assertEquals(Optional.of("---\nname: reviewer\n---\nBody one.\n"), FrontMatterFixer.repair(content));
 	}
+
+	/**
+	 * Malformed YAML inside delimiters that are already canonical is beyond this
+	 * fixer. {@link FrontMatter} declines to read such a block, so the repair is
+	 * attempted and changes nothing — and reporting that as a repair would have the
+	 * caller rewrite the file it already had, and log a fix, on every build.
+	 */
+	@Test
+	void reportsNoRepairForABlockItCannotMend() {
+		assertTrue(FrontMatterFixer.repair("---\ndescription: \"a\" and \"b\"\n---\nBody.\n").isEmpty());
+	}
 }

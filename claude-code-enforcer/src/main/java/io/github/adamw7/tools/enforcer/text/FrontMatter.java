@@ -37,12 +37,15 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  * purpose: {@code by: agent/1} reads back as text rather than as a nested entry. A
  * rule that needs the structure itself should ask SnakeYAML for it directly.
  * <p>
- * A block YAML cannot read at all — an unterminated quoted scalar, or a value such
- * as {@code "a" and "b"} whose quotes do not wrap it — is read as plain text
- * instead: its {@code key:} lines name the keys, and each key's value is the text
- * that follows it, verbatim. Guessing at what the malformed line meant is what a
- * loader will not do either, so the rules see the characters the author actually
- * wrote and can report on them, rather than a value invented here.
+ * A block no loader can read — an unterminated quoted scalar, or a value such as
+ * {@code "a" and "b"} whose quotes do not wrap it — is no front matter at all, and
+ * {@link #parse} answers empty for it. Reading it as text instead and handing the
+ * rules each key's characters verbatim validated something Claude Code never sees:
+ * its loader fails on that block exactly as this one does. The rules already say so
+ * far better than a guess could — "has no parseable YAML frontmatter block" — so
+ * there is nothing here to invent. A block that reads but declares no entries, such
+ * as the {@code name:value} that lacks the space a YAML entry needs, is present and
+ * simply declares nothing.
  * <p>
  * A key declared twice yields its <em>last</em> declaration, which is the one a
  * YAML loader keeps and so the one Claude Code acts on. Reading the first instead
@@ -60,14 +63,10 @@ public final class FrontMatter {
 	/** How much of one entry is rendered before the walk gives up. See {@link #folded}. */
 	private static final int MAX_VALUE_LENGTH = 8192;
 
-	private final List<String> lines;
+	private final List<NodeTuple> entries;
 
-	/** The block's entries as YAML read them, or null when YAML cannot read the block. */
-	private final MappingNode mapping;
-
-	private FrontMatter(List<String> lines, MappingNode mapping) {
-		this.lines = lines;
-		this.mapping = mapping;
+	private FrontMatter(List<NodeTuple> entries) {
+		this.entries = entries;
 	}
 
 	/**
@@ -87,8 +86,7 @@ public final class FrontMatter {
 		if (end < 0) {
 			return Optional.empty();
 		}
-		List<String> block = allLines.subList(1, end);
-		return Optional.of(new FrontMatter(block, compose(block)));
+		return entriesOf(allLines.subList(1, end)).map(FrontMatter::new);
 	}
 
 	/** True when a {@code key:} entry is present, regardless of its value. */
@@ -105,12 +103,15 @@ public final class FrontMatter {
 	 * declaration, the one a YAML loader keeps.
 	 */
 	public Optional<String> value(String key) {
-		return mapping == null ? textValue(key) : composedValue(key);
+		return entries.stream()
+				.filter(entry -> folded(entry.getKeyNode()).equals(key))
+				.reduce((first, last) -> last)
+				.map(entry -> folded(entry.getValueNode()));
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
 	public List<String> keys() {
-		return mapping == null ? textKeys() : composedKeys();
+		return entries.stream().map(entry -> folded(entry.getKeyNode())).toList();
 	}
 
 	/**
@@ -125,31 +126,18 @@ public final class FrontMatter {
 	}
 
 	/**
-	 * The block as YAML reads it, or null when it does not read as a mapping —
-	 * either because it is malformed, or because it is not a mapping at all, which
-	 * is how a loader reads a {@code name:value} that lacks the space a YAML entry
-	 * needs. Both fall back to reading the lines as text.
+	 * The block's entries as YAML reads them, or empty when no loader can read the
+	 * block. A document that reads but is not a mapping declares no entries rather
+	 * than being unreadable: that is how a loader sees a {@code name:value} written
+	 * without the space a YAML entry needs.
 	 */
-	private static MappingNode compose(List<String> lines) {
+	private static Optional<List<NodeTuple>> entriesOf(List<String> lines) {
 		try {
 			Node composed = new Yaml().compose(new StringReader(String.join("\n", lines)));
-			return composed instanceof MappingNode entries ? entries : null;
+			return Optional.of(composed instanceof MappingNode mapping ? mapping.getValue() : List.of());
 		} catch (YAMLException e) {
-			return null;
+			return Optional.empty();
 		}
-	}
-
-	/** The keys of the composed mapping, duplicates and all, in document order. */
-	private List<String> composedKeys() {
-		return mapping.getValue().stream().map(entry -> folded(entry.getKeyNode())).toList();
-	}
-
-	/** The last declaration of {@code key}, since that is the one a YAML loader keeps. */
-	private Optional<String> composedValue(String key) {
-		return mapping.getValue().stream()
-				.filter(entry -> folded(entry.getKeyNode()).equals(key))
-				.reduce((first, last) -> last)
-				.map(entry -> folded(entry.getValueNode()));
 	}
 
 	/**
@@ -221,84 +209,6 @@ public final class FrontMatter {
 	 */
 	private static String onOneLine(String value) {
 		return value.lines().map(String::strip).filter(line -> !line.isEmpty()).collect(Collectors.joining(" "));
-	}
-
-	/**
-	 * The keys a malformed block declares, read from its lines. A key is only
-	 * recognised where YAML puts one: at the start of a line, with no indentation,
-	 * followed by a colon and whitespace or nothing at all. An indented line
-	 * continues the value above it, so reading a key out of one would invent entries
-	 * an author never declared.
-	 */
-	private List<String> textKeys() {
-		return lines.stream().map(FrontMatter::entryKey).flatMap(Optional::stream).toList();
-	}
-
-	/** The text following {@code key} in a malformed block, verbatim, folded onto one line. */
-	private Optional<String> textValue(String key) {
-		int index = indexOfEntry(key);
-		if (index < 0) {
-			return Optional.empty();
-		}
-		String declared = valueOf(lines.get(index), key);
-		return Optional.of(declared.isEmpty() ? foldedBelow(index + 1) : declared);
-	}
-
-	/**
-	 * The entry's continuation lines from {@code from}, folded onto one line. They
-	 * run until the next entry at the block's own level, so blank lines inside them
-	 * are kept as separators and dropped from the result.
-	 */
-	private String foldedBelow(int from) {
-		return onOneLine(String.join("\n",
-				lines.subList(from, lines.size()).stream().takeWhile(FrontMatter::isContinuation).toList()));
-	}
-
-	private static boolean isContinuation(String line) {
-		return line.isBlank() || isIndented(line);
-	}
-
-	private static Optional<String> entryKey(String line) {
-		String stripped = line.strip();
-		if (isIndented(line) || stripped.startsWith("#") || stripped.startsWith("-")) {
-			return Optional.empty();
-		}
-		int separator = stripped.indexOf(KEY_VALUE_SEPARATOR);
-		if (separator <= 0) {
-			return Optional.empty();
-		}
-		String key = stripped.substring(0, separator);
-		return isEntryFor(line, key) ? Optional.of(key) : Optional.empty();
-	}
-
-	private static boolean isEntryFor(String line, String key) {
-		if (isIndented(line)) {
-			return false;
-		}
-		String stripped = line.strip();
-		return stripped.equals(key + KEY_VALUE_SEPARATOR)
-				|| stripped.startsWith(key + KEY_VALUE_SEPARATOR + " ")
-				|| stripped.startsWith(key + KEY_VALUE_SEPARATOR + "\t");
-	}
-
-	/** True when the line is a continuation of the entry above rather than one of its own. */
-	private static boolean isIndented(String line) {
-		return !line.isEmpty() && Character.isWhitespace(line.charAt(0));
-	}
-
-	/** The last line declaring {@code key}, since that is the declaration YAML keeps. */
-	private int indexOfEntry(String key) {
-		for (int i = lines.size() - 1; i >= 0; i--) {
-			if (isEntryFor(lines.get(i), key)) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	private static String valueOf(String line, String key) {
-		String stripped = line.strip();
-		return stripped.substring((key + KEY_VALUE_SEPARATOR).length()).strip();
 	}
 
 	private static int indexOfDelimiter(List<String> lines, int from) {

@@ -2,27 +2,32 @@ package io.github.adamw7.context.okf;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * The YAML frontmatter block that opens every OKF concept document. The Open
  * Knowledge Format makes exactly one field mandatory — {@code type} — and
  * recommends {@code title}, {@code description}, {@code resource} and
  * {@code tags}; v0.2 records how a concept was produced as
- * {@code generated: { by, at }}. This builder renders that subset in a fixed
- * order and skips the fields a caller left unset, so callers describe a concept
- * in domain terms rather than assembling YAML by hand.
+ * {@code generated: { by, at }}, its actor following the specification's
+ * {@code <producer>/<version>} convention. This builder collects that subset,
+ * drops the fields a caller left unset, and hands the rest to SnakeYAML in the
+ * specification's order.
  * <p>
- * Every scalar is emitted double-quoted, which keeps a colon in a description or
- * a {@code #} in a path from changing the meaning of the block, and the actor of
- * {@code generated.by} follows the specification's {@code <producer>/<version>}
- * convention.
+ * Quoting is the emitter's decision, not this class's. Writing every scalar
+ * double-quoted and escaping the two characters that seemed to matter suited the
+ * values a concept usually carries and nothing else: a title holding a newline or
+ * a control character — both of which a file name on disk may — went straight into
+ * the middle of a quoted scalar, and the block no longer parsed as YAML at all.
  */
 public class OkfFrontmatter {
 
 	private static final String DELIMITER = "---";
-	private static final String SEPARATOR = ": ";
 
 	private final String type;
 	private String title;
@@ -71,44 +76,45 @@ public class OkfFrontmatter {
 	}
 
 	public String render() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(DELIMITER).append(System.lineSeparator());
-		appendScalar(builder, "type", type);
-		appendScalar(builder, "title", title);
-		appendScalar(builder, "description", description);
-		appendScalar(builder, "resource", resource);
-		appendTags(builder);
-		appendGenerated(builder);
-		builder.append(DELIMITER).append(System.lineSeparator());
-		return builder.toString();
+		return DELIMITER + System.lineSeparator() + emitter().dump(fields())
+				+ DELIMITER + System.lineSeparator();
 	}
 
-	private void appendScalar(StringBuilder builder, String key, String value) {
-		if (value == null || value.isBlank()) {
-			return;
+	/** Built here, not as the setters run, so the block keeps the specification's order. */
+	private Map<String, Object> fields() {
+		Map<String, Object> fields = new LinkedHashMap<>();
+		fields.put("type", type);
+		put(fields, "title", title);
+		put(fields, "description", description);
+		put(fields, "resource", resource);
+		if (!tags.isEmpty()) {
+			fields.put("tags", tags);
 		}
-		builder.append(key).append(SEPARATOR).append(quote(value)).append(System.lineSeparator());
-	}
-
-	private void appendTags(StringBuilder builder) {
-		if (tags.isEmpty()) {
-			return;
+		if (generatedBy != null && generatedAt != null) {
+			fields.put("generated", generated());
 		}
-		String rendered = tags.stream().map(OkfFrontmatter::quote).collect(Collectors.joining(", ", "[", "]"));
-		builder.append("tags").append(SEPARATOR).append(rendered).append(System.lineSeparator());
+		return fields;
 	}
 
-	private void appendGenerated(StringBuilder builder) {
-		if (generatedBy == null || generatedAt == null) {
-			return;
+	private Map<String, String> generated() {
+		Map<String, String> generated = new LinkedHashMap<>();
+		generated.put("by", generatedBy);
+		generated.put("at", generatedAt.truncatedTo(ChronoUnit.SECONDS).toString());
+		return generated;
+	}
+
+	private static void put(Map<String, Object> fields, String key, String value) {
+		if (value != null && !value.isBlank()) {
+			fields.put(key, value);
 		}
-		builder.append("generated").append(SEPARATOR)
-				.append("{ by: ").append(quote(generatedBy))
-				.append(", at: ").append(quote(generatedAt.truncatedTo(ChronoUnit.SECONDS).toString()))
-				.append(" }").append(System.lineSeparator());
 	}
 
-	private static String quote(String value) {
-		return '"' + value.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+	/** Block style, and no width: SnakeYAML otherwise wraps a long description at 80 columns. */
+	private static Yaml emitter() {
+		DumperOptions options = new DumperOptions();
+		options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+		options.setLineBreak(DumperOptions.LineBreak.getPlatformLineBreak());
+		options.setWidth(Integer.MAX_VALUE);
+		return new Yaml(options);
 	}
 }

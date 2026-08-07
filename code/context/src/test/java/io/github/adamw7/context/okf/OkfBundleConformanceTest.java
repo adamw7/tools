@@ -42,7 +42,7 @@ public class OkfBundleConformanceTest {
 	private static final String LOG = "log.md";
 	private static final Pattern TYPE = Pattern.compile("^type:\\s*(.+)$", Pattern.MULTILINE);
 	private static final Pattern OKF_VERSION = Pattern.compile("^okf_version:\\s*\"(.+)\"$", Pattern.MULTILINE);
-	private static final Pattern GENERATED_AT = Pattern.compile("at:\\s*\"([^\"]+)\"");
+	private static final Pattern GENERATED_AT = Pattern.compile("at:\\s*'?([^'\\s]+)'?");
 	private static final Pattern BUNDLE_LINK = Pattern.compile("]\\((/[^)]+)\\)");
 
 	@TempDir

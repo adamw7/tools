@@ -55,7 +55,7 @@ public class OkfBundlerTest {
 				.filter(document -> !document.path().endsWith(OkfBundle.INDEX))
 				.forEach(document -> {
 					assertTrue(document.content().startsWith("---"), document.path() + " must open with frontmatter");
-					assertTrue(document.content().contains("type: \""), document.path() + " must declare a type");
+					assertTrue(document.content().contains("type: "), document.path() + " must declare a type");
 				});
 	}
 
@@ -141,7 +141,7 @@ public class OkfBundlerTest {
 
 		String description = "Java source file with 1 project dependency.";
 		assertTrue(document(bundle, "index.md").contains("* [B.java](B.java.md) - " + description));
-		assertTrue(document(bundle, "B.java.md").contains("description: \"" + description + "\""));
+		assertTrue(document(bundle, "B.java.md").contains("description: " + description));
 	}
 
 	@Test
@@ -173,8 +173,8 @@ public class OkfBundlerTest {
 
 		OkfBundle bundle = bundler.bundle(root);
 
-		assertTrue(document(bundle, "pom.xml.md").contains("type: \"Project File\""));
-		assertTrue(document(bundle, "pom.xml.md").contains("tags: [\"file\"]"));
+		assertTrue(document(bundle, "pom.xml.md").contains("type: Project File"));
+		assertTrue(document(bundle, "pom.xml.md").contains("tags:" + System.lineSeparator() + "- file"));
 	}
 
 	@Test
@@ -185,8 +185,8 @@ public class OkfBundlerTest {
 
 		OkfBundle bundle = kotlinBundler.bundle(root);
 
-		assertTrue(document(bundle, "A.kt.md").contains("type: \"Kotlin Source File\""));
-		assertTrue(document(bundle, "A.kt.md").contains("tags: [\"source\", \"kotlin\"]"));
+		assertTrue(document(bundle, "A.kt.md").contains("type: Kotlin Source File"));
+		assertTrue(document(bundle, "A.kt.md").contains("- source" + System.lineSeparator() + "- kotlin"));
 	}
 
 	@Test
@@ -198,7 +198,7 @@ public class OkfBundlerTest {
 
 		OkfBundle bundle = bundler.bundle(root);
 
-		assertTrue(document(bundle, "pkg/A.java.md").contains("resource: \"pkg/A.java\""));
+		assertTrue(document(bundle, "pkg/A.java.md").contains("resource: pkg/A.java"));
 	}
 
 	@Test
@@ -217,7 +217,7 @@ public class OkfBundlerTest {
 		OkfBundle bundle = bundler.bundle(root);
 
 		assertTrue(document(bundle, "A.java.md")
-				.contains("generated: { by: \"" + PRODUCER + "\", at: \"2026-08-03T10:15:30Z\" }"));
+				.contains("generated:" + System.lineSeparator() + "  by: " + PRODUCER + System.lineSeparator() + "  at: '2026-08-03T10:15:30Z'"));
 	}
 
 	@Test
@@ -228,7 +228,7 @@ public class OkfBundlerTest {
 		OkfBundle bundle = bundler.bundle(root);
 
 		assertTrue(document(bundle, "index.md").contains("# Files"));
-		assertTrue(document(bundle, "index.md.md").contains("type: \"Project File\""));
+		assertTrue(document(bundle, "index.md.md").contains("type: Project File"));
 	}
 
 	private String document(OkfBundle bundle, String path) {

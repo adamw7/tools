@@ -11,15 +11,11 @@ own. Those readers carry the largest share of this repository's shipped defects:
 `FrontMatter` and `CommandTokens` have each been fixed in six or seven separate
 commits, `MarkdownDocument` and `ClaudeMdConformer` in four or five.
 
-`FrontMatter` is the one that has since been handed to a library — it composes
-the block with SnakeYAML rather than scanning quotes and comments itself. Read
-its section below for what that changed and what it did not; the rest are still
-hand-rolled, and the list here is the accumulated reason each one is the way it
-is.
-
 Every one of those fixes was the same thing — real input the reader had not been
 written for. This skill is the accumulated list, so the next change starts from
-it instead of rediscovering it.
+it instead of rediscovering it. `FrontMatter` is the one that has since been
+handed to a library: it composes the block with SnakeYAML rather than scanning
+quotes and comments itself, and its section below says what that changed.
 
 ## When to Use
 - Changing any reader in `claude-code-enforcer/.../text`, `.../doc/ImportGraph`,
@@ -72,8 +68,7 @@ re-derived by hand; those rules now come from the loader.
 | The block is **composed**, never loaded | `Yaml.compose` answers a node tree, so a value stays the text its author wrote — `okf_version: 0.20` is the string `0.20`, not a double rounded to `0.2` — and a duplicated key stays visible instead of collapsing into a `Map`. |
 | Every value is **folded onto one line** | A block scalar, a wrapped plain scalar, a nested mapping or a sequence all read back as text. Folding a mapping is lossy on purpose: `by: agent/1` comes back as text. A rule needing the structure should ask SnakeYAML directly. |
 | A key declared twice yields its **last** declaration | That is the one a YAML loader keeps, so the one Claude Code acts on. `duplicateKeys()` reports the duplication separately. |
-| A block YAML **cannot read** falls back to plain text | `description: "a" and "b"` and an unterminated `"oops` have no YAML meaning. Its `key:` lines still name the keys and each value is the text following it, verbatim — the rules report the characters the author wrote rather than a value invented here. |
-| The text fallback recognises a key only at column 0, with `key:` or `key: value` (space or tab) | An indented line continues the value above. `Use this when:` inside a wrapped description is not a key. |
+| A block no loader can read is **not front matter** | `description: "a" and "b"` and an unterminated `"oops` have no YAML meaning, and Claude Code's loader fails on them too. `parse` answers empty and the rules report the block's absence, which says more than a guess at the malformed line. A block that *reads* but is not a mapping — `name:value`, no space — is present and declares nothing. |
 | Front matter opens on the **very first line** | Content reaching `---` after blank lines has no front matter, because Claude Code sees none either. |
 
 The cases that used to need their own hand-written rule — `name: "git-commit"`

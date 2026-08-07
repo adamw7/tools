@@ -1026,12 +1026,14 @@ That is not cosmetic — composing keeps `okf_version: 0.20` the string `0.20`
 instead of rounding it to a double, and it keeps a key declared twice visible,
 which every loader that builds a `Map` collapses and which `duplicateKeys()`
 exists to report. Each value is folded onto one line, so a block scalar, a wrapped
-plain scalar and a nested mapping all read back as text. A block YAML cannot read
-at all — an unterminated quoted scalar, or a `description: "a" and "b"` whose
-quotes do not wrap it — falls back to being read as plain text, so the rules
-report the characters the author actually wrote rather than a value invented for
-them. This replaced a reader that scanned quotes, trailing comments and block
-scalars by hand, and had been fixed for real input six or seven times.
+plain scalar and a nested mapping all read back as text. A block no loader can
+read — an unterminated quoted scalar, or a `description: "a" and "b"` whose quotes
+do not wrap it — is no front matter at all, and `parse` answers empty, which is
+what the rules already report best: *"has no parseable YAML frontmatter block"*.
+Claude Code's own loader fails on that block too, so a hand-read guess at it would
+validate something the tool never sees. This replaced a reader that scanned quotes,
+trailing comments and block scalars by hand, and had been fixed for real input six
+or seven times.
 
 A `List<String>` parameter carries a trap worth knowing before naming a helper
 class. Plexus infers a configured list's element type from the **child element

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,9 +50,7 @@ class BuildToolchainStepTest {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		AdoptionContexts.write(context, "build.gradle", "plugins { id 'java' }\n");
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(127, "gradle: not found");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new BuildToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("gradle"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new BuildToolchainStep().execute(context, runner), "gradle");
 	}
 
 	@Test
@@ -90,11 +89,8 @@ class BuildToolchainStepTest {
 			throw new AdoptionException("Could not start command: " + String.join(" ", command));
 		});
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> new BuildToolchainStep().execute(context, runner));
-
-		assertTrue(failure.getMessage().contains("build-toolchain failed"), failure.getMessage());
-		assertTrue(failure.getMessage().contains("sh"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> new BuildToolchainStep().execute(context, runner),
+				"build-toolchain failed", "sh");
 	}
 
 	/**
@@ -129,10 +125,8 @@ class BuildToolchainStepTest {
 		AdoptionContexts.write(context, "pom.xml", "<project/>");
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(127, "mvn: not found");
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> new BuildToolchainStep().execute(context, runner));
-
-		assertTrue(failure.getMessage().contains("Install maven on the PATH"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> new BuildToolchainStep().execute(context, runner),
+				"Install maven on the PATH");
 	}
 
 	@Test
@@ -211,12 +205,10 @@ class BuildToolchainStepTest {
 		AdoptionContexts.write(context, "gradlew", "#!/bin/sh\n");
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(126, "Permission denied");
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
+		assertFailure(AdoptionException.class,
 				() -> new BuildToolchainStep(
 						List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
-								.execute(context, runner));
-
-		assertTrue(failure.getMessage().contains("gradlew"), failure.getMessage());
-		assertTrue(failure.getMessage().contains("could not be run"), failure.getMessage());
+								.execute(context, runner),
+				"gradlew", "could not be run");
 	}
 }

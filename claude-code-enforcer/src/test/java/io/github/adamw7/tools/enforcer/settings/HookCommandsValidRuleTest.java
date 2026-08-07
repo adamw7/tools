@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -78,14 +79,12 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("\\\"$CLAUDE_PROJECT_DIR/gone.sh\\\""));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing script");
 	}
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new HookCommandsValidRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new HookCommandsValidRule()::execute, "not configured");
 	}
 
 	@Test
@@ -93,14 +92,12 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = new HookCommandsValidRule();
 		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenJsonIsMalformed() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("{ \"hooks\": ")::execute);
-		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"hooks\": ")::execute, "not valid JSON");
 	}
 
 	@Test
@@ -108,16 +105,12 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("$CLAUDE_PROJECT_DIR/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing script", "gone.sh");
 	}
 
 	@Test
 	void failsWhenCommandIsEmpty() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor(hooksReferencing(""))::execute);
-		assertTrue(exception.getMessage().contains("empty 'command'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(hooksReferencing(""))::execute, "empty 'command'");
 	}
 
 	@Test
@@ -126,8 +119,7 @@ class HookCommandsValidRuleTest {
 				{ "hooks": { "SessionStart": [ { "hooks": [ { "command": "echo hi" } ] } ] } }
 				""";
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(content)::execute);
-		assertTrue(exception.getMessage().contains("missing 'type'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(content)::execute, "missing 'type'");
 	}
 
 	@Test
@@ -136,8 +128,7 @@ class HookCommandsValidRuleTest {
 				{ "hooks": { "SessionStart": [ { "matcher": "*" } ] } }
 				""";
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(content)::execute);
-		assertTrue(exception.getMessage().contains("missing a 'hooks' array"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(content)::execute, "missing a 'hooks' array");
 	}
 
 	@Test
@@ -147,8 +138,7 @@ class HookCommandsValidRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 		rule.setAllowedEvents(List.of("PreToolUse", "PostToolUse"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("is not an allowed event"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "is not an allowed event");
 	}
 
 	@Test
@@ -184,9 +174,8 @@ class HookCommandsValidRuleTest {
 
 	@Test
 	void failsWhenHooksIsAString() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"hooks\": \"SessionStart\" }")::execute);
-		assertTrue(exception.getMessage().contains("'hooks' must be a JSON object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"hooks\": \"SessionStart\" }")::execute,
+				"'hooks' must be a JSON object");
 	}
 
 	@Test
@@ -197,8 +186,7 @@ class HookCommandsValidRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 
 		// Every reference in the command is checked, not just the first one.
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("second.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "second.sh");
 	}
 
 	@Test
@@ -214,23 +202,23 @@ class HookCommandsValidRuleTest {
 
 	@Test
 	void failsWhenAnEventDoesNotMapToAnArray() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"hooks\": { \"SessionStart\": { \"type\": \"command\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("must be a JSON array"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": { \"type\": \"command\" } } }")::execute,
+				"must be a JSON array");
 	}
 
 	@Test
 	void failsWhenAGroupIsNotAnObject() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"hooks\": { \"SessionStart\": [ \"not-a-group\" ] } }")::execute);
-		assertTrue(exception.getMessage().contains("entry that is not a JSON object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ \"not-a-group\" ] } }")::execute,
+				"entry that is not a JSON object");
 	}
 
 	@Test
 	void failsWhenAHookEntryIsNotAnObject() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"hooks\": { \"SessionStart\": [ { \"hooks\": [ \"echo hi\" ] } ] } }")::execute);
-		assertTrue(exception.getMessage().contains("hook that is not a JSON object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"hooks\": { \"SessionStart\": [ { \"hooks\": [ \"echo hi\" ] } ] } }")::execute,
+				"hook that is not a JSON object");
 	}
 
 	@Test
@@ -280,8 +268,8 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash ${CLAUDE_PROJECT_DIR}/absent.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, rule::execute,
+				"references a missing script");
 		assertTrue(exception.getMessage().endsWith("absent.sh"), exception.getMessage());
 	}
 
@@ -296,8 +284,7 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing(".claude/hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing script"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing script");
 	}
 
 	@Test
@@ -381,8 +368,7 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("hooks/present.sh\\nhooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
 		assertFalse(exception.getMessage().contains("present.sh"), exception.getMessage());
 	}
 
@@ -391,8 +377,7 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("LOG_LEVEL=debug hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
 	}
 
 	/** The parentheses belong to the shell, not to the path, so no file is named by them. */
@@ -437,8 +422,7 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash $CLAUDE_PROJECT_DIR/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
 	}
 
 	@Test
@@ -446,8 +430,7 @@ class HookCommandsValidRuleTest {
 		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
 	}
 
 	private HookCommandsValidRule ruleFor(String content) {

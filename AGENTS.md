@@ -236,7 +236,7 @@ not yet in force, and names what must land first).
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer        # custom maven-enforcer rules validating CLAUDE.md,
 │                               #   AGENTS.md, README.md and the .claude config
-├── test-common                 # shared ArchUnit rule libraries, published as a test-jar
+├── test-common                 # shared ArchUnit rule libraries and assertions, published as a test-jar
 ├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
@@ -549,6 +549,15 @@ longer and carry no timeout.
   that poms configure by name. Adding a repository-wide convention means editing
   one library, not six tests; an exemption means a module not importing a
   library, which stays visible in that module's test.
+- **Shared assertions.** `test-common` also carries `ExpectedFailures`, whose
+  `assertFailure(type, call, fragments...)` is the assertion nearly every rule and
+  adoption-step test makes: the call must fail with that exception, and its
+  message must carry each fragment. Written out that is an `assertThrows` naming
+  the type twice, a local to hold the failure, and one
+  `assertTrue(...contains(...), ...getMessage())` per fragment — three lines to
+  say what one now says, with the thrown message as the assertion description by
+  construction rather than by every call remembering to pass it. A test with more
+  to say about the failure keeps the local, since the helper returns it.
 - **Integration tests** are gated behind the `integration-tests` profile
   (defined in `data`, `code/context`, `adopt`, and `claude-code-enforcer`) and are
   the tests that need

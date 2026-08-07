@@ -1,9 +1,8 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -32,8 +31,7 @@ class SettingsJsonValidRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new SettingsJsonValidRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new SettingsJsonValidRule()::execute, "not configured");
 	}
 
 	@Test
@@ -41,21 +39,17 @@ class SettingsJsonValidRuleTest {
 		SettingsJsonValidRule rule = new SettingsJsonValidRule();
 		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenFileIsEmpty() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("   ")::execute);
-		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("   ")::execute, "empty");
 	}
 
 	@Test
 	void failsWhenJsonIsMalformed() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"permissions\": ")::execute);
-		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"permissions\": ")::execute, "not valid JSON");
 	}
 
 	@Test
@@ -63,8 +57,7 @@ class SettingsJsonValidRuleTest {
 		SettingsJsonValidRule rule = ruleFor(VALID_SETTINGS);
 		rule.setRequiredPermissions(List.of("Bash(git *)"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required permission: Bash(git *)"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required permission: Bash(git *)");
 	}
 
 	@Test
@@ -72,8 +65,7 @@ class SettingsJsonValidRuleTest {
 		SettingsJsonValidRule rule = ruleFor(VALID_SETTINGS);
 		rule.setForbiddenPermissions(List.of("Edit"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("forbidden permission: Edit"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "forbidden permission: Edit");
 	}
 
 	@Test

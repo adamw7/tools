@@ -2,11 +2,10 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -31,19 +30,16 @@ class DefinitionFilesTest {
 	void verifyDirectoryFailsWithLabelWhenDirectoryIsMissing() {
 		File absent = tempDir.resolve("absent").toFile();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				() -> DefinitionFiles.verifyDirectory(absent, "Agents"));
-		assertTrue(exception.getMessage().contains("Agents directory does not exist at"), exception.getMessage());
-		assertTrue(exception.getMessage().contains(absent.toString()), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, () -> DefinitionFiles.verifyDirectory(absent, "Agents"),
+				"Agents directory does not exist at", absent.toString());
 	}
 
 	@Test
 	void verifyDirectoryFailsWhenPathIsAFileRatherThanADirectory() {
 		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				() -> DefinitionFiles.verifyDirectory(file, "Skills"));
-		assertTrue(exception.getMessage().contains("Skills directory does not exist at"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, () -> DefinitionFiles.verifyDirectory(file, "Skills"),
+				"Skills directory does not exist at");
 	}
 
 	@Test

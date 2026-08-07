@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,10 +53,9 @@ class CheckoutsTest {
 	@Test
 	void rejectsTwoOwnersRepositoriesOfTheSameName() {
 		checkouts.claim("https://github.com/owner/tools.git");
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> checkouts.claim("https://github.com/other-owner/tools.git"));
-		assertTrue(exception.getMessage().contains("other-owner/tools"), exception.getMessage());
-		assertTrue(exception.getMessage().contains(WORKSPACE.resolve("tools").toString()), exception.getMessage());
+		assertFailure(IllegalArgumentException.class,
+				() -> checkouts.claim("https://github.com/other-owner/tools.git"), "other-owner/tools",
+				WORKSPACE.resolve("tools").toString());
 	}
 
 	/**
@@ -79,20 +79,17 @@ class CheckoutsTest {
 	@Test
 	void namesBothCollidingRepositories() {
 		checkouts.claim(REPO_URL);
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> checkouts.claim("https://github.com/other-owner/repo.git"));
-		assertTrue(exception.getMessage().contains(REPO_URL), exception.getMessage());
-		assertTrue(exception.getMessage().contains("other-owner/repo.git"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class, () -> checkouts.claim("https://github.com/other-owner/repo.git"),
+				REPO_URL, "other-owner/repo.git");
 	}
 
 	/** A collision names the repository it refused, never the credentials its URL carried. */
 	@Test
 	void masksTheCredentialsOfACollidingUrl() {
 		checkouts.claim(REPO_URL);
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> checkouts.claim("https://x-access-token:secret@github.com/other-owner/repo.git"));
-		assertTrue(exception.getMessage().contains("https://***@github.com/other-owner/repo.git"),
-				exception.getMessage());
+		IllegalArgumentException exception = assertFailure(IllegalArgumentException.class,
+				() -> checkouts.claim("https://x-access-token:secret@github.com/other-owner/repo.git"),
+				"https://***@github.com/other-owner/repo.git");
 		assertTrue(!exception.getMessage().contains("secret"), exception.getMessage());
 	}
 

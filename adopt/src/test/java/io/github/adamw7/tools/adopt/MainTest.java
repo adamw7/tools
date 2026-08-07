@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,9 +29,7 @@ class MainTest {
 
 	@Test
 	void rejectsMissingArguments() {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> Main.main(new String[0]));
-		assertTrue(exception.getMessage().contains("Usage"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class, () -> Main.main(new String[0]), "Usage");
 	}
 
 	@Test
@@ -134,9 +133,9 @@ class MainTest {
 	@Test
 	void writesTheReportWhenTheAdoptionFails(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("report.json");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli(dir, file), checkouts(dir), failingAdopter()));
-		assertTrue(thrown.getMessage().contains(REPO_URL + ": explode: boom"), thrown.getMessage());
+		assertFailure(AdoptionException.class,
+				() -> Main.runAndReport(cli(dir, file), checkouts(dir), failingAdopter()),
+				REPO_URL + ": explode: boom");
 		JsonNode node = new ObjectMapper().readTree(Files.readString(file));
 		assertFalse(node.get("succeeded").asBoolean());
 		assertEquals("explode: boom", node.get("failure").asText());
@@ -186,9 +185,10 @@ class MainTest {
 	@Test
 	void anUnwritableReportDoesNotReplaceTheAdoptionFailure(@TempDir Path dir) throws IOException {
 		Path blockingFile = Files.createFile(dir.resolve("not-a-directory"));
-		AdoptionException thrown = assertThrows(AdoptionException.class, () -> Main
-				.runAndReport(cli(dir, blockingFile.resolve("report.json")), checkouts(dir), failingAdopter()));
-		assertTrue(thrown.getMessage().contains("explode: boom"), thrown.getMessage());
+		AdoptionException thrown = assertFailure(AdoptionException.class,
+				() -> Main.runAndReport(cli(dir, blockingFile.resolve("report.json")), checkouts(dir),
+						failingAdopter()),
+				"explode: boom");
 		assertEquals(1, thrown.getSuppressed().length);
 	}
 

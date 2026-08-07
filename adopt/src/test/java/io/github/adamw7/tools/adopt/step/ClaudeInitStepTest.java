@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -62,9 +63,8 @@ class ClaudeInitStepTest {
 			blockRestore(context);
 			return new CommandResult(command, 3, "claude: the underlying failure");
 		});
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ClaudeInitStep(List.of("claude")).execute(context, runner));
-		assertTrue(thrown.getMessage().contains("the underlying failure"), thrown.getMessage());
+		AdoptionException thrown = assertFailure(AdoptionException.class,
+				() -> new ClaudeInitStep(List.of("claude")).execute(context, runner), "the underlying failure");
 		assertEquals(1, thrown.getSuppressed().length, "the failed restore must be attached, not thrown");
 	}
 
@@ -159,9 +159,8 @@ class ClaudeInitStepTest {
 	void missingClaudeMdIsReportedWithWhatTheCliSaid(@TempDir Path workspace) throws IOException {
 		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
 		RecordingCommandRunner runner = RecordingCommandRunner.answering("I did not create a CLAUDE.md");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ClaudeInitStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("I did not create a CLAUDE.md"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner),
+				"I did not create a CLAUDE.md");
 	}
 
 	/** The transcript is redacted like every other one, since it is the run's reported failure. */

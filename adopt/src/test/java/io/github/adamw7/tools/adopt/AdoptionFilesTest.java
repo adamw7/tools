@@ -1,8 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,9 +21,7 @@ class AdoptionFilesTest {
 	@Test
 	void namesTheFileAndItsDescriptionWhenAReadFails(@TempDir Path directory) {
 		Path missing = directory.resolve("absent.txt");
-		AdoptionException thrown = assertThrows(AdoptionException.class, () -> AdoptionFiles.read(missing, "POM"));
-		assertTrue(thrown.getMessage().contains("POM"), thrown.getMessage());
-		assertTrue(thrown.getMessage().contains(missing.toString()), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> AdoptionFiles.read(missing, "POM"), "POM", missing.toString());
 	}
 
 	@Test
@@ -50,9 +47,7 @@ class AdoptionFilesTest {
 	void namesTheFileAndItsDescriptionWhenAWriteFails(@TempDir Path directory) throws IOException {
 		Path file = directory.resolve("occupied");
 		Files.createDirectory(file);
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> AdoptionFiles.write(file, "content", "workflow file"));
-		assertTrue(thrown.getMessage().contains("workflow file"), thrown.getMessage());
-		assertTrue(thrown.getMessage().contains(file.toString()), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> AdoptionFiles.write(file, "content", "workflow file"),
+				"workflow file", file.toString());
 	}
 }

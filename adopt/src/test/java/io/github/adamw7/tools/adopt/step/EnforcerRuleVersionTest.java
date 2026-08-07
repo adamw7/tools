@@ -1,10 +1,9 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,9 +33,8 @@ class EnforcerRuleVersionTest {
 	 */
 	@Test
 	void aSnapshotRuleVersionIsRefused() {
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> EnforcerRuleVersion.requireRelease("2.6.0-SNAPSHOT"));
-		assertTrue(thrown.getMessage().contains("2.6.0-SNAPSHOT"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> EnforcerRuleVersion.requireRelease("2.6.0-SNAPSHOT"),
+				"2.6.0-SNAPSHOT");
 	}
 
 	@Test

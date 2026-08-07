@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -60,8 +60,7 @@ class ClaudeMdFormatRuleTest {
 	void failsWhenFileIsNotConfigured() {
 		ClaudeMdFormatRule rule = new ClaudeMdFormatRule();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not configured");
 	}
 
 	@Test
@@ -69,65 +68,56 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = new ClaudeMdFormatRule();
 		rule.setClaudeMdFile(tempDir.resolve("absent.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenFileIsEmpty() {
 		ClaudeMdFormatRule rule = ruleFor("   \n  ");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "empty");
 	}
 
 	@Test
 	void failsWhenTitleHeadingIsWrong() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Something Else"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "title heading");
 	}
 
 	@Test
 	void failsWhenAgentsReferenceIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("AGENTS.md", "OTHER.md"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("AGENTS.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "AGENTS.md");
 	}
 
 	@Test
 	void failsWhenARequiredSectionIsMissing() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Quality"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("## Testing"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "## Testing");
 	}
 
 	@Test
 	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "```\n## Testing\n```"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Testing");
 	}
 
 	@Test
 	void failsWhenTitleIsOnlyAPartialMatch() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# CLAUDE.md-extended"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "title heading");
 	}
 
 	@Test
 	void failsWhenARequiredSectionIsEmpty() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("Ask before adding a new one.", ""));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("empty section: ## Dependencies"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "empty section: ## Dependencies");
 	}
 
 	@Test
@@ -170,17 +160,14 @@ class ClaudeMdFormatRuleTest {
 				""";
 		ClaudeMdFormatRule rule = ruleFor(content);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("empty section: ## Dependencies"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "empty section: ## Dependencies");
 	}
 
 	@Test
 	void reportsEveryProblemTogether() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md", "# Wrong").replace("## Maven", "## Build"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("## Maven"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "title heading", "## Maven");
 	}
 
 	@Test
@@ -188,8 +175,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nTODO: finish this.\n");
 		rule.setForbiddenTokens(java.util.List.of("TODO"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "forbidden token: TODO");
 	}
 
 	@Test
@@ -216,8 +202,7 @@ class ClaudeMdFormatRuleTest {
 				"See [AGENTS.md](AGENTS.md) for the full agent guide.",
 				"<!--\nSee [AGENTS.md](AGENTS.md) for the full agent guide.\n-->"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("must reference AGENTS.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "must reference AGENTS.md");
 	}
 
 	/** A link an author commented out is one the document no longer makes. */
@@ -242,9 +227,7 @@ class ClaudeMdFormatRuleTest {
 	void failsWhenSectionHeadingAppearsOnlyInsideTildeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "~~~\n## Testing\n~~~"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Testing");
 	}
 
 	@Test
@@ -255,9 +238,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing\nWrite unit tests for all new logic.\n",
 				"For example:\n\n    ## Testing\n\n    Write unit tests for all new logic.\n"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Testing");
 	}
 
 	@Test
@@ -285,9 +266,7 @@ class ClaudeMdFormatRuleTest {
 		// two backtick lines stays code and the required section is reported missing.
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "~~~\n```\n## Testing\n```\n~~~"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Testing");
 	}
 
 	@Test
@@ -317,8 +296,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n```\n```java\n```\n\nTODO left behind\n");
 		rule.setForbiddenTokens(java.util.List.of("TODO"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("forbidden token: TODO"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "forbidden token: TODO");
 	}
 
 	@Test
@@ -357,8 +335,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(reordered);
 		rule.setEnforceSectionOrder(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("out of order"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "out of order");
 	}
 
 	@Test
@@ -380,8 +357,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n" + "x".repeat(200) + "\n");
 		rule.setMaxLineLength(120);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("exceeds 120 characters"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "exceeds 120 characters");
 	}
 
 	@Test
@@ -389,8 +365,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
 		rule.setValidateFileReferences(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing file: AGENTS.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing file: AGENTS.md");
 	}
 
 	@Test
@@ -429,8 +404,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n[a](AGENTS.md) and [b](absent.md).\n");
 		rule.setValidateFileReferences(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing file: absent.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing file: absent.md");
 	}
 
 	@Test
@@ -464,8 +438,7 @@ class ClaudeMdFormatRuleTest {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nSee [guide](docs/no%20such.md).\n");
 		rule.setValidateFileReferences(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing file: docs/no%20such.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing file: docs/no%20such.md");
 	}
 
 	@Test
@@ -526,8 +499,6 @@ class ClaudeMdFormatRuleTest {
 				"## Testing\nWrite unit tests for all new logic.\n",
 				"<!--\n## Testing\nWrite unit tests for all new logic.\n-->\n"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Testing");
 	}
 }

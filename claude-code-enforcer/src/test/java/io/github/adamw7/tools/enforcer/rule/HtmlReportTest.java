@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -123,9 +123,9 @@ class HtmlReportTest {
 		Files.writeString(tempDir.resolve("blocker"), "a file, not a directory");
 		File unwritable = tempDir.resolve("blocker").resolve("report.html").toFile();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				() -> new HtmlReport("header", List.of("boom"), List.of("fix it")).writeTo(unwritable));
-		assertTrue(exception.getMessage().contains("Could not write HTML report"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				() -> new HtmlReport("header", List.of("boom"), List.of("fix it")).writeTo(unwritable),
+				"Could not write HTML report");
 	}
 
 	/** Parses with the HTML5 parser in error-tracking mode and fails on any reported problem. */

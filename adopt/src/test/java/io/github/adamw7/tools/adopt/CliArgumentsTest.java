@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -105,9 +106,8 @@ class CliArgumentsTest {
 
 	@Test
 	void rejectsABlankRepositoryListFileName() {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> CliArguments.parse(new String[] { REPO_URL, "--repos", "  " }));
-		assertTrue(exception.getMessage().contains("--repos"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { REPO_URL, "--repos", "  " }), "--repos");
 	}
 
 	@Test
@@ -260,16 +260,14 @@ class CliArgumentsTest {
 
 	@Test
 	void rejectsUnknownOption() {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> CliArguments.parse(new String[] { REPO_URL, "--frobnicate" }));
-		assertTrue(exception.getMessage().contains("--frobnicate"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { REPO_URL, "--frobnicate" }), "--frobnicate");
 	}
 
 	@Test
 	void rejectsFlagMissingItsValue() {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> CliArguments.parse(new String[] { REPO_URL, "--title" }));
-		assertTrue(exception.getMessage().contains("--title"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class, () -> CliArguments.parse(new String[] { REPO_URL, "--title" }),
+				"--title");
 	}
 
 	@Test
@@ -308,10 +306,9 @@ class CliArgumentsTest {
 	@Test
 	void rejectsAWorkspacePositionalAlongsideTheRepositoryFlags(@TempDir Path dir) throws IOException {
 		Path list = Files.writeString(dir.resolve("repos.txt"), REPO_URL + "\n");
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> CliArguments.parse(new String[] { "/tmp/ws", "--repos", list.toString() }));
-		assertTrue(exception.getMessage().contains("--workspace"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("/tmp/ws"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { "/tmp/ws", "--repos", list.toString() }), "--workspace",
+				"/tmp/ws");
 	}
 
 	@Test
@@ -478,8 +475,6 @@ class CliArgumentsTest {
 	}
 
 	private void assertUsageFailure(String[] args) {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> CliArguments.parse(args));
-		assertTrue(exception.getMessage().contains("Usage"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class, () -> CliArguments.parse(args), "Usage");
 	}
 }

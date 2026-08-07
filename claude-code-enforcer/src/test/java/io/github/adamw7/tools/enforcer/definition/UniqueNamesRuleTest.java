@@ -2,8 +2,8 @@ package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -77,8 +77,7 @@ class UniqueNamesRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new UniqueNamesRule()::execute);
-		assertTrue(exception.getMessage().contains("must be configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new UniqueNamesRule()::execute, "must be configured");
 	}
 
 	@Test
@@ -86,8 +85,7 @@ class UniqueNamesRuleTest {
 		UniqueNamesRule rule = new UniqueNamesRule();
 		rule.setCommandsDir(tempDir.resolve("absent").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -101,11 +99,8 @@ class UniqueNamesRuleTest {
 		rule.setCommandsDir(commands.toFile());
 		rule.setAgentsDir(agents.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("name 'review'"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("2 definitions"), exception.getMessage());
-		assertTrue(exception.getMessage().contains(commands.resolve("review.md").toString()), exception.getMessage());
-		assertTrue(exception.getMessage().contains(agents.resolve("review.md").toString()), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "name 'review'", "2 definitions",
+				commands.resolve("review.md").toString(), agents.resolve("review.md").toString());
 	}
 
 	@Test
@@ -119,8 +114,7 @@ class UniqueNamesRuleTest {
 		rule.setAgentsDir(agents.toFile());
 		rule.setSkillsDir(skills.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("name 'commit'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "name 'commit'");
 	}
 
 	@Test

@@ -1,9 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -30,9 +29,7 @@ class CrossDocConsistencyRuleTest {
 		CrossDocConsistencyRule rule = ruleFor("Java 25 is required.", "We target Java 24.");
 		rule.setConsistentPatterns(List.of("Java (\\d+)"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("'25'"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("'24'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "'25'", "'24'");
 	}
 
 	@Test
@@ -40,8 +37,7 @@ class CrossDocConsistencyRuleTest {
 		CrossDocConsistencyRule rule = ruleFor("Java 25 is required.", "No version here.");
 		rule.setConsistentPatterns(List.of("Java (\\d+)"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("<absent>"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "<absent>");
 	}
 
 	@Test
@@ -62,8 +58,7 @@ class CrossDocConsistencyRuleTest {
 		CrossDocConsistencyRule rule = ruleFor("Java 25.", "Java 25.");
 		rule.setConsistentPatterns(List.of("Java \\d+"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("must declare a capturing group"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "must declare a capturing group");
 	}
 
 	@Test
@@ -73,8 +68,7 @@ class CrossDocConsistencyRuleTest {
 
 		// The group is optional, so a bare "proto" match captures null. That must be
 		// treated as a mismatch against the concrete "3", not throw a NullPointerException.
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("'3'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "'3'");
 	}
 
 	@Test
@@ -83,8 +77,7 @@ class CrossDocConsistencyRuleTest {
 		rule.setClaudeMdFile(tempDir.resolve("absent-claude.md").toFile());
 		rule.setAgentsMdFile(tempDir.resolve("absent-agents.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -95,8 +88,7 @@ class CrossDocConsistencyRuleTest {
 		CrossDocConsistencyRule rule = ruleFor(craftedContent, craftedContent);
 		rule.setConsistentPatterns(List.of("(x+x+)+y"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("catastrophic backtracking"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "catastrophic backtracking");
 	}
 
 	@Test
@@ -107,9 +99,7 @@ class CrossDocConsistencyRuleTest {
 		// A misconfigured pattern is a build-setup mistake and must name itself,
 		// rather than escaping as a PatternSyntaxException the build reports as an
 		// internal error.
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not a valid regular expression"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("Java (\\d+"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not a valid regular expression", "Java (\\d+");
 	}
 
 	private CrossDocConsistencyRule ruleFor(String claudeContent, String agentsContent) {

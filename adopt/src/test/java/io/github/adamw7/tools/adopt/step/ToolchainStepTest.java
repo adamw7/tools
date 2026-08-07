@@ -1,10 +1,10 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -84,9 +84,7 @@ class ToolchainStepTest {
 	@Test
 	void aTokenThatCannotSeeTheRepositoryAbortsTheAdoption() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("repos/adamw7/demo", 1, "HTTP 404");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("adamw7/demo"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep().execute(context, runner), "adamw7/demo");
 	}
 
 	/**
@@ -140,9 +138,7 @@ class ToolchainStepTest {
 	@Test
 	void aDryRunStillAbortsWhenClaudeIsMissing() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("claude", 127, "claude: not found");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> ToolchainStep.forDryRun().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("claude"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> ToolchainStep.forDryRun().execute(context, runner), "claude");
 	}
 
 	/**
@@ -153,9 +149,7 @@ class ToolchainStepTest {
 	@Test
 	void anUnauthenticatedGitHubCliAbortsTheAdoption() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("api", 1, "HTTP 401");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("cannot reach"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep().execute(context, runner), "cannot reach");
 	}
 
 	/**
@@ -169,9 +163,7 @@ class ToolchainStepTest {
 	@Test
 	void aGitHubCliWhoseTokenGitHubRejectsAbortsTheAdoption() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::rejectedByGitHub);
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("cannot reach"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep().execute(context, runner), "cannot reach");
 	}
 
 	/**
@@ -229,9 +221,7 @@ class ToolchainStepTest {
 	@Test
 	void aToolThatExitsNonZeroAbortsTheAdoption() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("gh"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep().execute(context, runner), "gh");
 	}
 
 	@Test
@@ -247,18 +237,14 @@ class ToolchainStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				command -> command.contains("git") ? new CommandResult(command, 0, "")
 						: new CommandResult(command, 1, "missing"));
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep().execute(context, runner));
-		assertTrue(thrown.getMessage().contains("claude"), thrown.getMessage());
-		assertTrue(thrown.getMessage().contains("gh"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep().execute(context, runner), "claude", "gh");
 	}
 
 	@Test
 	void reportsMissingToolsInDeclarationOrder() {
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(1, "missing");
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> new ToolchainStep(List.of("git", "gh")).execute(context, runner));
-		assertTrue(thrown.getMessage().contains("git, gh"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> new ToolchainStep(List.of("git", "gh")).execute(context, runner),
+				"git, gh");
 	}
 
 	@Test

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -230,9 +231,9 @@ class RepositoryUrlTest {
 	/** A URL refused on its input is quoted back, so it must be masked there too. */
 	@Test
 	void masksTheCredentialsOfARejectedUrl() {
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-				() -> RepositoryUrl.of("https://x-access-token:secret@github.com/owner/.git"));
-		assertTrue(exception.getMessage().contains("https://***@github.com/owner/.git"), exception.getMessage());
+		assertFailure(IllegalArgumentException.class,
+				() -> RepositoryUrl.of("https://x-access-token:secret@github.com/owner/.git"),
+				"https://***@github.com/owner/.git");
 	}
 
 	/**

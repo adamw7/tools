@@ -1,11 +1,11 @@
 package io.github.adamw7.tools.enforcer.secret;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -36,8 +36,7 @@ class NoSecretsRuleTest {
 
 	@Test
 	void failsWhenNoTargetsAreConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new NoSecretsRule()::execute);
-		assertTrue(exception.getMessage().contains("files or directories"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new NoSecretsRule()::execute, "files or directories");
 	}
 
 	@Test
@@ -45,38 +44,32 @@ class NoSecretsRuleTest {
 		NoSecretsRule rule = ruleForFile("clean");
 		rule.setUseDefaultPatterns(false);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("secretPatterns"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "secretPatterns");
 	}
 
 	@Test
 	void failsForAnAnthropicKey() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleForFile("{ \"env\": { \"KEY\": \"" + ANTHROPIC_KEY + "\" } }")::execute);
-		assertTrue(exception.getMessage().contains("Anthropic API key"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleForFile("{ \"env\": { \"KEY\": \"" + ANTHROPIC_KEY + "\" } }")::execute, "Anthropic API key");
 	}
 
 	@Test
 	void reportsTheLineWithoutEchoingTheSecret() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleForFile("first line\nkey = " + ANTHROPIC_KEY + "\n")::execute);
-		assertTrue(exception.getMessage().contains("line 2"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("sk-ant-a..."), exception.getMessage());
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class,
+				ruleForFile("first line\nkey = " + ANTHROPIC_KEY + "\n")::execute, "line 2", "sk-ant-a...");
 		assertFalse(exception.getMessage().contains(ANTHROPIC_KEY), exception.getMessage());
 	}
 
 	@Test
 	void failsForAGithubToken() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleForFile("token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij")::execute);
-		assertTrue(exception.getMessage().contains("GitHub token"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleForFile("token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij")::execute, "GitHub token");
 	}
 
 	@Test
 	void failsForAPrivateKeyBlock() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleForFile("-----BEGIN RSA PRIVATE KEY-----")::execute);
-		assertTrue(exception.getMessage().contains("private key block"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleForFile("-----BEGIN RSA PRIVATE KEY-----")::execute,
+				"private key block");
 	}
 
 	@Test
@@ -85,8 +78,7 @@ class NoSecretsRuleTest {
 		NoSecretsRule rule = new NoSecretsRule();
 		rule.setDirectories(List.of(tempDir.resolve("hooks").toFile()));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("script.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "script.sh");
 	}
 
 	@Test
@@ -102,8 +94,7 @@ class NoSecretsRuleTest {
 		NoSecretsRule rule = ruleForFile("password = hunter2");
 		rule.setSecretPatterns(List.of("password\\s*=\\s*\\S+"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("password"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "password");
 	}
 
 	@Test
@@ -111,9 +102,7 @@ class NoSecretsRuleTest {
 		NoSecretsRule rule = ruleForFile("nothing to see here");
 		rule.setSecretPatterns(List.of("(unclosed"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not a valid regular expression"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("(unclosed"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not a valid regular expression", "(unclosed");
 	}
 
 	@Test

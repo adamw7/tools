@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -113,11 +113,8 @@ class MultiRepoAdoptionIT {
 		Path report = reports.resolve("partial.json");
 		CliArguments cli = parse("--repos", listFile(HELLO_WORLD, MISSING, SPOON_KNIFE).toString(),
 				"--workspace", workspace.toString(), "--branch", BRANCH, "--report", report.toString());
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
-
-		assertTrue(failure.getMessage().contains("1 of 3 repositories"), failure.getMessage());
-		assertTrue(failure.getMessage().contains(MISSING), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()),
+				"1 of 3 repositories", MISSING);
 		assertCheckedOut(HELLO_WORLD);
 		assertCheckedOut(SPOON_KNIFE);
 		assertFalse(Files.exists(workspace.resolve("no-such-repository-tools-adopt-it")),
@@ -138,12 +135,8 @@ class MultiRepoAdoptionIT {
 		CliArguments cli = parse("--repo", HELLO_WORLD, "--repo", HELLO_WORLD_OVER_SSH,
 				"--workspace", workspace.toString(), "--branch", BRANCH);
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
-
-		assertTrue(failure.getMessage().contains("1 of 2 repositories"), failure.getMessage());
-		assertTrue(failure.getMessage().contains(HELLO_WORLD_OVER_SSH), failure.getMessage());
-		assertTrue(failure.getMessage().contains(workspace.resolve("Hello-World").toString()), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()),
+				"1 of 2 repositories", HELLO_WORLD_OVER_SSH, workspace.resolve("Hello-World").toString());
 		assertCheckedOut(HELLO_WORLD);
 	}
 
@@ -158,10 +151,8 @@ class MultiRepoAdoptionIT {
 		CliArguments cli = parse("--repos", listFile(HELLO_WORLD, "https://github.com/owner/.git", SPOON_KNIFE).toString(),
 				"--workspace", workspace.toString(), "--branch", BRANCH, "--report", report.toString());
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
-
-		assertTrue(failure.getMessage().contains("1 of 3 repositories"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()),
+				"1 of 3 repositories");
 		assertCheckedOut(HELLO_WORLD);
 		assertCheckedOut(SPOON_KNIFE);
 		assertBatchReport(report, false, List.of(HELLO_WORLD, "https://github.com/owner/.git", SPOON_KNIFE));
@@ -183,11 +174,8 @@ class MultiRepoAdoptionIT {
 		git(workspace, "clone", HELLO_WORLD, checkout.toString());
 		CliArguments cli = parse("--repo", SPOON_KNIFE, "--workspace", workspace.toString(), "--branch", BRANCH);
 
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()));
-
-		assertTrue(failure.getMessage().contains(checkout.toString()), failure.getMessage());
-		assertTrue(failure.getMessage().contains("Hello-World"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> Main.runAndReport(cli, Main.checkouts(cli), cloneOnlyAdopter()),
+				checkout.toString(), "Hello-World");
 		assertTrue(git(checkout, "remote", "get-url", "origin").endsWith("Hello-World.git"),
 				"the checkout of another repository must be left as it was found");
 		assertFalse(BRANCH.equals(git(checkout, "rev-parse", "--abbrev-ref", "HEAD")),

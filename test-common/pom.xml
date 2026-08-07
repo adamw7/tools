@@ -10,10 +10,10 @@
 	<artifactId>tools.test-common</artifactId>
 	<packaging>jar</packaging>
 	<name>Shared test scaffolding</name>
-	<description>Shared ArchUnit rule libraries reused by every module's architecture tests.</description>
+	<description>Shared ArchUnit rule libraries and test assertions reused by every module's tests.</description>
 	<properties>
-		<!-- This module carries no production code, only the rule libraries the
-		     other modules' architecture tests import, so keep it out of both
+		<!-- This module carries no production code, only the rule libraries and
+		     assertions the other modules' tests import, so keep it out of both
 		     publications: the GitHub Packages deployment maven-deploy-plugin
 		     performs on `mvn deploy`, and the Maven Central bundle the root pom's
 		     release profile publishes. -->

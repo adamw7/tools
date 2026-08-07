@@ -44,11 +44,6 @@ public class CommandFormatRule extends DefinitionFormatRule {
 	}
 
 	@Override
-	protected File[] entriesIn(File directory) {
-		return DefinitionFiles.markdownFiles(directory);
-	}
-
-	@Override
 	protected void collectEntryViolations(File command, List<String> violations) {
 		contentOf(command, violations).ifPresent(content -> collectNamedViolations(command, content, violations));
 	}

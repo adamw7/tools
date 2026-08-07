@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.command;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -68,9 +69,8 @@ class ProcessCommandRunnerTest {
 	@Test
 	void killsAndReportsACommandThatOutlivesTheTimeout() {
 		ProcessCommandRunner impatient = new ProcessCommandRunner(Duration.ofMillis(100));
-		AdoptionException thrown = assertThrows(AdoptionException.class,
-				() -> impatient.run(Path.of("."), PlatformCommands.sleepingFor(30)));
-		assertTrue(thrown.getMessage().contains("Timed out"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> impatient.run(Path.of("."), PlatformCommands.sleepingFor(30)),
+				"Timed out");
 	}
 
 	@Test

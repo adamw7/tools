@@ -11,12 +11,13 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Asserts the fenced-code-block mask line by line rather than through a rule's
- * pass or fail, because every structural check the rules make — headings,
- * section bodies, forbidden tokens, line lengths, file references, and the
- * memory imports {@code ImportGraph} reads — is a question asked of this mask.
- * A delimiter mistaken for the end of a block silently reclassifies everything
- * after it, so the exact set of code lines is what needs pinning.
+ * Asserts the code mask line by line rather than through a rule's pass or fail,
+ * because every structural check the rules make — headings, section bodies,
+ * forbidden tokens, line lengths, file references, and the memory imports
+ * {@code ImportGraph} reads — is a question asked of this mask. A delimiter
+ * mistaken for the end of a block, or an indent read as prose, silently
+ * reclassifies whole passages, so the exact set of code lines is what needs
+ * pinning.
  */
 class MarkdownDocumentTest {
 
@@ -32,7 +33,7 @@ class MarkdownDocumentTest {
 				## Section
 				""");
 
-		assertEquals(List.of(2, 3, 4), fencedLines(document));
+		assertEquals(List.of(2, 3, 4), codeLines(document));
 	}
 
 	@Test
@@ -52,7 +53,7 @@ class MarkdownDocumentTest {
 
 		// Lines 2 to 6 are the whole block: ```java is an opening delimiter, so it
 		// cannot end it and leave line 6's ``` to open a second fence.
-		assertEquals(List.of(2, 3, 4, 5, 6), fencedLines(document));
+		assertEquals(List.of(2, 3, 4, 5, 6), codeLines(document));
 		assertEquals(Set.of("# Title", "## Section"), document.headings());
 	}
 
@@ -71,7 +72,7 @@ class MarkdownDocumentTest {
 				body
 				""");
 
-		assertEquals(List.of(2, 3, 4, 5, 6), fencedLines(document));
+		assertEquals(List.of(2, 3, 4, 5, 6), codeLines(document));
 		assertEquals(Set.of("# Title", "## Section"), document.headings());
 	}
 
@@ -85,7 +86,7 @@ class MarkdownDocumentTest {
 				## Section
 				""");
 
-		assertEquals(List.of(0, 1, 2), fencedLines(document));
+		assertEquals(List.of(0, 1, 2), codeLines(document));
 		assertTrue(document.hasHeading("## Section"));
 	}
 
@@ -99,7 +100,7 @@ class MarkdownDocumentTest {
 				# After
 				""");
 
-		assertEquals(List.of(0, 1, 2), fencedLines(document));
+		assertEquals(List.of(0, 1, 2), codeLines(document));
 		assertTrue(document.hasHeading("# After"));
 	}
 
@@ -108,7 +109,7 @@ class MarkdownDocumentTest {
 		// Written without a text block, which would strip the trailing spaces away.
 		MarkdownDocument document = MarkdownDocument.parse("```\nint x;\n```   \n\n## Section\n");
 
-		assertEquals(List.of(0, 1, 2), fencedLines(document));
+		assertEquals(List.of(0, 1, 2), codeLines(document));
 		assertTrue(document.hasHeading("## Section"));
 	}
 
@@ -122,7 +123,7 @@ class MarkdownDocumentTest {
 				## Section
 				""");
 
-		assertEquals(List.of(2, 3, 4), fencedLines(document));
+		assertEquals(List.of(2, 3, 4), codeLines(document));
 		assertFalse(document.hasHeading("## Section"));
 	}
 
@@ -136,7 +137,7 @@ class MarkdownDocumentTest {
 				## Section
 				""");
 
-		assertEquals(List.of(), fencedLines(document));
+		assertEquals(List.of(), codeLines(document));
 		assertEquals(Set.of("# Title", "## Section"), document.headings());
 	}
 
@@ -150,7 +151,7 @@ class MarkdownDocumentTest {
 				TODO left behind
 				""");
 
-		assertEquals(List.of(0, 1, 2), fencedLines(document));
+		assertEquals(List.of(0, 1, 2), codeLines(document));
 		assertTrue(document.containsInProse("TODO"));
 	}
 
@@ -165,6 +166,109 @@ class MarkdownDocumentTest {
 				""");
 
 		assertFalse(document.containsInProse("TODO"));
+	}
+
+	/**
+	 * The other way Markdown quotes a sample. The blank line between the two chunks
+	 * separates them rather than ending the block, and carries nothing either way, so
+	 * it is left unmasked.
+	 */
+	@Test
+	void masksAnIndentedCodeBlock() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				An example of the section a template adds:
+
+				    ## Testing
+
+				    Write tests.
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(4, 6), codeLines(document));
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	@Test
+	void masksATabIndentedBlock() {
+		// Written without a text block, so the single leading tab is unambiguous.
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n\tTODO in a sample\n\n## Maven\nBody.\n");
+
+		assertEquals(List.of(2), codeLines(document));
+		assertFalse(document.containsInProse("TODO"));
+	}
+
+	/** A forbidden token inside an indented sample is the sample's, not the document's. */
+	@Test
+	void doesNotFindATokenInsideAnIndentedBlock() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				For example:
+
+				    TODO left in a sample
+
+				## Maven
+				Body.
+				""");
+
+		assertFalse(document.containsInProse("TODO"));
+	}
+
+	/**
+	 * An indented code block cannot interrupt a paragraph: the indented line below one
+	 * is a lazy continuation of it. Masking it would hide prose the document really
+	 * does say.
+	 */
+	@Test
+	void treatsAnIndentedLineBelowAParagraphAsPartOfThatParagraph() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				A wrapped sentence
+				    continued with a deep indent.
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+		assertTrue(document.containsInProse("continued"));
+	}
+
+	/** Three spaces is the deepest a heading may be indented and stay one. */
+	@Test
+	void doesNotTreatAThreeSpaceIndentAsCode() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				   ## Testing
+
+				Body.
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+		assertTrue(document.hasHeading("## Testing"));
+	}
+
+	/** An indented block is content, so a section whose only body is one is not empty. */
+	@Test
+	void readsAnIndentedBlockAsASectionBody() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## Maven
+
+				    mvn install
+
+				## Testing
+				Body.
+				""");
+
+		assertTrue(document.hasBody("## Maven"));
 	}
 
 	@Test
@@ -350,9 +454,9 @@ class MarkdownDocumentTest {
 		assertEquals(List.of(2, 3, 4), commentedLines(document));
 	}
 
-	/** The indices of the lines the document masks as fenced code, in document order. */
-	private static List<Integer> fencedLines(MarkdownDocument document) {
-		return IntStream.range(0, document.lineCount()).filter(document::isInsideFence).boxed().toList();
+	/** The indices of the lines the document masks as code, in document order. */
+	private static List<Integer> codeLines(MarkdownDocument document) {
+		return IntStream.range(0, document.lineCount()).filter(document::isInsideCode).boxed().toList();
 	}
 
 	/** The indices of the lines the document masks as an HTML comment, in document order. */

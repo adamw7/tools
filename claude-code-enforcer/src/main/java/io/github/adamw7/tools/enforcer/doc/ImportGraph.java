@@ -31,9 +31,10 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
  * by start-of-line or whitespace and followed by a path — one carrying a directory
- * separator, an extension, or both — outside fenced code blocks, HTML comments and
- * inline code spans, so neither {@code `@claude`} nor a bare {@code @claude} in
- * prose is an import, and an import an author commented out is one the document no
+ * separator, an extension, or both — outside code, HTML comments and inline code
+ * spans alike, so neither {@code `@claude`} nor a bare {@code @claude} in prose is
+ * an import, an import shown as a sample (fenced or indented) is one the document
+ * illustrates rather than makes, and one an author commented out is one it no
  * longer makes. A
  * home-relative import ({@code @~/...}) does not match the path syntax at all and
  * so is skipped, as is any import the {@code ignored} predicate accepts. A file
@@ -123,7 +124,7 @@ final class ImportGraph {
 	private List<Reference> referencesIn(File file) {
 		MarkdownDocument document = MarkdownDocument.parse(readSafely(file));
 		return IntStream.range(0, document.lineCount())
-				.filter(index -> !document.isInsideFence(index) && !document.isInsideComment(index))
+				.filter(index -> !document.isInsideCode(index) && !document.isInsideComment(index))
 				.mapToObj(document::line)
 				.flatMap(line -> lineReferences(file, line))
 				.toList();

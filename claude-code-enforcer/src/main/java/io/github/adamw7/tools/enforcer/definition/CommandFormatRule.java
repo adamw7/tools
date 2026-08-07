@@ -1,15 +1,10 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -27,10 +22,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
  * problems found are reported together.
  */
 @Named("commandFormat")
-public class CommandFormatRule extends ClaudeCodeEnforcerRule {
-
-	private static final String LABEL = "Command";
-	private static final String DEFINITION = "Command definition";
+public class CommandFormatRule extends DefinitionFormatRule {
 
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
@@ -41,34 +33,34 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 	/** Optional whitelist of model identifiers a command may declare. */
 	private List<String> allowedModels;
 
-	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
-	private boolean autoFix;
+	public CommandFormatRule() {
+		super(new Naming("commandsDir", "Commands", "Command definition", "Command",
+				"Command files are not well formed:"));
+	}
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		requireConfigured(commandsDir, "commandsDir");
-		DefinitionFiles.verifyDirectory(commandsDir, "Commands");
-		List<String> violations = new ArrayList<>();
-		for (File command : DefinitionFiles.markdownFiles(commandsDir)) {
-			collectCommandViolations(command, violations);
-		}
-		report("Command files are not well formed:", violations);
+	protected File definitionDir() {
+		return commandsDir;
 	}
 
-	private void collectCommandViolations(File command, List<String> violations) {
-		DefinitionContent.of(command, DEFINITION, autoFix, getLog(), violations)
-				.ifPresent(content -> collectNamedViolations(command, content, violations));
+	@Override
+	protected File[] entriesIn(File directory) {
+		return DefinitionFiles.markdownFiles(directory);
 	}
 
+	@Override
+	protected void collectEntryViolations(File command, List<String> violations) {
+		contentOf(command, violations).ifPresent(content -> collectNamedViolations(command, content, violations));
+	}
+
+	/** A command answers to its file name, so the convention check compares that name only to itself. */
 	private void collectNamedViolations(File command, String content, List<String> violations) {
 		String baseName = DefinitionFiles.baseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
-		FrontMatter.parse(content)
-				.ifPresent(frontMatter -> collectFrontMatterViolations(command, frontMatter, violations));
+		frontMatterOf(content, command, violations).ifPresent(this::collectFrontMatterViolations);
 	}
 
-	private void collectFrontMatterViolations(File command, FrontMatter frontMatter, List<String> violations) {
-		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, command, violations);
+	private void collectFrontMatterViolations(FrontMatterChecks checks) {
 		checks.rejectDuplicateKeys();
 		checks.allowOnlyKeys(allowedFrontMatterKeys);
 		checks.checkDescription(0);
@@ -85,9 +77,5 @@ public class CommandFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setAllowedModels(List<String> allowedModels) {
 		this.allowedModels = allowedModels;
-	}
-
-	void setAutoFix(boolean autoFix) {
-		this.autoFix = autoFix;
 	}
 }

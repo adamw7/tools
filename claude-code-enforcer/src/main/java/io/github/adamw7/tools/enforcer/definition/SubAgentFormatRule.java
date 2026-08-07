@@ -1,17 +1,10 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import javax.inject.Named;
-
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.FrontMatter;
 
 /**
  * Enforcer rule that fails the build when any sub-agent definition under the
@@ -28,10 +21,8 @@ import io.github.adamw7.tools.enforcer.text.FrontMatter;
  * is allowed; all problems found are reported together.
  */
 @Named("subAgentFormat")
-public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
+public class SubAgentFormatRule extends DefinitionFormatRule {
 
-	private static final String LABEL = "Sub-agent";
-	private static final String DEFINITION = "Sub-agent definition";
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
 
 	/** The {@code .claude/agents} directory to scan. Injected from the rule configuration. */
@@ -43,37 +34,29 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 	/** Optional whitelist of model identifiers a sub-agent may declare. */
 	private List<String> allowedModels;
 
-	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
-	private boolean autoFix;
+	public SubAgentFormatRule() {
+		super(new Naming("agentsDir", "Agents", "Sub-agent definition", "Sub-agent",
+				"Sub-agent files are not well formed:"));
+	}
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		requireConfigured(agentsDir, "agentsDir");
-		DefinitionFiles.verifyDirectory(agentsDir, "Agents");
-		List<String> violations = new ArrayList<>();
-		for (File definition : DefinitionFiles.markdownFiles(agentsDir)) {
-			collectDefinitionViolations(definition, violations);
-		}
-		report("Sub-agent files are not well formed:", violations);
+	protected File definitionDir() {
+		return agentsDir;
 	}
 
-	private void collectDefinitionViolations(File definition, List<String> violations) {
-		DefinitionContent.of(definition, DEFINITION, autoFix, getLog(), violations)
-				.ifPresent(content -> collectParsedViolations(definition, content, violations));
+	@Override
+	protected File[] entriesIn(File directory) {
+		return DefinitionFiles.markdownFiles(directory);
 	}
 
-	private void collectParsedViolations(File definition, String content, List<String> violations) {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
-		if (frontMatter.isEmpty()) {
-			violations.add(DEFINITION + " must start with a YAML front matter block delimited by '---': "
-					+ definition);
-		} else {
-			collectFrontMatterViolations(definition, frontMatter.get(), violations);
-		}
+	@Override
+	protected void collectEntryViolations(File definition, List<String> violations) {
+		contentOf(definition, violations)
+				.flatMap(content -> requiredFrontMatterOf(content, definition, violations))
+				.ifPresent(checks -> collectFrontMatterViolations(definition, checks));
 	}
 
-	private void collectFrontMatterViolations(File definition, FrontMatter frontMatter, List<String> violations) {
-		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, LABEL, definition, violations);
+	private void collectFrontMatterViolations(File definition, FrontMatterChecks checks) {
 		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
 		checks.rejectDuplicateKeys();
 		checks.checkName(DefinitionFiles.baseName(definition));
@@ -91,9 +74,5 @@ public class SubAgentFormatRule extends ClaudeCodeEnforcerRule {
 
 	void setAllowedModels(List<String> allowedModels) {
 		this.allowedModels = allowedModels;
-	}
-
-	void setAutoFix(boolean autoFix) {
-		this.autoFix = autoFix;
 	}
 }

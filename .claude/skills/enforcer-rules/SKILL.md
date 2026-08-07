@@ -59,6 +59,14 @@ commands) extend `MultiDefinitionRule` instead and call `forEachDefinition(...)`
 — it already owns `commandsDir` / `agentsDir` / `skillsDir` traversal, where a
 skill is a directory holding a `SKILL.md`.
 
+Rules that validate *one* kind of definition file by file extend
+`DefinitionFormatRule`, which owns the directory scan, the `autoFix` parameter
+and the grouped report. A subclass supplies the `Naming` its messages use, the
+directory, `entriesIn(...)` (the `*.md` files, or the subdirectories for skills),
+and `collectEntryViolations(...)` — reaching for `contentOf(...)` and
+`frontMatterOf(...)` / `requiredFrontMatterOf(...)` rather than reading and
+parsing again.
+
 ### What the base class gives you (don't reimplement it)
 | Member | Use it for |
 |---|---|

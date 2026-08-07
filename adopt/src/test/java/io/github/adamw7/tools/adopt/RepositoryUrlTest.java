@@ -273,4 +273,24 @@ class RepositoryUrlTest {
 		assertFalse(url.isSameRepositoryAs(""));
 		assertFalse(url.isSameRepositoryAs("  "));
 	}
+
+	/**
+	 * A URL that is credentials and no path names no repository, and reduced to the
+	 * same empty identity as text that names none — so it answered every blank line
+	 * of a checkout's {@code origin} transcript as a match on itself, and the
+	 * adoption branched, committed, and pushed into whatever checkout it found.
+	 */
+	@Test
+	void aUrlThatIsOnlyUserInformationIsRejected() {
+		assertThrows(IllegalArgumentException.class, () -> RepositoryUrl.of("https://token@"));
+		assertThrows(IllegalArgumentException.class, () -> RepositoryUrl.of("https://x-access-token:secret@"));
+		assertThrows(IllegalArgumentException.class, () -> RepositoryUrl.of("git@"));
+	}
+
+	/** An {@code @} inside a checkout name is not user information; only a trailing one is. */
+	@Test
+	void aRepositoryNameCarryingAnAtSignIsAccepted() {
+		assertEquals("foo@bar", RepositoryUrl.of("/tmp/workspace/foo@bar").name());
+		assertEquals("tools", RepositoryUrl.of("https://x-access-token:secret@github.com/alice/tools.git").name());
+	}
 }

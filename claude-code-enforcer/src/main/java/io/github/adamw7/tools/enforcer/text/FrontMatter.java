@@ -11,22 +11,32 @@ import java.util.stream.Collectors;
  * The YAML front matter block at the top of a Markdown document: the lines
  * between a leading {@code ---} delimiter and the next {@code ---} delimiter.
  * <p>
- * This is a deliberately small reader, not a full YAML parser. It understands
- * the flat {@code key: value} shape that Claude Code skill and sub-agent files
- * use, which is all the rules need. Parsing is shared here so every rule agrees
- * on what counts as front matter, which keys it declares, and each key's value.
+ * This is a deliberately small reader, not a full YAML parser. It reads the
+ * {@code key: value} entries a block declares and answers each one as a single
+ * line of text, which is all the rules need: they check a value's length,
+ * blankness, uniqueness, or shape, never its structure. Parsing is shared here so
+ * every rule agrees on what counts as front matter, which keys it declares, and
+ * each key's value.
  * <p>
  * A key is only recognised where YAML puts one: at the start of a line, with no
  * indentation. An indented line continues the value above it, so reading a key out
  * of one would invent entries an author never declared — the {@code Use this when:}
  * of a wrapped description would be reported as an unknown key.
  * <p>
- * A value written as a block scalar ({@code description: >} or {@code |}, with the
- * text on the indented lines below) is folded back into a single line, since the
- * indicator alone is not the value: reading it literally would leave every such
- * definition claiming the same one-character description and escape any length cap.
- * The fold joins the continuation lines with single spaces, which is all the
- * length, blankness, and uniqueness checks need.
+ * A value the key's own line does not carry is read from the indented lines below
+ * it, folded into one line joined by single spaces. That covers the three ways YAML
+ * continues a value downwards — a block scalar ({@code description: >} or
+ * {@code |}), a plain scalar wrapped onto the next line, and a nested mapping or
+ * sequence — because the alternative is to read every one of them as the empty
+ * string. Doing so left each block scalar claiming the same one-character
+ * description and escaping any length cap, and it failed an OKF concept whose
+ * {@code generated:} mapping named its actor on the very next line for not naming
+ * one. A key with nothing below it still yields the empty string, so a bare
+ * {@code key:} is unchanged.
+ * <p>
+ * Folding a mapping is lossy on purpose: {@code by: agent/1} reads back as text
+ * rather than as a nested entry. A rule that needs the structure itself wants a
+ * YAML parser, not this.
  * <p>
  * A value wrapped in matching quotes yields the text inside them, because that is
  * the value YAML declares and the one Claude Code reads. Quoting is not decoration:
@@ -97,10 +107,12 @@ public final class FrontMatter {
 
 	/**
 	 * The trimmed value declared for {@code key}, or empty when the key is absent.
-	 * A present key with no value yields an empty string, not an empty optional, a
-	 * block scalar yields its folded continuation lines rather than the indicator,
-	 * and a quoted scalar yields the text inside its quotes. A key declared more than
-	 * once yields its last declaration, the one a YAML loader keeps.
+	 * A present key whose value is neither on its own line nor below it yields an
+	 * empty string, not an empty optional; a value continued on the lines below —
+	 * a block scalar, a wrapped plain scalar, or a nested mapping — yields those
+	 * lines folded into one; and a quoted scalar yields the text inside its quotes.
+	 * A key declared more than once yields its last declaration, the one a YAML
+	 * loader keeps.
 	 */
 	public Optional<String> value(String key) {
 		int index = indexOfEntry(key);
@@ -108,7 +120,7 @@ public final class FrontMatter {
 			return Optional.empty();
 		}
 		String declared = withoutComment(valueOf(lines.get(index), key));
-		return Optional.of(isBlockScalar(declared) ? folded(index + 1) : unquoted(declared));
+		return Optional.of(continuesBelow(declared) ? folded(index + 1) : unquoted(declared));
 	}
 
 	/** The declared keys, in document order, without their trailing colon. */
@@ -173,14 +185,21 @@ public final class FrontMatter {
 		return -1;
 	}
 
-	private boolean isBlockScalar(String declared) {
-		return BLOCK_SCALAR.matcher(declared).matches();
+	/**
+	 * Whether the key's own line leaves its value to the lines below: it declares a
+	 * block scalar indicator, or it declares nothing at all — the shape a nested
+	 * mapping and a wrapped plain scalar share.
+	 */
+	private boolean continuesBelow(String declared) {
+		return declared.isEmpty() || BLOCK_SCALAR.matcher(declared).matches();
 	}
 
 	/**
-	 * The block scalar's continuation lines from {@code from}, joined with single
-	 * spaces. The block runs until the next entry at the block's own level, so blank
-	 * lines inside it are kept as separators and dropped from the result.
+	 * The entry's continuation lines from {@code from}, joined with single spaces.
+	 * They run until the next entry at the block's own level, so blank lines inside
+	 * them are kept as separators and dropped from the result. An entry with no
+	 * continuation lines folds to the empty string, which is what a bare {@code key:}
+	 * declares.
 	 */
 	private String folded(int from) {
 		return lines.subList(from, lines.size()).stream()

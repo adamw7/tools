@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -41,8 +41,7 @@ class McpServersValidRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new McpServersValidRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new McpServersValidRule()::execute, "not configured");
 	}
 
 	@Test
@@ -55,60 +54,50 @@ class McpServersValidRuleTest {
 
 	@Test
 	void failsWhenFileIsEmpty() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("   ")::execute);
-		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("   ")::execute, "empty");
 	}
 
 	@Test
 	void failsWhenJsonIsMalformed() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": ")::execute);
-		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"mcpServers\": ")::execute, "not valid JSON");
 	}
 
 	@Test
 	void failsWhenMcpServersObjectIsMissing() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("{ }")::execute);
-		assertTrue(exception.getMessage().contains("missing the 'mcpServers' object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ }")::execute, "missing the 'mcpServers' object");
 	}
 
 	@Test
 	void failsWhenServerIsNotAnObject() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"broken\": \"npx\" } }")::execute);
-		assertTrue(exception.getMessage().contains("server 'broken' must be a JSON object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"mcpServers\": { \"broken\": \"npx\" } }")::execute,
+				"server 'broken' must be a JSON object");
 	}
 
 	@Test
 	void failsWhenStdioServerHasNoCommand() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"local\": { \"type\": \"stdio\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("server 'local' (stdio) is missing a 'command'"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"local\": { \"type\": \"stdio\" } } }")::execute,
+				"server 'local' (stdio) is missing a 'command'");
 	}
 
 	@Test
 	void failsWhenRemoteServerHasNoUrl() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"http\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("server 'remote' (http) is missing a 'url'"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"http\" } } }")::execute,
+				"server 'remote' (http) is missing a 'url'");
 	}
 
 	@Test
 	void failsWhenTransportCannotBeInferred() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"mystery\": { } } }")::execute);
-		assertTrue(exception.getMessage().contains("must declare a 'command' (stdio) or a 'type' with a 'url'"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"mcpServers\": { \"mystery\": { } } }")::execute,
+				"must declare a 'command' (stdio) or a 'type' with a 'url'");
 	}
 
 	@Test
 	void failsWhenTypeIsUnsupported() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"odd\": { \"type\": \"htttp\", \"url\": \"https://x\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("server 'odd' has an unsupported type: htttp"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"odd\": { \"type\": \"htttp\", \"url\": \"https://x\" } } }")::execute,
+				"server 'odd' has an unsupported type: htttp");
 	}
 
 	@Test
@@ -116,8 +105,7 @@ class McpServersValidRuleTest {
 		McpServersValidRule rule = ruleFor(VALID_MCP);
 		rule.setRequiredServers(List.of("github"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required server: github"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required server: github");
 	}
 
 	@Test
@@ -125,8 +113,7 @@ class McpServersValidRuleTest {
 		McpServersValidRule rule = ruleFor(VALID_MCP);
 		rule.setForbiddenServers(List.of("remote"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("forbidden server: remote"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "forbidden server: remote");
 	}
 
 	@Test

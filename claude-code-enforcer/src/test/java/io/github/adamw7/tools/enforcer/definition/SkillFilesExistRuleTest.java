@@ -4,8 +4,8 @@ import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -33,16 +33,14 @@ class SkillFilesExistRuleTest {
 	void failsWhenFileIsNotConfigured() {
 		SkillFilesExistRule rule = new SkillFilesExistRule();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenDirectoryIsMissing() {
 		SkillFilesExistRule rule = ruleFor(tempDir.resolve("absent"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -55,9 +53,7 @@ class SkillFilesExistRuleTest {
 		createSkill("git-commit");
 		createDirectory(tempDir.resolve("broken-skill"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("Missing SKILL.md"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("broken-skill"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "Missing SKILL.md", "broken-skill");
 	}
 
 	@Test
@@ -65,9 +61,7 @@ class SkillFilesExistRuleTest {
 		Path skillDir = createDirectory(tempDir.resolve("empty-skill"));
 		writeString(skillDir.resolve("SKILL.md"), "   \n  ");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("is empty"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("empty-skill"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "is empty", "empty-skill");
 	}
 
 	@Test
@@ -75,9 +69,7 @@ class SkillFilesExistRuleTest {
 		Path skillDir = createDirectory(tempDir.resolve("untitled-skill"));
 		writeString(skillDir.resolve("SKILL.md"), "# Just a heading, no front matter.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("untitled-skill"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "front matter", "untitled-skill");
 	}
 
 	@Test
@@ -90,9 +82,7 @@ class SkillFilesExistRuleTest {
 				# Body
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("name:"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("nameless-skill"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "name:", "nameless-skill");
 	}
 
 	@Test
@@ -101,9 +91,7 @@ class SkillFilesExistRuleTest {
 		Path empty = createDirectory(tempDir.resolve("empty-skill"));
 		writeString(empty.resolve("SKILL.md"), "");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("no-file"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("empty-skill"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "no-file", "empty-skill");
 	}
 
 	@Test
@@ -116,8 +104,7 @@ class SkillFilesExistRuleTest {
 				---
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("must match 'git-commit'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "must match 'git-commit'");
 	}
 
 	@Test
@@ -130,8 +117,7 @@ class SkillFilesExistRuleTest {
 				---
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("kebab-case"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "kebab-case");
 	}
 
 	@Test
@@ -144,8 +130,7 @@ class SkillFilesExistRuleTest {
 				---
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "description must not be empty");
 	}
 
 	@Test
@@ -154,8 +139,7 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setMaxDescriptionLength(5);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("description exceeds 5"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "description exceeds 5");
 	}
 
 	@Test
@@ -171,8 +155,7 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setAllowedFrontMatterKeys(java.util.List.of("name", "description"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("unknown key 'descripton:'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "unknown key 'descripton:'");
 	}
 
 	@Test
@@ -187,8 +170,7 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setRequiredKeys(java.util.List.of("name", "description", "model"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing 'model:'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing 'model:'");
 	}
 
 	@Test
@@ -254,8 +236,7 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setMaxDescriptionLength(20);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("exceeds 20 characters"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "exceeds 20 characters");
 	}
 
 	/** Quoting a value is ordinary YAML, so the name inside the quotes is the one checked. */
@@ -278,8 +259,7 @@ class SkillFilesExistRuleTest {
 		Path skillDir = createDirectory(tempDir.resolve("binary"));
 		writeBytes(skillDir.resolve("SKILL.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "cannot be read as text");
 	}
 
 	/**
@@ -297,8 +277,8 @@ class SkillFilesExistRuleTest {
 				# git-commit
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("declares 'description:' more than once"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute,
+				"declares 'description:' more than once");
 	}
 
 	/** The cap applies to the declaration that wins, not to the one it replaced. */
@@ -315,8 +295,7 @@ class SkillFilesExistRuleTest {
 		SkillFilesExistRule rule = ruleFor(tempDir);
 		rule.setMaxDescriptionLength(20);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("description exceeds 20 characters"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "description exceeds 20 characters");
 	}
 
 	/** A YAML loader ends a plain scalar at the comment, so the name Claude Code reads follows the convention. */

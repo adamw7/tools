@@ -4,8 +4,8 @@ import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -74,38 +74,31 @@ class CommandFormatRuleTest {
 		writeString(tempDir.resolve("blank.md"), "   ");
 		writeString(tempDir.resolve("BadName.md"), "Review the pull request.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("blank.md"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("BadName.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "blank.md", "BadName.md");
 	}
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new CommandFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new CommandFormatRule()::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenDirectoryIsMissing() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor(tempDir.resolve("absent"))::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir.resolve("absent"))::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenCommandIsEmpty() {
 		writeString(tempDir.resolve("blank.md"), "   ");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("is empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "is empty");
 	}
 
 	@Test
 	void failsWhenFileNameIsNotKebabCase() {
 		writeString(tempDir.resolve("ReviewPR.md"), "Review the pull request.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("must be lower-case kebab-case"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "must be lower-case kebab-case");
 	}
 
 	@Test
@@ -117,8 +110,7 @@ class CommandFormatRuleTest {
 				Review the diff.
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "description must not be empty");
 	}
 
 	@Test
@@ -132,8 +124,7 @@ class CommandFormatRuleTest {
 		CommandFormatRule rule = ruleFor(tempDir);
 		rule.setAllowedModels(List.of("claude-opus-4-8", "claude-sonnet-4-6"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("unsupported model 'claud-opus'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "unsupported model 'claud-opus'");
 	}
 
 	@Test
@@ -147,8 +138,7 @@ class CommandFormatRuleTest {
 		CommandFormatRule rule = ruleFor(tempDir);
 		rule.setAllowedFrontMatterKeys(List.of("description", "argument-hint", "allowed-tools", "model"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("unknown key 'descripton:'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "unknown key 'descripton:'");
 	}
 
 	@Test
@@ -183,8 +173,7 @@ class CommandFormatRuleTest {
 	void reportsACommandThatCannotBeReadAsText() {
 		writeBytes(tempDir.resolve("binary.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "cannot be read as text");
 	}
 
 	private CommandFormatRule ruleFor(Path commandsDir) {

@@ -3,8 +3,8 @@ package io.github.adamw7.tools.enforcer.definition;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -39,10 +39,8 @@ class UniqueDescriptionsRuleTest {
 		writeAgent("reviewer", "Reviews code.");
 		writeAgent("checker", "Reviews code.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
-		assertTrue(exception.getMessage().contains("Reviews code."), exception.getMessage());
-		assertTrue(exception.getMessage().contains("reviewer.md"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("checker.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, agentsRule()::execute, "Reviews code.", "reviewer.md",
+				"checker.md");
 	}
 
 	@Test
@@ -50,8 +48,7 @@ class UniqueDescriptionsRuleTest {
 		writeAgent("reviewer", "Reviews   code.");
 		writeAgent("checker", "reviews code.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
-		assertTrue(exception.getMessage().contains("is used by 2"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, agentsRule()::execute, "is used by 2");
 	}
 
 	/**
@@ -82,8 +79,7 @@ class UniqueDescriptionsRuleTest {
 		rule.setAgentsDir(agentsDir().toFile());
 		rule.setSkillsDir(skillsDir().toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("is used by 2"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "is used by 2");
 	}
 
 	@Test
@@ -96,9 +92,7 @@ class UniqueDescriptionsRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				new UniqueDescriptionsRule()::execute);
-		assertTrue(exception.getMessage().contains("must be configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new UniqueDescriptionsRule()::execute, "must be configured");
 	}
 
 	@Test
@@ -106,8 +100,7 @@ class UniqueDescriptionsRuleTest {
 		UniqueDescriptionsRule rule = new UniqueDescriptionsRule();
 		rule.setAgentsDir(tempDir.resolve("absent").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -138,8 +131,7 @@ class UniqueDescriptionsRuleTest {
 		writeAgentWithBlockScalarDescription("reviewer", "Reviews Java code for defects.");
 		writeAgentWithBlockScalarDescription("auditor", "Reviews Java code for defects.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
-		assertTrue(exception.getMessage().contains("Reviews Java code for defects."), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, agentsRule()::execute, "Reviews Java code for defects.");
 	}
 
 	private void writeAgentWithBlockScalarDescription(String name, String description) {
@@ -168,8 +160,7 @@ class UniqueDescriptionsRuleTest {
 		writeAgent("reviewer", "Reviews code.");
 		writeAgent("checker", "\"Reviews code.\"");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, agentsRule()::execute);
-		assertTrue(exception.getMessage().contains("checker.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, agentsRule()::execute, "checker.md");
 	}
 
 	private UniqueDescriptionsRule agentsRule() {

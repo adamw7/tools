@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -75,9 +76,8 @@ class CommitStepTest {
 	@Test
 	void refusesToCommitAFileTheCheckoutIgnores() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(ignoring("CLAUDE.md"));
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> new CommitStep("msg", "claude-md").execute(context, runner));
-		assertTrue(failure.getMessage().contains("CLAUDE.md"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> new CommitStep("msg", "claude-md").execute(context, runner),
+				"CLAUDE.md");
 		assertEquals(1, runner.count(), "nothing may be staged once a path is known to be excluded");
 	}
 
@@ -86,10 +86,8 @@ class CommitStepTest {
 	void namesEveryIgnoredPath() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(
 				ignoring(AdoptionAssets.SETTINGS_FILE + "\n" + AdoptionAssets.SESSION_START_HOOK_FILE));
-		AdoptionException failure = assertThrows(AdoptionException.class,
-				() -> new CommitStep("msg", "assets").execute(context, runner));
-		assertTrue(failure.getMessage().contains(AdoptionAssets.SETTINGS_FILE), failure.getMessage());
-		assertTrue(failure.getMessage().contains(AdoptionAssets.SESSION_START_HOOK_FILE), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> new CommitStep("msg", "assets").execute(context, runner),
+				AdoptionAssets.SETTINGS_FILE, AdoptionAssets.SESSION_START_HOOK_FILE);
 	}
 
 	/**

@@ -3,10 +3,9 @@ package io.github.adamw7.tools.enforcer.text;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -96,9 +95,8 @@ class MarkdownTextTest {
 		Path link = tempDir.resolve("link.md");
 		assumeSymlink(link, target);
 
-		UncheckedIOException exception = assertThrows(UncheckedIOException.class,
-				() -> MarkdownText.write(link.toFile(), "overwritten", "link.md"));
-		assertTrue(exception.getMessage().contains("link.md"), exception.getMessage());
+		assertFailure(UncheckedIOException.class, () -> MarkdownText.write(link.toFile(), "overwritten", "link.md"),
+				"link.md");
 		assertEquals("original", readString(target));
 	}
 
@@ -106,8 +104,7 @@ class MarkdownTextTest {
 	void readWrapsAReadFailureWithTheDescription() {
 		Path missing = tempDir.resolve("absent.md");
 
-		UncheckedIOException exception = assertThrows(UncheckedIOException.class,
-				() -> MarkdownText.read(missing.toFile(), "absent.md"));
-		assertTrue(exception.getMessage().contains("absent.md"), exception.getMessage());
+		assertFailure(UncheckedIOException.class, () -> MarkdownText.read(missing.toFile(), "absent.md"),
+				"absent.md");
 	}
 }

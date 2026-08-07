@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,58 +51,57 @@ class McpConfigFormatRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new McpConfigFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new McpConfigFormatRule()::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenArgsIsNotAnArray() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"args\": \"-y\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("'args' that is not an array"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"args\": \"-y\" } } }")::execute,
+				"'args' that is not an array");
 	}
 
 	@Test
 	void failsWhenArgsHasANonStringEntry() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"args\": [ 7 ] } } }")::execute);
-		assertTrue(exception.getMessage().contains("non-string entry in 'args'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"args\": [ 7 ] } } }")::execute,
+				"non-string entry in 'args'");
 	}
 
 	@Test
 	void failsWhenEnvIsNotAnObject() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"env\": [ ] } } }")::execute);
-		assertTrue(exception.getMessage().contains("'env' that is not an object"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"env\": [ ] } } }")::execute,
+				"'env' that is not an object");
 	}
 
 	@Test
 	void failsWhenAnEnvValueIsNotAString() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"env\": { \"PORT\": 8080 } } } }")::execute);
-		assertTrue(exception.getMessage().contains("non-string value for 'env.PORT'"), exception.getMessage());
+		String config = "{ \"mcpServers\": { \"fs\": { \"command\": \"npx\", \"env\": { \"PORT\": 8080 } } } }";
+
+		assertFailure(EnforcerRuleException.class, ruleFor(config)::execute, "non-string value for 'env.PORT'");
 	}
 
 	@Test
 	void failsWhenAHeaderValueIsNotAString() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(
-				"{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"https://x.io\", \"headers\": { \"X\": 1 } } } }")
-						::execute);
-		assertTrue(exception.getMessage().contains("non-string value for 'headers.X'"), exception.getMessage());
+		String config = "{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"https://x.io\","
+				+ " \"headers\": { \"X\": 1 } } } }";
+
+		assertFailure(EnforcerRuleException.class, ruleFor(config)::execute, "non-string value for 'headers.X'");
 	}
 
 	@Test
 	void failsWhenUrlIsMalformed() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"r\": { \"type\": \"sse\", \"url\": \"not a url\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"r\": { \"type\": \"sse\", \"url\": \"not a url\" } } }")::execute,
+				"malformed 'url'");
 	}
 
 	@Test
 	void failsWhenAServerDeclaresBothCommandAndUrl() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(
-				"{ \"mcpServers\": { \"x\": { \"command\": \"npx\", \"url\": \"https://x.io\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("declares both a 'command' and a 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"x\": { \"command\": \"npx\", \"url\": \"https://x.io\" } } }")::execute,
+				"declares both a 'command' and a 'url'");
 	}
 
 	@Test
@@ -110,8 +110,7 @@ class McpConfigFormatRuleTest {
 				"{ \"mcpServers\": { \"r\": { \"type\": \"http\", \"url\": \"http://x.io\" } } }");
 		rule.setRequireHttps(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("must use an https 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "must use an https 'url'");
 	}
 
 	@Test
@@ -165,23 +164,23 @@ class McpConfigFormatRuleTest {
 
 	@Test
 	void failsWhenAUrlHasNoScheme() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"example.com/sse\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"example.com/sse\" } } }")::execute,
+				"malformed 'url'");
 	}
 
 	@Test
 	void failsWhenAUrlHasNoHost() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"http:///sse\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"http:///sse\" } } }")::execute,
+				"malformed 'url'");
 	}
 
 	@Test
 	void failsWhenAUrlUsesASchemeThatIsNotHttp() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"ftp://example.com/sse\" } } }")::execute);
-		assertTrue(exception.getMessage().contains("malformed 'url'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"url\": \"ftp://example.com/sse\" } } }")::execute,
+				"malformed 'url'");
 	}
 
 	@Test

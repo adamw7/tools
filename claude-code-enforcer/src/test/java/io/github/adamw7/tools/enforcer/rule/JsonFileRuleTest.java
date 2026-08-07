@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,8 +30,8 @@ class JsonFileRuleTest {
 
 	@Test
 	void failsWhenFileIsNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new TestJsonRule()::execute);
-		assertTrue(exception.getMessage().contains("The testFile parameter is not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new TestJsonRule()::execute,
+				"The testFile parameter is not configured");
 	}
 
 	@Test
@@ -38,8 +39,7 @@ class JsonFileRuleTest {
 		TestJsonRule rule = new TestJsonRule();
 		rule.setFile(tempDir.resolve("absent.json").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("test.json does not exist at"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "test.json does not exist at");
 	}
 
 	@Test
@@ -54,16 +54,14 @@ class JsonFileRuleTest {
 
 	@Test
 	void failsWhenFileIsEmpty() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("   ")::execute);
-		assertTrue(exception.getMessage().contains("test.json is empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("   ")::execute, "test.json is empty");
 	}
 
 	@Test
 	void reportsMalformedJsonAsAViolationWithoutDispatchingToCollect() {
 		TestJsonRule rule = ruleFor("{ \"broken\": ");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("test.json is not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "test.json is not valid JSON");
 		assertNull(rule.parsedRoot, "collectViolations must not run when parsing fails");
 	}
 
@@ -81,9 +79,8 @@ class JsonFileRuleTest {
 		TestJsonRule rule = ruleFor("{ }");
 		rule.addViolation("something is wrong");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("test.json is not well formed:"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("something is wrong"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "test.json is not well formed:",
+				"something is wrong");
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.settings;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -44,16 +45,14 @@ class HooksFormatRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new HooksFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new HooksFormatRule()::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenScriptHasNoShebang() {
 		writeScript("session-start.sh", "echo hi\n", true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
-		assertTrue(exception.getMessage().contains("shebang"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "shebang");
 	}
 
 	@Test
@@ -61,16 +60,14 @@ class HooksFormatRuleTest {
 		assumeTrue(supportsExecutableBit(), "filesystem has no executable bit to clear");
 		writeScript("session-start.sh", "#!/bin/sh\n", false);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
-		assertTrue(exception.getMessage().contains("not executable"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "not executable");
 	}
 
 	@Test
 	void failsWhenScriptIsEmpty() {
 		writeScript("session-start.sh", "   \n", true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
-		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "empty");
 	}
 
 	@Test
@@ -79,8 +76,7 @@ class HooksFormatRuleTest {
 		HooksFormatRule rule = ruleFor();
 		rule.setAllowedExtensions(List.of("sh"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("disallowed extension"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "disallowed extension");
 	}
 
 	@Test
@@ -99,9 +95,7 @@ class HooksFormatRuleTest {
 		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing hook script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	@Test
@@ -123,9 +117,7 @@ class HooksFormatRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 		rule.setReportUnreferencedScripts(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not referenced"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("orphan.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not referenced", "orphan.sh");
 	}
 
 	/**
@@ -151,9 +143,7 @@ class HooksFormatRuleTest {
 		rule.setSettingsFile(settingsReferencing(".claude/hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing hook script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	/** A hook chaining two scripts references both, whichever spelling each is written with. */
@@ -246,9 +236,7 @@ class HooksFormatRuleTest {
 				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing hook script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing hook script", "gone.sh");
 	}
 
 	@Test
@@ -263,8 +251,7 @@ class HooksFormatRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 		rule.setReportUnreferencedScripts(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not referenced"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not referenced");
 	}
 
 	@Test
@@ -282,8 +269,7 @@ class HooksFormatRuleTest {
 		HooksFormatRule rule = ruleFor();
 		rule.setAllowedExtensions(List.of("sh"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("disallowed extension"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "disallowed extension");
 	}
 
 	@Test
@@ -292,8 +278,7 @@ class HooksFormatRuleTest {
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("settings.json does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json does not exist");
 	}
 
 	@Test
@@ -304,8 +289,7 @@ class HooksFormatRuleTest {
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(settings.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not valid JSON");
 	}
 
 	@Test
@@ -331,9 +315,8 @@ class HooksFormatRuleTest {
 	void reportsAFileThatCannotBeDecodedAsTextInsteadOfFailingTheBuildOutright() {
 		writeBytes("logo.png", new byte[] { (byte) 0x89, 0x50, 0x4E, 0x47, (byte) 0xFF, (byte) 0xFE });
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor()::execute);
-		assertTrue(exception.getMessage().contains("cannot be read as a text script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("logo.png"), exception.getMessage());
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, ruleFor()::execute,
+				"cannot be read as a text script", "logo.png");
 		assertFalse(exception.getMessage().contains("is empty"), exception.getMessage());
 	}
 
@@ -422,9 +405,7 @@ class HooksFormatRuleTest {
 		rule.setSettingsFile(settingsReferencing("if true; then .claude/hooks/gone.sh; fi"));
 		rule.setProjectDir(tempDir.toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("references a missing hook script"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("gone.sh"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	private HooksFormatRule ruleFor() {

@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -32,9 +32,7 @@ class ReadmeConsistencyRuleTest {
 		ReadmeConsistencyRule rule = ruleFor("Now supports proto3.", "Supports only proto2.");
 		rule.setConsistentPatterns(List.of("proto(\\d)"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("'3'"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("'2'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "'3'", "'2'");
 	}
 
 	@Test
@@ -71,9 +69,7 @@ class ReadmeConsistencyRuleTest {
 		ReadmeConsistencyRule rule = ruleFor("proto3 and Java 24.", "proto2 and Java 25.");
 		rule.setConsistentPatterns(List.of("proto(\\d)", "Java (\\d+)"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("proto(\\d)"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("Java (\\d+)"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "proto(\\d)", "Java (\\d+)");
 	}
 
 	@Test
@@ -81,8 +77,7 @@ class ReadmeConsistencyRuleTest {
 		ReadmeConsistencyRule rule = ruleFor("proto2.", "proto2.");
 		rule.setConsistentPatterns(List.of("proto\\d"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("must declare a capturing group"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "must declare a capturing group");
 	}
 
 	@Test
@@ -103,8 +98,7 @@ class ReadmeConsistencyRuleTest {
 		rule.setReadmeFile(tempDir.resolve("absent-readme.md").toFile());
 		rule.setAgentDocFile(tempDir.resolve("absent-agents.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -112,8 +106,7 @@ class ReadmeConsistencyRuleTest {
 		ReadmeConsistencyRule rule = new ReadmeConsistencyRule();
 		rule.setAgentDocFile(tempDir.resolve("AGENTS.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("readmeFile"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "readmeFile");
 	}
 
 	private ReadmeConsistencyRule ruleFor(String readmeContent, String agentDocContent) {

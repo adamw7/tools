@@ -1,9 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 
@@ -61,8 +60,7 @@ class AgentsMdFormatRuleTest {
 	void failsWhenFileIsNotConfigured() {
 		AgentsMdFormatRule rule = new AgentsMdFormatRule();
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "not configured");
 	}
 
 	@Test
@@ -70,41 +68,35 @@ class AgentsMdFormatRuleTest {
 		AgentsMdFormatRule rule = new AgentsMdFormatRule();
 		rule.setAgentsMdFile(tempDir.resolve("absent.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenFileIsEmpty() {
 		AgentsMdFormatRule rule = ruleFor("   \n  ");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "empty");
 	}
 
 	@Test
 	void failsWhenTitleHeadingIsWrong() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# AGENTS.md", "# Something Else"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("title heading"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "title heading");
 	}
 
 	@Test
 	void failsWhenARequiredSectionIsMissing() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Releasing", "## Shipping"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("## Releasing"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "## Releasing");
 	}
 
 	@Test
 	void failsWhenSectionHeadingAppearsOnlyInsideCodeFence() {
 		AgentsMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Releasing", "```\n## Releasing\n```"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required section heading: ## Releasing"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required section heading: ## Releasing");
 	}
 
 	@Test

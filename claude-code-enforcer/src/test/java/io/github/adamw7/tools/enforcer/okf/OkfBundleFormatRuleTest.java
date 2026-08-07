@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.okf;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -104,9 +105,8 @@ class OkfBundleFormatRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				new OkfBundleFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("bundleDir parameter is not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new OkfBundleFormatRule()::execute,
+				"bundleDir parameter is not configured");
 	}
 
 	@Test
@@ -272,9 +272,8 @@ class OkfBundleFormatRuleTest {
 		OkfBundleFormatRule rule = rule();
 		rule.setOkfVersion("0.2");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("declares 'okf_version: 0.1' but the build expects 0.2"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute,
+				"declares 'okf_version: 0.1' but the build expects 0.2");
 	}
 
 	@Test
@@ -283,8 +282,7 @@ class OkfBundleFormatRuleTest {
 		OkfBundleFormatRule rule = rule();
 		rule.setOkfVersion("0.2");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("declares no index.md at its root"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "declares no index.md at its root");
 	}
 
 	@Test
@@ -300,9 +298,8 @@ class OkfBundleFormatRuleTest {
 		OkfBundleFormatRule rule = rule();
 		rule.setRequiredKeys(List.of("title", "description"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("declares no non-empty 'title'"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("declares no non-empty 'description'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "declares no non-empty 'title'",
+				"declares no non-empty 'description'");
 	}
 
 	@Test
@@ -312,8 +309,7 @@ class OkfBundleFormatRuleTest {
 		OkfBundleFormatRule rule = rule();
 		rule.setRequireIndex(true);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("pkg holds concepts but no index.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "pkg holds concepts but no index.md");
 	}
 
 	@Test

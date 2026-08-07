@@ -73,7 +73,7 @@ separately):
 ```
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer   # custom maven-enforcer rules validating CLAUDE.md/AGENTS.md & agent config
-├── test-common            # shared ArchUnit rule libraries (test-jar), reused by every module's architecture tests
+├── test-common            # shared ArchUnit rule libraries and test assertions (test-jar), reused by every module
 ├── mcp-common             # shared MCP server scaffolding
 ├── data                   # data sources, uniqueness checks, structures, MCP server
 ├── code

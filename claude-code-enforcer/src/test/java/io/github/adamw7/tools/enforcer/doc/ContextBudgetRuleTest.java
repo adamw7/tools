@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,9 +36,8 @@ class ContextBudgetRuleTest {
 
 	@Test
 	void failsWhenNoLimitIsConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleForFile("content")::execute);
-		assertTrue(exception.getMessage().contains("maxBytes, maxLines, or maxTokens"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleForFile("content")::execute,
+				"maxBytes, maxLines, or maxTokens");
 	}
 
 	@Test
@@ -45,8 +45,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = new ContextBudgetRule();
 		rule.setMaxBytes(1000);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("files or directories"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "files or directories");
 	}
 
 	@Test
@@ -55,8 +54,7 @@ class ContextBudgetRuleTest {
 		rule.setMaxBytes(1000);
 		rule.setFiles(List.of(tempDir.resolve("absent.md").toFile()));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
@@ -64,8 +62,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("x".repeat(100));
 		rule.setMaxBytes(50);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("over the 50-byte budget"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "over the 50-byte budget");
 	}
 
 	@Test
@@ -85,8 +82,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("x".repeat(51));
 		rule.setMaxBytes(50);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("is 51 bytes, over the 50-byte budget"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "is 51 bytes, over the 50-byte budget");
 	}
 
 	@Test
@@ -102,8 +98,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("one\ntwo\nthree\n");
 		rule.setMaxLines(2);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("has 3 lines, over the 2-line budget"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "has 3 lines, over the 2-line budget");
 	}
 
 	@Test
@@ -121,9 +116,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("x".repeat(41));
 		rule.setMaxTokens(10);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("estimated 11 tokens, over the 10-token budget"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "estimated 11 tokens, over the 10-token budget");
 	}
 
 	@Test
@@ -131,8 +124,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("one\ntwo\nthree\n");
 		rule.setMaxLines(2);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("over the 2-line budget"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "over the 2-line budget");
 	}
 
 	@Test
@@ -140,9 +132,7 @@ class ContextBudgetRuleTest {
 		ContextBudgetRule rule = ruleForFile("x".repeat(100));
 		rule.setMaxTokens(10);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("estimated 25 tokens, over the 10-token budget"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "estimated 25 tokens, over the 10-token budget");
 	}
 
 	@Test
@@ -152,8 +142,7 @@ class ContextBudgetRuleTest {
 		rule.setDirectories(List.of(tempDir.resolve("skills").toFile()));
 		rule.setMaxBytes(50);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("SKILL.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "SKILL.md");
 	}
 
 	@Test
@@ -190,8 +179,7 @@ class ContextBudgetRuleTest {
 		rule.setBaselineFile(baseline);
 		rule.setLog(new CapturingLogger());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("over the 50-byte budget"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "over the 50-byte budget");
 	}
 
 	@Test
@@ -236,9 +224,8 @@ class ContextBudgetRuleTest {
 		rule.setDirectories(List.of(directory.toFile()));
 		rule.setMaxLines(1);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("broken.md"), exception.getMessage());
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, rule::execute,
+				"cannot be read as text", "broken.md");
 		// The undecodable file no longer aborts the run before the next one is measured.
 		assertTrue(exception.getMessage().contains("fine.md"), exception.getMessage());
 		assertTrue(exception.getMessage().contains("2 lines, over the 1-line budget"), exception.getMessage());
@@ -267,8 +254,7 @@ class ContextBudgetRuleTest {
 
 		// The *.md filter narrows the directory scan; a file named outright was
 		// chosen by the configuration and is measured whatever it is called.
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("notes.txt"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "notes.txt");
 	}
 
 	private static int occurrences(String message, String token) {

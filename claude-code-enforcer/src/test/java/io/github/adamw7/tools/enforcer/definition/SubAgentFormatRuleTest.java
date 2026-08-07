@@ -4,8 +4,8 @@ import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -54,31 +54,24 @@ class SubAgentFormatRuleTest {
 		writeString(tempDir.resolve("reviewer.md"), "# Reviewer\nNo front matter.");
 		writeString(tempDir.resolve("planner.md"), "# Planner\nNo front matter either.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("reviewer.md"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("planner.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "reviewer.md", "planner.md");
 	}
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new SubAgentFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new SubAgentFormatRule()::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenDirectoryIsMissing() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor(tempDir.resolve("absent"))::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir.resolve("absent"))::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenDefinitionHasNoFrontMatter() {
 		writeString(tempDir.resolve("reviewer.md"), "# Reviewer\nNo front matter.");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("reviewer.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "front matter", "reviewer.md");
 	}
 
 	@Test
@@ -90,8 +83,7 @@ class SubAgentFormatRuleTest {
 				# Reviewer
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("missing 'description:'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "missing 'description:'");
 	}
 
 	@Test
@@ -104,8 +96,7 @@ class SubAgentFormatRuleTest {
 				# Reviewer
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "description must not be empty");
 	}
 
 	@Test
@@ -117,8 +108,7 @@ class SubAgentFormatRuleTest {
 				---
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("must match 'reviewer'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "must match 'reviewer'");
 	}
 
 	@Test
@@ -127,8 +117,7 @@ class SubAgentFormatRuleTest {
 		SubAgentFormatRule rule = ruleFor(tempDir);
 		rule.setAllowedModels(List.of("claude-opus-4-8", "claude-sonnet-4-6"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("unsupported model 'claud-opus'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "unsupported model 'claud-opus'");
 	}
 
 	@Test
@@ -166,8 +155,7 @@ class SubAgentFormatRuleTest {
 				# Reviewer
 				""");
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("front matter"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "front matter");
 	}
 
 	/** Quoting a value is ordinary YAML, so the name inside the quotes is the one checked. */
@@ -191,8 +179,7 @@ class SubAgentFormatRuleTest {
 	void reportsADefinitionThatCannotBeReadAsText() {
 		writeBytes(tempDir.resolve("binary.md"), new byte[] { (byte) 0xC3, (byte) 0x28 });
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
-		assertTrue(exception.getMessage().contains("cannot be read as text"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(tempDir)::execute, "cannot be read as text");
 	}
 
 	private void createAgent(String name, String model) {

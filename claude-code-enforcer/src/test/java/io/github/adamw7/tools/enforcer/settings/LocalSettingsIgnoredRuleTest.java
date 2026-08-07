@@ -1,9 +1,8 @@
 package io.github.adamw7.tools.enforcer.settings;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -34,9 +33,7 @@ class LocalSettingsIgnoredRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				new LocalSettingsIgnoredRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new LocalSettingsIgnoredRule()::execute, "not configured");
 	}
 
 	@Test
@@ -44,23 +41,19 @@ class LocalSettingsIgnoredRuleTest {
 		LocalSettingsIgnoredRule rule = new LocalSettingsIgnoredRule();
 		rule.setGitignoreFile(tempDir.resolve("absent").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsWhenThePathIsNotCovered() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("target/\n*.log\n")::execute);
-		assertTrue(exception.getMessage().contains("does not cover: .claude/settings.local.json"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("target/\n*.log\n")::execute,
+				"does not cover: .claude/settings.local.json");
 	}
 
 	@Test
 	void failsWhenANegationReincludesThePath() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("*.local.json\n!settings.local.json\n")::execute);
-		assertTrue(exception.getMessage().contains("does not cover"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("*.local.json\n!settings.local.json\n")::execute,
+				"does not cover");
 	}
 
 	@Test
@@ -68,8 +61,7 @@ class LocalSettingsIgnoredRuleTest {
 		LocalSettingsIgnoredRule rule = ruleFor(".claude/settings.local.json\n");
 		rule.setIgnoredPaths(List.of("./.claude/settings.local.json", ".env"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not cover: .env"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not cover: .env");
 	}
 
 	private LocalSettingsIgnoredRule ruleFor(String gitignoreContent) {

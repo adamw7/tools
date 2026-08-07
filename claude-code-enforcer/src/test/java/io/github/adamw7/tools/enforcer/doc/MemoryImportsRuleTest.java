@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -34,8 +34,7 @@ class MemoryImportsRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new MemoryImportsRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new MemoryImportsRule()::execute, "not configured");
 	}
 
 	@Test
@@ -43,16 +42,13 @@ class MemoryImportsRuleTest {
 		MemoryImportsRule rule = new MemoryImportsRule();
 		rule.setClaudeMdFile(tempDir.resolve("absent.md").toFile());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("does not exist"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "does not exist");
 	}
 
 	@Test
 	void failsForAMissingImportTarget() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n")::execute);
-		assertTrue(exception.getMessage().contains("imports a missing file: @docs/absent.md"),
-				exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n")::execute,
+				"imports a missing file: @docs/absent.md");
 	}
 
 	@Test
@@ -110,17 +106,15 @@ class MemoryImportsRuleTest {
 	@Test
 	void followsImportsRecursively() {
 		writeString(tempDir.resolve("first.md"), "See @second.md\n");
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("# CLAUDE.md\n\nSee @first.md\n")::execute);
-		assertTrue(exception.getMessage().contains("imports a missing file: @second.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("# CLAUDE.md\n\nSee @first.md\n")::execute,
+				"imports a missing file: @second.md");
 	}
 
 	@Test
 	void failsForACircularImport() {
 		writeString(tempDir.resolve("loop.md"), "Back to @CLAUDE.md\n");
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("# CLAUDE.md\n\nSee @loop.md\n")::execute);
-		assertTrue(exception.getMessage().contains("circular import: @CLAUDE.md"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("# CLAUDE.md\n\nSee @loop.md\n")::execute,
+				"circular import: @CLAUDE.md");
 	}
 
 	@Test
@@ -130,8 +124,7 @@ class MemoryImportsRuleTest {
 		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @first.md\n");
 		rule.setMaxDepth(1);
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("nested deeper than 1 hops"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "nested deeper than 1 hops");
 	}
 
 	@Test
@@ -172,8 +165,7 @@ class MemoryImportsRuleTest {
 
 		// Same files, but nothing imports shallow.md directly any more, so its
 		// only chain is six hops long and leaf.md really is out of reach.
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("nested deeper than 5 hops"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "nested deeper than 5 hops");
 	}
 
 	@Test
@@ -197,8 +189,7 @@ class MemoryImportsRuleTest {
 		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n");
 		rule.setIgnoredImports(List.of("something/else.md"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("imports a missing file"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "imports a missing file");
 	}
 
 	@Test

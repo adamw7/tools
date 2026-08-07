@@ -45,11 +45,6 @@ public class SubAgentFormatRule extends DefinitionFormatRule {
 	}
 
 	@Override
-	protected File[] entriesIn(File directory) {
-		return DefinitionFiles.markdownFiles(directory);
-	}
-
-	@Override
 	protected void collectEntryViolations(File definition, List<String> violations) {
 		contentOf(definition, violations)
 				.flatMap(content -> requiredFrontMatterOf(content, definition, violations))

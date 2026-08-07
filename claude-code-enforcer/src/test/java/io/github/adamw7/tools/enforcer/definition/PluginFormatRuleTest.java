@@ -1,9 +1,8 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -40,35 +39,30 @@ class PluginFormatRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, new PluginFormatRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new PluginFormatRule()::execute, "not configured");
 	}
 
 	@Test
 	void failsWhenTheManifestIsMalformedJson() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, ruleFor("{ \"name\": ")::execute);
-		assertTrue(exception.getMessage().contains("not valid JSON"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"name\": ")::execute, "not valid JSON");
 	}
 
 	@Test
 	void failsWhenARequiredKeyIsMissing() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"version\": \"1.0.0\" }")::execute);
-		assertTrue(exception.getMessage().contains("missing required key 'name'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"version\": \"1.0.0\" }")::execute,
+				"missing required key 'name'");
 	}
 
 	@Test
 	void failsWhenTheNameBreaksConvention() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"name\": \"My Plugin\" }")::execute);
-		assertTrue(exception.getMessage().contains("lower-case kebab-case"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"name\": \"My Plugin\" }")::execute,
+				"lower-case kebab-case");
 	}
 
 	@Test
 	void failsForAMalformedVersion() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"name\": \"my-plugin\", \"version\": \"one\" }")::execute);
-		assertTrue(exception.getMessage().contains("not a dotted version number"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"name\": \"my-plugin\", \"version\": \"one\" }")::execute, "not a dotted version number");
 	}
 
 	@Test
@@ -83,9 +77,9 @@ class PluginFormatRuleTest {
 
 	@Test
 	void failsForABlankDescription() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("{ \"name\": \"my-plugin\", \"description\": \"  \" }")::execute);
-		assertTrue(exception.getMessage().contains("description must not be empty"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"name\": \"my-plugin\", \"description\": \"  \" }")::execute,
+				"description must not be empty");
 	}
 
 	@Test
@@ -93,8 +87,7 @@ class PluginFormatRuleTest {
 		PluginFormatRule rule = ruleFor("{ \"name\": \"my-plugin\", \"descripton\": \"typo\" }");
 		rule.setAllowedKeys(List.of("name", "version", "description", "author"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("unknown key 'descripton'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "unknown key 'descripton'");
 	}
 
 	@Test
@@ -102,8 +95,7 @@ class PluginFormatRuleTest {
 		PluginFormatRule rule = ruleFor("{ \"name\": \"my-plugin\" }");
 		rule.setRequiredKeys(List.of("name", "description"));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("missing required key 'description'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required key 'description'");
 	}
 
 	private PluginFormatRule ruleFor(String content) {

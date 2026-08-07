@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -56,8 +56,7 @@ class RepositoryUrlsTest {
 	@Test
 	void failsWithAdoptionExceptionWhenTheFileCannotBeRead(@TempDir Path dir) {
 		Path missing = dir.resolve("absent.txt");
-		AdoptionException thrown = assertThrows(AdoptionException.class, () -> RepositoryUrls.fromFile(missing));
-		assertTrue(thrown.getMessage().contains("the repository URL list"), thrown.getMessage());
+		assertFailure(AdoptionException.class, () -> RepositoryUrls.fromFile(missing), "the repository URL list");
 	}
 
 	private Path listFile(Path dir, String content) throws IOException {

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -72,9 +73,8 @@ class CloneStepTest {
 	void refusesCheckoutOfADifferentRepository(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);
 		RecordingCommandRunner runner = origin("https://github.com/someone-else/tools.git");
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-		assertTrue(failure.getMessage().contains("someone-else/tools"), failure.getMessage());
-		assertTrue(failure.getMessage().contains("adamw7/tools"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "someone-else/tools",
+				"adamw7/tools");
 		assertEquals(1, runner.count(), "nothing may be done to a checkout of another repository");
 	}
 
@@ -153,8 +153,7 @@ class CloneStepTest {
 	void refusesCheckoutWithNoOriginRemote(@TempDir Path existingWorkspace) throws IOException {
 		AdoptionContext existing = checkedOut(existingWorkspace);
 		RecordingCommandRunner runner = RecordingCommandRunner.failing(2, "error: No such remote 'origin'");
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-		assertTrue(failure.getMessage().contains("no 'origin' remote"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "no 'origin' remote");
 	}
 
 	@Test
@@ -188,10 +187,8 @@ class CloneStepTest {
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
 				" M src/main/java/Service.java" + System.lineSeparator() + "?? notes.txt");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("src/main/java/Service.java"), failure.getMessage());
-		assertTrue(failure.getMessage().contains("notes.txt"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "src/main/java/Service.java",
+				"notes.txt");
 		assertEquals(2, runner.count(), "a checkout with unrelated work may not even be fetched into");
 	}
 
@@ -294,9 +291,7 @@ class CloneStepTest {
 		AdoptionContext existing = checkedOut(existingWorkspace);
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", "?? .claude/");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains(".claude/"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), ".claude/");
 	}
 
 	/**
@@ -311,9 +306,8 @@ class CloneStepTest {
 				"?? CLAUDE.md" + System.lineSeparator() + "?? .claude/settings.json" + System.lineSeparator()
 						+ "?? .claude/scratch.md");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains(".claude/scratch.md"), failure.getMessage());
+		AdoptionException failure = assertFailure(AdoptionException.class, () -> step.execute(existing, runner),
+				".claude/scratch.md");
 		assertFalse(failure.getMessage().contains("settings.json"), failure.getMessage());
 	}
 
@@ -353,9 +347,8 @@ class CloneStepTest {
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
 				"R  old/name.txt -> \"my notes.txt\"");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("my notes.txt"), failure.getMessage());
+		AdoptionException failure = assertFailure(AdoptionException.class, () -> step.execute(existing, runner),
+				"my notes.txt");
 		assertFalse(failure.getMessage().contains("->"), failure.getMessage());
 	}
 
@@ -373,9 +366,7 @@ class CloneStepTest {
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
 				"R  docs/CLAUDE.md -> CLAUDE.md");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("docs/CLAUDE.md"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "docs/CLAUDE.md");
 	}
 
 	/** A copy leaves its source in place but is reported the same way, so it is read the same way. */
@@ -386,9 +377,7 @@ class CloneStepTest {
 		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git",
 				"C  Feature.java -> pom.xml");
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("Feature.java"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "Feature.java");
 	}
 
 	/** Both sides being the adoption's own is a resume, not a contributor's work in progress. */
@@ -411,9 +400,7 @@ class CloneStepTest {
 				? new CommandResult(command, 128, "fatal: not a git repository")
 				: new CommandResult(command, 0, "https://github.com/adamw7/tools.git"));
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("status could not be read"), failure.getMessage());
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "status could not be read");
 	}
 
 	/**
@@ -445,9 +432,8 @@ class CloneStepTest {
 				"warning: could not open directory 'vendor/': Permission denied",
 				" M src/Main.java"));
 
-		AdoptionException failure = assertThrows(AdoptionException.class, () -> step.execute(existing, runner));
-
-		assertTrue(failure.getMessage().contains("src/Main.java"), failure.getMessage());
+		AdoptionException failure = assertFailure(AdoptionException.class, () -> step.execute(existing, runner),
+				"src/Main.java");
 		assertFalse(failure.getMessage().contains("warning"), failure.getMessage());
 	}
 

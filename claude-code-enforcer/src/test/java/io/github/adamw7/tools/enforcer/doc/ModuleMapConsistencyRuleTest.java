@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,9 +38,7 @@ class ModuleMapConsistencyRuleTest {
 
 	@Test
 	void failsWhenNotConfigured() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				new ModuleMapConsistencyRule()::execute);
-		assertTrue(exception.getMessage().contains("not configured"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, new ModuleMapConsistencyRule()::execute, "not configured");
 	}
 
 	@Test
@@ -48,22 +47,19 @@ class ModuleMapConsistencyRuleTest {
 		rule.setPomFile(write("pom.xml", POM).toFile());
 		rule.setDocFiles(List.of());
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("at least one file"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "at least one file");
 	}
 
 	@Test
 	void failsWhenThePomDeclaresNoModules() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor("<project></project>", "docs")::execute);
-		assertTrue(exception.getMessage().contains("declares no <module> entries"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor("<project></project>", "docs")::execute,
+				"declares no <module> entries");
 	}
 
 	@Test
 	void failsWhenAModuleIsNotMentioned() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
-				ruleFor(POM, "Only the data module.\n")::execute);
-		assertTrue(exception.getMessage().contains("does not mention module 'context'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, ruleFor(POM, "Only the data module.\n")::execute,
+				"does not mention module 'context'");
 	}
 
 	@Test
@@ -90,9 +86,7 @@ class ModuleMapConsistencyRuleTest {
 		Path second = write("README.md", "Only data here.\n");
 		rule.setDocFiles(List.of(tempDir.resolve("CLAUDE.md").toFile(), second.toFile()));
 
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
-		assertTrue(exception.getMessage().contains("README.md"), exception.getMessage());
-		assertTrue(exception.getMessage().contains("'context'"), exception.getMessage());
+		assertFailure(EnforcerRuleException.class, rule::execute, "README.md", "'context'");
 	}
 
 	@Test
@@ -106,10 +100,10 @@ class ModuleMapConsistencyRuleTest {
 
 	@Test
 	void failsWhenAModuleNameOnlyAppearsInsideAHyphenatedName() {
-		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class,
+		assertFailure(EnforcerRuleException.class,
 				ruleFor("<project><modules><module>code</module></modules></project>",
-						"The claude-code-enforcer module.\n")::execute);
-		assertTrue(exception.getMessage().contains("does not mention module 'code'"), exception.getMessage());
+						"The claude-code-enforcer module.\n")::execute,
+				"does not mention module 'code'");
 	}
 
 	@Test

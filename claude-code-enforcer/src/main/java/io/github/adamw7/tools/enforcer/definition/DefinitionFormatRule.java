@@ -70,8 +70,15 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 	/** The directory to scan. Injected from the rule configuration. */
 	protected abstract File definitionDir();
 
-	/** The entries of {@code directory} that each carry one definition. */
-	protected abstract File[] entriesIn(File directory);
+	/**
+	 * The entries of {@code directory} that each carry one definition: its
+	 * {@code *.md} files, which is what a command and a sub-agent are. A kind whose
+	 * definition is a directory instead — a skill, carrying a {@code SKILL.md} —
+	 * says so by overriding.
+	 */
+	protected File[] entriesIn(File directory) {
+		return DefinitionFiles.markdownFiles(directory);
+	}
 
 	/** Collects everything wrong with the definition that {@code entry} carries. */
 	protected abstract void collectEntryViolations(File entry, List<String> violations);

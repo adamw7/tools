@@ -688,7 +688,7 @@ change the build checks.
 
 ### Skills
 
-`.claude/skills/` holds **twelve** project skills, each a directory with a
+`.claude/skills/` holds **thirteen** project skills, each a directory with a
 `SKILL.md` whose YAML front matter declares a `name` (lower-case kebab-case,
 matching the directory name) and a `description` saying both what the skill
 covers and when to load it. Skills are loaded on demand rather than into every
@@ -706,16 +706,25 @@ Six cover one module each:
 | `mcp-server` | adding a tool or server on the `mcp-common` scaffolding — the `McpTool` SPI, the three transports, path confinement, `MCP_USAGE.md`, the `*IT`s |
 | `enforcer-rules` | writing, testing and wiring a `claude-code-enforcer` rule, including `severity`/`reportFile`/`baselineFile` |
 
-Six hold across the repository:
+Seven hold across the repository:
 
 | Skill | Covers |
 | --- | --- |
 | `doc-contract` | keeping `CLAUDE.md`, `AGENTS.md` and `README.md` inside the enforced documentation contract |
 | `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
 | `testing-conventions` | the Surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
-| `java-code-review` | review led by the rules the build fails on, then null safety, exceptions, concurrency, performance |
+| `java-code-review` | review led by the rules the build fails on, then the five defect shapes this repository ships fixes for, then null safety, exceptions, concurrency, performance |
+| `text-parsers` | the invariants of the hand-rolled readers — `MarkdownDocument`, `FrontMatter`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy — and the adversarial input that has broken each |
 | `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
 | `git-commit` | conventional commit messages using this repository's real module scopes |
+
+The last two of those are the bug-finding pair, and they are written from this
+repository's own `fix(...)` history rather than from a generic checklist: the
+readers `text-parsers` covers carry the largest share of the defects fixed here,
+and section 9 of `java-code-review` generalises the rest into five shapes — a
+hand-rolled reader meeting real input, two implementations of one format
+drifting, a command transcript read as structured output, success reported for
+work that never happened, and a new path for a credential.
 
 A new skill needs no wiring: `skillFilesExist`, `uniqueNames` and
 `uniqueDescriptions` already point at `.claude/skills`, so it is validated the

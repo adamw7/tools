@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
+import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.Text;
 import io.github.adamw7.tools.adopt.command.CommandLine;
 import io.github.adamw7.tools.adopt.command.CommandResult;
@@ -23,6 +24,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * aborts with "Author identity unknown". Each missing identity is supplied for the
  * commit alone with a {@code -c} override, so an identity the checkout already
  * configures stays in force.
+ *
+ * <p>Staging is also where the adoption finds out that the checkout excludes a file
+ * it wrote, since {@code git add -A} skips an ignored path without saying so. That
+ * is refused rather than committed around — see
+ * {@link #requireNothingTheAdoptionWroteIsIgnored}.
  *
  * <p>The pipeline runs this step two or three times, so each one is qualified with
  * what it commits. A report whose {@code completedSteps} read {@code commit} three
@@ -65,12 +71,63 @@ public class CommitStep extends AbstractCommandStep {
 
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner) {
+		requireNothingTheAdoptionWroteIsIgnored(context, runner);
 		runOrFail(runner, context.repositoryDirectory(), List.of("git", "add", "-A"));
 		if (hasStagedChanges(context, runner)) {
 			commit(context, runner);
 		} else {
 			log.info("No changes to commit for: {}", message);
 		}
+	}
+
+	/**
+	 * Refuses to commit while a file the adoption wrote is excluded by the checkout's
+	 * ignore rules. {@code git add -A} skips an ignored path in silence, so the file
+	 * stays in the working tree — where {@link VerifyStep} goes on finding it and
+	 * passing — while the branch that is pushed carries nothing of it.
+	 *
+	 * <p>Nothing downstream could catch that. A repository ignoring {@code CLAUDE.md}
+	 * was adopted, reported as complete with every step passed, and left with the
+	 * guard the adoption had just wired in failing on a clean checkout of its own pull
+	 * request — the one outcome {@link VerifyStep} exists to prevent. One ignoring
+	 * {@code .claude/} had its starter assets logged as installed and committed none
+	 * of them. Neither shows up in {@code git status}, which is exactly what ignoring
+	 * a path means.
+	 *
+	 * <p>Failing is the answer rather than forcing the files in: the pattern is the
+	 * project's own decision about its repository, and the adoption is in no position
+	 * to overrule it.
+	 */
+	private void requireNothingTheAdoptionWroteIsIgnored(AdoptionContext context, CommandRunner runner) {
+		List<String> ignored = ignoredPaths(context, runner);
+		if (!ignored.isEmpty()) {
+			throw new AdoptionException(name() + " cannot commit " + String.join(", ", ignored) + " in "
+					+ context.repositoryDirectory() + ": the checkout's ignore rules exclude those paths, so they"
+					+ " would stay out of " + context.branchName() + " while the verification kept reading them from"
+					+ " the working tree. Stop ignoring those paths, or adopt a repository that does not.");
+		}
+	}
+
+	/**
+	 * The paths git would leave behind: the ones the adoption writes that exist in the
+	 * checkout, are not tracked, and are excluded. A path the checkout already tracks
+	 * is committed whatever the ignore rules say, so {@code --others} is what asks the
+	 * question.
+	 *
+	 * <p>Only {@link AdoptionAssets#WRITTEN_PATHS} is asked about, and only those are
+	 * read back out: the transcript merges the command's standard error, so a git that
+	 * warns puts a line in it that is no path of ours.
+	 */
+	private List<String> ignoredPaths(AdoptionContext context, CommandRunner runner) {
+		CommandResult result = runOrFail(runner, context.repositoryDirectory(),
+				CommandLine.of("git", "ls-files", "--others", "--ignored", "--exclude-standard", "--")
+						.addAll(AdoptionAssets.WRITTEN_PATHS)
+						.toList());
+		return result.output().lines()
+				.map(String::strip)
+				.filter(AdoptionAssets.WRITTEN_PATHS::contains)
+				.distinct()
+				.toList();
 	}
 
 	private boolean hasStagedChanges(AdoptionContext context, CommandRunner runner) {

@@ -1,20 +1,21 @@
 ---
 name: text-parsers
-description: Work on this repo's hand-rolled text readers — MarkdownDocument, FrontMatter, MarkdownText, ImportGraph, CommandTokens and the ClaudeMdConformer copy of them — and the adversarial input that has broken each. Use when changing how a document, YAML front matter, a memory import or a hook command is read, when a rule fires on valid input or passes invalid input, or when the user says "fence", "front matter", "heading detection", "memory import", or "hook command".
+description: Work on this repo's text readers — MarkdownDocument, MarkdownText, ImportGraph, CommandTokens, the ClaudeMdConformer copy of them, and the SnakeYAML-backed FrontMatter — and the adversarial input that has broken each. Use when changing how a document, YAML front matter, a memory import or a hook command is read, when a rule fires on valid input or passes invalid input, or when the user says "fence", "front matter", "heading detection", "memory import", or "hook command".
 ---
 
 # Text Parsers Skill
 
 The `claude-code-enforcer` rules and the `adopt` conformer read Markdown, YAML
-front matter, `@path` imports and shell hook commands with small hand-rolled
-readers rather than a library. Those readers carry the largest share of this
-repository's shipped defects: `FrontMatter` and `CommandTokens` have each been
-fixed in six or seven separate commits, `MarkdownDocument` and
-`ClaudeMdConformer` in four or five.
+front matter, `@path` imports and shell hook commands with small readers of their
+own. Those readers carry the largest share of this repository's shipped defects:
+`FrontMatter` and `CommandTokens` have each been fixed in six or seven separate
+commits, `MarkdownDocument` and `ClaudeMdConformer` in four or five.
 
 Every one of those fixes was the same thing — real input the reader had not been
 written for. This skill is the accumulated list, so the next change starts from
-it instead of rediscovering it.
+it instead of rediscovering it. `FrontMatter` is the one that has since been
+handed to a library: it composes the block with SnakeYAML rather than scanning
+quotes and comments itself, and its section below says what that changed.
 
 ## When to Use
 - Changing any reader in `claude-code-enforcer/.../text`, `.../doc/ImportGraph`,
@@ -56,20 +57,24 @@ construction, so structural checks share them.
 
 ### `FrontMatter`
 
-A deliberately small YAML reader, not a parser. It answers each `key: value` as
-one line of text — length, blankness, uniqueness, shape. **A rule that needs the
-structure wants a real YAML parser, not this.**
+**The one reader here that is no longer hand-rolled.** It delimits the `---`
+block itself, then hands the block to SnakeYAML and answers each entry as one
+line of text — length, blankness, uniqueness, shape. Six or seven of this
+repository's `fix(...)` commits were quoting, comment and block-scalar rules
+re-derived by hand; those rules now come from the loader.
 
 | Invariant | Why |
 |---|---|
-| A key is recognised only at column 0, with `key:` or `key: value` (space or tab) | An indented line continues the value above. `Use this when:` inside a wrapped description is not a key. |
-| A value the key's line does not carry is **folded from the indented lines below** | Covers all three YAML continuations — block scalar, wrapped plain scalar, nested mapping. Reading them as `""` let every block scalar claim a one-character description and escape the length cap. |
-| Folding a mapping is **lossy on purpose** | `by: agent/1` comes back as text. |
-| A quoted value yields the text **inside** the quotes | `name: "git-commit"` failed kebab-case; every quoted description counted two characters it does not have. A description containing `: ` *must* be quoted to parse at all. |
-| Only a quote that **opens** the value quotes it | `Don't stop # a note` — the apostrophe is not an opening quote. Treating it as one left a scalar that never closed and kept the trailing comment as part of the value. |
-| A `#` opens a comment only **after whitespace, outside quotes** | `version: 1.0#2` has no comment. |
+| The block is **composed**, never loaded | `Yaml.compose` answers a node tree, so a value stays the text its author wrote — `okf_version: 0.20` is the string `0.20`, not a double rounded to `0.2` — and a duplicated key stays visible instead of collapsing into a `Map`. |
+| Every value is **folded onto one line** | A block scalar, a wrapped plain scalar, a nested mapping or a sequence all read back as text. Folding a mapping is lossy on purpose: `by: agent/1` comes back as text. A rule needing the structure should ask SnakeYAML directly. |
 | A key declared twice yields its **last** declaration | That is the one a YAML loader keeps, so the one Claude Code acts on. `duplicateKeys()` reports the duplication separately. |
+| A block no loader can read is **not front matter** | `description: "a" and "b"` and an unterminated `"oops` have no YAML meaning, and Claude Code's loader fails on them too. `parse` answers empty and the rules report the block's absence, which says more than a guess at the malformed line. A block that *reads* but is not a mapping — `name:value`, no space — is present and declares nothing. |
 | Front matter opens on the **very first line** | Content reaching `---` after blank lines has no front matter, because Claude Code sees none either. |
+
+The cases that used to need their own hand-written rule — `name: "git-commit"`
+unquoted, `Don't stop # a note` keeping its apostrophe, `version: 1.0#2` having
+no comment, `description: >` folding the lines below it — are all the loader's
+job now, and `FrontMatterTest` still pins every one of them.
 
 ### `MarkdownText`
 

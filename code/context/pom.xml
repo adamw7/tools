@@ -68,6 +68,13 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
+		<!-- Emits the YAML frontmatter of every OKF concept document. Quoting and
+		     escaping are the emitter's job: hand-writing them wrote a raw newline
+		     or control character straight into a double-quoted scalar. -->
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>

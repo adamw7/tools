@@ -199,14 +199,6 @@ class FrontMatterTest {
 				FrontMatter.parse("---\ndescription: 'it''s'\n---\n").orElseThrow().value("description"));
 	}
 
-	/** The outer quotes of {@code "a" and "b"} are two pairs, not one wrapping the value. */
-	@Test
-	void keepsQuotesThatDoNotWrapTheWholeValue() {
-		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"a\" and \"b\"\n---\n").orElseThrow();
-
-		assertEquals(Optional.of("\"a\" and \"b\""), frontMatter.value("description"));
-	}
-
 	@Test
 	void readsAnEmptyQuotedValueAsBlank() {
 		FrontMatter frontMatter = FrontMatter.parse("---\ndescription: \"\"\n---\n").orElseThrow();
@@ -297,12 +289,15 @@ class FrontMatterTest {
 		assertEquals(Optional.of("it's here"), frontMatter.orElseThrow().value("description"));
 	}
 
-	/** A scalar whose quote never closes is malformed, so nothing after it is read as a comment either. */
+	/**
+	 * A block no YAML loader can read is no front matter: Claude Code's loader fails
+	 * on it exactly as this one does, so there is nothing here to validate. The rules
+	 * report its absence, which says more than a guess at the malformed line could.
+	 */
 	@Test
-	void keepsEverythingAfterAnUnclosedQuotedScalar() {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"oops # a note\n---\n");
-
-		assertEquals(Optional.of("\"oops # a note"), frontMatter.orElseThrow().value("description"));
+	void readsNoFrontMatterFromABlockYamlCannotRead() {
+		assertTrue(FrontMatter.parse("---\ndescription: \"a\" and \"b\"\n---\n").isEmpty());
+		assertTrue(FrontMatter.parse("---\ndescription: \"oops # a note\n---\n").isEmpty());
 	}
 
 	@Test
@@ -354,4 +349,73 @@ class FrontMatterTest {
 
 		assertEquals(Optional.of(""), frontMatter.orElseThrow().value("name"));
 	}
+
+	/**
+	 * A double-quoted scalar is the one style that carries escapes, and a YAML
+	 * loader resolves them. Reading the two characters {@code \n} literally counted
+	 * a description Claude Code never sees and could fail a name over a backslash
+	 * that is not in it.
+	 */
+	@Test
+	void resolvesTheEscapeSequencesOfADoubleQuotedScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"one\\ntwo\"\n---\n");
+
+		assertEquals(Optional.of("one two"), frontMatter.orElseThrow().value("description"));
+	}
+
+	/** A mapping written inline is the same mapping as one written on the lines below its key. */
+	@Test
+	void foldsAMappingWrittenInFlowStyle() {
+		Optional<FrontMatter> frontMatter = FrontMatter
+				.parse("---\ngenerated: {by: agent/1, at: 2026-01-01}\n---\n");
+
+		assertEquals(Optional.of("by: agent/1 at: 2026-01-01"), frontMatter.orElseThrow().value("generated"));
+	}
+
+	/**
+	 * The block is composed rather than loaded, so a value stays the text its author
+	 * wrote. Constructing it into a Java object would answer {@code 0.2} for a
+	 * version declared as {@code 0.20} — and the OKF rule compares that string
+	 * against the version it demands.
+	 */
+	@Test
+	void answersAVersionAsTheTextItWasWrittenAs() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nokf_version: 0.20\n---\n").orElseThrow();
+
+		assertEquals(Optional.of("0.20"), frontMatter.value("okf_version"));
+	}
+
+	/**
+	 * A block that reads but is not a mapping is present and declares nothing, which
+	 * is not the same as one no loader can read at all.
+	 */
+	@Test
+	void readsABlockThatIsNotAMappingAsDeclaringNothing() {
+		FrontMatter frontMatter = FrontMatter.parse("---\nname:git-commit\n---\n").orElseThrow();
+
+		assertEquals(List.of(), frontMatter.keys());
+	}
+
+	/**
+	 * An alias is the node it names, not a copy of it, so a handful of nested
+	 * aliases describe a value of hundreds of millions of characters. Rendering one
+	 * stops at the cap instead of expanding it, which is what keeps a rule reading a
+	 * repository's files from being the thing that runs out of memory.
+	 */
+	@Test
+	void stopsRenderingAnAliasThatExpandsWithoutBound() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				a: &a [x, x, x, x, x, x, x, x, x]
+				b: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]
+				c: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b]
+				d: &d [*c, *c, *c, *c, *c, *c, *c, *c, *c]
+				e: &e [*d, *d, *d, *d, *d, *d, *d, *d, *d]
+				f: [*e, *e, *e, *e, *e, *e, *e, *e, *e]
+				---
+				""").orElseThrow();
+
+		assertTrue(frontMatter.value("f").orElseThrow().length() <= 8192, "the expansion must be capped");
+	}
+
 }

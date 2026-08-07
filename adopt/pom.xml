@@ -114,6 +114,16 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
+		<!-- Matches the adoption command line. CliArguments used to walk the
+		     argument array itself, which meant hand-writing what every parser
+		     already knows: which flags take a value, which repeat, where the
+		     positionals are, and what to say when a value is missing. picocli
+		     declares all of that, and it has no transitive dependencies, so the
+		     pipeline stays a plain library. -->
+		<dependency>
+			<groupId>info.picocli</groupId>
+			<artifactId>picocli</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>

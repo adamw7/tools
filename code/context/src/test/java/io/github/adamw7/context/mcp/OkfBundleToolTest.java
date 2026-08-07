@@ -78,7 +78,7 @@ public class OkfBundleToolTest {
 		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments()))).get("documents");
 
 		assertTrue(documents.get("A.java.md").asText().startsWith("---"));
-		assertTrue(documents.get("A.java.md").asText().contains("type: \"Java Source File\""));
+		assertTrue(documents.get("A.java.md").asText().contains("type: Java Source File"));
 	}
 
 	@Test
@@ -99,7 +99,7 @@ public class OkfBundleToolTest {
 		arguments.put("language", "kotlin");
 
 		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments))).get("documents");
-		assertTrue(documents.get("A.kt.md").asText().contains("type: \"Kotlin Source File\""));
+		assertTrue(documents.get("A.kt.md").asText().contains("type: Kotlin Source File"));
 	}
 
 	@Test

@@ -102,7 +102,8 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 		Optional<FrontMatterChecks> checks = frontMatterOf(content, file, violations);
 		if (checks.isEmpty()) {
 			violations.add(naming.definitionLabel()
-					+ " must start with a YAML front matter block delimited by '---': " + file);
+					+ " must start with a YAML front matter block delimited by '---' that a YAML"
+					+ " loader can read: " + file);
 		}
 		return checks;
 	}

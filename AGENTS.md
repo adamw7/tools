@@ -983,6 +983,12 @@ root would suppress nothing when the build is started from a module directory or
 an IDE.
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
+share a `DefinitionFormatRule` base class that owns what all three do the same
+way: require the configured directory, scan it, read each definition, and report
+everything wrong with the lot together. A subclass says which entries of the
+directory carry a definition — a `*.md` file for a sub-agent or a command, a
+directory holding a `SKILL.md` for a skill — and which front-matter checks it
+asks for. They
 also accept an `autoFix` option (off by default). When enabled and a definition's
 front matter is malformed in a way that is safe to repair — a delimiter written
 with too many dashes such as `----`, or an opening `---` with no closing

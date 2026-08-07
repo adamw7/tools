@@ -1,17 +1,11 @@
 package io.github.adamw7.tools.enforcer.definition;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import javax.inject.Named;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -31,7 +25,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
  * found are reported together.
  */
 @Named("skillFilesExist")
-public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
+public class SkillFilesExistRule extends DefinitionFormatRule {
 
 	private static final String SKILL_FILE_NAME = "SKILL.md";
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
@@ -49,48 +43,35 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 	/** Maximum allowed description length. */
 	private int maxDescriptionLength = DEFAULT_MAX_DESCRIPTION_LENGTH;
 
-	/** When true, a malformed front matter block is rewritten in place instead of failing the build. */
-	private boolean autoFix;
-
-	@Override
-	public void execute() throws EnforcerRuleException {
-		requireConfigured(skillsDir, "skillsDir");
-		DefinitionFiles.verifyDirectory(skillsDir, "Skills");
-		List<String> violations = new ArrayList<>();
-		for (File skillDirectory : DefinitionFiles.subdirectories(skillsDir)) {
-			collectSkillViolations(skillDirectory, violations);
-		}
-		report("Skill files are not well formed:", violations);
+	public SkillFilesExistRule() {
+		super(new Naming("skillsDir", "Skills", SKILL_FILE_NAME, SKILL_FILE_NAME,
+				"Skill files are not well formed:"));
 	}
 
-	private void collectSkillViolations(File skillDirectory, List<String> violations) {
+	@Override
+	protected File definitionDir() {
+		return skillsDir;
+	}
+
+	/** A skill is a directory, and the definition it carries is the {@code SKILL.md} inside it. */
+	@Override
+	protected File[] entriesIn(File directory) {
+		return DefinitionFiles.subdirectories(directory);
+	}
+
+	@Override
+	protected void collectEntryViolations(File skillDirectory, List<String> violations) {
 		File skillFile = new File(skillDirectory, SKILL_FILE_NAME);
 		if (!skillFile.isFile()) {
 			violations.add("Missing " + SKILL_FILE_NAME + " in skill directory: " + skillDirectory);
-		} else {
-			collectContentViolations(skillDirectory, skillFile, violations);
+			return;
 		}
+		contentOf(skillFile, violations)
+				.flatMap(content -> requiredFrontMatterOf(content, skillFile, violations))
+				.ifPresent(checks -> collectFrontMatterViolations(skillDirectory, checks));
 	}
 
-	private void collectContentViolations(File skillDirectory, File skillFile, List<String> violations) {
-		DefinitionContent.of(skillFile, SKILL_FILE_NAME, autoFix, getLog(), violations)
-				.ifPresent(content -> collectParsedViolations(skillDirectory, skillFile, content, violations));
-	}
-
-	private void collectParsedViolations(File skillDirectory, File skillFile, String content,
-			List<String> violations) {
-		Optional<FrontMatter> frontMatter = FrontMatter.parse(content);
-		if (frontMatter.isEmpty()) {
-			violations.add(SKILL_FILE_NAME + " must start with a YAML front matter block delimited by '---': "
-					+ skillFile);
-		} else {
-			collectFrontMatterViolations(skillDirectory, skillFile, frontMatter.get(), violations);
-		}
-	}
-
-	private void collectFrontMatterViolations(File skillDirectory, File skillFile, FrontMatter frontMatter,
-			List<String> violations) {
-		FrontMatterChecks checks = new FrontMatterChecks(frontMatter, SKILL_FILE_NAME, skillFile, violations);
+	private void collectFrontMatterViolations(File skillDirectory, FrontMatterChecks checks) {
 		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
 		checks.rejectDuplicateKeys();
 		checks.allowOnlyKeys(allowedFrontMatterKeys);
@@ -112,9 +93,5 @@ public class SkillFilesExistRule extends ClaudeCodeEnforcerRule {
 
 	void setMaxDescriptionLength(int maxDescriptionLength) {
 		this.maxDescriptionLength = maxDescriptionLength;
-	}
-
-	void setAutoFix(boolean autoFix) {
-		this.autoFix = autoFix;
 	}
 }

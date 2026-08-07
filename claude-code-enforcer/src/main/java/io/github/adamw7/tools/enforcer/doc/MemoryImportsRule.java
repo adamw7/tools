@@ -33,9 +33,10 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
  * by start-of-line or whitespace and followed by a path — one carrying a directory
- * separator, an extension, or both — outside fenced code blocks, HTML comments and
- * inline code spans, so neither {@code `@claude`} nor a bare {@code @claude} in
- * prose is an import, and an import an author commented out is one the document no
+ * separator, an extension, or both — outside code, HTML comments and inline code
+ * spans alike, so neither {@code `@claude`} nor a bare {@code @claude} in prose is
+ * an import, an import shown as a sample (fenced or indented) is one the document
+ * illustrates rather than makes, and one an author commented out is one it no
  * longer makes. A
  * home-relative import ({@code @~/...}) points at machine-specific state a build
  * cannot see and is skipped, as is any import listed in {@code ignoredImports}.

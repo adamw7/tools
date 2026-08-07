@@ -248,6 +248,38 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	@Test
+	void failsWhenSectionHeadingAppearsOnlyInsideAnIndentedBlock() {
+		// Indenting four columns is the other way Markdown quotes a sample, so a
+		// heading shown as an example must no more satisfy the requirement than one
+		// inside a fence does.
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing\nWrite unit tests for all new logic.\n",
+				"For example:\n\n    ## Testing\n\n    Write unit tests for all new logic.\n"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("missing required section heading: ## Testing"),
+				exception.getMessage());
+	}
+
+	@Test
+	void treatsAForbiddenTokenInsideAnIndentedBlockAsSampleCode() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nFor example:\n\n    TODO in a sample\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void treatsALinkInsideAnIndentedBlockAsSampleCode() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nFor example:\n\n    See [guide](example.md).\n");
+		rule.setValidateFileReferences(true);
+
+		// The sample's target names no file this document links to, so requiring it to
+		// exist failed the build over a file the author never meant to ship.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
 	void treatsABacktickLineInsideATildeFenceAsCode() {
 		// The ``` does not close the ~~~ block, so the ## Testing heading between the
 		// two backtick lines stays code and the required section is reported missing.

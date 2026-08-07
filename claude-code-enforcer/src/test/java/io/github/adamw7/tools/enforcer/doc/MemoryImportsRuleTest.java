@@ -66,6 +66,12 @@ class MemoryImportsRuleTest {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\n```\n@docs/absent.md\n```\n")::execute);
 	}
 
+	/** An import shown as an indented sample is one the document illustrates, not one it makes. */
+	@Test
+	void ignoresImportsInIndentedCodeBlocks() {
+		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nFor example:\n\n    @docs/absent.md\n")::execute);
+	}
+
 	@Test
 	void ignoresImportsInInlineCodeSpans() {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nan `@claude`-mention workflow\n")::execute);

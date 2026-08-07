@@ -21,15 +21,15 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * leading UTF-8 BOM is tolerated), and contain every required section heading as a
  * real, non-empty heading.
  * <p>
- * Headings are matched on whole lines outside fenced code blocks, so a heading
- * mentioned inside a fence or in prose does not satisfy a requirement, and a
+ * Headings are matched on whole lines outside code, so a heading mentioned in a
+ * sample — fenced or indented — or in prose does not satisfy a requirement, and a
  * partial match such as {@code # CLAUDE.md-extended} does not satisfy
  * {@code # CLAUDE.md}. All structural problems are collected and reported
  * together.
  * <p>
  * Several optional checks, each disabled by default, can be switched on from the
- * rule configuration: {@code forbiddenTokens} that must not appear outside code
- * fences, {@code enforceSectionOrder}, a {@code maxLineLength} cap, and
+ * rule configuration: {@code forbiddenTokens} that must not appear outside code,
+ * {@code enforceSectionOrder}, a {@code maxLineLength} cap, and
  * {@code validateFileReferences} to confirm that links to local files resolve on
  * disk. The title and required sections default to the subclass-provided values
  * but can be overridden, so the rule is reusable across projects without a
@@ -55,13 +55,13 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	/** Optional override for the required sections. Falls back to the subclass default. */
 	private List<String> requiredSections;
 
-	/** Optional tokens that must not appear outside fenced code blocks. */
+	/** Optional tokens that must not appear outside code. */
 	private List<String> forbiddenTokens;
 
 	/** When true, the required sections must appear in the configured order. */
 	private boolean enforceSectionOrder;
 
-	/** Maximum allowed line length outside code fences. Zero (default) disables the check. */
+	/** Maximum allowed line length outside code. Zero (default) disables the check. */
 	private int maxLineLength;
 
 	/** When true, Markdown links to local files must resolve to an existing file. */
@@ -217,7 +217,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 		for (int i = 0; i < document.lineCount(); i++) {
 			String line = document.line(i);
-			if (!document.isInsideFence(i) && line.length() > maxLineLength) {
+			if (!document.isInsideCode(i) && line.length() > maxLineLength) {
 				violations.add(documentName() + " line " + (i + 1) + " exceeds " + maxLineLength
 						+ " characters (" + line.length() + ")");
 			}
@@ -235,13 +235,13 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * Links are read outside code fences, HTML comments and inline code spans alike,
-	 * so a sample link written as {@code `[label](example.md)`} is documentation
-	 * rather than a reference this rule must resolve on disk, and a link an author
+	 * Links are read outside code, HTML comments and inline code spans alike, so a
+	 * sample link written as {@code `[label](example.md)`} is documentation rather
+	 * than a reference this rule must resolve on disk, and a link an author
 	 * commented out is one the document no longer makes.
 	 */
 	private void collectLineReferences(MarkdownDocument document, int index, File baseDir, List<String> violations) {
-		if (document.isInsideFence(index) || document.isInsideComment(index)) {
+		if (document.isInsideCode(index) || document.isInsideComment(index)) {
 			return;
 		}
 		Matcher matcher = MARKDOWN_LINK.matcher(MarkdownText.withoutCodeSpans(document.line(index)));

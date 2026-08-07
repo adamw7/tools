@@ -200,6 +200,36 @@ class ClaudeMdFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/** Commented-out text is inert, so a token an author retired no longer trips the ban. */
+	@Test
+	void ignoresAForbiddenTokenInsideAnHtmlComment() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n<!--\nTODO: finish this.\n-->\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** The same reading the other way round: a commented-out mention satisfies nothing. */
+	@Test
+	void failsWhenTheAgentsReferenceAppearsOnlyInsideAnHtmlComment() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace(
+				"See [AGENTS.md](AGENTS.md) for the full agent guide.",
+				"<!--\nSee [AGENTS.md](AGENTS.md) for the full agent guide.\n-->"));
+
+		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
+		assertTrue(exception.getMessage().contains("must reference AGENTS.md"), exception.getMessage());
+	}
+
+	/** A link an author commented out is one the document no longer makes. */
+	@Test
+	void ignoresAFileReferenceInsideAnHtmlComment() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md\n");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n<!--\nWas: [gone](docs/absent.md)\n-->\n");
+		rule.setValidateFileReferences(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	@Test
 	void ignoresAForbiddenTokenInsideATildeFence() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\n~~~\nTODO inside code\n~~~\n");

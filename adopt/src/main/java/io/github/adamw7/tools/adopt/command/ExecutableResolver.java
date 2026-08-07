@@ -7,7 +7,9 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -37,6 +39,15 @@ final class ExecutableResolver {
 	private final boolean windows;
 	private final List<Path> pathDirectories;
 	private final List<String> pathExtensions;
+
+	/**
+	 * What the {@code PATH} search already found, keyed by program name. One resolver
+	 * serves a whole run, which launches the same handful of programs — {@code git}
+	 * alone half a dozen times per repository — and each search stats every
+	 * {@code PATH} directory against every {@code PATHEXT} extension until it hits.
+	 * Remembering the answer keeps that to one search per distinct program.
+	 */
+	private final Map<String, Optional<Path>> located = new ConcurrentHashMap<>();
 
 	ExecutableResolver() {
 		this(Platform.isWindows(), pathDirectories(System.getenv("PATH")),
@@ -73,6 +84,10 @@ final class ExecutableResolver {
 	}
 
 	private Optional<Path> locate(String program) {
+		return located.computeIfAbsent(program, this::search);
+	}
+
+	private Optional<Path> search(String program) {
 		return pathDirectories.stream()
 				.flatMap(directory -> candidates(directory, program))
 				.filter(Files::isRegularFile)

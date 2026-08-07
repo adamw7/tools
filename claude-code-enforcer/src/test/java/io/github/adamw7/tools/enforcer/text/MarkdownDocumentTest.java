@@ -151,7 +151,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(0, 1, 2), fencedLines(document));
-		assertTrue(document.containsOutsideFences("TODO"));
+		assertTrue(document.containsInProse("TODO"));
 	}
 
 	@Test
@@ -164,7 +164,7 @@ class MarkdownDocumentTest {
 				````
 				""");
 
-		assertFalse(document.containsOutsideFences("TODO"));
+		assertFalse(document.containsInProse("TODO"));
 	}
 
 	@Test
@@ -283,8 +283,80 @@ class MarkdownDocumentTest {
 		assertTrue(document.hasBody("## Testing"));
 	}
 
+	/**
+	 * A comment opened after text on its line still hides what follows. Reading only
+	 * the first characters of the line left the block unopened, and the heading it
+	 * was written to retire went on satisfying the check that demands it.
+	 */
+	@Test
+	void doesNotTreatAHeadingHiddenByACommentOpenedAfterTextAsAHeading() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				Superseded, kept for reference: <!--
+				## Testing
+				Body.
+				-->
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	/** A line that closes one comment and opens another leaves the next line commented. */
+	@Test
+	void keepsACommentOpenedAfterAClosedOneOpen() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!-- a --> <!--
+				## Testing
+				-->
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Maven"), document.headings());
+	}
+
+	/** A commented-out mention is inert: it neither satisfies a required token nor trips a forbidden one. */
+	@Test
+	void doesNotFindATokenInsideAnHtmlComment() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				TODO left behind
+				-->
+				""");
+
+		assertFalse(document.containsInProse("TODO"));
+	}
+
+	@Test
+	void marksTheLinesAnHtmlCommentSpansAsCommented() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				A note.
+				-->
+				Body.
+				""");
+
+		assertEquals(List.of(2, 3, 4), commentedLines(document));
+	}
+
 	/** The indices of the lines the document masks as fenced code, in document order. */
 	private static List<Integer> fencedLines(MarkdownDocument document) {
 		return IntStream.range(0, document.lineCount()).filter(document::isInsideFence).boxed().toList();
+	}
+
+	/** The indices of the lines the document masks as an HTML comment, in document order. */
+	private static List<Integer> commentedLines(MarkdownDocument document) {
+		return IntStream.range(0, document.lineCount()).filter(document::isInsideComment).boxed().toList();
 	}
 }

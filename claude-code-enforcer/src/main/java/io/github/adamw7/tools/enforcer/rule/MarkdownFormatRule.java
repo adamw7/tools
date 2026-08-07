@@ -205,7 +205,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		for (String token : forbiddenTokens) {
-			if (document.containsOutsideFences(token)) {
+			if (document.containsInProse(token)) {
 				violations.add(documentName() + " must not contain forbidden token: " + token);
 			}
 		}
@@ -235,12 +235,13 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * Links are read outside code fences and inline code spans alike, so a sample
-	 * link written as {@code `[label](example.md)`} is documentation rather than a
-	 * reference this rule must resolve on disk.
+	 * Links are read outside code fences, HTML comments and inline code spans alike,
+	 * so a sample link written as {@code `[label](example.md)`} is documentation
+	 * rather than a reference this rule must resolve on disk, and a link an author
+	 * commented out is one the document no longer makes.
 	 */
 	private void collectLineReferences(MarkdownDocument document, int index, File baseDir, List<String> violations) {
-		if (document.isInsideFence(index)) {
+		if (document.isInsideFence(index) || document.isInsideComment(index)) {
 			return;
 		}
 		Matcher matcher = MARKDOWN_LINK.matcher(MarkdownText.withoutCodeSpans(document.line(index)));

@@ -220,31 +220,83 @@ public final class FrontMatter {
 
 	/**
 	 * The value with a trailing YAML comment removed. A {@code #} that opens a
-	 * comment stands outside quotes and follows whitespace, which is what separates
-	 * the note in {@code name: git-commit # the commit helper} from the value in
-	 * {@code version: 1.0#2}. Keeping the note made a name break the kebab-case
-	 * convention it follows and a description count characters a YAML loader — and
-	 * so Claude Code — never reads.
+	 * comment stands outside a quoted scalar and follows whitespace, which is what
+	 * separates the note in {@code name: git-commit # the commit helper} from the
+	 * value in {@code version: 1.0#2}. Keeping the note made a name break the
+	 * kebab-case convention it follows and a description count characters a YAML
+	 * loader — and so Claude Code — never reads.
+	 * <p>
+	 * Only a quote that opens the value quotes it, as YAML reads it: a {@code '}
+	 * anywhere else is an apostrophe in a plain scalar. Treating every quote
+	 * character as an opening one left {@code Don't stop # a note} inside a scalar
+	 * that never closed, and the note was kept as part of the description — the very
+	 * characters this exists to drop.
 	 */
 	private static String withoutComment(String value) {
-		char quote = NONE;
-		for (int i = 0; i < value.length(); i++) {
-			char character = value.charAt(i);
-			if (quote != NONE) {
-				i += isEscape(quote, character) ? 1 : 0;
-				quote = character == quote ? NONE : quote;
-			} else if (character == DOUBLE_QUOTE || character == SINGLE_QUOTE) {
-				quote = character;
-			} else if (character == COMMENT_START && startsComment(value, i)) {
-				return value.substring(0, i).strip();
-			}
-		}
-		return value;
+		int comment = indexOfComment(value);
+		return comment < 0 ? value : value.substring(0, comment).strip();
 	}
 
-	/** A backslash escapes the next character inside a double-quoted scalar, but not a single-quoted one. */
-	private static boolean isEscape(char quote, char character) {
-		return quote == DOUBLE_QUOTE && character == ESCAPE;
+	/**
+	 * Where a trailing comment begins, or {@code -1} when the value carries none. The
+	 * search starts past a quoted scalar, since a {@code #} inside quotes is content;
+	 * a quoted scalar that never closes is malformed, so nothing after it is read as a
+	 * comment either.
+	 */
+	private static int indexOfComment(String value) {
+		int from = endOfQuotedScalar(value);
+		if (from < 0) {
+			return -1;
+		}
+		for (int i = from; i < value.length(); i++) {
+			if (value.charAt(i) == COMMENT_START && startsComment(value, i)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * The index just past the value's opening quoted scalar, {@code 0} when it opens
+	 * with no quote, or {@code -1} when the scalar it opens never closes.
+	 */
+	private static int endOfQuotedScalar(String value) {
+		char quote = value.isEmpty() ? NONE : value.charAt(0);
+		if (quote != DOUBLE_QUOTE && quote != SINGLE_QUOTE) {
+			return 0;
+		}
+		return indexOfClosingQuote(value, 1, quote);
+	}
+
+	/**
+	 * The index just past the {@code quote} that closes a scalar opened at the start
+	 * of {@code value}, or {@code -1} when none does. The escape each quoting style
+	 * uses is stepped over rather than read as that closing quote.
+	 */
+	private static int indexOfClosingQuote(String value, int from, char quote) {
+		int index = from;
+		while (index < value.length() && !closesAt(value, index, quote)) {
+			index += isEscapeAt(value, index, quote) ? 2 : 1;
+		}
+		return index < value.length() ? index + 1 : -1;
+	}
+
+	/** True when the character at {@code index} is the quote that ends the scalar. */
+	private static boolean closesAt(String value, int index, char quote) {
+		return value.charAt(index) == quote && !isEscapeAt(value, index, quote);
+	}
+
+	/**
+	 * True when the character at {@code index} opens an escape: a backslash inside a
+	 * double-quoted scalar, or the first of the doubled quotes a single-quoted one
+	 * writes an apostrophe with.
+	 */
+	private static boolean isEscapeAt(String value, int index, char quote) {
+		char character = value.charAt(index);
+		if (quote == DOUBLE_QUOTE) {
+			return character == ESCAPE;
+		}
+		return character == SINGLE_QUOTE && value.startsWith(ESCAPED_SINGLE_QUOTE, index);
 	}
 
 	/** A {@code #} opens a comment at the start of the value or after whitespace, never mid-token. */

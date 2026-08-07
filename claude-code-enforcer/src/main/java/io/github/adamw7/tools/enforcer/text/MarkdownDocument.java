@@ -79,6 +79,16 @@ public final class MarkdownDocument {
 		return insideFence[index];
 	}
 
+	/**
+	 * True when the line at {@code index} sits inside an HTML comment. A caller that
+	 * reads a line for what it says — a link to resolve, an import to follow — asks
+	 * this as well as {@link #isInsideFence}, because commented-out text is inert:
+	 * following it reports a violation about content the author had already removed.
+	 */
+	public boolean isInsideComment(int index) {
+		return insideComment[index];
+	}
+
 	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
 	public String firstNonBlankLine() {
 		return MarkdownText.firstNonBlankLine(lines.stream());
@@ -98,9 +108,14 @@ public final class MarkdownDocument {
 		return outsideFences().filter(index -> !insideComment[index]);
 	}
 
-	/** True when {@code token} appears on a line outside a fenced code block. */
-	public boolean containsOutsideFences(String token) {
-		return outsideFences().anyMatch(index -> lines.get(index).contains(token));
+	/**
+	 * True when {@code token} appears on a line that carries document structure:
+	 * outside fenced code blocks and outside HTML comments alike. A commented-out
+	 * mention is inert both ways round — it must not satisfy a check that demands the
+	 * token, and must not trip one that forbids it.
+	 */
+	public boolean containsInProse(String token) {
+		return structuralLines().anyMatch(index -> lines.get(index).contains(token));
 	}
 
 	/** The heading lines outside fenced code blocks and HTML comments, in document order. */
@@ -207,18 +222,34 @@ public final class MarkdownDocument {
 
 	/**
 	 * Marks line {@code index} as commented or not and returns whether a comment is
-	 * still open afterwards.
+	 * still open afterwards. A line is inert when a comment was already open at its
+	 * start, or when its own content opens one it does not close; whether a comment
+	 * remains open is read from every delimiter on the line rather than from its
+	 * first characters, so a comment opened after text — {@code Superseded: <!--} —
+	 * still hides the lines below it.
 	 */
 	private static boolean applyComment(String line, boolean open, boolean insideFence, boolean[] mask, int index) {
 		if (insideFence) {
 			return open;
 		}
-		if (open) {
-			mask[index] = true;
-			return !line.contains(COMMENT_END);
-		}
-		mask[index] = line.startsWith(COMMENT_START) && !line.contains(COMMENT_END);
-		return mask[index];
+		mask[index] = open || opensBlock(line);
+		return remainsOpen(line, 0, open);
+	}
+
+	/** True when the line's own content starts a comment that the same line does not close. */
+	private static boolean opensBlock(String line) {
+		return line.startsWith(COMMENT_START) && remainsOpen(line, 0, false);
+	}
+
+	/**
+	 * Whether a comment is open once {@code line} has been read from {@code from},
+	 * following each delimiter in turn: an open comment looks for its {@code -->},
+	 * a closed one for the next {@code <!--}.
+	 */
+	private static boolean remainsOpen(String line, int from, boolean open) {
+		String delimiter = open ? COMMENT_END : COMMENT_START;
+		int next = line.indexOf(delimiter, from);
+		return next < 0 ? open : remainsOpen(line, next + delimiter.length(), !open);
 	}
 
 	/**

@@ -271,6 +271,40 @@ class FrontMatterTest {
 		assertEquals(Optional.of("issue#7"), frontMatter.orElseThrow().value("name"));
 	}
 
+	/**
+	 * Only a quote that opens the value quotes it. Reading the apostrophe as an
+	 * opening quote left a scalar that never closed, and the trailing note was kept
+	 * as part of the description Claude Code never sees it in.
+	 */
+	@Test
+	void dropsATrailingCommentAfterAnApostropheInAPlainScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: Don't stop # a note\n---\n");
+
+		assertEquals(Optional.of("Don't stop"), frontMatter.orElseThrow().value("description"));
+	}
+
+	@Test
+	void dropsATrailingCommentAfterADoubleQuoteInAPlainScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\nname: say \"hi\" now # a note\n---\n");
+
+		assertEquals(Optional.of("say \"hi\" now"), frontMatter.orElseThrow().value("name"));
+	}
+
+	@Test
+	void dropsATrailingCommentAfterASingleQuotedScalarWithAnEscapedQuote() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: 'it''s here' # a note\n---\n");
+
+		assertEquals(Optional.of("it's here"), frontMatter.orElseThrow().value("description"));
+	}
+
+	/** A scalar whose quote never closes is malformed, so nothing after it is read as a comment either. */
+	@Test
+	void keepsEverythingAfterAnUnclosedQuotedScalar() {
+		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"oops # a note\n---\n");
+
+		assertEquals(Optional.of("\"oops # a note"), frontMatter.orElseThrow().value("description"));
+	}
+
 	@Test
 	void keepsAHashInsideQuotes() {
 		Optional<FrontMatter> frontMatter = FrontMatter.parse("---\ndescription: \"tag # here\"\n---\n");

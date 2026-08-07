@@ -71,6 +71,12 @@ class MemoryImportsRuleTest {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nan `@claude`-mention workflow\n")::execute);
 	}
 
+	/** An import an author commented out is one the document no longer makes. */
+	@Test
+	void ignoresImportsInsideAnHtmlComment() {
+		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\n<!--\nWas: @docs/absent.md\n-->\n")::execute);
+	}
+
 	/** A mention is a word, not a path, so it names no file the build could be failed over. */
 	@Test
 	void ignoresABareMentionThatNamesNoPath() {

@@ -8,11 +8,6 @@ description: Generate conventional commit messages for the tools repo, using its
 Generate conventional, informative commit messages for the `tools` multi-module
 Maven reactor.
 
-## When to Use
-- After making code changes
-- User says "commit this" / "commit changes" / "create commit"
-- Before creating a PR
-
 ## Format
 
 [Conventional Commits](https://www.conventionalcommits.org/):
@@ -79,13 +74,6 @@ the layering rule pinned by the architecture tests.
 ```
 
 ```
-test(claude-code-enforcer): cover duplicate skill descriptions
-
-Add cases for UniqueDescriptionsRule when two SKILL.md files share a
-description.
-```
-
-```
 build(deps): add the shellcheck-maven-plugin with embedded binary resolution
 ```
 
@@ -96,12 +84,5 @@ build(deps): add the shellcheck-maven-plugin with embedded binary resolution
 3. Choose the type from the nature of the change.
 4. Write the message; commit with `git commit -m "..."` (or a file for the body).
 
-## Anti-patterns
-❌ "fix stuff" / "update code" / "WIP" (unless asked) / mixing unrelated changes
-/ inventing scopes that aren't real modules.
-✅ One logical change · clear searchable subject · real scope · references issues
-when applicable.
-
-## References
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- `AGENTS.md` — module map and release process
+Avoid "fix stuff", "update code", a "WIP" nobody asked for, a commit mixing
+unrelated changes, and a scope that is not a real module.

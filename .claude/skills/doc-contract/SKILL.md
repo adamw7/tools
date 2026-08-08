@@ -10,12 +10,6 @@ In this repository the documentation is a build artifact: `CLAUDE.md`,
 and a `-DenforceClaudeMd` build fails when they drift. Edit them with the rules
 in mind rather than discovering them in CI.
 
-## When to Use
-- Adding or removing a Maven module
-- Editing `CLAUDE.md`, `AGENTS.md` or `README.md`
-- Changing the Java version, or the protobuf major version
-- The user says "the doc check fails" / "moduleMapConsistency" / "context budget"
-
 ## Who is the source of truth
 `AGENTS.md` is the single source of truth. `CLAUDE.md` is a **quick-reference
 summary** that defers to it — it is loaded into every session, so

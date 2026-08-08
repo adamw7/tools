@@ -9,12 +9,6 @@ Keep `pom.xml` edits and build commands consistent with how the `tools`
 multi-module reactor is wired. Getting versions in the wrong place, or missing a
 profile, is the most common source of avoidable build friction here.
 
-## When to Use
-- Editing any `pom.xml`
-- Adding or upgrading a dependency or a Maven plugin
-- Choosing which `mvn` command / profile to run
-- The user says "add a dependency" / "bump a version" / "the build fails"
-
 ## Hard rules
 
 ### Versions live in exactly one place

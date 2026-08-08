@@ -1,234 +1,160 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. Human contributors
-may find it useful too. This file follows the [agents.md](https://agents.md)
-convention and is the single source of truth for agent instructions;
-`CLAUDE.md` defers to it.
+Guidance for AI coding agents working in this repository. Human contributors may
+find it useful too. This file follows the [agents.md](https://agents.md)
+convention and is the single source of truth for agent instructions; `CLAUDE.md`
+defers to it.
+
+Detail that only matters while working on one area lives in the project skills
+under `.claude/skills/` (see *Agent configuration*). **Prefer loading the
+relevant skill over re-deriving a convention**; this file states the rule, the
+skill carries the reasoning and the worked example.
 
 ## Project overview
 
-`tools` is a library of Java tooling for various purposes. It is a multi-module
-Maven project. The notable capabilities are:
+`tools` is a multi-module Maven library of Java tooling:
 
 - **Code generation** (`code/protogen-maven-plugin`) — a Maven plugin that
-  generates protobuf builders which detect missing required fields at
-  **compile time** instead of runtime (shift-left). Supports both proto2 and
-  proto3: proto2 `required` fields are enforced by the builder chain, while
-  proto3 (which has no required fields) generates all-optional builders with
-  presence-aware `hasXxx()` accessors (only for message fields and explicit
-  `optional` fields). `oneof` groups get a `getXxxCase()` discriminator and a
-  `clearXxx()` for the whole group, so the selected member is inspectable and
-  resettable through the builder chain.
+  generates protobuf builders which detect a missing required field at
+  **compile time** instead of runtime (shift-left). proto2 `required` fields are
+  enforced by the builder chain; proto3 has no required fields, so its builders
+  are all-optional with presence-aware `hasXxx()` accessors for message fields
+  and explicit `optional` fields only; a `oneof` group gets a `getXxxCase()`
+  discriminator and a `clearXxx()` that resets the whole group. Skill:
+  `protogen`.
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
-  builds the tree of classes used by a given class, plus a `ProjectTreeBuilder`
-  that scans a whole Java project into a tree of folders, files and
-  dependencies, to assemble context for gen-AI agents working with Java code.
-  The same tree can also be emitted as a bundle in Google's **Open Knowledge
-  Format** (OKF) v0.2 — a directory of markdown concept documents with YAML
-  frontmatter, in the `io.github.adamw7.context.okf` package — so a consumer that
-  already speaks OKF can take this project's context without knowing anything
-  about the tree behind it. An **MCP server** (in the
-  `io.github.adamw7.context.mcp` package) exposes the project-tree,
-  context-finder and OKF-bundle tools over stdio, streamable HTTP or stateless
-  HTTP.
-- **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet; in-memory and
-  iterative loading). Parquet files are read through an in-process DuckDB engine,
-  so they expose their columns and rows like any other JDBC-backed source.
-  Schema-aware sources that know their columns up front implement
-  `ColumnarDataSource` (a narrower contract than `IterableDataSource`), so
-  callers that need the schema — such as the uniqueness check — cannot be handed
-  a forward-only source (JSON/YAML/TOON) that would only answer with `null`.
-  Also a uniqueness-checking tool (finds whether a subset of columns can
-  serve as a key, and searches for a smaller key), data structures
-  (`OpenAddressingMap`, an `OpenAddressingSet`, and the primitive `int`-keyed
-  `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
-  uniqueness checker as a tool for AI assistants.
+  builds the tree of classes a given class uses, plus a `ProjectTreeBuilder` that
+  scans a whole Java project into a tree of folders, files and dependencies, to
+  assemble context for gen-AI agents. The same tree can be emitted as a bundle in
+  Google's **Open Knowledge Format** (OKF) v0.2 — a directory of markdown concept
+  documents with YAML frontmatter, in the `io.github.adamw7.context.okf` package.
+  An **MCP server** (`io.github.adamw7.context.mcp`) exposes the project-tree,
+  context-finder, token-estimation and OKF-bundle tools. Skill: `context-finder`.
+- **Data** (`data`) — data sources (CSV, GZip, JDBC, Parquet, JSON, YAML, TOON),
+  each in an in-memory and an iterative variant. Parquet is read through an
+  in-process DuckDB engine, so it exposes columns and rows like any other
+  JDBC-backed source. Sources that know their columns up front implement
+  `ColumnarDataSource`, a narrower contract than `IterableDataSource`, so a
+  caller that needs the schema — such as the uniqueness check — cannot be handed
+  a forward-only source (JSON/YAML/TOON) that would only answer `null`. Also a
+  uniqueness checker (does a subset of columns form a key, and is there a smaller
+  one), open-addressing collections (`OpenAddressingMap`, `OpenAddressingSet`,
+  the primitive `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
+  uniqueness checker. Skill: `data-sources`.
 - **Claude Code adoption** (`adopt`) — an ordered pipeline that adopts Claude
-  Code into a GitHub repository: it first checks the required tools (`git`,
-  `claude`, `gh`) are on the `PATH` so a missing one fails fast — and that `gh`
-  can reach the repository, since `gh --version` succeeds for a CLI nobody is
-  logged in to — then clones the
-  repo, creates a feature branch,
-  marks the checkout trusted in `~/.claude.json` so the headless CLI is not
-  blocked by the folder-trust prompt, runs the Claude Code CLI (`claude init`) to
-  generate a `CLAUDE.md` and commits it — skipped for a checkout that already has
-  one, since the CLI's output is not reproducible and regenerating would discard
-  edits made since the adoption — then wires a `CLAUDE.md` guard into the
-  project's build and commits that, verifies the guard passes on the generated
-  file, and finally pushes the branch and opens a pull request with the GitHub
-  CLI (`gh pr create`) — the default branch is never written to directly. The
-  guard is build-tool aware behind a `BuildSystem` abstraction: a Maven project
-  gets the full `claude-code-enforcer` rule wired into its `pom.xml` and verified
-  with a non-recursive `mvn -N validate`; a Gradle project (Groovy or Kotlin DSL)
-  gets an `enforceClaudeMd` presence guard task appended to its build script and
-  verified by running that task; a repository with no recognised build file falls
-  back to a GitHub Actions workflow and the portable `.github/claude-md-guard.sh`
-  check it runs, verified by running that script — so a build-less repository
-  still keeps the guard. How far `ClaudeMdConformanceStep` reshapes the generated
-  `CLAUDE.md` follows from that same choice, through
-  `BuildSystem.requiredClaudeMdSections`: only the Maven path wires in the format
-  rule, so only it demands the rule's Java and Maven headings, which a Maven
-  checkout can answer. The other two guards ask merely that the file exist and
-  carry something, and conforming to the rule's list regardless stamped
-  `## Java version`, `## Maven` and `## Principles for Java Development` — each
-  stubbed with a pointer to `AGENTS.md` — onto repositories that are neither Java
-  nor Maven, where nothing then checked them. The title and the `AGENTS.md`
-  reference are settled either way, since the step writes that companion file for
-  every adopted repository. A checkout that ships a build wrapper (`mvnw`, `gradlew`,
-  or their Windows `.cmd`/`.bat` forms) is verified with that wrapper rather than
-  with a build tool off the `PATH`, so the guard runs under the version the
-  project pinned; most Gradle projects ship only the wrapper, so probing the
-  `PATH` for a `gradle` used to abort the adoption of a repository the host could
-  build perfectly well. The wrapper is launched by its absolute path, since
-  `ProcessBuilder` resolves a relative program name against the JVM's working
-  directory rather than the command's, and a POSIX wrapper the project committed
-  without its executable bit — the usual state of one added from Windows — is
-  launched through `sh` rather than as a program, since it would otherwise be
-  refused with "Permission denied". `BuildSystem.toolProbe` answers the whole
-  probe command rather than a program name so `BuildToolchainStep` probes that
-  same launcher: `sh --version` is not portable, so probing the program alone
-  would answer for the shell instead of for the build tool. The fallback guard's
-  own shell is probed too, with `sh -c 'exit 0'` for the same portability reason —
-  a shell is a tool like any other and is absent from a stock Windows `PATH`, and
-  assuming one left the adoption to discover that at `VerifyStep`, past the clone,
-  the `claude init`, and both commits. What to do about a probe that fails comes
-  from `BuildSystem.toolAdvice`, so a build-less repository is told to find a
-  shell rather than to "install github-actions on the PATH". The pull request metadata — title, body,
-  reviewers, labels, assignees, and draft flag — is supplied through
-  `PullRequestOptions`, exposed on the command line as `--title`, `--body`,
-  repeatable `--reviewer`/`--label`/`--assignee`, and `--draft` (parsed by
-  `CliArguments` alongside the positional URL, workspace, and branch arguments).
-  `CliArguments` declares that command line to **picocli** rather than walking the
-  argument array itself: each option is bound to a method, because picocli calls a
-  method option once per occurrence in the order it was written, and a batch mixing
-  `--repo` with `--repos` must adopt and report its repositories in that order.
-  `setOverwrittenOptionsAllowed` is what lets those flags repeat and what makes the
-  last `--workspace`/`--branch` win over an earlier one or its positional. The
-  refusals come with it too — an unknown option, a fourth positional, a value
-  missing, and an option written where a naming flag's value belongs
-  (`--branch --draft`) — each re-raised as the `IllegalArgumentException` carrying
-  the usage line that the entry points already expect. That usage line stays
-  hand-written: picocli can render a synopsis, but it orders one by reflecting over
-  the methods and the JVM does not promise that order.
-  That record and the rest of a run's configuration — the starter assets, the rule
-  version, the dry-run flag, and the per-command timeout — are grouped into an
-  `AdoptionOptions`, which both entry points build and hand to
-  `GitHubRepoAdopter.withDefaultPipeline` and the MCP tool's `Pipeline` seam, so
-  neither grows a parameter per switch and the two cannot drift apart on what an
-  omitted option means. `--dry-run` (`dry_run` on the MCP tool) rehearses an
-  adoption: the pipeline is assembled *without* `PushStep` and `PullRequestStep`
-  rather than with steps that decide to do nothing, and `ToolchainStep.forDryRun`
-  then asks only for the `git` and `claude` that a rehearsal really runs — `gh` is
-  used by the pull request alone, since the push runs `git`, so requiring it (and
-  the GitHub credentials the login probe wants behind it) aborted `--dry-run` on
-  its very first step over the one capability the flag exists to leave out —
-  so nothing is left that could
-  push and the report's `completedSteps` ends at `verify` — everything before it
-  still runs, leaving the adoption's commits in the workspace to be read before
-  any of it reaches GitHub. `--timeout <minutes>` (`timeout_minutes`, bounded to a
-  day since the MCP server is long-lived) overrides the runner's ten-minute
-  default. `--help`/`-h` answers with the usage line and adopts nothing, rather
-  than being refused as an unknown option with the very line it asked for; it goes
-  to the log, whose console appender writes to standard error, because the same
-  jar is the MCP server and its stdio transport owns standard output.
-  One run adopts a **list of repositories**: repeatable `--repo <url>` and
-  `--repos <file>` (one URL per line, `#` comments and blank lines skipped, read
-  by `RepositoryUrls`) add to the positional URL, duplicates are dropped, and
-  `--workspace`/`--branch` name the shared workspace and branch for a run with no
-  positional arguments — the first positional is always a repository URL, never a
-  workspace. `BatchAdoption` runs the pipeline once per repository with a report
-  each and does *not* stop at the first failure: the adoptions are independent, so
-  a failed one is recorded and the batch runs to the end, with `Main` raising the
-  failures together afterwards so the process still exits non-zero. That covers
-  the failures a repository's *inputs* raise too — `Checkouts` claims each
-  repository's checkout directory inside its own adoption, so a URL naming no
-  repository, or one colliding with a checkout another repository of the run
-  already claimed, is that repository's recorded failure rather than an abort of
-  the whole run before its first clone. Two runs into one named `--workspace`
-  never meet, though, so `CloneStep` guards the other half of that collision: a
-  checkout it reuses instead of cloning is first confirmed to be the repository
-  under adoption, by comparing the repository its `origin` names with the one the
-  run was given. That comparison reads the raw configured remote (`git config
-  --get-all remote.origin.url`) rather than `git remote get-url`, which expands
-  the caller's `url.<base>.insteadOf` rewrites and so answers a host and path the
-  checkout never recorded: against a mirror or a proxied clone the reused checkout
-  was refused as a different repository, aborting the adoption of the very
-  repository it held. Two URLs name one repository when they agree once their scheme,
-  credentials, `.git` suffix, trailing slash, and letter case are set aside — so a
-  checkout cloned over SSH is reused by a run given the HTTPS URL — and anything
-  else is refused, because re-cloning costs a clone while adopting the wrong
-  repository branches, commits, and pushes its working tree and opens a pull
-  request against it. A checkout with no `origin` at all is refused for the same
-  reason, and would have nowhere to push to besides. The reused checkout is then
-  refreshed with a `git fetch`: `BranchStep` decides where to start the feature
-  branch from the remote-tracking refs, so a stale checkout would restart a branch
-  an earlier run had already published and leave `PushStep` refused as a
-  non-fast-forward. The MCP tool
-  takes the same list as `repository_urls` (a JSON array, or a comma-separated
-  string) beside `repository_url`, and answers with an error result carrying the
-  report — not a bare exception — when a repository fails.
-  An optional `--assets` flag adds an `AssetsStep` that commits starter Claude
-  Code configuration assets — an `AGENTS.md` pointer, a `.claude/settings.json`
-  denying reads of obvious secret files and wiring a
-  `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a GitHub
-  Actions workflow answering `@claude` mentions — never overwriting a file the
-  repository already has. The `claude-code-enforcer` version wired into an
-  adopted Maven project defaults to the version of the `tools` build running the
-  adoption and can be overridden with `--rule-version` (`rule_version` on the MCP
-  tool); either way `EnforcerRuleVersion` refuses a `-SNAPSHOT`, which resolves
-  only from the adopting machine's local repository and would leave the adopted
-  project's CI and every contributor with a build that cannot resolve it — so a
-  snapshot build of `tools` cannot adopt a Maven project until a release is
-  published. Whether a POM already carries the guard is decided by scanning every
-  `plugin` it *binds* — the build's or a profile's — because a project that runs
-  the rule behind an opt-in profile would otherwise be given a second, always-on
-  copy of it. A `pluginManagement` entry is deliberately not one of them: it pins
-  a version and binds nothing, so a rule declared only there never runs, and
-  counting it as a guard left the project with none while the pull request still
-  claimed one. Both `gh` invocations name the target repository with
-  `--repo`, derived from the URL being adopted, rather than letting `gh` infer it
-  from the checkout's git remote — a remote rewritten by `url.<base>.insteadOf`,
-  a mirror, or a proxy is not readable as a GitHub one and would fail the last
-  step of an otherwise complete adoption. Each run returns an `AdoptionReport`
-  (completed steps, the pull request URL read back with `gh pr list --json url`,
-  and whether the run succeeded plus the failing step's message when it did not);
-  `--report <file>` writes it as JSON for scripting, on the failure path too, so
-  an abandoned run still records how far it got. Everything that outlives a run —
-  the log, a failing command's message, and that report — reports clone URLs
-  through `Redaction`, which masks the user information of a URL carrying a
-  scheme, so the `https://x-access-token:TOKEN@github.com/...` a CI runner hands
-  the adoption never reaches a file on disk or an MCP client; `git` is still
-  handed the URL as it was given. A run over several repositories
-  writes the batch document instead — an overall `succeeded` and a `repositories`
-  array of those same per-repository documents — while a single-repository run
-  keeps writing its document unwrapped, so the shape existing consumers parse is
-  unchanged. An **MCP server** (in the
-  `io.github.adamw7.tools.adopt.mcp` package) exposes the same pipeline as an
-  `adopt_repo` tool that answers with that JSON report. External
-  `git`/`claude`/`gh` invocations
-  go through a `CommandRunner`
-  abstraction so the steps are unit-tested without spawning real processes; the
-  `ProcessCommandRunner` bounds every command with a configurable timeout so a
-  stalled clone or a stuck `claude` run cannot hang the adoption.
+  Code into a GitHub repository. Skill: `adopt-pipeline`. Summarised below.
 
-See [README.md](README.md) for worked code examples of each capability,
-[docs/c4-architecture.md](docs/c4-architecture.md) for a C4 model
-(System Context → Containers → Components, as Mermaid diagrams) of how the
-modules and MCP servers fit together, and
-[docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) for a
-visual walkthrough of how the generated builder chain shifts required-field
-validation from runtime to compile time.
+### The adoption pipeline
 
-[docs/adr](docs/adr) holds the **architecture decision records** behind the
-standing choices — the foundational record, the security and supply-chain
-posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
-dependency-update bots, DuckDB as the Parquet engine, log4j2, MCP on Spring
-Boot, and documentation as an enforced contract. Read the relevant record before
-revisiting one of those decisions: a record is immutable once accepted, so a
-change means adding a new ADR that supersedes it and cross-linking the two,
-never editing the old one. [docs/adr/README.md](docs/adr/README.md) carries the
-numbering, template, and status vocabulary (a `Proposed` record is decided but
-not yet in force, and names what must land first).
+The steps run in order and stop at the first failure: check the pipeline's own
+tools (`git`, `claude`, `gh`, and that `gh` is logged in — `gh --version`
+succeeds for a CLI nobody is logged in to) → clone → check the *cloned* project's
+build tool → create a feature branch (the default branch is never written to) →
+mark the checkout trusted in `~/.claude.json` so the headless CLI is not blocked
+by the folder-trust prompt → `claude init` to generate `CLAUDE.md`, conform it
+(plus a companion `AGENTS.md`) and commit → wire a `CLAUDE.md` guard into the
+project's build and commit → optionally commit starter assets → verify the guard
+passes → push → open a pull request with `gh pr create`.
+
+What is worth knowing before changing any of it:
+
+- **The guard is build-tool aware**, behind a `BuildSystem` abstraction: a Maven
+  project gets the `claude-code-enforcer` rule wired into its `pom.xml` and
+  verified with `mvn -N validate`; a Gradle project (Groovy or Kotlin DSL) gets
+  an `enforceClaudeMd` guard task appended to its build script; a repository with
+  no recognised build file falls back to a GitHub Actions workflow plus the
+  portable `.github/claude-md-guard.sh`, so a build-less repository still keeps a
+  guard. `BuildSystem.requiredClaudeMdSections` follows the same choice, so only
+  the Maven path — the only one that wires the format rule — demands that rule's
+  Java and Maven headings; stamping them onto a non-Java repository documented
+  nothing and nothing checked them. `BuildSystem.toolProbe` answers the whole
+  probe command rather than a program name, and `toolAdvice` says what to do when
+  a probe fails.
+- **A committed build wrapper wins over the `PATH`.** `mvnw`/`gradlew` (and their
+  Windows forms) are launched by absolute path — `ProcessBuilder` resolves a
+  relative program against the JVM's working directory — and through `sh` when
+  the file has no executable bit, the usual state of a wrapper committed from
+  Windows.
+- **`claude init` is skipped for a checkout that already has a `CLAUDE.md`**: the
+  CLI's output is not reproducible, so regenerating would discard edits.
+- **A reused checkout is confirmed to be the repository under adoption** by
+  comparing what its `origin` names with the URL given, read with `git config
+  --get-all remote.origin.url` rather than `git remote get-url`, which expands
+  `url.<base>.insteadOf` rewrites and so answers a host the checkout never
+  recorded. Two URLs name one repository when they agree once scheme,
+  credentials, `.git` suffix, trailing slash and case are set aside; anything
+  else, including a checkout with no `origin`, is refused. The checkout is then
+  refreshed with `git fetch`, since `BranchStep` starts the feature branch from
+  the remote-tracking refs.
+- **One run adopts a list of repositories** — repeatable `--repo <url>`, `--repos
+  <file>` (one URL per line, `#` comments and blank lines skipped), or
+  `repository_urls` on the MCP tool (a JSON array or a comma-separated string).
+  Duplicates are dropped, `--workspace`/`--branch` name the shared workspace and
+  branch, and the first positional is always a repository URL, never a workspace.
+  Each repository gets its own checkout (claimed inside its own adoption) and its
+  own report, and one that fails does not stop the rest; `Main` raises the
+  failures together afterwards so the process still exits non-zero.
+- **`--dry-run`** assembles the pipeline *without* `PushStep` and
+  `PullRequestStep` rather than with steps that decide to do nothing, and asks
+  the toolchain check only for the `git` and `claude` a rehearsal really runs. A
+  run therefore needs no GitHub credentials at all, and `completedSteps` ends at
+  `verify`.
+- **Credentials never outlive the run.** Every log line, failure message and
+  report field goes through `Redaction`, which masks the user information of a
+  URL carrying a scheme, so a CI runner's
+  `https://x-access-token:TOKEN@github.com/...` never reaches disk or an MCP
+  client. `git` is still handed the URL as given. Both `gh` invocations name the
+  repository with `--repo` rather than letting `gh` infer it from the remote.
+- **Configuration is one object.** `AdoptionOptions` (wrapping
+  `PullRequestOptions`) carries the pull-request metadata, the starter assets,
+  the rule version, the dry-run flag and the per-command timeout, and both entry
+  points hand it to the same pipeline factory, so the CLI and the MCP tool cannot
+  drift. `CliArguments` declares the command line to **picocli**, binding each
+  option to a method so a batch mixing `--repo` and `--repos` keeps the order it
+  was written in; refusals are re-raised as an `IllegalArgumentException`
+  carrying the hand-written usage line.
+- **The wired rule version may not be a `-SNAPSHOT`** (`EnforcerRuleVersion`): it
+  resolves only from the adopting machine's local repository and would leave the
+  adopted project's CI unable to build.
+- **Detection reads what a pom *binds***, in the build or a profile — not a
+  `pluginManagement` entry, which pins a version and runs nothing.
+- **`--assets` commits starter configuration** — an `AGENTS.md` pointer, a
+  `.claude/settings.json` denying reads of obvious secret files and wiring a
+  `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a workflow
+  answering `@claude` mentions — never overwriting a file the repository already
+  has.
+- **Everything shells out through a `CommandRunner`**, so steps are unit-tested
+  without spawning processes; `ProcessCommandRunner` bounds every command with a
+  timeout, ten minutes by default and overridable with `--timeout <minutes>`
+  (`timeout_minutes`, bounded to a day since the MCP server is long-lived).
+- **`--help` answers with the usage line and adopts nothing**, rather than being
+  refused as an unknown option. It goes to the log, whose console appender writes
+  to standard error, because the same jar is the MCP server and its stdio
+  transport owns standard output.
+
+An **MCP server** (`io.github.adamw7.tools.adopt.mcp`) exposes the pipeline as an
+`adopt_repo` tool answering with the JSON `AdoptionReport` (completed steps, the
+pull request URL read back with `gh pr list --json url`, and the failing step's
+message when there was one). `--report <file>` writes the same document, on the
+failure path too; a multi-repository run writes an overall `succeeded` plus a
+`repositories` array, while a single-repository run keeps writing its document
+unwrapped.
+
+### Further reading
+
+- [README.md](README.md) — worked code examples of each capability.
+- [docs/c4-architecture.md](docs/c4-architecture.md) — a C4 model (System Context
+  → Containers → Components) as Mermaid diagrams.
+- [docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) — how
+  the generated builder chain shifts validation to compile time.
+- [docs/adr](docs/adr) — the **architecture decision records** behind the
+  standing choices (the foundational record, the security and supply-chain
+  posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
+  dependency-update bots, DuckDB as the Parquet engine, log4j2, MCP on Spring
+  Boot, documentation as an enforced contract). A record is immutable once
+  accepted: revisiting a decision means a new ADR that supersedes it, never an
+  edit to the old one. [docs/adr/README.md](docs/adr/README.md) has the
+  numbering, template and status vocabulary.
 
 ## Module layout
 
@@ -236,14 +162,14 @@ not yet in force, and names what must land first).
 tools (root pom, packaging=pom)
 ├── claude-code-enforcer        # custom maven-enforcer rules validating CLAUDE.md,
 │                               #   AGENTS.md, README.md and the .claude config
-├── test-common                 # shared ArchUnit rule libraries and assertions, published as a test-jar
+├── test-common                 # shared ArchUnit rule libraries and assertions (test-jar)
 ├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
-│   ├── protogen-maven-plugin       # the proto2 builder-generating Maven plugin
+│   ├── protogen-maven-plugin       # the builder-generating Maven plugin
 │   ├── protogen-maven-plugin-test  # integration tests / use cases for the plugin
-│   └── context                     # regex-based class-usage context finder + OKF bundles
-├── adopt                       # adopts Claude Code into a GitHub repo (clone, build-tool check, branch, trust, init, conform, enforcer, verify, push, PR)
+│   └── context                     # class-usage context finder + OKF bundles + MCP server
+├── adopt                       # adopts Claude Code into a GitHub repo
 ├── grpc-example                # end-to-end gRPC example with compile-time-safe builders
 ├── assembly                    # runnable SampleApp distribution: launcher jar + lib/
 │                               #   (mainClass: io.github.adamw7.tools.data.SampleApp)
@@ -251,37 +177,30 @@ tools (root pom, packaging=pom)
 ```
 
 Root reactor modules are `claude-code-enforcer`, `test-common`, `mcp-common`,
-`data`, `code`, `adopt`, `grpc-example`, and `assembly`.
-The `data-test` module is built separately (it is not in the root `<modules>`
-list).
+`data`, `code`, `adopt`, `grpc-example` and `assembly`. `data-test` is built
+separately (it is not in the root `<modules>` list).
 
-Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the
-context module, `io.github.adamw7.tools.*` elsewhere).
+Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the context
+module, `io.github.adamw7.tools.*` elsewhere).
 
-The repository ships three MCP servers, each a Spring Boot app whose entry point
-is `Main.java` and which supports stdio (default), streamable HTTP
-(`--transport.mode=streamable-http`, served at `/mcp`), or stateless HTTP
-(`--transport.mode=stateless-http`, session-less, also served at `/mcp`):
+Three MCP servers ship here, each a Spring Boot app whose entry point is
+`Main.java` and which supports stdio (default), streamable HTTP
+(`--transport.mode=streamable-http`, served at `/mcp`) or stateless HTTP
+(`--transport.mode=stateless-http`, session-less, also `/mcp`). Each has an
+`MCP_USAGE.md` next to its `mcp` package:
 
-- The uniqueness-checker server in
-  `data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/`; see its
-  [MCP_USAGE.md](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md).
-- The context-engineering server in
-  `code/context/src/main/java/io/github/adamw7/context/mcp/`, exposing the
-  `project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` tools; see its
-  [MCP_USAGE.md](code/context/src/main/java/io/github/adamw7/context/mcp/MCP_USAGE.md).
-- The adoption server in
-  `adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/`, exposing the
-  `adopt_repo` tool that runs the adoption pipeline and answers with its JSON
-  report; see its
-  [MCP_USAGE.md](adopt/src/main/java/io/github/adamw7/tools/adopt/mcp/MCP_USAGE.md).
+| Server | Package | Tools |
+| --- | --- | --- |
+| uniqueness | `data/.../data/uniqueness/mcp/` | the uniqueness checker |
+| context | `code/context/.../context/mcp/` | `project_tree`, `find_context`, `estimate_tokens`, `okf_bundle` |
+| adoption | `adopt/.../adopt/mcp/` | `adopt_repo` |
 
 ## Environment & toolchain
 
 - **Java 25** (the `java.version` property, from which the Spring Boot parent
   derives `maven.compiler.release`; `source`/`target` are deliberately unset
-  because the compiler plugin ignores them once `release` is set). A JDK 25 must be on the
-  `PATH` with `JAVA_HOME` set. In Claude Code web/remote sessions the
+  because the compiler plugin ignores them once `release` is set). A JDK 25 must
+  be on the `PATH` with `JAVA_HOME` set. In Claude Code web/remote sessions the
   `.claude/hooks/session-start.sh` hook installs `openjdk-25-jdk`, exports
   `JAVA_HOME`, and pre-fetches dependencies (`mvn dependency:go-offline`).
 - **Maven 3.9.x.** Build from the repository root.
@@ -292,22 +211,20 @@ is `Main.java` and which supports stdio (default), streamable HTTP
 build), with parallel `linux/` (`*.sh`) and `windows/` (`*.bat`/`*.ps1`)
 variants:
 
-- `install-jdk-25` — downloads and installs Eclipse Temurin JDK 25 (the
-  toolchain the build requires); skips the download when JDK 25 is already
-  present.
-- `generate-maven-update-reports` — runs the `versions-maven-plugin`
-  (`plugin-updates-aggregate-report` + `dependency-updates-aggregate-report`)
-  to report available plugin and dependency updates.
-- `update-claude-code` — runs `claude update` to update the Claude Code CLI.
+- `install-jdk-25` — installs Eclipse Temurin JDK 25, skipping the download when
+  one is already present.
+- `generate-maven-update-reports` — runs the `versions-maven-plugin` aggregate
+  plugin- and dependency-update reports.
+- `update-claude-code` — runs `claude update`.
 - `update-git-client` — upgrades the system `git` via the host package manager.
-- `update-git-repos-async` — `git pull`s every git repository in the script's
-  parent directory in parallel.
+- `update-git-repos-async` — `git pull`s every repository in the script's parent
+  directory in parallel.
 
 ## Build, test, and run
 
 ```bash
-# Install the custom enforcer rule into the local repo. Only needed if you want
-# to run the CLAUDE.md check locally (see "CLAUDE.md enforcement" below).
+# Install the custom enforcer rule into the local repo. Only needed to run the
+# CLAUDE.md check locally (see "CLAUDE.md enforcement").
 mvn -pl claude-code-enforcer -am install
 
 # Full clean build + install to local repo (use clean — see note below)
@@ -323,17 +240,15 @@ mvn -B package
 mvn -pl data -am test
 
 # Build the standalone data-test module. It is not in the root <modules>, so
-# -pl cannot select it ("Could not find the selected project in the reactor");
-# run it from its own directory, with tools.data already installed.
+# -pl cannot select it; run it from its own directory, with tools.data installed.
 cd data-test && mvn test
 ```
 
 **Always pair `-pl` with `-am`.** A bare `mvn -pl data test` fails before it
 compiles anything: the root pom's `ReactorModuleConvergence` enforcer rule
 rejects a reactor whose module parents are not part of it, and sibling
-`-SNAPSHOT` dependencies (e.g. `mcp-common`) are not resolvable from the local
-repository until they have been installed. `-am` ("also make") brings the parent
-and the upstream modules back into the reactor and fixes both.
+`-SNAPSHOT` dependencies (e.g. `mcp-common`) do not resolve from the local
+repository until they are installed. `-am` ("also make") fixes both.
 
 To run a **single test class or method**, note that `-Dtest` applies to every
 module in the reactor, so surefire fails the upstream modules where the pattern
@@ -348,275 +263,202 @@ cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'
 mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-**Always use `clean` after removing a source of code generation.** The build
-generates protobuf builders into `target/`; stale generated output from a
-previous build can otherwise linger and mask the change. If you have not
-removed anything, plain `mvn install` is fine and faster.
+**Always use `clean` after removing a source of code generation**, so stale
+generated builders in `target/` cannot linger and mask the change. Otherwise
+plain `mvn install` is fine and faster.
 
-**Quiet builds.** `.mvn/maven.config` passes `--no-transfer-progress` to every
-`mvn` invocation from the repo root, so builds never print the
-`Downloading from.../Downloaded from...` artifact-transfer noise — locally or in
-CI. The workflows also pass `-ntp` explicitly on each `mvn` command so the
-quiet behavior does not depend on the checkout picking up `.mvn/maven.config`.
-
-**Parallel builds.** `.mvn/maven.config` also passes `-T1C` (one build thread
-per CPU core), so the reactor builds independent modules — and runs their test
-forks — in parallel. Maven honours the module dependency graph, so ordering
-stays correct; on a 4-core machine this roughly halves the full-build wall-clock
-versus a serial run. Because several test forks then run at once and contend for
-CPU, the one-time cold-fork warmup the first test in each fork pays stretches
-well beyond its ~0.7s dedicated-core cost (measured up to ~3.9s), which is why
-the per-test timeout is sized at 5 s rather than a tighter bound — see *Testing,
-coverage & mutation testing*. Override with `-T1` for a fully serial build.
+**Quiet, parallel builds.** `.mvn/maven.config` passes `--no-transfer-progress`
+(no artifact-transfer noise) and `-T1C` (one build thread per core), so the
+reactor builds independent modules — and runs their test forks — in parallel;
+Maven honours the dependency graph, so ordering stays correct. Override with
+`-T1` for a serial build. Contending test forks stretch the one-time cold-fork
+warmup well beyond its ~0.7 s dedicated-core cost (measured up to ~3.9 s), which
+is why the per-test timeout is 5 s rather than tighter. The workflows also pass
+`-ntp` explicitly, so quiet CI logs do not depend on `.mvn/maven.config` being
+picked up.
 
 **Shellcheck.** The root pom lints `scripts/**/*.sh` with
-`dev.dimlight:shellcheck-maven-plugin` (`check` goal). It is configured with
-`<binaryResolutionMethod>embedded</binaryResolutionMethod>`, so the `shellcheck`
-binary bundled inside the plugin jar (currently 0.9.0) is unpacked to
-`target/shellcheck-plugin/shellcheck` and run from there. The binary rides in as
-an ordinary Maven artifact from Maven Central, so nothing is fetched from
-GitHub and no `shellcheck` needs to be installed on the machine — the lint works
-offline and in networks that cannot reach GitHub (including Claude Code
-web/remote sessions, whose proxy scopes GitHub to this repo only). Skip the lint
-with `mvn install -Dskip.shellcheck=true` (property `skip.shellcheck`).
+`dev.dimlight:shellcheck-maven-plugin`, configured with
+`<binaryResolutionMethod>embedded</binaryResolutionMethod>`: the `shellcheck`
+binary rides in as an ordinary Maven Central artifact inside the plugin jar, so
+nothing is fetched from GitHub and no `shellcheck` needs to be installed — the
+lint works offline and in networks that cannot reach GitHub (including Claude
+Code web/remote sessions). The plugin's default method downloads the binary from
+GitHub releases; where that host is blocked the build fails on the root pom with
+`Input is not in the XZ format` before any Java module is reached. Skip the lint
+with `-Dskip.shellcheck=true`.
 
-The plugin's default `binaryResolutionMethod` instead downloads the binary from
-GitHub releases (`github.com/koalaman/shellcheck`) on first use; where that host
-is blocked the download returns a non-archive error body and the build fails on
-the root pom with `Input is not in the XZ format`, before any Java module is
-reached. The `embedded` method above avoids that entirely.
-
-CI (`.github/workflows/maven.yml`) installs the enforcer rule
-(`mvn -B -pl claude-code-enforcer -am install -DskipTests`) and then runs
-`mvn -B package -DenforceClaudeMd` on JDK 25 (Temurin) for every push and for
-pull requests targeting `main`. The bootstrap step skips tests because it only
-needs to publish the enforcer JAR for the plugin to load; the module's own test
-suite still runs in the `package` step. It is the only workflow that runs the
-CLAUDE.md check; the other workflows build normally and are unaffected.
-
-That `package` step is capped at **120 seconds** two ways: a
-`timeout-minutes: 2` on the step, which cancels a build that wedges outright,
-and a wall-clock check around `mvn` that prints the duration and fails with a
-`::error::` annotation when it exceeds 120 s. The timeout is what enforces the
-bound (the check cannot run until `mvn` returns); the check is what says by how
-much a slow-but-finishing build overran. Both are scoped to the step, so the
-checkout, JDK setup and enforcer bootstrap do not count against the budget. A
-run that trips either limit means the build got slower — profile it rather than
-raising the number. The cap applies only here: `maven-windows.yml` and the
-scheduled coverage, mutation and integration-test builds are legitimately
-longer and carry no timeout.
+**The pull-request build.** `.github/workflows/maven.yml` installs the enforcer
+rule (`mvn -B -pl claude-code-enforcer -am install -DskipTests`, tests skipped
+because it only needs to publish the JAR) and then runs
+`mvn -B package -DenforceClaudeMd`. That `package` step is capped at **120
+seconds** two ways: `timeout-minutes: 2` cancels a build that wedges, and a
+wall-clock check fails with a `::error::` annotation saying by how much a
+slow-but-finishing build overran. Both are scoped to the step, so checkout, JDK
+setup and the bootstrap do not count against the budget. A run that trips either
+limit means the build got slower — profile it rather than raising the number.
+The cap applies only here; the scheduled Windows, coverage, mutation and
+integration-test builds are legitimately longer and carry no timeout.
 
 ## Testing, coverage & mutation testing
 
-- **Unit tests** run in the normal `test`/`package` lifecycle
-  (`mvn -pl <module> -am test`). Write tests for all new logic — behavior, edge
-  cases, and error paths. Surefire enforces a **5-second per-test timeout** (the
-  `junit.jupiter.execution.timeout.testable.method.default` JUnit config
-  parameter set on the surefire plugin in the root `pom.xml`), so a unit test
-  that runs 5 s or longer fails the build. The limit sits above the one-time
-  JVM/class-loading warmup a cold fork pays (~0.7s on a dedicated core, but up to
-  ~3.9s for the first test in a fork when the reactor runs in parallel — see
-  *Build, test, and run* for the `-T1C` default — and only for the first test to
-  touch a heavy dependency) so it stays green under parallel-fork CPU contention,
-  while still catching a test that does real work. To keep that warmup below the limit, the one module that uses Mockito
-  (`protogen-maven-plugin`) pre-loads it as a `-javaagent` in surefire, so the
-  byte-buddy self-attach happens at JVM startup rather than inside the first
-  timed test method. Keep unit tests fast; a genuinely heavier test (e.g. one
-  that shells out to `protoc` or streams a large data set) opts out with an
-  explicit class- or method-level `@Timeout` carrying a comment that says why.
-  Failsafe integration tests (`*IT`) do not inherit this limit, and ArchUnit
-  tests run on a separate engine that the JUnit timeout does not apply to. Two
-  companion limits guard the rest of the fork: a looser
-  `junit.jupiter.execution.timeout.lifecycle.method.default` (**10 s**, **15 s**
-  under coverage) caps lifecycle methods (`@BeforeAll`/`@BeforeEach`/`@AfterEach`/
-  `@AfterAll`), whose shared one-time setup — e.g. `DBTest` booting an embedded
-  Derby database — is legitimately heavier than a test method but must still not
-  hang; and surefire's `forkedProcessTimeoutInSeconds` (**300 s**) kills a fork
-  that wedges outright (a deadlock or a non-daemon thread that never dies), which
-  a per-method JUnit timeout only reports after the fact and cannot interrupt.
-- **Unit tests run with the network off.** So that a unit test can never open an
-  outbound connection (deliberately or by accident), the `data` module registers
-  a `NetworkOffExtension` — a JUnit `BeforeAllCallback` discovered through
-  `META-INF/services` and JUnit's extension auto-detection — that calls
-  `Switch.off()` before any test runs, engaging the network kill-switch described
-  under *Network kill-switch* in the README. Both the auto-detection
-  (`junit.jupiter.extensions.autodetection.enabled`) and the
-  `tools.test.network.off` guard property are set only on the surefire plugin in
-  the root `pom.xml`, so the `data` failsafe integration tests (`*IT`), which need
-  real network, are unaffected. Because `ServiceLoader` ignores `META-INF/services`
-  for a named JPMS module, the `data` module runs its unit tests from the
-  classpath (`<useModulePath>false</useModulePath>` on surefire); the published
-  `data` artifact stays a proper module. A `NetworkOffDuringUnitTestsTest`
-  verifies the switch is already engaged by the time a unit test executes. A test
-  can also opt in explicitly with the `@NetworkOff` annotation (a composed
-  `@ExtendWith(NetworkOffExtension.class)`); an explicit `@NetworkOff` engages the
-  kill-switch unconditionally, bypassing the `tools.test.network.off` guard, so the
-  network is off even when that single test is run from an IDE.
-- **Architecture tests** (ArchUnit) run in every module as ordinary JUnit tests,
-  under an `...architecture` test package (e.g.
-  `io.github.adamw7.tools.data.architecture.DataArchitectureTest`). They analyse
-  only production classes and pin the package layering and coding rules so they
-  cannot rot: data-source contracts in `source.interfaces` must not depend on
+Write tests for all new logic — behavior, edge cases, and error paths. Skill:
+`testing-conventions`.
+
+### Unit tests
+
+Run in the normal `test`/`package` lifecycle. Surefire (root `pom.xml`) enforces:
+
+| Limit | Value | Guards |
+| --- | --- | --- |
+| `junit.jupiter.execution.timeout.testable.method.default` | **5 s** (8 s under coverage) | a unit test doing real work |
+| `junit.jupiter.execution.timeout.lifecycle.method.default` | **10 s** (15 s under coverage) | heavier shared setup, e.g. `DBTest` booting an embedded Derby |
+| `forkedProcessTimeoutInSeconds` | **300 s** | a fork that wedges outright, which a per-method timeout cannot interrupt |
+
+The 5 s bound sits above the cold-fork warmup under parallel-build CPU
+contention but still catches real work; it is not a budget to spend. A genuinely
+heavier test (shelling out to `protoc`, streaming a large data set) opts out with
+an explicit `@Timeout` carrying a comment that says why. `*IT`s do not inherit
+the limit, and ArchUnit runs on a separate engine the JUnit timeout does not
+apply to. The one module using Mockito (`protogen-maven-plugin`) pre-loads it as
+a surefire `-javaagent`, so the byte-buddy self-attach happens at JVM startup
+rather than inside the first timed test.
+
+**Unit tests run with the network off.** The `data` module registers a
+`NetworkOffExtension` — a JUnit `BeforeAllCallback` discovered through
+`META-INF/services` — that calls `Switch.off()` before any test runs. Both the
+auto-detection and the `tools.test.network.off` guard property are set only on
+surefire, so the failsafe `*IT`s, which need real network, are unaffected.
+Because `ServiceLoader` ignores `META-INF/services` for a named JPMS module,
+`data` runs its unit tests from the classpath (`<useModulePath>false</useModulePath>`);
+the published artifact stays a proper module. `NetworkOffDuringUnitTestsTest` verifies the switch is already engaged by the
+time a unit test executes. A test opts in explicitly with `@NetworkOff`, which engages the switch regardless of the guard property (so the
+network is off when that test is run from an IDE too).
+
+### Architecture tests
+
+ArchUnit tests run as ordinary JUnit tests in every module, under an
+`...architecture` test package, and analyse only production classes. New code
+must satisfy them or the module's test suite fails.
+
+Repo-wide rules (declared once in `test-common` and imported with
+`ArchTests.in(...)`, so each module's test states only what is specific to it):
+
+- `CommonCodingConventions` — loggers are `private static final`; public fields
+  are `final`; mutable static state is `volatile`; a field is never `Optional`;
+  date and time use `java.time`, never `Date`/`Calendar`; production code logs
+  through log4j2 — no `System.out`/`err`, `java.util.logging`,
+  `java.lang.System.Logger`, `printStackTrace` or `System.exit`; no generic
+  exceptions; no Joda Time; packages free of cycles.
+- `CommonNamingConventions` — abstract types carry an `Abstract` prefix. Kept
+  separate because `claude-code-enforcer` is exempt: its abstract rule bases are
+  public API that poms configure by name.
+- `CommonTestConventions` — every `@Testable` method lives in a `*Test`/`*IT`
+  class; no `@Disabled`; JUnit 5 only; no `System.out`/`err`; no `Thread.sleep`.
+
+Adding a repository-wide convention means editing one library, not six tests; an
+exemption means a module not importing a library, which stays visible.
+
+Per-module rules:
+
+- **`data`** — data-source contracts in `source.interfaces` must not depend on
   their `source.db`/`source.file` implementations; the uniqueness core must not
   depend on its MCP adapter; the `structure` collections stay decoupled from data
-  sources; JDBC (`java.sql`) stays confined to the `source.db` package; loggers
-  are `private static final`; abstract types carry an `Abstract` prefix; public
-  fields are `final`; mutable static state is `volatile` (so its updates publish
-  across threads); fields are never `Optional` (Optional models a return value,
-  not a field); date and time handling uses `java.time` (never the legacy
-  `Date`/`Calendar` API); and production code logs through log4j2 (never
-  `System.out`/`err`, `java.util.logging`, `java.lang.System.Logger`,
-  `printStackTrace`, or `System.exit`), with packages kept free of cycles. New
-  code must satisfy these rules or the module's test suite fails.
-  `AdoptArchitectureTest` adds the rules that keep the adoption pipeline a plain,
-  testable library: the `command` package is the only place a process is spawned
-  (`ProcessBuilder`, `Process`, `ProcessHandle`, `Runtime`) and everything else
-  goes through the `CommandRunner` contract, which is also all a step may know of
-  it — never `ProcessCommandRunner` itself; a step never reaches back to the
-  `GitHubRepoAdopter`, `BatchAdoption`, `CliArguments` or `Main` that assemble and
-  run it, and holds no mutable field, since one step instance adopts every
-  repository of a batch; `AdoptionContext.repositoryUrl()`, which answers the
-  clone URL with its credentials intact, is called by `CloneStep` alone —
-  everything else reads the redacted `displayUrl()`; the adoption speaks no
-  network protocol of its own (`java.net`/`javax.net` are out of bounds outside
-  the MCP delivery package) because it shells out to `git` and `gh`; the `mcp`
-  package is a delivery mechanism nothing else depends on, and the only place
-  that knows the shared MCP scaffolding or Spring; implementations are pinned to
-  their contracts by name (`*Step` to `AdoptionStep`, `*BuildSystem` to
-  `BuildSystem`, `*CommandRunner` to `CommandRunner`, `*Tool` to `McpTool`); the
-  only public `static void main` methods are the two `Main` entry points the pom
-  names; and no public method declares a checked `IOException`, since the
-  pipeline reports failure with the unchecked `AdoptionException`. Four more keep
-  the pipeline assembled in one place and driven by its options alone:
-  `GitHubRepoAdopter` is the only class outside the `step` package that may
-  depend on an `AdoptionStep`, so the command line and the MCP tool cannot drift
-  into adopting a repository two different ways; a `BuildSystem` describes the
-  commands its build tool needs but never depends on `CommandRunner`, leaving the
-  running to the step it answers; `System.getenv` is read only in the `command`
-  package, where resolving an executable on `PATH` is the one thing a run may
-  take from its environment; and `java.util.concurrent`/`Thread` stay there too,
-  since the pipeline is sequential and only pumping a spawned process's output
-  under a timeout needs threads.
-  `EnforcerArchitectureTest` pins, beyond the layering above, what a rule *is*
-  and what it may do while a build runs. What it is: every concrete rule is a
-  public `@Named` type, because maven-enforcer resolves a configured rule through
-  the Sisu index and an unannotated one tests green and then fails the build that
-  configures it with "rule not found"; its `@Named` value is derived from its
-  class name (the simple name minus the `Rule` suffix, decapitalised), which is
-  the string the poms, CLAUDE.md and AGENTS.md all use; every rule carries that
-  suffix, and — since this module trades the `Abstract` prefix for names poms
-  configure — an abstract type here must be a rule base. What it may do: read the
-  project and nothing else. No class depends on `ProcessBuilder`, `Process` or
-  `Runtime`, so `hookCommandsValid` and `permissionsFormat` check the commands a
-  repository asked Claude Code to run without ever running one; none reaches the
-  network (`java.net.http`, `javax.net`, `URL`, `URLConnection`, `Socket`), so the
-  checks work offline and a secret scanner cannot become the leak; and the only
-  classes that write through `java.nio.file.Files` are the three a build asks for
-  — `HtmlReport`, `Baseline`, and `MarkdownText`'s front-matter fix. Two more pin
-  the seams: `..enforcer.text..` stays free of the Maven API, `javax.inject` and
-  Jackson, which is what lets a rule be tested without a Maven session, and
-  `JsonNodes` is the only class depending on `ObjectMapper`, so every JSON rule
-  reads through the one mapper configured for the comments and trailing commas
-  Claude Code's own files allow. A companion
-  `TestConventionsArchitectureTest` in the same `...architecture` package
-  analyses only the *test* classes (via `ImportOption.OnlyIncludeTests`) and pins
-  conventions on the tests themselves: every `@Testable` method must live in a
-  `*Test` or `*IT` class so surefire/failsafe actually runs it, no test is
-  `@Disabled`, tests use JUnit 5 only (no JUnit 4 `org.junit` API), no test
-  writes to `System.out`/`err` (assert on the value instead), and no test
-  calls `Thread.sleep` (sleeping is slow and flaky — wait on a condition). In
-  `adopt` it pins two more, both about what the tests are allowed to touch: a
-  step test drives its step through the recording `CommandRunner` rather than
-  spawning a real `git`, `claude` or `gh`, and no `*IT` may depend on `PushStep`
-  or `PullRequestStep` — the integration tests run against real GitHub
-  repositories, so their pipeline stops at the branch step. In
-  `claude-code-enforcer` it pins two more, both about the one thing there that
-  cannot be fast: `ProcessBuilder` is confined to the `e2e` package, since a rule
-  is unit-tested by calling `execute()` on it, and every `@Testable` method in
-  that package must sit in an `*IT` class — forking Maven belongs to failsafe and
-  the `integration-tests` profile, not to the pull-request build and its
-  120-second budget.
-- **Shared rule libraries.** The rules above that hold for *every* module are
-  declared once in the `test-common` module and imported with ArchUnit's
-  `ArchTests.in(...)`, so each module's architecture test states only what is
-  specific to that module. `CommonCodingConventions` carries the universal
-  production rules (loggers, public/static/`Optional` fields, `java.time`, log4j2
-  logging, no `System.exit`, no standard streams, no generic exceptions, no Joda
-  Time); `CommonTestConventions` carries the test-side conventions; and
-  `CommonNamingConventions` carries the `Abstract` prefix rule, kept separate
-  because `claude-code-enforcer` is exempt — its abstract rule bases
-  (`ClaudeCodeEnforcerRule`, `MarkdownFormatRule`, `JsonFileRule`) are public API
-  that poms configure by name. Adding a repository-wide convention means editing
-  one library, not six tests; an exemption means a module not importing a
-  library, which stays visible in that module's test.
-- **Shared assertions.** `test-common` also carries `ExpectedFailures`, whose
-  `assertFailure(type, call, fragments...)` is the assertion nearly every rule and
-  adoption-step test makes: the call must fail with that exception, and its
-  message must carry each fragment. Written out that is an `assertThrows` naming
-  the type twice, a local to hold the failure, and one
-  `assertTrue(...contains(...), ...getMessage())` per fragment — three lines to
-  say what one now says, with the thrown message as the assertion description by
-  construction rather than by every call remembering to pass it. A test with more
-  to say about the failure keeps the local, since the helper returns it.
-- **Integration tests** are gated behind the `integration-tests` profile
-  (defined in `data`, `code/context`, `adopt`, and `claude-code-enforcer`) and are
-  the tests that need
-  something real: `mvn -P integration-tests verify`. Test classes ending in `IT`
-  belong to this profile. `data` and `code/context` exercise their MCP servers
-  over streamable HTTP; `adopt`'s `MultiRepoAdoptionIT` runs a multi-repository
-  adoption against real GitHub URLs, cloning GitHub's `octocat/Hello-World` and
-  `octocat/Spoon-Knife` samples with the real `git`, to prove that a batch gives
-  each repository its own checkout, that a repository which cannot be cloned
-  costs only itself, that two real URLs for one repository are refused before
-  anything is cloned, and that a checkout directory already holding a *different*
-  repository is refused rather than adopted. That IT stops the pipeline at the
-  branch step, so
-  it stays read-only towards GitHub: it never runs `claude`, never pushes, and
-  never opens a pull request, and it needs no `gh` login. Because it clones
-  over the network, a host with a git `url.<base>.insteadOf` rewrite records the
-  rewritten remote, so the test identifies each checkout by the
+  sources; JDBC (`java.sql`) stays confined to `source.db`.
+- **`adopt`** (`AdoptArchitectureTest`) — the `command` package is the only place
+  a process is spawned, and a step knows only the `CommandRunner` contract, never
+  `ProcessCommandRunner`; a step never reaches back to `GitHubRepoAdopter`,
+  `BatchAdoption`, `CliArguments` or `Main`, and holds no mutable field, since
+  one instance adopts every repository of a batch; only `CloneStep` calls
+  `AdoptionContext.repositoryUrl()` (everything else reads the redacted
+  `displayUrl()`); the adoption speaks no network protocol of its own outside the
+  MCP package; `mcp` is a delivery mechanism nothing depends on and the only
+  place that knows Spring; implementations are pinned to their contracts by name
+  (`*Step`, `*BuildSystem`, `*CommandRunner`, `*Tool`); the only public
+  `static void main` methods are the two the pom names; no public method declares
+  a checked `IOException`, failure being the unchecked `AdoptionException`;
+  `GitHubRepoAdopter` is the only class outside `step` that may depend on an
+  `AdoptionStep`; a `BuildSystem` never depends on `CommandRunner`; and
+  `System.getenv`, `java.util.concurrent` and `Thread` are confined to `command`.
+- **`claude-code-enforcer`** (`EnforcerArchitectureTest`) — every concrete rule is
+  a public `@Named` type (maven-enforcer resolves rules through the Sisu index, so
+  an unannotated one tests green and then fails the build that configures it),
+  whose `@Named` value is its class name minus the `Rule` suffix, decapitalised —
+  the string the poms and these docs use. A rule may read the project and nothing
+  else: no `ProcessBuilder`/`Process`/`Runtime` (so `hookCommandsValid` checks
+  commands without running one), no network (so the checks work offline and a
+  secret scanner cannot become the leak), and the only classes writing through
+  `Files` are `HtmlReport`, `Baseline` and `MarkdownText`'s front-matter fix.
+  `..enforcer.text..` stays free of the Maven API, `javax.inject` and Jackson,
+  which is what lets a reader be tested without a Maven session, and `JsonNodes`
+  is the only class depending on `ObjectMapper`, so every JSON rule reads through
+  the one mapper configured for the comments and trailing commas Claude Code's
+  files allow.
+
+`TestConventionsArchitectureTest` (same package, analysing only test classes via
+`ImportOption.OnlyIncludeTests`) adds the shared test conventions plus, in
+`adopt`, that a step test never spawns a real process and no `*IT` depends on
+`PushStep` or `PullRequestStep`; and in `claude-code-enforcer`, that
+`ProcessBuilder` is confined to the `e2e` package and every `@Testable` method
+there sits in an `*IT` — forking Maven belongs to failsafe, not to the
+pull-request build and its 120-second budget.
+
+**Shared assertions.** `test-common` also carries `ExpectedFailures`, whose
+`assertFailure(type, call, fragments...)` is the assertion nearly every rule and
+adoption-step test makes: the call must fail with that exception and its message
+must carry each fragment, with the thrown message as the assertion description by
+construction. A test with more to say about the failure keeps the returned
+exception.
+
+### Integration tests
+
+`*IT` classes are gated behind the `integration-tests` profile — declared per
+module in `data`, `code/context`, `adopt` and `claude-code-enforcer`, so a new
+module's `*IT`s stay unrun until it gets its own copy. Run them with
+`mvn -P integration-tests verify`. They cover what needs something real:
+
+- `data` and `code/context` exercise their MCP servers over streamable HTTP.
+- `adopt`'s `MultiRepoAdoptionIT` clones GitHub's `octocat/Hello-World` and
+  `octocat/Spoon-Knife` with the real `git`, proving a batch gives each
+  repository its own checkout, that an uncloneable repository costs only itself,
+  and that two URLs for one repository, or a checkout holding a *different*
+  repository, are refused. It stops at the branch step, so it never runs
+  `claude`, never pushes, never opens a pull request and needs no `gh` login.
+  Because it clones over the network, it identifies each checkout by the
   `owner/repository` its `origin` names rather than by the URL it was given.
-- **The enforcer's end-to-end tests** (`claude-code-enforcer`, package
-  `...enforcer.e2e`) run *real Maven builds*, because everything between a pom and
-  a rule's `execute()` is what a unit test assumes: Maven resolving the rule jar,
-  Sisu finding the class behind a `@Named` element, and Plexus binding each
-  configuration element to a field. A rule can be correct and still never run — a
-  misspelled parameter fails the build outright, a misspelled rule name never runs
-  at all — and none of that is visible from inside the rule. `EnforcerRuleBuildIT`
-  builds a throwaway project (`FixtureProject`) laid out like an adopted
-  repository and enforces `RuleConfiguration.complete()`, which configures **every**
-  shipped rule with **every** parameter it accepts; the configuration is held
-  against the compiled classes (`ShippedRules`, by reflection) so a new rule or
-  parameter that no fixture addresses is named rather than silently unexercised.
-  The same class pins the shared behaviours across the Maven boundary:
-  collect-then-report, `severity=warn` going green while still logging,
-  the HTML `reportFile` landing on disk, a `baselineFile` suppressing recorded
-  violations until a new one appears, and the build-setup checks that fail whatever
-  the severity. `RepositoryEnforcementIT` runs the repository's own
-  `mvn -N validate -DenforceClaudeMd`, checks every rule the
-  `claude-md-enforce` profile wires reported a pass, holds the shipped catalogue
-  against that profile (`subAgentFormat` and `commandFormat` are the documented
-  exemptions), and then breaks a *copy* of the repository — a skill losing its
-  `SKILL.md`, the two agent documents disagreeing about the Java version — to prove
-  the wiring bites. Two mechanics are worth knowing before changing them: the
-  `*IT`s run at `integration-test`, *before* this module is installed, so they
-  publish the freshly packaged jar into the local repository themselves
-  (`install-file`, with the flattened pom so the rule's own dependencies come with
-  it); and a forked test JVM cannot work out where Maven, the local repository or
-  that jar are, so the module's `integration-tests` profile passes each in as an
+- `claude-code-enforcer`'s `e2e` package runs **real Maven builds**, because
+  everything between a pom and a rule's `execute()` is what a unit test assumes:
+  artifact resolution, Sisu finding the class behind a `@Named` element, and
+  Plexus binding each configuration element to a field. A rule can be correct and
+  still never run, and none of that is visible from inside the rule.
+  `EnforcerRuleBuildIT` builds a throwaway project and enforces
+  `RuleConfiguration.complete()`, which configures **every** shipped rule with
+  **every** parameter it accepts — held against the compiled classes
+  (`ShippedRules`, by reflection) so a new rule or parameter no fixture addresses
+  is named rather than silently unexercised — and pins the shared behaviours
+  across the Maven boundary (collect-then-report, `severity=warn` going green
+  while still logging, the HTML report landing on disk, a baseline suppressing
+  recorded violations, and the build-setup checks that fail whatever the
+  severity). `RepositoryEnforcementIT` runs this repository's own
+  `mvn -N validate -DenforceClaudeMd`, holds the shipped catalogue against the
+  profile (`subAgentFormat` and `commandFormat` are the documented exemptions),
+  and then breaks a *copy* — a skill losing its `SKILL.md`, the two agent
+  documents disagreeing about the Java version — to prove the wiring bites. Two
+  mechanics: the `*IT`s run at `integration-test`, *before* this module is
+  installed, so they publish the freshly packaged jar themselves (`install-file`,
+  with the flattened pom); and a forked test JVM cannot work out where Maven, the
+  local repository or that jar are, so the profile passes each in as an
   `enforcer.it.*` system property that `BuildEnvironment` reads.
-- **Coverage** is the opt-in `coverage` profile (JaCoCo): `mvn -Pcoverage verify`
-  produces reports at `**/target/site/jacoco/` and **fails the build** if a
-  bundle's instruction **or** branch coverage drops below **80%** (two
-  `COVEREDRATIO >= 0.80` limits, one on the `INSTRUCTION` counter and one on
-  `BRANCH`). The profile also raises the per-test timeout to **8 s** (from the
-  base 5 s), because JaCoCo's bytecode instrumentation slows first-use
-  class-loading.
-- **Mutation testing** is the opt-in `pitest` profile (PIT + JUnit 5):
-  `mvn -Ppitest install` writes HTML/XML reports to `**/target/pit-reports/` and
-  **fails the build** when a module's mutation score drops below its
-  `pitest.mutationThreshold`. The root pom sets the floor (**80**); a module that
-  scores well above it raises its own bar in its `<properties>`:
+
+### Coverage and mutation testing
+
+- **Coverage** — `mvn -Pcoverage verify` (JaCoCo) writes reports to
+  `**/target/site/jacoco/` and **fails** if a bundle's instruction **or** branch
+  coverage drops below **80%**. The profile also raises the per-test timeout to
+  8 s, because instrumentation slows first-use class-loading.
+- **Mutation testing** — `mvn -Ppitest install` (PIT + JUnit 5) writes reports to
+  `**/target/pit-reports/` and **fails** when a module's mutation score drops
+  below its `pitest.mutationThreshold`:
 
   | Module | Threshold | Measured when set |
   | --- | --- | --- |
@@ -625,81 +467,68 @@ longer and carry no timeout.
   | `claude-code-enforcer` | 88 | 91% |
   | `code/protogen-maven-plugin` | 84 | 87% |
   | `data` | 82 | 86% |
-  | `mcp-common` | 80 (the floor) | 84% |
+  | `mcp-common` | 80 (the root pom's floor) | 84% |
 
   Each number sits a few points under the measured score, so an equivalent
   refactor — or a timed-out mutant, which PIT counts as killed — cannot turn a
-  green build red on its own. **Ratchet a threshold up** once a module's score
-  has settled above it; never down to make a red build pass. Two modules opt out
-  entirely with `pitest.skip` (beside the `jacoco.skip` they already set, for the
-  same reason): `grpc-example` and `code/protogen-maven-plugin-test` hold no
-  hand-written production Java, only protobuf and gRPC classes generated from
-  their `.proto` files, so PIT scored them at 14% and 10% while measuring a
-  generator's output rather than anybody's tests. The generator itself is mutated
-  in `protogen-maven-plugin`, which is where the logic under test lives.
+  green build red on its own. **Ratchet a threshold up** once a score has settled
+  above it; never down to make a red build pass. `grpc-example` and
+  `code/protogen-maven-plugin-test` opt out with `pitest.skip` (beside the
+  `jacoco.skip` they already set): they hold no hand-written production Java,
+  only classes generated from `.proto` files, so PIT was measuring a generator's
+  output rather than anybody's tests. The generator itself is mutated in
+  `protogen-maven-plugin`.
 
-  The profile excludes `*IT` integration tests and does not fail when a class has
-  no mutations; PIT skips a module with no production code or no tests outright,
-  so a threshold never applies to one. Run it with `install` (or any phase past
-  `package`), not with
-  `test`: PIT is bound to the `test` phase either way, but a `test`-only reactor
-  build never packages `mcp-common`, so the `data` module's `requires
-  tools.mcp.common` — an automatic module name derived from that **jar**'s file
-  name — cannot resolve against the exploded `target/classes` directory and
-  compilation fails.
+  Run PIT with `install` (or any phase past `package`), not `test`: a
+  `test`-only reactor build never packages `mcp-common`, so `data`'s
+  `requires tools.mcp.common` — an automatic module name derived from that
+  **jar**'s file name — cannot resolve against an exploded `target/classes`.
 
 ## Continuous integration
 
-Workflows live in `.github/workflows/`. One gates pull requests to `main`:
-`maven.yml` (the build and the doc checks); the rest run on a schedule,
-manually, or on a release.
+Workflows live in `.github/workflows/`. Only `maven.yml` gates pull requests to
+`main`; the rest run on a schedule, manually, or on a release — so a green PR is
+not proof the whole matrix passes.
 
 | Workflow | Trigger | What it runs |
 | --- | --- | --- |
-| `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` on JDK 25 — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s** (`timeout-minutes: 2` plus a wall-clock check). |
-| `integration-tests.yml` | daily | `mvn -P integration-tests verify` (MCP streamable-HTTP integration tests, the `adopt` multi-repository adoption against real GitHub URLs, and the enforcer's end-to-end Maven builds). |
-| `codeql.yml` | weekly (Saturdays) | CodeQL security/static analysis for Java (autobuild). |
-| `coverage.yml` | weekly (Saturdays) | `mvn verify -Pcoverage`, uploads JaCoCo reports as an artifact. |
-| `pitest.yml` | weekly (Sundays); manual | `mvn install -Ppitest`, which **fails** if a module's mutation score falls below its `pitest.mutationThreshold`, and uploads PIT mutation reports as an artifact. |
-| `maven-windows.yml` | weekly (Sundays); manual | `mvn install` on a `windows-latest` runner, to catch platform-specific regressions the Linux build would miss. |
-| `docker.yml` | weekly (Saturdays); on GitHub release; manual dispatch | `mvn -B package`, then builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL findings). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR, tagged with the release version and `latest`, with SBOM and provenance. Deliberately **not** on pull requests — the image build costs minutes per review for a packaging path that changes rarely, so dispatch it by hand when touching `assembly` or the Dockerfile. |
-| `maven-publish.yml` | on GitHub release | Deploys to **GitHub Packages** (`-P github-packages`). See "Releasing". |
-| `central-publish.yml` | on GitHub release; manual dispatch | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. See "Releasing". |
+| `maven.yml` | push, PR → `main` | Installs the enforcer rule, then `mvn -B package -DenforceClaudeMd` — the **only** workflow that runs the CLAUDE.md/AGENTS.md checks. The build step is capped at **120 s**. |
+| `integration-tests.yml` | daily | `mvn -P integration-tests verify`. |
+| `codeql.yml` | weekly (Sat) | CodeQL security/static analysis for Java (autobuild). |
+| `coverage.yml` | weekly (Sat) | `mvn verify -Pcoverage`, uploads the JaCoCo reports. |
+| `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads the PIT reports. |
+| `maven-windows.yml` | weekly (Sun); manual | `mvn install` on `windows-latest` — keep path, line-ending and file-locking assumptions platform-neutral. |
+| `docker.yml` | weekly (Sat); on release; manual | Builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR with SBOM and provenance. Deliberately not on pull requests — dispatch it by hand after touching `assembly` or the Dockerfile. |
+| `maven-publish.yml` | on release | Deploys to **GitHub Packages** (`-P github-packages`). |
+| `central-publish.yml` | on release; manual | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. |
 
-Every workflow builds on JDK 25 (Temurin) and passes `-ntp` to keep the log
-free of artifact-transfer noise.
+Every workflow builds on JDK 25 (Temurin) and passes `-ntp`.
 
 ### Dependency updates
 
-Version bumps arrive as pull requests from two bots with a deliberate division of
-labour ([ADR 0005](docs/adr/0005-renovate-dependency-updates.md),
+Version bumps arrive from two bots with a deliberate division of labour
+([ADR 0005](docs/adr/0005-renovate-dependency-updates.md),
 [ADR 0006](docs/adr/0006-dependabot-security-updates.md)): **Renovate** owns
 routine version currency, **Dependabot** owns security remediation. Renovate's
-configuration is `.github/renovate.json`; the parts worth knowing before editing
-a version by hand:
+configuration is `.github/renovate.json`:
 
-- It runs on a **schedule** (Monday before 06:00 UTC, at most 5 open PRs and 2
-  per hour), so ordinary bumps arrive in one weekly batch rather than
-  continuously.
-- `vulnerabilityAlerts` and `osvVulnerabilityAlerts` are **off**, so Renovate
-  declines security-driven bumps and Dependabot raises them without a duplicate
-  pull request.
+- It runs on a **schedule** (Monday before 06:00 UTC, ≤ 5 open PRs, 2 per hour),
+  so ordinary bumps arrive in one weekly batch.
+- `vulnerabilityAlerts` and `osvVulnerabilityAlerts` are **off**, so Dependabot
+  raises security bumps without a duplicate PR.
 - Artifacts that must move together are **grouped** into one PR: the Maven
-  plugins (all of whose versions live in the root `pluginManagement`), the
-  coverage and mutation tooling, the test libraries, and the protobuf toolchain —
-  the last because `protobuf-java` and the `protoc` the plugin runs share one
-  property, and letting them drift cost two minor versions once already.
+  plugins, the coverage and mutation tooling, the test libraries, and the
+  protobuf toolchain — the last because `protobuf-java` and the `protoc` the
+  plugin runs share one property, and letting them drift cost two minor versions
+  once already.
 - This project's own `io.github.adamw7:**` modules are **disabled**: they resolve
-  inside the reactor at `${revision}`, so there is no version for Renovate to
-  raise.
+  inside the reactor at `${revision}`.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
-  dashboard approval, because a Maven 4 API is wired in on purpose while the
-  build is pinned to Maven 3.9.x, and the framework the three MCP servers boot on
-  deserves a review of its own.
+  dashboard approval — a Maven 4 API is wired in on purpose while the build is
+  pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.
 
 Because every version lives in the root pom, these PRs are single-file changes
-that run through the normal `maven.yml` build; review them like any other change
-rather than merging on the bot's word.
+that run through the normal `maven.yml` build; review them like any other change.
 
 ## Agent configuration
 
@@ -712,523 +541,315 @@ change the build checks.
 `.claude/skills/` holds **thirteen** project skills, each a directory with a
 `SKILL.md` whose YAML front matter declares a `name` (lower-case kebab-case,
 matching the directory name) and a `description` saying both what the skill
-covers and when to load it. Skills are loaded on demand rather than into every
-session, which is why they, not `CLAUDE.md`, are where detail belongs: **prefer
-loading the relevant skill over re-deriving a convention** from the code.
-
-Six cover one module each:
+covers and when to load it. Skills load on demand rather than into every session,
+which is why they, not `CLAUDE.md`, are where detail belongs.
 
 | Skill | Covers |
 | --- | --- |
-| `data-sources` | the `data` sources, the `ColumnarDataSource` vs forward-only contract, and the uniqueness/key checker |
-| `context-finder` | `code/context` — the class-usage finders, the project tree and its serializers, OKF bundles, token estimation, and the four MCP tools |
-| `protogen` | the `protogen-maven-plugin` — proto2 required-field enforcement, proto3 presence accessors, `oneof` discriminators |
-| `adopt-pipeline` | the `adopt` pipeline's ordered steps, step contract, CLI flags, and credential masking |
-| `mcp-server` | adding a tool or server on the `mcp-common` scaffolding — the `McpTool` SPI, the three transports, path confinement, `MCP_USAGE.md`, the `*IT`s |
+| `data-sources` | the `data` sources, the `ColumnarDataSource` vs forward-only contract, the uniqueness/key checker |
+| `context-finder` | `code/context` — the finders, the project tree and its serializers, OKF bundles, token estimation, the four MCP tools |
+| `protogen` | the `protogen-maven-plugin` — proto2 required fields, proto3 presence accessors, `oneof` discriminators |
+| `adopt-pipeline` | the `adopt` pipeline's ordered steps, step contract, CLI flags, credential masking |
+| `mcp-server` | adding a tool or server on the `mcp-common` scaffolding — the `McpTool` SPI, the transports, path confinement, `MCP_USAGE.md`, the `*IT`s |
 | `enforcer-rules` | writing, testing and wiring a `claude-code-enforcer` rule, including `severity`/`reportFile`/`baselineFile` |
-
-Seven hold across the repository:
-
-| Skill | Covers |
-| --- | --- |
 | `doc-contract` | keeping `CLAUDE.md`, `AGENTS.md` and `README.md` inside the enforced documentation contract |
 | `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
-| `testing-conventions` | the Surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
-| `java-code-review` | review led by the rules the build fails on, then the five defect shapes this repository ships fixes for, then null safety, exceptions, concurrency, performance |
-| `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy, and the SnakeYAML-backed `FrontMatter` — and the adversarial input that has broken each |
+| `testing-conventions` | the surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
+| `java-code-review` | review led by the rules the build fails on, then the defect shapes this repository ships fixes for |
+| `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy, the SnakeYAML-backed `FrontMatter` — and the input that has broken each |
 | `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
 | `git-commit` | conventional commit messages using this repository's real module scopes |
 
-The last two of those are the bug-finding pair, and they are written from this
-repository's own `fix(...)` history rather than from a generic checklist: the
-readers `text-parsers` covers carry the largest share of the defects fixed here,
-and section 9 of `java-code-review` generalises the rest into five shapes — a
-hand-rolled reader meeting real input, two implementations of one format
-drifting, a command transcript read as structured output, success reported for
-work that never happened, and a new path for a credential.
+`text-parsers` and section 9 of `java-code-review` are the bug-finding pair, and
+they are written from this repository's own `fix(...)` history rather than from a
+generic checklist.
 
 A new skill needs no wiring: `skillFilesExist`, `uniqueNames` and
 `uniqueDescriptions` already point at `.claude/skills`, so it is validated the
 moment it lands. Its `description` must not duplicate another's — Claude routes
-by matching intent against these descriptions, so two identical ones are
-ambiguous and one shadows the other.
+by matching intent against these descriptions, so one duplicate shadows the
+other.
 
 ### Settings and hooks
 
 `.claude/settings.json` carries two sections:
 
-- `permissions.allow` pre-approves the commands a session runs constantly —
-  `mvn` (and `PowerShell(mvn *)` for the Windows path), the
+- `permissions.allow` pre-approves the commands a session runs constantly — `mvn`
+  (and `PowerShell(mvn *)` for the Windows path), the
   `dependency:tree`/`dependency:analyze` reports, the `unzip -l`/`unzip -p`
-  archive inspection used to check what a built jar contains, and `Edit`. Each
-  entry must be a well-formed `Tool` or `Tool(specifier)`, and must not also
-  appear in `deny` (`permissionsFormat`).
+  archive inspection, and `Edit`. Each entry must be a well-formed `Tool` or
+  `Tool(specifier)` and must not also appear in `deny`.
 - `hooks.SessionStart` runs `$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh`.
-  The script exists on disk, which is what `hookCommandsValid` checks, and the
-  wiring is cross-checked from the other side by `hooksFormat`.
 
 `.claude/hooks/session-start.sh` provisions a web/remote session and returns
 immediately anywhere else: it exits at once unless `CLAUDE_CODE_REMOTE=true`,
 then installs `openjdk-25-jdk` when no JDK 25 is present, exports `JAVA_HOME` and
-`PATH` through `CLAUDE_ENV_FILE` so later tool calls see them, and warms the
-local repository with `mvn dependency:go-offline`. Keep it `set -euo pipefail`,
+`PATH` through `CLAUDE_ENV_FILE` so later tool calls see them, and warms the local
+repository with `mvn dependency:go-offline`. Keep it `set -euo pipefail`,
 executable, and opening with a `#!` shebang — `hooksFormat` requires the shebang
-and the executable bit, and the root pom lints it with shellcheck like every
-other `*.sh`.
+and the executable bit, and the root pom lints it with shellcheck.
 
 Personal overrides belong in `.claude/settings.local.json`, which is gitignored;
-`localSettingsIgnored` fails the build if that entry disappears, since committing
-it would impose one developer's choices on everyone.
+`localSettingsIgnored` fails the build if that entry disappears.
 
 ### What this repository does not ship
 
-Four agent-configuration files are absent by choice, which is why their rules
-behave the way the next section describes: there is no `.mcp.json` (the three
+Four agent-configuration files are absent by choice: `.mcp.json` (the three
 servers here are *published* for other projects to configure, not consumed by
-this one), no `.claude-plugin/plugin.json`, no `.claude/agents` and no
-`.claude/commands`. The first two rules are wired and pass on the absent file, so
-they start enforcing the day one is added; `subAgentFormat` and `commandFormat`
-cannot be wired until the directory exists — add the directory and the rule
-together.
+this one), `.claude-plugin/plugin.json`, `.claude/agents` and `.claude/commands`.
+The first two rules are wired and pass on the absent file, so they start
+enforcing the day one is added; `subAgentFormat` and `commandFormat` cannot be
+wired until their directory exists — add the directory and the rule together.
 
 ## CLAUDE.md enforcement
 
-The `claude-code-enforcer` module is a set of custom `maven-enforcer-plugin` rules
-that **fail the build** when the repository's agent files are missing or
-malformed. The rules run at the **root** only, in the `claude-md-enforce`
-profile:
+The `claude-code-enforcer` module is a set of custom `maven-enforcer-plugin`
+rules that **fail the build** when the repository's agent files are missing or
+malformed. They run at the **root** only, in the `claude-md-enforce` profile.
+Skill: `enforcer-rules`.
 
-- `ClaudeMdFormatRule` (`claudeMdFormat`) checks that `CLAUDE.md` exists and is
-  non-empty, starts with the `# CLAUDE.md` title (a leading UTF-8 BOM is
-  tolerated), references `AGENTS.md`, and contains every required section
-  heading (`## Project`, `## Java version`, `## Maven`,
-  `## Principles for Java Development`, `## Testing`, `## Dependencies`).
-- `AgentsMdFormatRule` (`agentsMdFormat`) applies the same structural checks to
-  `AGENTS.md`: it must start with the `# AGENTS.md` title and contain every
-  required section heading (`## Project overview`, `## Module layout`,
-  `## Environment & toolchain`, `## Build, test, and run`,
-  `## Code style & conventions`, `## Releasing`, `## Pull requests & commits`).
-- `SkillFilesExistRule` (`skillFilesExist`) checks that every skill directory
-  under `.claude/skills` contains a non-empty `SKILL.md` whose YAML front matter
-  declares every required key (`name`, `description` by default, overridable via
-  `requiredKeys`). The `name` must be lower-case kebab-case, at most 64
-  characters, and match the skill's directory name; the `description` must be
-  non-empty and within `maxDescriptionLength`. Setting `allowedFrontMatterKeys`
-  also reports unknown keys, catching typos such as `descripton`. A key declared
-  twice is reported too, and every check reads the last declaration, which is the
-  one a YAML loader keeps and so the one Claude Code acts on.
-- `SubAgentFormatRule` (`subAgentFormat`) applies the same front-matter checks to
-  every `*.md` sub-agent definition under a configured `agentsDir`; the `name`
-  must match the file name, and an optional `allowedModels` list rejects an
-  unknown `model`.
-- `CommandFormatRule` (`commandFormat`) treats every `*.md` file under a
-  configured `commandsDir` (e.g. `.claude/commands`) as a custom slash command:
-  it must be non-empty and its file name must be lower-case kebab-case (the
-  command's name comes from the file name). Front matter is optional, but a
-  present `description` must be non-empty, a present `model` must be in an
-  optional `allowedModels` list, and `allowedFrontMatterKeys` reports unknown
-  keys.
-- `SettingsJsonValidRule` (`settingsJsonValid`) checks that `.claude/settings.json`
-  exists and is valid JSON, and can assert `requiredPermissions` and
-  `forbiddenPermissions` against the `permissions.allow` list.
-- `HookCommandsValidRule` (`hookCommandsValid`) validates the `hooks` section of
-  `.claude/settings.json`: every event maps to an array of groups, each group
-  carries a `hooks` array, and every hook declares a non-blank `type` (a
-  `command` hook also a non-blank `command`). A project-local script command —
-  rooted at `$CLAUDE_PROJECT_DIR`, or written as the plain repository-relative
-  path Claude Code resolves the same way — is resolved against `projectDir` and
-  must exist on disk. Both spellings are read from the same tokens: the program
-  of each chained command, plus the script an interpreter among them is handed
-  (`bash <script>`). An argument that merely looks like a path is not required to
-  exist whichever way it is spelled, so a hook writing
-  `--out $CLAUDE_PROJECT_DIR/target/log.txt` or creating a directory with
-  `mkdir -p` is not reported as referencing a missing script. An optional
-  `allowedEvents` list rejects mistyped events and `validateScriptReferences`
-  toggles the script-existence check.
-- `HooksFormatRule` (`hooksFormat`) validates the hook scripts under a configured
-  `hooksDir` (e.g. `.claude/hooks`): every regular file must be non-empty, start
-  with a `#!` shebang (`requireShebang`), and carry the executable bit
-  (`requireExecutable`), and an optional `allowedExtensions` list rejects a stray
-  file. Where `hookCommandsValid` validates the JSON shape of the `hooks` section,
-  this rule validates the scripts themselves; when a `settingsFile` is configured
-  it also cross-checks the wiring, so a command hook whose project-local path —
-  `$CLAUDE_PROJECT_DIR`-rooted or plain repository-relative — lands in the hooks
-  directory must point at a script that exists there (with
-  symlinks resolved so a script cannot escape the directory), and
-  `reportUnreferencedScripts` flags a script no hook references. An absent
-  `hooksDir` is a pass because hooks are optional.
-- `McpServersValidRule` (`mcpServersValid`) validates the project's `.mcp.json`.
-  The file is optional, so an absent one passes; when present it must be
-  non-empty valid JSON, and every entry under `mcpServers` must be a JSON object
-  with a well-formed transport (a `stdio` server needs a `command`; an `sse` or
-  `http` server needs a `url`). An explicit `type` outside `allowedTypes`
-  (`stdio`, `sse`, `http` by default) is rejected, and `requiredServers` /
-  `forbiddenServers` assert which servers must or must not be declared.
-- `McpConfigFormatRule` (`mcpConfigFormat`) validates the details of each
-  `.mcp.json` server entry that `mcpServersValid` leaves unchecked: `args` must be
-  an array of strings, `env` and `headers` must be objects whose values are all
-  strings, a `url` must be a syntactically valid `http`/`https` URL (and `https`
-  only when `requireHttps` is set), and a server must not mix transports by
-  declaring both a `command` and a `url`. A `url` assembled from an environment
-  variable expansion (`https://${MCP_HOST}/mcp`) is left alone, since only the
-  shell that resolves it knows what it becomes. Like `mcpServersValid` it treats
-  an absent file as a pass.
-- `OkfBundleFormatRule` (`okfBundleFormat`) holds a bundle in Google's Open
-  Knowledge Format at `bundleDir` to the specification's own conformance
-  conditions: every non-reserved `.md` file carries a parseable YAML frontmatter
-  block, every block declares a non-empty `type` (the one mandatory field), and
-  the reserved names keep their structure — an `index.md` carries no frontmatter
-  beyond an `okf_version` at the bundle root, and a `log.md` groups entries under
-  ISO 8601 `YYYY-MM-DD` headings. Where the format defines a closed vocabulary the
-  value is checked too (`status` is `draft`/`stable`/`deprecated`, `stale_after`
-  is a real calendar date, a `generated` mapping names its actor); where it does
-  not, nothing is imposed — a `type` is not registered centrally, so an unknown
-  one passes. `requiredKeys` adds frontmatter keys every concept must declare,
-  `okfVersion` pins the version the bundle root declares, and `requireIndex`
-  demands a listing in every directory holding concepts (off by default, since a
-  consumer must tolerate a missing `index.md`). A bundle is optional, so an absent
-  `bundleDir` is a pass. The producer side is guarded separately: `code/context`'s
-  `OkfBundleConformanceTest` restates the same conditions against every bundle
-  `OkfBundler` emits, and runs in the ordinary `test` phase.
-- `UniqueNamesRule` (`uniqueNames`) gathers the names of every command,
-  sub-agent, and skill from the configured `commandsDir`, `agentsDir`, and
-  `skillsDir` (file name for commands and sub-agents, directory name for skills)
-  and fails when a name is used more than once, naming every source that uses it.
-  At least one directory must be configured, any configured directory must
-  exist, and uniqueness is checked across all of them at once, so a command that
-  clashes with a skill is caught just like two clashing commands.
-- `UniqueDescriptionsRule` (`uniqueDescriptions`) reads the `description` from the
-  front matter of every sub-agent (`*.md`), command (`*.md`), and skill
-  (`SKILL.md`) in the same configured directories and fails when one description
-  is used by more than one definition, naming every file that uses it — because
-  Claude routes by matching intent against these descriptions, two identical ones
-  are ambiguous and one shadows the other. Comparison ignores case and runs of
-  whitespace; missing or blank descriptions are left to the format rules.
-- `CrossDocConsistencyRule` (`crossDocConsistency`) keeps `CLAUDE.md` and
-  `AGENTS.md` from contradicting each other: each configured `consistentPatterns`
-  regex (one capturing group) must capture the same value in both files, e.g.
-  `Java (\d+)` pins the Java version.
-- `ReadmeConsistencyRule` (`readmeConsistency`) keeps `README.md` from drifting
-  away from the agent docs (`AGENTS.md`): each configured `consistentPatterns`
-  regex (one capturing group) must capture the same value in both, e.g.
-  `proto(\d)` pins the supported protobuf major version. Unlike
-  `crossDocConsistency`, a fact the README simply does not repeat is ignored — the
-  README is allowed to document a curated subset — so only a value present in both
-  files that disagrees fails the build. Both rules share a `DocumentConsistency`
-  helper that owns the pattern validation and capture logic.
-- `PermissionsFormatRule` (`permissionsFormat`) validates the entries of the
-  `permissions` lists (`allow`, `deny`, `ask`) in `.claude/settings.json`.
-  Where `settingsJsonValid` asserts policy (which entries must or must not be
-  present), this rule validates the entries themselves: each must be a
-  non-blank string of the form `Tool` or `Tool(specifier)`, because a
-  malformed entry such as `Bash(mvn *` grants nothing and fails silently at
-  runtime. A duplicate within a list is reported, and so is an entry that
-  appears in both `allow` and `deny`, since the contradiction means one of the
-  two is not doing what its author intended. An optional `allowedTools` list
-  rejects a mistyped tool name (entries prefixed `mcp__` are exempt, their
-  names being defined by the project's servers), and optional
-  `forbiddenEntryPatterns` regexes ban an over-broad `allow` grant such as
-  `Bash(*)` by shape rather than exact spelling. A settings file without a
-  `permissions` section passes.
-- `MemoryImportsRule` (`memoryImports`) follows the `@path` memory imports of
-  `CLAUDE.md` recursively and fails for an import that does not resolve on
-  disk, a circular import, or an import nested deeper than `maxDepth` hops
-  (default 5, the loader's limit — deeper imports are silently never loaded).
-  Imports are recognised the way Claude Code evaluates them — preceded by
-  start-of-line or whitespace, outside fenced code blocks and inline code
-  spans — so `` `@claude` `` in prose is not an import; home-relative imports
-  (`@~/...`) point at machine-specific state a build cannot see and are
-  skipped, as is any path listed in `ignoredImports`.
-- `NoSecretsRule` (`noSecrets`) scans the configured `files` and every regular
-  file under the configured `directories` for what looks like a literal
-  credential — Anthropic, AWS, GitHub, and Slack token formats plus private
-  key blocks by default; `secretPatterns` adds custom regexes, or replaces
-  the defaults when `useDefaultPatterns` is off. Each match is reported with
-  its file, line, and credential kind but only the first characters of the
-  match, so the report never republishes the secret it found. An absent
-  target is skipped, because most of these files are optional; the fix is an
-  environment variable expansion such as `${API_KEY}` plus rotating the
-  leaked value.
-- `ContextBudgetRule` (`contextBudget`) keeps agent context files within a
-  size budget, because `CLAUDE.md` is loaded into every session and each
-  definition file whenever it triggers: every configured file (and every
-  `*.md` under the configured `directories`) must fit `maxBytes`, `maxLines`,
-  and `maxTokens` (estimated with the rough four-characters-per-token
-  heuristic). A budget left at zero is disabled; at least one must be
-  configured. The fix is moving detail into `AGENTS.md` or an on-demand skill
-  rather than the always-loaded context.
-- `LocalSettingsIgnoredRule` (`localSettingsIgnored`) parses the configured
-  `.gitignore` and verifies each path in `ignoredPaths` (by default
-  `.claude/settings.local.json`, the per-developer settings file) is covered,
-  honouring negations, anchoring, directory patterns, and `*`/`?`/`**` globs —
-  a path may be covered by the exact entry, a glob, or an ignored ancestor
-  directory. Committing personal settings imposes one developer's choices on
-  the whole team, so the durable guard is the gitignore entry itself.
-- `ModuleMapConsistencyRule` (`moduleMapConsistency`) extracts every
-  `<module>` entry from the configured aggregator `pomFile` (XML comments are
-  ignored, so a commented-out module does not count) and fails when a
-  module's name — the last path segment, for a nested entry such as
-  `code/context` — is not mentioned in each configured doc file, so a module
-  added to the reactor cannot stay undocumented. The check is presence-only
-  by design: how a doc arranges its module map is prose, but every live
-  module must at least be mentioned. `ignoredModules` exempts a deliberately
-  undocumented module; a pom with no `<module>` entries always fails, because
-  pointing the rule at a non-aggregator pom is a build-setup mistake.
-- `PluginFormatRule` (`pluginFormat`) validates a Claude Code plugin manifest
-  (`.claude-plugin/plugin.json`): when present it must be non-empty valid
-  JSON declaring every required key (`name` by default, overridable via
-  `requiredKeys`), the `name` is held to the naming convention (lower-case
-  kebab-case, at most 64 characters), a `version` must be a dotted version
-  number with an optional pre-release suffix, a present `description` must be
-  non-empty, and `allowedKeys` reports unknown keys, catching typos such as
-  `descripton`. An absent manifest is a pass, since not every repository
-  ships a plugin.
+### The rule catalogue
 
-The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
-base class that performs the file-existence, BOM, title, and section checks, and
-offer optional checks switched on from configuration: `forbiddenTokens`,
-`enforceSectionOrder`, `maxLineLength`, and `validateFileReferences` (Markdown
-links to local files must resolve on disk, read both as written and with their
-percent-escapes decoded, so a link to a real `my doc.md` written `my%20doc.md`
-resolves). Every rule extends a common
-`ClaudeCodeEnforcerRule` base that reports all violations together and supports a
-`severity` of `error` (default, fails the build) or `warn` (logs the same
-violations), so a new rule can be adopted gradually. An optional `reportFile`
-writes the same outcome as a self-contained HTML report — what failed and why
-(the header and one entry per violation) plus per-rule "How to fix" steps — for a
-browser or CI artifact; it is written on pass and fail alike, so it always
-reflects the latest run. An optional `baselineFile` records the violations a rule
-already accepts, so a rule can be turned into an error gate without first clearing
-the whole backlog: a violation listed in the baseline is suppressed and only a new
-one fails, and the report and failure message reflect only the un-suppressed
-violations. Record the current violations once — set `<writeBaseline>true</writeBaseline>`
-or run the build with `-Dclaude.enforcer.writeBaseline=true`, which writes the file
-and passes — then commit it; each stored signature has the absolute project base
-directory normalised to `${basedir}` so a checked-in baseline stays portable
-between a developer's clone and CI. Configure `<baseDir>${project.basedir}</baseDir>`
-alongside the baseline so that token stands for the project itself: Maven runs
-every module of a reactor from wherever it was invoked, so without it the token
-falls back to the working directory and a baseline recorded from the repository
-root would suppress nothing when the build is started from a module directory or
-an IDE.
+| Rule | Checks |
+| --- | --- |
+| `claudeMdFormat` | `CLAUDE.md` exists, is non-empty, starts with the `# CLAUDE.md` title (a leading BOM is tolerated), references `AGENTS.md`, and carries every required section: `## Project`, `## Java version`, `## Maven`, `## Principles for Java Development`, `## Testing`, `## Dependencies`. |
+| `agentsMdFormat` | the same structural checks on `AGENTS.md`: the `# AGENTS.md` title plus `## Project overview`, `## Module layout`, `## Environment & toolchain`, `## Build, test, and run`, `## Code style & conventions`, `## Releasing`, `## Pull requests & commits`. |
+| `crossDocConsistency` | each configured single-group regex captures the same value in `CLAUDE.md` and `AGENTS.md` — `Java (\d+)` pins the Java version. |
+| `readmeConsistency` | the same, between `README.md` and `AGENTS.md` (`proto(\d)` pins the protobuf major version). Unlike `crossDocConsistency`, a fact the README simply does not repeat is ignored — it is allowed to document a curated subset. |
+| `moduleMapConsistency` | every `<module>` of the aggregator pom (commented-out ones ignored) is mentioned in each configured doc, by its last path segment. Presence-only by design; `ignoredModules` exempts one, and a pom with no modules always fails as a build-setup mistake. |
+| `contextBudget` | every configured file (and every `*.md` under configured directories) fits `maxBytes`/`maxLines`/`maxTokens`. A budget of zero is disabled; at least one must be set. The fix is moving detail into `AGENTS.md` or a skill. |
+| `memoryImports` | `CLAUDE.md`'s `@path` imports resolve on disk, without cycles, no deeper than `maxDepth` (default 5, the loader's limit). Imports are recognised as Claude Code evaluates them — outside fences and code spans — so `` `@claude` `` in prose is not one; `@~/...` imports and `ignoredImports` are skipped. |
+| `skillFilesExist` | every directory under `.claude/skills` holds a non-empty `SKILL.md` whose front matter declares every `requiredKeys` entry (`name`, `description`). The `name` is lower-case kebab-case, ≤ 64 chars, and equal to the directory name; `allowedFrontMatterKeys` also reports unknown keys, catching `descripton`, and `maxDescriptionLength` bounds the description. A key declared twice is reported, and every check reads the last declaration — the one a YAML loader keeps. |
+| `subAgentFormat` | the same front-matter checks on every `*.md` under `agentsDir`; the `name` must match the file name and `allowedModels` rejects an unknown `model`. |
+| `commandFormat` | every `*.md` under `commandsDir` is non-empty with a lower-case kebab-case file name (the command's name). Front matter is optional; a present `description` must be non-empty and a present `model` within `allowedModels`. |
+| `uniqueNames` | no name is used twice across the configured `commandsDir`/`agentsDir`/`skillsDir` (file name for commands and sub-agents, directory name for skills). At least one directory must be configured and any configured one must exist. |
+| `uniqueDescriptions` | no `description` is used by two definitions, comparing case- and whitespace-insensitively — Claude routes by description, so one duplicate shadows the other. |
+| `settingsJsonValid` | `.claude/settings.json` exists and is valid JSON, and can assert `requiredPermissions`/`forbiddenPermissions` against `permissions.allow`. |
+| `permissionsFormat` | each entry of `allow`/`deny`/`ask` is a non-blank `Tool` or `Tool(specifier)` — a malformed `Bash(mvn *` grants nothing and fails silently at runtime. Duplicates within a list, and an entry in both `allow` and `deny`, are reported. `allowedTools` rejects a mistyped tool (`mcp__` entries exempt) and `forbiddenEntryPatterns` bans an over-broad grant such as `Bash(*)` by shape. |
+| `hookCommandsValid` | the `hooks` section's shape: every event maps to an array of groups, each with a `hooks` array whose entries declare a non-blank `type` (and `command` for a command hook). A project-local script — `$CLAUDE_PROJECT_DIR`-rooted or plain repository-relative — must exist on disk; an argument that merely looks like a path need not, so `--out $CLAUDE_PROJECT_DIR/target/log.txt` is not reported as missing. `allowedEvents` rejects a mistyped event and `validateScriptReferences` toggles the existence check. |
+| `hooksFormat` | the scripts under `hooksDir`: non-empty, `#!` shebang, executable bit, `allowedExtensions`. With a `settingsFile` it also cross-checks the wiring (symlinks resolved, so a script cannot escape the directory) and `reportUnreferencedScripts` flags an unused one. An absent `hooksDir` passes. |
+| `mcpServersValid` | `.mcp.json`, when present, is valid JSON whose `mcpServers` entries are objects with a well-formed transport (`stdio` needs a `command`; `sse`/`http` need a `url`). An explicit `type` outside `allowedTypes` (`stdio`, `sse`, `http`) is rejected, and `requiredServers`/`forbiddenServers` assert which must or must not be declared. |
+| `mcpConfigFormat` | the details `mcpServersValid` leaves: `args` an array of strings, `env`/`headers` objects of strings, a syntactically valid `http`/`https` `url` (`https` only when `requireHttps`), and no server mixing `command` with `url`. A `url` built from an environment expansion is left alone. |
+| `okfBundleFormat` | an Open Knowledge Format bundle at `bundleDir` against the spec's conformance conditions: parseable frontmatter with a non-empty `type`, reserved names keeping their structure (`index.md` carries no frontmatter beyond a root `okf_version`; `log.md` groups entries under ISO 8601 headings), and closed vocabularies checked (`status`, `stale_after`, `generated`). Where the format defines no vocabulary nothing is imposed — an unregistered `type` passes. `requiredKeys` adds frontmatter keys every concept must declare, `okfVersion` pins the version the bundle root declares, and `requireIndex` (off by default) demands a listing in every directory holding concepts. The producer side is guarded separately by `code/context`'s `OkfBundleConformanceTest`, which restates the same conditions in the ordinary `test` phase. |
+| `noSecrets` | the configured files and directories for literal credentials — Anthropic, AWS, GitHub and Slack token formats plus private key blocks by default; `secretPatterns` adds custom regexes, or replaces the defaults when `useDefaultPatterns` is off. Each match is reported with file, line and kind but only the first characters, so the report never republishes the secret. |
+| `localSettingsIgnored` | the configured `.gitignore` covers each `ignoredPaths` entry (by default `.claude/settings.local.json`), honouring negations, anchoring, directory patterns and `*`/`?`/`**` globs. |
+| `pluginFormat` | `.claude-plugin/plugin.json`, when present: valid JSON with every `requiredKeys` entry, a kebab-case `name`, a dotted `version`, a non-empty `description`, and `allowedKeys` reporting typos. |
+
+Rules whose target is optional (`mcpServersValid`, `mcpConfigFormat`,
+`okfBundleFormat`, `pluginFormat`, `noSecrets`, `hooksFormat`) pass on the absent
+file and start enforcing the moment one appears. A *configured* definition
+directory, by contrast, must exist — which is why `subAgentFormat` and
+`commandFormat` stay unwired here.
+
+### What every rule shares
+
+Every rule extends `ClaudeCodeEnforcerRule`, which reports all violations
+together (never stopping at the first) and offers:
+
+- **`severity`** — `error` (default, fails the build) or `warn` (logs the same
+  violations), so a new rule can be adopted gradually.
+- **`reportFile`** — a self-contained HTML report of what failed and why plus
+  per-rule "How to fix" steps, written on pass and fail alike so it always
+  reflects the latest run.
+- **`baselineFile`** — the violations a rule already accepts, so it can become an
+  error gate without first clearing the backlog: a listed violation is suppressed
+  and only a new one fails. Record them once with
+  `<writeBaseline>true</writeBaseline>` (or `-Dclaude.enforcer.writeBaseline=true`),
+  then commit the file. Each signature normalises the project base directory to
+  `${basedir}`, so configure `<baseDir>${project.basedir}</baseDir>` alongside it:
+  Maven runs every module from wherever it was invoked, so without it the token
+  falls back to the working directory and a baseline recorded from the root
+  suppresses nothing when the build starts elsewhere.
+
+`claudeMdFormat` and `agentsMdFormat` share a `MarkdownFormatRule` base doing the
+existence, BOM, title and section checks, with optional `forbiddenTokens`,
+`enforceSectionOrder`, `maxLineLength` and `validateFileReferences` (local links
+must resolve, read both as written and percent-decoded).
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
-share a `DefinitionFormatRule` base class that owns what all three do the same
-way: require the configured directory, scan it, read each definition, and report
-everything wrong with the lot together. A subclass says which entries of the
-directory carry a definition — a `*.md` file for a sub-agent or a command, a
-directory holding a `SKILL.md` for a skill — and which front-matter checks it
-asks for. They
-also accept an `autoFix` option (off by default). When enabled and a definition's
-front matter is malformed in a way that is safe to repair — a delimiter written
-with too many dashes such as `----`, or an opening `---` with no closing
-delimiter — the rule rewrites the file in place and continues against the
-corrected content instead of failing. The repair is conservative: it only acts
-when the document opens with a dashes line enclosing real `key: value` entries, so
-a lone `---` thematic break is never mistaken for front matter.
+share a `DefinitionFormatRule` base owning the directory requirement, the scan
+and the grouped report; a subclass says which entries carry a definition and
+which checks it wants. They also accept `autoFix` (off by default): when a
+delimiter is written with too many dashes (`----`) or an opening `---` has no
+closer, the rule rewrites the file in place and continues against the corrected
+content. The repair only acts when the document opens with a dashes line
+enclosing real `key: value` entries, so a lone `---` thematic break is never
+mistaken for front matter.
 
-The front matter those rules read comes from `FrontMatter`, which delimits the
-`---` block itself and hands the block to **SnakeYAML**. It stops at
-`Yaml.compose`, which answers the document's node tree rather than constructing
-Java objects from it: a rule wants the text an author declared, not a typed value.
-That is not cosmetic — composing keeps `okf_version: 0.20` the string `0.20`
-instead of rounding it to a double, and it keeps a key declared twice visible,
-which every loader that builds a `Map` collapses and which `duplicateKeys()`
-exists to report. Each value is folded onto one line, so a block scalar, a wrapped
-plain scalar and a nested mapping all read back as text. A block no loader can
-read — an unterminated quoted scalar, or a `description: "a" and "b"` whose quotes
-do not wrap it — is no front matter at all, and `parse` answers empty, which is
-what the rules already report best: *"has no parseable YAML frontmatter block"*.
-Claude Code's own loader fails on that block too, so a hand-read guess at it would
-validate something the tool never sees. This replaced a reader that scanned quotes,
-trailing comments and block scalars by hand, and had been fixed for real input six
-or seven times.
+### Two things that will bite you
 
-A `List<String>` parameter carries a trap worth knowing before naming a helper
-class. Plexus infers a configured list's element type from the **child element
-name**, trying the rule's own package first, so a class whose name matches the
-capitalised child name — `SecretPattern` for
-`<secretPatterns><secretPattern>…</secretPattern></secretPatterns>` — is chosen
-over `String` and the build fails trying to instantiate it. The parameter then
-works in a unit test, which calls the setter directly, and not in the builds it
-exists for. Keep a helper's name clear of the singular of any list parameter in
-its package: the credential shapes `noSecrets` scans for are a
-`CredentialPattern` for exactly this reason, and `EnforcerRuleBuildIT`, which
-configures every parameter from a pom, is what catches a reintroduction.
+**Front matter is composed, not loaded.** `FrontMatter` delimits the `---` block
+itself and hands it to **SnakeYAML**, stopping at `Yaml.compose` — the node tree,
+not constructed Java objects. That keeps `okf_version: 0.20` the string `0.20`
+instead of rounding it to a double, and keeps a key declared twice visible, which
+every loader that builds a `Map` collapses. Each value is folded onto one line,
+so a block scalar, a wrapped plain scalar and a nested mapping all read back as
+text. A block no loader can read is no front matter at all and `parse` answers
+empty, which is what the rules report best. This replaced a hand-rolled reader
+that had been fixed for real input six or seven times — see the `text-parsers`
+skill before touching it.
 
-The check is **opt-in**: the `claude-md-enforce` profile activates only when the
-`enforceClaudeMd` property is set (`-DenforceClaudeMd`). This keeps every other
-Maven build — the other CI workflows and ordinary local builds — unaffected and
-free of any bootstrap requirement. Only `.github/workflows/maven.yml` opts in.
+**Naming a helper after a list parameter breaks the build.** Plexus infers a
+configured list's element type from the **child element name**, trying the rule's
+own package first, so a class whose name matches the capitalised child name —
+`SecretPattern` for `<secretPatterns><secretPattern>` — is chosen over `String`
+and the build fails trying to instantiate it. The parameter then works in a unit
+test, which calls the setter directly, and not in the builds it exists for. Keep
+a helper's name clear of the singular of any list parameter in its package (hence
+`CredentialPattern`); `EnforcerRuleBuildIT` catches a reintroduction.
 
-A maven-enforcer rule must be a JAR resolvable from a repository before the
-build runs, and Maven resolves plugin dependencies from repositories (not the
-reactor), so the rule cannot be produced and consumed in the same build. To run
-the check (in CI or locally) use a **two-phase build**:
+### Running the check
 
-1. **Install the rule** into the local repo:
-   `mvn -pl claude-code-enforcer -am install`. The module's pom is flattened
-   (flatten-maven-plugin) so the installed pom has no unresolved `${revision}`
-   and is resolvable as a plugin dependency.
-2. **Build with the check on**: `mvn package -DenforceClaudeMd` (or
-   `mvn -N validate -DenforceClaudeMd` for a quick check of CLAUDE.md alone).
+It is **opt-in**: the `claude-md-enforce` profile activates only on
+`-DenforceClaudeMd`, so every other build is unaffected and needs no bootstrap.
+Only `.github/workflows/maven.yml` opts in.
 
-Without `-DenforceClaudeMd`, the rule is neither resolved nor run, so no
-bootstrap is needed for normal builds.
+A maven-enforcer rule must be a JAR resolvable from a repository before the build
+runs, and Maven resolves plugin dependencies from repositories rather than the
+reactor, so the rule cannot be produced and consumed in one build. Use a
+**two-phase build**:
+
+```bash
+mvn -pl claude-code-enforcer -am install   # 1. publish the rule locally
+mvn -N validate -DenforceClaudeMd          # 2. quick root-only doc check
+```
+
+The module's pom is flattened (flatten-maven-plugin) so the installed pom has no
+unresolved `${revision}` and is resolvable as a plugin dependency.
 
 ## Code style & conventions
 
-These are hard requirements for any code you add or modify:
+Hard requirements for any code you add or modify:
 
-- **SOLID principles** for all code.
+- **SOLID principles** for all code (skill: `solid-principles`).
 - **Clean code**: short methods, meaningful parameter names.
 - **No `continue` or `break`** statements.
-- **Write unit tests for all new logic.** Focus on behavior, edge cases, and
-  error paths.
+- **Write unit tests for all new logic** — behavior, edge cases, error paths.
 - **Match the surrounding code** — naming, comment density, and idiom.
 
 ### Maven conventions
 
-- All dependency **versions and scopes** are declared only in the root
-  `pom.xml` under `<dependencyManagement>`. Module poms reference dependencies
-  without versions.
-- All Maven **plugin versions** are declared only in the root `pom.xml` under
-  `<pluginManagement>`.
-- **Do not add a new dependency without asking first.** Prefer the existing
-  Maven dependencies.
-- A family of artifacts that must move together shares one property rather than
-  a version each: `protobuf.version` (the `protobuf-java` runtime *and* the
-  `protoc` that `protobuf-maven-plugin` runs), `grpc.version`, `derby.version`,
-  `log4j2.version`, `maven.api.version`. `derby.version` and `log4j2.version`
-  are Spring Boot's own property names on purpose — the
-  `spring-boot-dependencies` BOM manages the rest of each family (derbyshared,
-  derbynet, the other log4j2 artifacts) from them, so pinning only the artifacts
-  this repository declares would leave the siblings on Boot's older version.
-- A module that is an example, a test harness or a distribution rather than a
-  reusable library opts out of publication with two properties —
-  `maven.deploy.skip` (GitHub Packages) and `central.skipPublishing` (Maven
-  Central) — not by redeclaring the `release` profile.
-- The root `enforce` execution also runs `requireProfileIdsExist`, so a
-  mistyped `-P` fails the build instead of silently running without the profile.
-  It is satisfied when *any* project in the reactor declares the id, which is
-  what lets the per-module `integration-tests` profile be requested from the
-  root.
-- Published builds are **reproducible**. Setting `project.build.outputTimestamp`
-  makes every archive-producing plugin (jar, source, javadoc, assembly, plugin
-  descriptor, Spring Boot repackage) stamp one fixed instant on its entries and
-  write them in a stable order, so two builds of a commit come out
-  byte-identical — which is what lets a consumer rebuild a Maven Central release
-  and diff it against the published jars, the supply-chain posture of
-  [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md).
+Skill: `maven-conventions`.
 
-  The property is **not declared in the pom**: a literal there is a date somebody
-  has to remember to bump, and releases here are a `revision` edit rather than a
-  `maven-release-plugin` run, so nothing would bump it. The publishing workflows
-  (`central-publish.yml`, `maven-publish.yml`, and `docker.yml` for the jars that
-  go into the image) derive it from the released commit instead and pass it as a
-  user property, which overrides the pom cleanly:
+- All dependency **versions and scopes** are declared only in the root `pom.xml`
+  under `<dependencyManagement>`; all **plugin versions** only under
+  `<pluginManagement>`. Module poms reference both without versions.
+- **Do not add a new dependency without asking first.**
+- A family of artifacts that must move together shares one property rather than a
+  version each: `protobuf.version` (the runtime *and* the `protoc` the plugin
+  runs), `grpc.version`, `derby.version`, `log4j2.version`, `maven.api.version`.
+  `derby.version` and `log4j2.version` are Spring Boot's own property names on
+  purpose — the BOM manages the rest of each family from them, so pinning only
+  the artifacts declared here would leave the siblings on Boot's older version.
+- A module that is an example, a test harness or a distribution opts out of
+  publication with `maven.deploy.skip` (GitHub Packages) and
+  `central.skipPublishing` (Maven Central) — not by redeclaring the `release`
+  profile.
+- The root `enforce` execution runs `requireProfileIdsExist`, so a mistyped `-P`
+  fails the build instead of silently running without the profile. It is
+  satisfied when *any* project in the reactor declares the id, which is what lets
+  the per-module `integration-tests` profile be requested from the root.
 
-  ```bash
-  mvn ... -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"
-  ```
+#### Reproducible builds
 
-  Pinning it to the commit rather than to the clock is the point: anyone can
-  check out the tag, run the same command, and get the published bytes. An
-  ordinary `mvn install` passes nothing and is *not* reproducible, which costs
-  nothing — those artifacts are never published.
+Setting `project.build.outputTimestamp` makes every archive-producing plugin
+stamp one fixed instant and write entries in a stable order, so two builds of a
+commit come out byte-identical — which is what lets a consumer rebuild a Maven
+Central release and diff it against the published jars, the supply-chain posture
+of [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md).
 
-  Verify a change has not broken reproducibility by building twice with the same
-  timestamp and comparing:
+The property is **not declared in the pom**: a literal there is a date somebody
+has to remember to bump, and releases here are a `revision` edit rather than a
+`maven-release-plugin` run. The publishing workflows derive it from the released
+commit and pass it as a user property instead:
 
-  ```bash
-  stamp="$(git log -1 --format=%cI)"
-  mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
-  find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum > /tmp/build1.sha
-  mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
-  find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum | diff /tmp/build1.sha -
-  ```
+```bash
+mvn ... -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"
+```
 
-  `mvn artifact:check-buildplan` answers the related question — whether every
-  plugin in the build plan supports reproducible builds — and needs the repo's
-  own `protogen-maven-plugin` installed first (`mvn install -DskipTests`), since
-  it resolves the plan's plugins from the local repository.
+Pinning it to the commit rather than the clock is the point: anyone can check out
+the tag, run the same command, and get the published bytes. An ordinary
+`mvn install` passes nothing and is not reproducible, which costs nothing —
+those artifacts are never published.
+
+Verify a change has not broken reproducibility by building twice and comparing:
+
+```bash
+stamp="$(git log -1 --format=%cI)"
+mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
+find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum > /tmp/build1.sha
+mvn -B clean package -DskipTests -Dproject.build.outputTimestamp="$stamp"
+find . -path "*/target/*.jar" -not -path "*/target/classes/*" | sort | xargs sha256sum | diff /tmp/build1.sha -
+```
+
+`mvn artifact:check-buildplan` answers the related question — whether every
+plugin in the build plan supports reproducible builds — and needs this repo's own
+`protogen-maven-plugin` installed first.
 
 ## Releasing
 
 To release version `X`:
 
-1. Change the `revision` property in the root `pom.xml` to `X` (it is currently
-   a `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
+1. Change the `revision` property in the root `pom.xml` to `X` (it is normally a
+   `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
 2. Commit and push.
 3. Confirm all builds pass.
 4. Release and mark as latest in GitHub.
 
 Nothing about the reproducible-build timestamp is a manual step: both publishing
-workflows derive `project.build.outputTimestamp` from the released commit and
-pass it to Maven (see *Maven conventions*), failing the release outright if the
-commit timestamp cannot be read.
+workflows derive `project.build.outputTimestamp` from the released commit,
+failing the release outright if the commit timestamp cannot be read.
 
-Creating the GitHub release fires two separate workflows:
+Creating the GitHub release fires two workflows:
 
-- `maven-publish.yml` deploys to **GitHub Packages**
-  (`mvn deploy -P github-packages`, using the `distributionManagement`
-  repository). The `github-packages` profile attaches the javadoc jar so the
-  published coordinates ship javadoc alongside the main jar; the default
-  `mvn deploy` would otherwise publish the main jar only.
+- `maven-publish.yml` deploys to **GitHub Packages** (`mvn deploy -P
+  github-packages`, using the `distributionManagement` repository). The profile
+  attaches the javadoc jar, which a default `mvn deploy` would not.
 - `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
-  Portal. It runs `mvn -P release deploy` (excluding the `assembly`,
-  `grpc-example`, and `protogen-maven-plugin-test` modules, which are not
-  reusable libraries — the last is an integration-test harness with no main
-  sources, so it would also fail Central validation with an empty
-  `-sources.jar`); the `release`
-  profile attaches the sources and javadoc jars, GPG-signs every artifact, and
-  hands the bundle to the `central-publishing-maven-plugin` (`autoPublish=true`).
+  Portal (`mvn -P release deploy`). The `release` profile attaches the sources
+  and javadoc jars, GPG-signs every artifact, and hands the bundle to the
+  `central-publishing-maven-plugin` (`autoPublish=true`).
 
-Maven Central publishing is **opt-in** through the `release` profile, and the
-`central-publishing-maven-plugin` is bound to the `deploy` phase, so ordinary
-and CI builds (`mvn install`) never publish and never need GPG keys or Central
-credentials. The release job requires four repository secrets:
-`MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal user
-token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE` (the signing
-key). Every reactor module is published to Central except `assembly`,
-`grpc-example`, `protogen-maven-plugin-test` and `test-common`, each of which
-sets `<central.skipPublishing>true</central.skipPublishing>` in its own
-`<properties>`. That property drives the `skipPublishing` flag the root pom
-configures on the `central-publishing-maven-plugin`, and the plugin honours it
-per module, so the exclusion holds with or without the workflow's `-pl` filter.
-The same modules set `maven.deploy.skip` to stay out of GitHub Packages too.
+Central publishing is **opt-in** through the `release` profile, and the plugin is
+bound to the `deploy` phase, so ordinary and CI builds never publish and never
+need GPG keys or Central credentials. The release job requires four repository
+secrets: `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal
+user token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE`.
+
+Every reactor module is published to Central except `assembly`, `grpc-example`,
+`protogen-maven-plugin-test` and `test-common`, each of which sets
+`<central.skipPublishing>true</central.skipPublishing>` in its own
+`<properties>`. That drives the plugin's `skipPublishing` flag per module, so the
+exclusion holds with or without the workflow's `-pl` filter. (The
+`protogen-maven-plugin-test` harness has no main sources, so it would also fail
+Central validation with an empty `-sources.jar`.) The same modules set
+`maven.deploy.skip` to stay out of GitHub Packages.
 
 To publish from a workstation:
 `mvn -P release deploy -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"`
-with the same `central` server credentials in `~/.m2/settings.xml` and a GPG key
-on the keyring. The workflows pass that property for you; a hand-run deploy that
-omits it still publishes, but the artifacts will not be reproducible.
+with the `central` server credentials in `~/.m2/settings.xml` and a GPG key on
+the keyring. A hand-run deploy that omits the property still publishes, but the
+artifacts will not be reproducible.
 
 ### Staged-only dry run (validate without releasing)
 
-`central-publish.yml` also accepts a manual `workflow_dispatch` trigger that runs
-the `central` job as a **staged-only dry run**: it signs and uploads the bundle
-so the Central Portal validates it, but overrides the plugin with
+`central-publish.yml` accepts a manual `workflow_dispatch` that signs and uploads
+the bundle so the Central Portal validates it, but overrides the plugin with
 `-Dcentral.autoPublish=false -Dcentral.waitUntil=validated`, leaving the
-deployment staged (not released). Drop or publish it manually in the portal. Use
-it to confirm the bundle passes Central's checks before a real release. Central
-rejects `-SNAPSHOT` versions, so run it from a commit whose `revision` is a real
-version, or supply a non-`SNAPSHOT` `revision` input. Locally, the same staged
-check is `mvn -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated`.
-The `central.autoPublish` (default `true`) and `central.waitUntil` (default
-`published`) properties drive this; the defaults keep a real release publishing.
+deployment staged. Drop or publish it manually in the portal. Central rejects
+`-SNAPSHOT` versions, so run it from a commit whose `revision` is a real version
+or supply a non-`SNAPSHOT` `revision` input. Locally the same check is
+`mvn -P release deploy -Dcentral.autoPublish=false -Dcentral.waitUntil=validated`.
 
 ## Containers & Kubernetes
 
-The repository ships one Dockerfile, `assembly/Dockerfile`, used both for the
-released image and for the Kubernetes Job under `k8s/`. It packages the
-distribution directory the `assembly` module builds — a launcher jar whose
-manifest carries `Main-Class` and a `lib/`-prefixed `Class-Path`, next to a
-`lib/` of intact dependency jars — and runs it with `java -jar`.
+`assembly/Dockerfile` is the one Dockerfile, used for the released image and for
+the Kubernetes Job under `k8s/`. It packages the distribution the `assembly`
+module builds — a launcher jar whose manifest carries `Main-Class` and a
+`lib/`-prefixed `Class-Path`, next to a `lib/` of intact dependency jars — and
+runs it with `java -jar`. Before changing any of it:
 
-Points worth knowing before changing any of it:
-
-- **Build it from the repository root**, not from `assembly/`: the context has to
+- **Build it from the repository root**, not from `assembly/`: the context must
   include `docker/log4j2-console.properties` as well as `assembly/target/`.
   `.dockerignore` excludes everything and re-admits only those two paths.
 - **The distribution is deliberately not a `jar-with-dependencies`.** Merging
@@ -1247,43 +868,39 @@ Points worth knowing before changing any of it:
   `linux/arm64`.
 - **`USER` is the numeric `10001:10001`**, because Kubernetes' `runAsNonRoot`
   admission check cannot verify a name-based user.
-- **The runtime stage deletes `/usr/bin/pebble`** (and `/var/lib/pebble`).
-  Ubuntu 26.04, the base of `eclipse-temurin:25-jre`, ships Canonical's Pebble
-  service manager there; this image never runs it, the entrypoint being the JVM
-  itself. It is a static Go binary outside dpkg's control, so the Go CVEs it
-  vendors cannot be patched by an upgrade and fail `docker.yml`'s Trivy gate on
-  their own. Expect the same of any future unused binary the base image adds.
+- **The runtime stage deletes `/usr/bin/pebble`** (and `/var/lib/pebble`). The
+  base of `eclipse-temurin:25-jre` ships Canonical's Pebble service manager
+  there; this image never runs it, and as a static Go binary outside dpkg's
+  control the Go CVEs it vendors cannot be patched by an upgrade and fail Trivy
+  on their own. Expect the same of any future unused binary the base adds.
 - **Logging goes through `docker/log4j2-console.properties`**, selected with
   `-Dlog4j2.configurationFile` in `JDK_JAVA_OPTIONS`. The `data` module's own
   config is file-only on purpose: its MCP server speaks JSON-RPC over stdio, and
   a stdout appender there would corrupt the protocol stream.
 
-The `k8s/` directory runs `SampleApp` (the CSV column-uniqueness checker) on a
-local minikube cluster as a run-to-completion **Job** (not a Deployment):
+`k8s/` runs `SampleApp` (the CSV column-uniqueness checker) on a local minikube
+cluster as a run-to-completion **Job**, not a Deployment:
 `configmap-sample-data.yaml` mounts a sample CSV, `job-uniqueness-check.yaml`
 runs the check, `kustomization.yaml` bundles both for `kubectl apply -k k8s/`,
-and `run-on-minikube.sh` / `run-on-minikube.ps1` drive the whole flow (build →
-image → minikube → load → apply → logs). The Job meets the **restricted** Pod
-Security Standard (non-root numeric UID `10001`, read-only root filesystem, all
-capabilities dropped, `RuntimeDefault` seccomp, no service-account token, an
-`emptyDir` `/tmp`, and an `activeDeadlineSeconds` runtime bound), which is why
-`assembly/Dockerfile` declares a numeric `USER`. Pick the column to check with the
-`COLUMN` env var (Linux/macOS) or `-Column` parameter (Windows). See
-[k8s/README.md](k8s/README.md) for quick-start, manual steps, and the sandbox
-limitations that prevent running a minikube control plane in this repo's
-automated environment.
+and `run-on-minikube.sh` / `.ps1` drive the whole flow (build → image → minikube
+→ load → apply → logs). The Job meets the **restricted** Pod Security Standard
+(non-root numeric UID `10001`, read-only root filesystem, all capabilities
+dropped, `RuntimeDefault` seccomp, no service-account token, an `emptyDir`
+`/tmp`, an `activeDeadlineSeconds` bound), which is why the Dockerfile declares a
+numeric `USER`. Pick the column with the `COLUMN` env var (Linux/macOS) or
+`-Column` parameter (Windows). See [k8s/README.md](k8s/README.md).
 
 ## Security
 
 - Report vulnerabilities privately by email to the address in
   [SECURITY.md](SECURITY.md); do not open a public issue for them.
-- [SECURITY.md](SECURITY.md) also lists which released versions currently
-  receive security fixes (only the latest line is supported).
-- `codeql.yml` runs GitHub CodeQL analysis on a weekly schedule (it does not gate
-  pull requests); keep new code free of the issues it flags.
+- [SECURITY.md](SECURITY.md) also lists which released versions receive security
+  fixes (only the latest line).
+- `codeql.yml` runs CodeQL analysis weekly (it does not gate pull requests); keep
+  new code free of the issues it flags.
 
 ## Pull requests & commits
 
-- Use clear, descriptive, conventional commit messages.
+- Use clear, descriptive, conventional commit messages (skill: `git-commit`).
 - Keep changes focused; add or update tests alongside the code.
 - Do **not** open a pull request unless explicitly asked.

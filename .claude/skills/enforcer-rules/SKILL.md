@@ -10,13 +10,6 @@ Add or change a rule in `claude-code-enforcer`, the module of custom
 Every rule follows the same shape, so getting the shape right is most of the
 work.
 
-## When to Use
-- Adding a new enforcer rule, or changing what an existing one accepts
-- Wiring a rule into the root `pom.xml`, or setting `severity` / `reportFile` /
-  `baselineFile`
-- A `-DenforceClaudeMd` build fails and you need to know which rule spoke
-- The user says "enforcer rule" / "the doc check fails" / "wire a rule"
-
 ## The two-phase build (there is no shortcut)
 A maven-enforcer rule must be resolvable as a JAR *before* the build that uses
 it runs, so a change to a rule needs two commands:

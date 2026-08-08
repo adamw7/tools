@@ -9,14 +9,6 @@ Use `code/context` to answer "which classes does this file actually need?" and
 "how many tokens will that cost?" — the module behind the `project_tree`,
 `find_context`, `estimate_tokens` and `okf_bundle` MCP tools.
 
-## When to Use
-- Collecting the dependency closure of a source file to feed a model
-- Scanning a project into a tree of folders, files and class dependencies
-- Emitting that tree as an Open Knowledge Format bundle
-- Sizing or trimming context against a token budget
-- Adding a language, a serializer, or a resolution strategy
-- The user says "find context" / "project tree" / "estimate tokens" / "OKF"
-
 ## The core contract
 ```java
 public interface Context {

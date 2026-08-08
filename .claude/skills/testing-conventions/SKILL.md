@@ -10,12 +10,6 @@ testing rules the first time. These rules are enforced by Surefire config,
 JUnit extensions, and ArchUnit architecture tests — a test that ignores them
 fails the build, not just review.
 
-## When to Use
-- Adding a unit test for new logic (all new logic needs one)
-- A test fails with a timeout, or a unit test tries to open a socket
-- The user says "write a test" / "add tests" / "fix the failing test"
-- Reviewing tests before a commit or PR
-
 ## Hard rules (build fails otherwise)
 
 ### Timeouts

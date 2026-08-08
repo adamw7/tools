@@ -2,33 +2,18 @@ package io.github.adamw7.context.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import io.github.adamw7.tools.mcp.ToolResult;
-
-public class OkfBundleToolTest {
-
-	@TempDir
-	Path projectRoot;
-
-	@TempDir
-	Path outsideRoot;
-
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+public class OkfBundleToolTest extends AbstractContextToolTest {
 
 	private OkfBundleTool tool;
 
@@ -37,23 +22,21 @@ public class OkfBundleToolTest {
 		tool = new OkfBundleTool(new PathPolicy(projectRoot.toString()));
 	}
 
+	@Override
+	protected ContextTool tool() {
+		return tool;
+	}
+
 	@Test
 	void toolDefinitionExposesName() {
 		assertEquals("okf_bundle", tool.getToolDefinition().name());
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
-	void toolDefinitionRequiresPath() {
-		List<String> required = (List<String>) tool.getToolDefinition().inputSchema().get("required");
-		assertTrue(required.contains("path"));
-	}
-
-	@Test
 	void returnsTheTargetedSpecificationVersion() throws IOException {
 		writeJava("A", "public class A {}");
 
-		JsonNode bundle = MAPPER.readTree(text(tool.apply(arguments())));
+		JsonNode bundle = bundle(arguments());
 
 		assertEquals("0.2", bundle.get("okf_version").asText());
 	}
@@ -63,7 +46,7 @@ public class OkfBundleToolTest {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");
 
-		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments()))).get("documents");
+		JsonNode documents = documents(arguments());
 
 		assertEquals(3, documents.size());
 		assertTrue(documents.has("index.md"));
@@ -75,10 +58,10 @@ public class OkfBundleToolTest {
 	void conceptDocumentsCarryFrontmatterWithAType() throws IOException {
 		writeJava("A", "public class A {}");
 
-		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments()))).get("documents");
+		String document = documents(arguments()).get("A.java.md").asText();
 
-		assertTrue(documents.get("A.java.md").asText().startsWith("---"));
-		assertTrue(documents.get("A.java.md").asText().contains("type: Java Source File"));
+		assertTrue(document.startsWith("---"));
+		assertTrue(document.contains("type: Java Source File"));
 	}
 
 	@Test
@@ -86,7 +69,7 @@ public class OkfBundleToolTest {
 		writeJava("A", "public class A {}");
 		writeJava("B", "public class B { A a; }");
 
-		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments()))).get("documents");
+		JsonNode documents = documents(arguments());
 
 		assertTrue(documents.get("B.java.md").asText().contains("[`A.java`](/A.java.md)"));
 	}
@@ -98,34 +81,14 @@ public class OkfBundleToolTest {
 		Map<String, Object> arguments = arguments();
 		arguments.put("language", "kotlin");
 
-		JsonNode documents = MAPPER.readTree(text(tool.apply(arguments))).get("documents");
-		assertTrue(documents.get("A.kt.md").asText().contains("type: Kotlin Source File"));
+		assertTrue(documents(arguments).get("A.kt.md").asText().contains("type: Kotlin Source File"));
 	}
 
 	@Test
 	void resultIsNotAnError() throws IOException {
 		writeJava("A", "public class A {}");
+
 		assertFalse(tool.apply(arguments()).isError());
-	}
-
-	@Test
-	void missingPathIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> tool.apply(new HashMap<>()));
-	}
-
-	@Test
-	void pathOutsideTheAllowedRootIsRejected() {
-		Map<String, Object> arguments = new HashMap<>();
-		arguments.put("path", outsideRoot.toString());
-		assertThrows(SecurityException.class, () -> tool.apply(arguments));
-	}
-
-	@Test
-	void excessiveDepthIsRejected() throws IOException {
-		writeJava("A", "public class A {}");
-		Map<String, Object> arguments = arguments();
-		arguments.put("depth", 99);
-		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
 	}
 
 	@Test
@@ -140,16 +103,14 @@ public class OkfBundleToolTest {
 	}
 
 	private Map<String, Object> arguments() {
-		Map<String, Object> arguments = new HashMap<>();
-		arguments.put("path", projectRoot.toString());
-		return arguments;
+		return pathArgument(projectRoot);
 	}
 
-	private void writeJava(String className, String body) throws IOException {
-		Files.writeString(projectRoot.resolve(className + ".java"), body);
+	private JsonNode bundle(Map<String, Object> arguments) throws IOException {
+		return MAPPER.readTree(tool.apply(arguments).text());
 	}
 
-	private String text(ToolResult result) {
-		return result.text();
+	private JsonNode documents(Map<String, Object> arguments) throws IOException {
+		return bundle(arguments).get("documents");
 	}
 }

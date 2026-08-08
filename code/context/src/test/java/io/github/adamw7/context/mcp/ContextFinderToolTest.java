@@ -6,37 +6,29 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.mcp.ToolResult;
 
-public class ContextFinderToolTest {
-
-	@TempDir
-	Path projectRoot;
-
-	@TempDir
-	Path outsideRoot;
-
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+public class ContextFinderToolTest extends AbstractContextToolTest {
 
 	private ContextFinderTool tool;
 
 	@BeforeEach
 	void setUp() {
 		tool = new ContextFinderTool(new PathPolicy(projectRoot.toString()));
+	}
+
+	@Override
+	protected ContextTool tool() {
+		return tool;
 	}
 
 	@Test
@@ -46,9 +38,8 @@ public class ContextFinderToolTest {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void toolDefinitionRequiresPathAndClassName() {
+	void toolDefinitionRequiresClassName() {
 		List<String> required = (List<String>) tool.getToolDefinition().inputSchema().get("required");
-		assertTrue(required.contains("path"));
 		assertTrue(required.contains("class_name"));
 	}
 
@@ -93,7 +84,7 @@ public class ContextFinderToolTest {
 		ToolResult result = tool.apply(arguments("Missing"));
 
 		assertTrue(result.isError());
-		assertTrue(text(result).contains("Class not found: Missing"));
+		assertTrue(result.text().contains("Class not found: Missing"));
 	}
 
 	@Test
@@ -108,49 +99,23 @@ public class ContextFinderToolTest {
 
 	@Test
 	void missingClassNameIsRejected() {
-		Map<String, Object> arguments = new HashMap<>();
-		arguments.put("path", projectRoot.toString());
-		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
-	}
-
-	@Test
-	void pathOutsideTheAllowedRootIsRejected() {
-		Map<String, Object> arguments = arguments("B");
-		arguments.put("path", outsideRoot.toString());
-		assertThrows(SecurityException.class, () -> tool.apply(arguments));
-	}
-
-	@Test
-	void excessiveDepthIsRejected() throws IOException {
-		writeJava("A", "public class A {}");
-		Map<String, Object> arguments = arguments("A");
-		arguments.put("depth", 99);
-		assertThrows(IllegalArgumentException.class, () -> tool.apply(arguments));
+		assertThrows(IllegalArgumentException.class, () -> tool.apply(pathArgument(projectRoot)));
 	}
 
 	private Map<String, Object> arguments(String className) {
-		Map<String, Object> arguments = new HashMap<>();
-		arguments.put("path", projectRoot.toString());
+		Map<String, Object> arguments = pathArgument(projectRoot);
 		arguments.put("class_name", className);
 		return arguments;
 	}
 
-	private void writeJava(String className, String body) throws IOException {
-		Files.writeString(projectRoot.resolve(className + ".java"), body);
-	}
-
 	private List<String> dependencies(ToolResult result) {
 		try {
-			JsonNode array = MAPPER.readTree(text(result));
+			JsonNode array = MAPPER.readTree(result.text());
 			List<String> values = new ArrayList<>();
 			array.forEach(node -> values.add(node.asText()));
 			return values;
 		} catch (JsonProcessingException e) {
 			throw new IllegalStateException("Invalid JSON result", e);
 		}
-	}
-
-	private String text(ToolResult result) {
-		return result.text();
 	}
 }

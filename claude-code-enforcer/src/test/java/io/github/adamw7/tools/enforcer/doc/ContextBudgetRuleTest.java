@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.doc;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
+import static io.github.adamw7.tools.test.TestStrings.occurrences;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -255,10 +256,6 @@ class ContextBudgetRuleTest {
 		// The *.md filter narrows the directory scan; a file named outright was
 		// chosen by the configuration and is measured whatever it is called.
 		assertFailure(EnforcerRuleException.class, rule::execute, "notes.txt");
-	}
-
-	private static int occurrences(String message, String token) {
-		return message.split(java.util.regex.Pattern.quote(token), -1).length - 1;
 	}
 
 	private ContextBudgetRule ruleForFile(String content) {

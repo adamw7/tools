@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.TestStrings.occurrences;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -371,7 +372,7 @@ class PomEnforcerInstallerTest {
 		String result = Files.readString(pom);
 		assertTrue(result.contains("tools.claude-code-enforcer"));
 		assertTrue(result.contains("claudeMdFormat"));
-		assertEquals(1, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"));
+		assertEquals(1, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"));
 	}
 
 	@Test
@@ -384,16 +385,6 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_ENFORCER);
 		assertTrue(installer.install(pom));
 		assertFalse(installer.install(pom));
-	}
-
-	private int countOccurrences(String text, String token) {
-		int count = 0;
-		int index = text.indexOf(token);
-		while (index >= 0) {
-			count++;
-			index = text.indexOf(token, index + token.length());
-		}
-		return count;
 	}
 
 	@Test
@@ -450,7 +441,7 @@ class PomEnforcerInstallerTest {
 	@Test
 	void reusesADependencyOnTheRuleArtifactThePluginAlreadyDeclares(@TempDir Path dir) throws IOException {
 		String result = install(dir, POM_WITH_THE_ARTIFACT_FOR_ANOTHER_RULE);
-		assertEquals(1, countOccurrences(result, "<artifactId>tools.claude-code-enforcer</artifactId>"),
+		assertEquals(1, occurrences(result, "<artifactId>tools.claude-code-enforcer</artifactId>"),
 				"the artifact must be declared once:\n" + result);
 		assertTrue(result.contains("<version>1.0.0</version>"), "the project's pinned version must survive");
 		assertFalse(result.contains("9.9.9"), "a second, differently pinned dependency must not be added:\n" + result);
@@ -469,7 +460,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(installer.install(pom), "a managed rule binds to no phase, so the build still needs one");
 		String result = Files.readString(pom);
 		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired into the build that runs");
-		assertEquals(2, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+		assertEquals(2, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build needs its own enforcer declaration alongside the managed one");
 	}
 
@@ -489,7 +480,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains(MANAGED_ENFORCER),
 				"the managed declaration must be left verbatim; an execution there would never run");
 		assertTrue(result.contains("tools.claude-code-enforcer"), "the rule must still be wired in");
-		assertEquals(2, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+		assertEquals(2, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build needs its own enforcer declaration alongside the managed one");
 	}
 
@@ -517,7 +508,7 @@ class PomEnforcerInstallerTest {
 		String result = Files.readString(pom);
 		assertTrue(result.contains(PROFILED_ENFORCER), "the profile must be left verbatim");
 		assertTrue(result.contains(MANAGED_ENFORCER), "the managed declaration must be left verbatim");
-		assertEquals(3, countOccurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+		assertEquals(3, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build's existing declaration must be augmented, not joined by a fourth");
 		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired in");
 	}
@@ -558,7 +549,7 @@ class PomEnforcerInstallerTest {
 		String result = install(dir, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + POM_WITH_BUILD);
 		assertTrue(result.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project "),
 				"the original declaration must be kept verbatim on its own line, not rewritten");
-		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
+		assertEquals(1, occurrences(result, "<?xml"), "the declaration must not be duplicated");
 	}
 
 	@Test
@@ -623,7 +614,7 @@ class PomEnforcerInstallerTest {
 	void preservesADeclarationThatSharesItsLineWithTheRootElement(@TempDir Path dir) throws IOException {
 		String result = install(dir, "<?xml version=\"1.0\"?>" + POM_WITH_BUILD);
 		assertTrue(result.startsWith("<?xml version=\"1.0\"?><project "), "unexpected start:\n" + result);
-		assertEquals(1, countOccurrences(result, "<?xml"), "the declaration must not be duplicated");
+		assertEquals(1, occurrences(result, "<?xml"), "the declaration must not be duplicated");
 	}
 
 	@Test

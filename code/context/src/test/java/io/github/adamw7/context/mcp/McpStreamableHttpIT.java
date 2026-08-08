@@ -98,7 +98,7 @@ public class McpStreamableHttpIT extends AbstractContextMcpIT {
 		assertEquals("0.2", bundle.get("okf_version").asText());
 		JsonNode documents = bundle.get("documents");
 		assertTrue(documents.get("index.md").asText().contains("okf_version: \"0.2\""));
-		assertTrue(documents.get("A.java.md").asText().contains("type: \"Java Source File\""));
+		assertTrue(documents.get("A.java.md").asText().contains("type: Java Source File"));
 		assertTrue(documents.get("B.java.md").asText().contains("[`A.java`](/A.java.md)"));
 	}
 

@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.secret;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
+import static io.github.adamw7.tools.test.TestStrings.occurrences;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -114,10 +115,6 @@ class NoSecretsRuleTest {
 
 		EnforcerRuleException exception = assertThrows(EnforcerRuleException.class, rule::execute);
 		assertEquals(1, occurrences(exception.getMessage(), "script.sh"), exception.getMessage());
-	}
-
-	private static int occurrences(String message, String token) {
-		return message.split(java.util.regex.Pattern.quote(token), -1).length - 1;
 	}
 
 	private NoSecretsRule ruleForFile(String content) {

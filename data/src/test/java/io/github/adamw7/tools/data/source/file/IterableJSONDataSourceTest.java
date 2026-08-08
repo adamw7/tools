@@ -1,25 +1,27 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.adamw7.tools.data.Utils;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public class IterableJSONDataSourceTest {
+public class IterableJSONDataSourceTest extends AbstractIterableDataSourceTest {
+
+	@Override
+	protected IterableJSONDataSource newSource() {
+		return new IterableJSONDataSource(Utils.getFileName("test.json"));
+	}
 
 	@Test
 	public void flattensNestedValues() throws IOException {
-		Map<String, String> data = collect(new IterableJSONDataSource(Utils.getFileName("test.json")));
+		Map<String, String> data = collect(newSource());
 		assertEquals(17, data.size());
 		assertEquals("Alice", data.get("people[0].name"));
 		assertEquals("30", data.get("people[0].age"));
@@ -52,27 +54,8 @@ public class IterableJSONDataSourceTest {
 	}
 
 	@Test
-	public void resetRestartsTheIteration() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
-			source.open();
-			int first = drain(source);
-			source.reset();
-			int second = drain(source);
-			assertEquals(first, second);
-		}
-	}
-
-	@Test
-	public void openTwiceThrows() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
-			source.open();
-			assertThrows(IllegalStateException.class, source::open);
-		}
-	}
-
-	@Test
 	public void nextRowsLoadsRequestedBatchThenDrainsRemainder() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
+		try (IterableJSONDataSource source = newSource()) {
 			source.open();
 
 			List<String[]> firstBatch = source.nextRows(5);
@@ -82,46 +65,6 @@ public class IterableJSONDataSourceTest {
 			assertEquals(12, rest.size());
 
 			assertTrue(source.nextRows(10).isEmpty());
-		}
-	}
-
-	@Test
-	public void nextRowsRejectsNonPositiveBatchSize() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
-			source.open();
-			assertThrows(IllegalArgumentException.class, () -> source.nextRows(0));
-			assertThrows(IllegalArgumentException.class, () -> source.nextRows(-1));
-		}
-	}
-
-	@Test
-	public void nextRowBeforeOpenThrows() throws IOException {
-		try (IterableJSONDataSource source = new IterableJSONDataSource(Utils.getFileName("test.json"))) {
-			assertThrows(IllegalStateException.class, source::nextRow);
-		}
-	}
-
-	private int drain(IterableDataSource source) {
-		int rows = 0;
-		while (source.hasMoreData()) {
-			if (source.nextRow() != null) {
-				rows++;
-			}
-		}
-		return rows;
-	}
-
-	private Map<String, String> collect(IterableDataSource source) throws IOException {
-		try (source) {
-			source.open();
-			Map<String, String> map = new HashMap<>();
-			while (source.hasMoreData()) {
-				String[] row = source.nextRow();
-				if (row != null) {
-					map.put(row[0], row[1]);
-				}
-			}
-			return map;
 		}
 	}
 }

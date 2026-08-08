@@ -1,8 +1,6 @@
 package io.github.adamw7.context.mcp;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.OutputStream;
 import java.io.PipedInputStream;
@@ -18,9 +16,10 @@ import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
 public class McpConfigurationTest {
 
+	private final McpConfiguration config = new McpConfiguration();
+
 	@Test
 	public void happyPath() throws Exception {
-		McpConfiguration config = new McpConfiguration();
 		assertNotNull(config.objectMapper());
 		// Drive the stdio server from a controllable pipe instead of System.in. The
 		// reader thread is non-daemon and cannot be interrupted while blocked on a
@@ -37,29 +36,25 @@ public class McpConfigurationTest {
 
 	@Test
 	public void stdioTransportIsNotNull() {
-		McpConfiguration config = new McpConfiguration();
 		assertNotNull(config.stdioServerTransport());
 	}
 
 	@Test
 	public void streamableTransportIsNotNull() {
-		McpConfiguration config = new McpConfiguration();
 		assertNotNull(config.streamableServerTransport());
 	}
 
 	@Test
 	public void streamableServletRegistrationIsNotNull() {
-		McpConfiguration config = new McpConfiguration();
 		HttpServletStreamableServerTransportProvider transport = config.streamableServerTransport();
 		assertNotNull(config.streamableServletRegistration(transport));
 	}
 
 	@Test
 	public void mcpSyncServerStreamableHasTools() {
-		McpConfiguration config = new McpConfiguration();
 		HttpServletStreamableServerTransportProvider transport = config.streamableServerTransport();
 		McpSyncServer server = config.mcpSyncServerStreamable(transport);
-		assertFalse(server.getServerCapabilities().tools() == null);
+		assertNotNull(server.getServerCapabilities().tools());
 		server.close();
 	}
 }

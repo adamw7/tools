@@ -1,33 +1,22 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
-import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Parser;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.AdoptionFiles;
-import io.github.adamw7.tools.adopt.step.XmlElementSpans.Span;
 
 /**
  * A {@code pom.xml} read for editing and written back without reformatting.
@@ -37,15 +26,20 @@ import io.github.adamw7.tools.adopt.step.XmlElementSpans.Span;
  * {@link #write()} untouched, so the adoption commit shows only the block that was
  * added.
  *
- * <p>The DOM is only ever read — it answers which elements the POM declares and
- * how they nest — while the edit itself is text spliced into the bytes the file
- * already held, at the source offsets {@link XmlElementSpans} reports. Writing an
- * edited DOM out whole cannot keep that promise however carefully the serialiser
- * is configured, because the details it reformats are not in the DOM to begin
- * with: a start tag spread over several lines and an empty element written
- * {@code <rule />} both come back normalised. Keeping the edit textual also means
- * added elements inherit the POM's default namespace rather than having to be
- * qualified.
+ * <p>The parse is only ever read — it answers which elements the POM declares, how
+ * they nest, and where each of them sits in the source text — while the edit itself
+ * is text spliced into the bytes the file already held. Writing an edited tree out
+ * whole cannot keep that promise however carefully the serialiser is configured,
+ * because the details it reformats are not in the tree to begin with: a start tag
+ * spread over several lines and an empty element written {@code <rule />} both come
+ * back normalised. Keeping the edit textual also means added elements inherit the
+ * POM's default namespace rather than having to be qualified.
+ *
+ * <p>The reading is jsoup's, whose XML parser reports the source range of every
+ * start and end tag it reads — the one thing a plain DOM parse cannot answer, and
+ * the reason this class used to pair a JAXP parse with a lexical scan of its own.
+ * jsoup resolves no DTDs and no external entities at all, so the secure-processing
+ * configuration that parse needed has nothing left to switch off.
  *
  * <p>Added markup arrives one element per line, indented by
  * {@link #FRAGMENT_INDENT} per nesting level, and is re-indented to the document's
@@ -60,6 +54,7 @@ final class PomDocument {
 
 	private static final String DEFAULT_INDENT_UNIT = "  ";
 	private static final String DESCRIPTION = "POM";
+	private static final String SELF_CLOSING_END = "/>";
 
 	/** A replacement of {@code [start, end)} in the original text; a pure insertion when they are equal. */
 	private record Edit(int start, int end, String replacement) {
@@ -67,31 +62,23 @@ final class PomDocument {
 
 	private final Path file;
 	private final String original;
-	private final Document document;
+	private final Element root;
 	private final String indentUnit;
-
-	/**
-	 * Where each element the file carries sits in it, so an edit can be spliced beside
-	 * it. Paired by document order: a pre-order DOM walk and the lexical scan visit the
-	 * same elements in the same sequence.
-	 */
-	private final Map<Element, Span> spans;
 
 	/** The markup to add inside each element, in fragment indentation, awaiting {@link #write()}. */
 	private final Map<Element, String> additions = new IdentityHashMap<>();
 
-	private PomDocument(Path file, String original, Document document) {
+	private PomDocument(Path file, String original, Element root) {
 		this.file = file;
 		this.original = original;
-		this.document = document;
-		this.indentUnit = detectIndentUnit(document.getDocumentElement());
-		this.spans = spansOf(document, original);
+		this.root = root;
+		this.indentUnit = detectIndentUnit(root);
 	}
 
 	/**
-	 * The file is read once and the DOM parsed from that same text, so the parsed
-	 * elements and the lexical spans they are paired with can never come from two
-	 * different reads of a file that changed in between.
+	 * The file is read once and parsed from that same text, so the elements and the
+	 * source offsets they report can never come from two different reads of a file
+	 * that changed in between.
 	 */
 	static PomDocument read(Path file) {
 		String original = AdoptionFiles.read(file, DESCRIPTION);
@@ -99,7 +86,7 @@ final class PomDocument {
 	}
 
 	Element root() {
-		return document.getDocumentElement();
+		return root;
 	}
 
 	/**
@@ -113,19 +100,15 @@ final class PomDocument {
 	 * declared only there is a rule no build ever runs.
 	 */
 	List<Element> boundPlugins() {
-		return selfAndDescendants(root()).stream()
-				.filter(element -> "plugin".equals(element.getLocalName()))
+		return selfAndDescendants(root).stream()
+				.filter(element -> "plugin".equals(localName(element)))
 				.filter(element -> !isManaged(element))
 				.toList();
 	}
 
 	/** Whether the element sits under a {@code pluginManagement}, at any depth. */
-	private static boolean isManaged(Node node) {
-		Node parent = node.getParentNode();
-		while (parent != null && !"pluginManagement".equals(parent.getLocalName())) {
-			parent = parent.getParentNode();
-		}
-		return parent != null;
+	private static boolean isManaged(Element element) {
+		return element.parents().stream().anyMatch(parent -> "pluginManagement".equals(localName(parent)));
 	}
 
 	/**
@@ -135,7 +118,7 @@ final class PomDocument {
 	 * it edits cannot drift apart.
 	 */
 	Optional<Element> at(List<String> path) {
-		Optional<Element> element = Optional.of(root());
+		Optional<Element> element = Optional.of(root);
 		for (String name : path) {
 			element = element.flatMap(parent -> child(parent, name));
 		}
@@ -147,16 +130,18 @@ final class PomDocument {
 	}
 
 	static List<Element> children(Element parent, String name) {
-		return childNodes(parent)
-				.filter(node -> node instanceof Element element && name.equals(element.getLocalName()))
-				.map(Element.class::cast)
-				.toList();
+		return parent.children().stream().filter(child -> name.equals(localName(child))).toList();
+	}
+
+	/** The element's name without the namespace prefix it may have been written with. */
+	static String localName(Element element) {
+		return element.tag().localName();
 	}
 
 	/** @return whether the element declares exactly this {@code artifactId} */
 	static boolean hasArtifactId(Element element, String artifactId) {
 		return child(element, "artifactId")
-				.map(Element::getTextContent)
+				.map(Element::wholeText)
 				.map(String::strip)
 				.filter(artifactId::equals)
 				.isPresent();
@@ -225,19 +210,30 @@ final class PomDocument {
 	 * {@code <plugins/>} additionally has to grow an end tag to hold the markup at all.
 	 */
 	private Edit edit(Element parent, String addition) {
-		Span span = spans.get(parent);
-		int depth = depthOf(parent);
+		int contentStart = contentStart(parent);
+		int depth = parent.parents().size();
 		String fragment = fragment(addition, depth + 1);
 		String closingIndent = newlineIndent(depth);
-		if (span.selfClosing()) {
-			return edit(span.tagStart(), span.contentStart(),
-					reopened(span) + fragment + closingIndent + endTag(parent));
+		if (isSelfClosing(contentStart)) {
+			return edit(parent.sourceRange().startPos(), contentStart,
+					reopened(parent) + fragment + closingIndent + endTag(parent));
 		}
-		int lastChildEnd = beforeTrailingWhitespace(span);
-		if (lastChildEnd == span.contentStart()) {
-			return edit(span.contentStart(), span.contentEnd(), fragment + closingIndent);
+		int contentEnd = parent.endSourceRange().startPos();
+		int lastChildEnd = beforeTrailingWhitespace(contentStart, contentEnd);
+		if (lastChildEnd == contentStart) {
+			return edit(contentStart, contentEnd, fragment + closingIndent);
 		}
 		return edit(lastChildEnd, lastChildEnd, fragment);
+	}
+
+	/** The offset just past the element's start tag, where its content begins. */
+	private static int contentStart(Element element) {
+		return element.sourceRange().endPos();
+	}
+
+	/** Whether the start tag ending at {@code contentStart} was written {@code <name/>}. */
+	private boolean isSelfClosing(int contentStart) {
+		return original.startsWith(SELF_CLOSING_END, contentStart - SELF_CLOSING_END.length());
 	}
 
 	/**
@@ -256,8 +252,8 @@ final class PomDocument {
 	}
 
 	/**
-	 * A fragment is always LF — XML parsing normalises {@code \r\n} to {@code \n} and
-	 * the templates are written with LF — so {@link LineTerminators} puts the file's own
+	 * A fragment is always LF — the parse reads {@code \r\n} as a line break and the
+	 * templates are written with LF — so {@link LineTerminators} puts the file's own
 	 * terminator back rather than leaving LF lines in an otherwise CRLF POM.
 	 */
 	private Edit edit(int start, int end, String replacement) {
@@ -265,33 +261,21 @@ final class PomDocument {
 	}
 
 	/** The start tag of a {@code <name/>} element, reopened as {@code <name>} to take children. */
-	private String reopened(Span span) {
-		String startTag = original.substring(span.tagStart(), span.contentStart());
-		return startTag.substring(0, startTag.length() - 2).stripTrailing() + ">";
+	private String reopened(Element element) {
+		String startTag = original.substring(element.sourceRange().startPos(), contentStart(element));
+		return startTag.substring(0, startTag.length() - SELF_CLOSING_END.length()).stripTrailing() + ">";
 	}
 
 	private String endTag(Element element) {
-		return "</" + element.getTagName() + ">";
+		return "</" + element.tagName() + ">";
 	}
 
-	private int beforeTrailingWhitespace(Span span) {
-		int end = span.contentEnd();
-		while (end > span.contentStart() && Character.isWhitespace(original.charAt(end - 1))) {
+	private int beforeTrailingWhitespace(int contentStart, int contentEnd) {
+		int end = contentEnd;
+		while (end > contentStart && Character.isWhitespace(original.charAt(end - 1))) {
 			end--;
 		}
 		return end;
-	}
-
-	private static Map<Element, Span> spansOf(Document document, String original) {
-		List<Element> elements = selfAndDescendants(document.getDocumentElement());
-		List<Span> spans = XmlElementSpans.of(original);
-		if (elements.size() != spans.size()) {
-			throw new AdoptionException("Could not map the POM's " + elements.size() + " parsed elements onto the "
-					+ spans.size() + " found in its text");
-		}
-		Map<Element, Span> byElement = new IdentityHashMap<>();
-		IntStream.range(0, elements.size()).forEach(index -> byElement.put(elements.get(index), spans.get(index)));
-		return byElement;
 	}
 
 	/**
@@ -301,37 +285,11 @@ final class PomDocument {
 	 * {@link PomEnforcerInstaller} looks for.
 	 */
 	static List<Element> selfAndDescendants(Element root) {
-		List<Element> elements = new ArrayList<>();
-		collect(root, elements);
-		return List.copyOf(elements);
-	}
-
-	private static void collect(Element element, List<Element> into) {
-		into.add(element);
-		elementChildren(element).forEach(child -> collect(child, into));
-	}
-
-	private static List<Element> elementChildren(Element parent) {
-		return childNodes(parent).filter(Element.class::isInstance).map(Element.class::cast).toList();
-	}
-
-	private static Stream<Node> childNodes(Element parent) {
-		NodeList nodes = parent.getChildNodes();
-		return IntStream.range(0, nodes.getLength()).mapToObj(nodes::item);
+		return List.copyOf(root.getAllElements());
 	}
 
 	private String newlineIndent(int depth) {
 		return "\n" + indentUnit.repeat(depth);
-	}
-
-	private static int depthOf(Node node) {
-		int depth = 0;
-		Node parent = node.getParentNode();
-		while (parent != null && parent.getNodeType() == Node.ELEMENT_NODE) {
-			depth++;
-			parent = parent.getParentNode();
-		}
-		return depth;
 	}
 
 	/**
@@ -339,49 +297,51 @@ final class PomDocument {
 	 * element's leading whitespace, or two spaces when the POM carries none.
 	 */
 	private static String detectIndentUnit(Element root) {
-		return childNodes(root)
+		return root.children().stream()
 				.map(PomDocument::leadingIndentOf)
 				.filter(unit -> !unit.isEmpty())
 				.findFirst()
 				.orElse(DEFAULT_INDENT_UNIT);
 	}
 
-	private static String leadingIndentOf(Node node) {
-		if (node.getNodeType() != Node.ELEMENT_NODE) {
+	private static String leadingIndentOf(Element element) {
+		Node previous = element.previousSibling();
+		if (!(previous instanceof TextNode text) || !text.isBlank()) {
 			return "";
 		}
-		Node previous = node.getPreviousSibling();
-		if (!isWhitespaceText(previous)) {
-			return "";
+		String whitespace = text.getWholeText();
+		int newline = whitespace.lastIndexOf('\n');
+		return newline < 0 ? "" : whitespace.substring(newline + 1);
+	}
+
+	private static Element parse(Path file, String original) {
+		Document document = Jsoup.parse(original, "", Parser.xmlParser().setTrackPosition(true));
+		Element root = document.children().first();
+		if (root == null) {
+			throw new AdoptionException("Could not read POM: " + file + " declares no root element");
 		}
-		String text = previous.getTextContent();
-		int newline = text.lastIndexOf('\n');
-		return newline < 0 ? "" : text.substring(newline + 1);
+		requireClosedElements(file, original, root);
+		return root;
 	}
 
-	private static boolean isWhitespaceText(Node node) {
-		return node != null && node.getNodeType() == Node.TEXT_NODE && node.getTextContent().isBlank();
-	}
-
-	private static Document parse(Path file, String original) {
-		try {
-			return builder().parse(new InputSource(new StringReader(original)));
-		} catch (IOException | SAXException e) {
-			throw new AdoptionException("Could not read POM: " + file, e);
+	/**
+	 * Refuses a POM that left an element open. jsoup repairs what it reads rather than
+	 * rejecting it, so an unclosed element comes back closed at the point its parent
+	 * ends — an end tag that is not in the file, reported as an implicit range — and an
+	 * edit spliced at that offset would land inside an element it was never meant to
+	 * touch. An element written {@code <name/>} reports the same implicit range for the
+	 * end tag it legitimately has none of, so the source has the last word on which of
+	 * the two it is.
+	 */
+	private static void requireClosedElements(Path file, String original, Element root) {
+		Optional<Element> unclosed = selfAndDescendants(root).stream()
+				.filter(element -> element.endSourceRange().isImplicit())
+				.filter(element -> !original.startsWith(SELF_CLOSING_END,
+						contentStart(element) - SELF_CLOSING_END.length()))
+				.findFirst();
+		if (unclosed.isPresent()) {
+			throw new AdoptionException(
+					"Could not read POM: " + file + " never closes <" + unclosed.get().tagName() + ">");
 		}
 	}
-
-	private static DocumentBuilder builder() {
-		try {
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			factory.setNamespaceAware(true);
-			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-			factory.setExpandEntityReferences(false);
-			return factory.newDocumentBuilder();
-		} catch (ParserConfigurationException e) {
-			throw new AdoptionException("Could not configure XML parser", e);
-		}
-	}
-
 }

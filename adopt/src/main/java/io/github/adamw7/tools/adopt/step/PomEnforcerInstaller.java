@@ -5,8 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
+import org.jsoup.nodes.Element;
 
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
@@ -148,9 +147,9 @@ public class PomEnforcerInstaller {
 	}
 
 	private boolean isClaudeMdRule(Element element) {
-		Node parent = element.getParentNode();
-		return CLAUDE_MD_RULE.equals(element.getLocalName()) && parent != null
-				&& RULES.equals(parent.getLocalName());
+		Element parent = element.parent();
+		return CLAUDE_MD_RULE.equals(PomDocument.localName(element)) && parent != null
+				&& RULES.equals(PomDocument.localName(parent));
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {

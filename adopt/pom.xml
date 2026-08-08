@@ -124,6 +124,18 @@
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
 		</dependency>
+		<!-- Reads the pom.xml the enforcer is wired into. PomDocument used to pair a
+		     JAXP parse with a lexical scan of its own, because a DOM records nothing
+		     about where its elements were read from and the edit has to be spliced
+		     into the bytes the file already holds. jsoup's XML parser reports the
+		     source range of every start and end tag, so the scan is gone and the two
+		     readings can no longer disagree. It resolves no DTDs or external
+		     entities, and like picocli it has no transitive dependencies, so the
+		     pipeline stays a plain library. -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>

@@ -301,13 +301,12 @@ class PomEnforcerInstallerTest {
 	private final PomEnforcerInstaller installer = new PomEnforcerInstaller("9.9.9");
 
 	/**
-	 * The JDK's JAXP factories ({@code DocumentBuilderFactory} and
-	 * {@code TransformerFactory}) pay a one-time, classpath-scanning
-	 * initialization cost the first time they are used. Charging that cold start
-	 * to whichever {@code @Test} happens to run first makes it flake against
-	 * surefire's 900ms per-test timeout, so pay it once here — a full parse and
-	 * write through the real install path — under the looser lifecycle-method
-	 * timeout instead.
+	 * The XML parser pays a one-time initialization cost — its tag and entity
+	 * tables — the first time it reads anything. Charging that cold start to
+	 * whichever {@code @Test} happens to run first makes it flake against
+	 * surefire's per-test timeout, so pay it once here — a full parse and write
+	 * through the real install path — under the looser lifecycle-method timeout
+	 * instead.
 	 */
 	@BeforeAll
 	static void warmUpXmlToolchain(@TempDir Path dir) throws IOException {

@@ -13,7 +13,10 @@ profile, is the most common source of avoidable build friction here.
 
 ### Versions live in exactly one place
 - **Dependency versions and scopes**: only in the **root** `pom.xml` under
-  `<dependencyManagement>`.
+  `<dependencyManagement>`. A module may say one thing about a managed
+  dependency — a *narrower* scope, where two modules genuinely want different
+  ones (`enforcer-api` is managed `provided` and narrowed to `test` by `adopt`;
+  `jsoup` is managed unscoped and narrowed to `test` by `claude-code-enforcer`).
 - **Plugin versions**: only in the **root** `pom.xml` under
   `<pluginManagement>`.
 - **Module poms reference dependencies and plugins WITHOUT versions.** Never add

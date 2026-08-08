@@ -311,6 +311,20 @@ class CliArgumentsTest {
 				"/tmp/ws");
 	}
 
+	/**
+	 * A positional the URL parser cannot read at all is refused the same way, naming
+	 * the flag the operator meant. It used to escape as the parser's own
+	 * "must end in a repository name", which says nothing about the argument that was
+	 * misread — and the URL names no repository either way, so nothing adoptable is
+	 * turned away by answering the question here instead.
+	 */
+	@Test
+	void rejectsAnUnparseablePositionalWithTheAdviceRatherThanTheParsersComplaint() {
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { "/tmp/ws//", "--repo", REPO_URL }), "--workspace",
+				"names no repository owner");
+	}
+
 	@Test
 	void rejectsAWorkspacePositionalWhateverOrderTheRepositoryFlagCameIn() {
 		assertThrows(IllegalArgumentException.class,

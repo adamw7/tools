@@ -138,13 +138,14 @@ final class PomDocument {
 		return element.tag().localName();
 	}
 
+	/** @return the text of the element's {@code name} child, stripped, or empty when it has none */
+	static Optional<String> childText(Element element, String name) {
+		return child(element, name).map(Element::wholeText).map(String::strip);
+	}
+
 	/** @return whether the element declares exactly this {@code artifactId} */
 	static boolean hasArtifactId(Element element, String artifactId) {
-		return child(element, "artifactId")
-				.map(Element::wholeText)
-				.map(String::strip)
-				.filter(artifactId::equals)
-				.isPresent();
+		return childText(element, "artifactId").filter(artifactId::equals).isPresent();
 	}
 
 	/** @return {@code body} wrapped in a {@code name} element, its lines indented one level deeper */

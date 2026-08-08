@@ -21,9 +21,9 @@ import java.util.stream.IntStream;
  * <p>The reshape is deterministic and conservative: a near-miss heading is
  * <em>renamed</em> in place so its body survives, only a genuinely absent section
  * is appended, and a required section left empty gets a stub body because the rule
- * fails an empty section just as it fails a missing one. Fenced code and
- * commented-out text are left alone, mirroring how the rule matches, and reshaping
- * an already-conforming document is a no-op.
+ * fails an empty section just as it fails a missing one. Code — fenced or indented
+ * — and commented-out text are left alone, mirroring how the rule matches, and
+ * reshaping an already-conforming document is a no-op.
  *
  * <p>Which sections it demands is the caller's to choose, because the guard being
  * wired in differs by build system — see
@@ -74,6 +74,12 @@ public class ClaudeMdConformer {
 	private static final String COMMENT_START = "<!--";
 	private static final String COMMENT_END = "-->";
 	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
+
+	private static final char TAB = '\t';
+	private static final char SPACE = ' ';
+
+	/** The indent Markdown reads as a code block, and the width a tab advances to. */
+	private static final int CODE_INDENT = 4;
 
 	/**
 	 * One to six {@code #} characters, then whitespace and any text, or nothing at
@@ -256,10 +262,19 @@ public class ClaudeMdConformer {
 	 * {@code claude init} wrote, blank line and all, and closing the insertion with
 	 * one of its own left a double blank in the first commit of every repository
 	 * whose guard demands no section.
+	 *
+	 * <p>An existing mention only counts where the rule counts one: its
+	 * {@code containsInProse} reads the lines that carry document structure, so a
+	 * mention inside a code sample or an HTML comment satisfies it no more than a
+	 * commented-out heading satisfies a required section. Asking the looser question
+	 * — outside fences alone — let a generated document whose only {@code AGENTS.md}
+	 * sat in a comment or an indented sample keep the reference it never had, and the
+	 * adoption then failed its own {@link VerifyStep} on the one line it exists to
+	 * add.
 	 */
 	private void ensureAgentsReference(List<String> lines) {
 		Outline outline = Outline.of(lines);
-		if (outline.matching(line -> line.contains(AGENTS_REFERENCE)).findAny().isPresent()) {
+		if (outline.structural(line -> line.contains(AGENTS_REFERENCE)).findAny().isPresent()) {
 			return;
 		}
 		int index = outline.titleIndex() + 1;
@@ -279,67 +294,64 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * The document as the reshape reads it: the lines themselves, which of them sit
-	 * inside a code fence, and which sit inside an HTML comment. The three travel
-	 * together because every search the reshape makes is against one of those masks,
-	 * and a mask taken from lines other than the ones it is applied to would quietly
-	 * mis-answer — so a reshape that inserts or removes lines takes a fresh outline
-	 * rather than carrying this one on.
+	 * The document as the reshape reads it: the lines themselves, which of them are
+	 * code, and which sit inside an HTML comment. The three travel together because
+	 * every search the reshape makes is against one of those masks, and a mask taken
+	 * from lines other than the ones it is applied to would quietly mis-answer — so a
+	 * reshape that inserts or removes lines takes a fresh outline rather than carrying
+	 * this one on.
 	 *
 	 * <p>Renaming a line in place keeps the outline valid, since the masks are
 	 * indexed by line number and the count has not moved.
 	 *
+	 * @param code        which lines Markdown quotes as code, fenced or indented
 	 * @param openFence   the delimiter of a fence the document never closed, or
 	 *                    {@code null} when its fences balance
 	 * @param openComment whether the document left an HTML comment unterminated
 	 */
-	private record Outline(List<String> lines, boolean[] fence, boolean[] comment, Delimiter openFence,
+	private record Outline(List<String> lines, boolean[] code, boolean[] comment, Delimiter openFence,
 			boolean openComment) {
 
 		/**
-		 * Both masks are read in one pass, because a comment inside a fenced code block
-		 * is sample text rather than a comment and so the comment scan needs the fence
-		 * verdict for the very line it is on — which the fence scan has just settled.
+		 * The code mask is settled before the comment scan runs, because a comment
+		 * inside code is sample text rather than a comment and so that scan needs the
+		 * code verdict for the very line it is on.
 		 */
 		static Outline of(List<String> lines) {
-			boolean[] fence = new boolean[lines.size()];
+			boolean[] code = new boolean[lines.size()];
+			Delimiter openFence = markCode(lines, code);
 			boolean[] comment = new boolean[lines.size()];
-			Delimiter openFence = null;
-			boolean openComment = false;
-			for (int index = 0; index < lines.size(); index++) {
-				String line = lines.get(index).strip();
-				openFence = applyFence(line, openFence, fence, index);
-				openComment = applyComment(line, openComment, fence[index], comment, index);
-			}
-			return new Outline(lines, fence, comment, openFence, openComment);
+			boolean openComment = markComments(lines, code, comment);
+			return new Outline(lines, code, comment, openFence, openComment);
 		}
 
-		/** The indices of the lines outside code fences whose text matches, in document order. */
+		/** The indices of the lines outside code whose text matches, in document order. */
 		IntStream matching(Predicate<String> match) {
-			return IntStream.range(0, lines.size()).filter(index -> !fence[index] && match.test(lines.get(index)));
+			return IntStream.range(0, lines.size()).filter(index -> !code[index] && match.test(lines.get(index)));
 		}
 
 		/**
-		 * The indices of the lines that can carry document structure — outside code
-		 * fences and outside HTML comments alike — whose text matches. A heading is
-		 * only ever looked for, and only ever renamed, on one of these, because that
-		 * is where the rule recognises one: a section commented out with
-		 * {@code <!-- ... -->} is inert text, and counting it left the real section
-		 * unwritten while the rule went on demanding it.
+		 * The indices of the lines that can carry document structure — outside code and
+		 * outside HTML comments alike — whose text matches. A heading is only ever
+		 * looked for, and only ever renamed, on one of these, because that is where the
+		 * rule recognises one: a section commented out with {@code <!-- ... -->} is
+		 * inert text, and counting it left the real section unwritten while the rule
+		 * went on demanding it.
 		 */
 		IntStream structural(Predicate<String> match) {
 			return matching(match).filter(index -> !comment[index]);
 		}
 
-		/** @return the index of the heading outside code fences and comments, or {@code -1} when absent */
+		/** @return the index of the heading outside code and comments, or {@code -1} when absent */
 		int indexOfHeading(String heading) {
 			return structural(line -> line.strip().equals(heading)).findFirst().orElse(-1);
 		}
 
 		/**
-		 * The title is the first non-blank line by the time this is asked, and a fence
-		 * marker would itself be a non-blank line before it, so the title can never be
-		 * one the mask covers. A document with no title line at all falls back to the top.
+		 * The title is the first non-blank line by the time this is asked, and both a
+		 * fence marker and the blank line an indented block opens below would themselves
+		 * be lines before it, so the title can never be one the mask covers. A document
+		 * with no title line at all falls back to the top.
 		 */
 		int titleIndex() {
 			return Math.max(indexOfHeading(TITLE), 0);
@@ -356,7 +368,7 @@ public class ClaudeMdConformer {
 			return IntStream.range(headingIndex + 1, lines.size())
 					.filter(this::decidesBody)
 					.limit(1)
-					.anyMatch(index -> fence[index] || isBodyLine(lines.get(index).strip(), level));
+					.anyMatch(index -> code[index] || isBodyLine(lines.get(index).strip(), level));
 		}
 
 		/**
@@ -367,7 +379,7 @@ public class ClaudeMdConformer {
 		 * already has a body and leave the adoption to fail its own {@link VerifyStep}.
 		 */
 		private boolean decidesBody(int index) {
-			return fence[index] || (!comment[index] && !lines.get(index).isBlank());
+			return code[index] || (!comment[index] && !lines.get(index).isBlank());
 		}
 	}
 
@@ -405,26 +417,124 @@ public class ClaudeMdConformer {
 	}
 
 	/**
+	 * Marks every line Markdown quotes as code, both ways it allows: the fenced
+	 * blocks first, then the indented ones over the same mask, so a fence's own lines
+	 * are already spoken for and an indent inside one is content rather than a block
+	 * of its own. This mirrors {@code MarkdownDocument} in the
+	 * {@code claude-code-enforcer} module, as {@link Delimiter} does; keep the two in
+	 * sync.
+	 *
+	 * @return the fence delimiter still open at the end of the document, or
+	 *         {@code null} when its fences balance
+	 */
+	private static Delimiter markCode(List<String> lines, boolean[] mask) {
+		Delimiter openFence = markFences(lines, mask);
+		markIndentedCode(lines, mask);
+		return openFence;
+	}
+
+	private static Delimiter markFences(List<String> lines, boolean[] mask) {
+		Delimiter open = null;
+		for (int index = 0; index < lines.size(); index++) {
+			open = applyFence(lines.get(index).strip(), open, mask, index);
+		}
+		return open;
+	}
+
+	/**
+	 * Marks the code Markdown quotes the other way it allows — by indenting it four
+	 * columns, a tab counting on to the next four-column stop. The rule has always
+	 * read those lines as code, and reading them as prose here made the reshape act
+	 * on a sample: a {@code ## Testing} shown as an indented example was taken for the
+	 * section the document already had, so the real one was never appended and the
+	 * adoption failed its own {@link VerifyStep} — and a near-miss heading inside one
+	 * was renamed in place, rewriting the sample and losing its indentation.
+	 */
+	private static void markIndentedCode(List<String> lines, boolean[] mask) {
+		boolean mayOpen = true;
+		for (int index = 0; index < lines.size(); index++) {
+			mayOpen = applyIndent(lines.get(index), mayOpen, mask, index);
+		}
+	}
+
+	/**
+	 * Marks whether the line is indented code and returns whether an indented line
+	 * below it would open a block. Only a blank line, a line already masked as code,
+	 * and the start of the document leave that open: an indented line below a
+	 * paragraph is a lazy continuation of that paragraph rather than code. A blank
+	 * line is left unmarked, since it carries nothing to read either way.
+	 */
+	private static boolean applyIndent(String line, boolean mayOpen, boolean[] mask, int index) {
+		if (mask[index] || line.isBlank()) {
+			return true;
+		}
+		mask[index] = mayOpen && indentWidth(line) >= CODE_INDENT;
+		return mask[index];
+	}
+
+	/** The line's indent in columns, a tab counting on to the next four-column stop. */
+	private static int indentWidth(String line) {
+		int width = 0;
+		int index = 0;
+		while (index < line.length() && isIndent(line.charAt(index))) {
+			width += line.charAt(index) == TAB ? CODE_INDENT - width % CODE_INDENT : 1;
+			index++;
+		}
+		return width;
+	}
+
+	private static boolean isIndent(char character) {
+		return character == SPACE || character == TAB;
+	}
+
+	private static boolean markComments(List<String> lines, boolean[] code, boolean[] mask) {
+		boolean open = false;
+		for (int index = 0; index < lines.size(); index++) {
+			open = applyComment(lines.get(index).strip(), open, code[index], mask, index);
+		}
+		return open;
+	}
+
+	/**
 	 * Marks whether the line is commented out and returns whether a comment is still
 	 * open after it. A comment that opens and closes on one line masks nothing —
 	 * {@code <!-- ## Testing -->} is not a heading to begin with — while a block
-	 * comment hides the lines it spans from every heading search. This mirrors
-	 * {@code MarkdownDocument} in the {@code claude-code-enforcer} module, as
-	 * {@link Delimiter} does; keep the two in sync.
+	 * comment hides the lines it spans from every heading search.
 	 *
-	 * @param insideFence whether the line is code, because a comment inside a fenced
-	 *                    code block is sample text rather than a comment: the fence wins
+	 * <p>Whether a comment remains open is read from every delimiter on the line
+	 * rather than from its first characters, the reading the rule takes: a comment
+	 * opened after text — {@code Superseded: <!--} — hides the lines below it, and a
+	 * line that closes one comment and opens another leaves one open. Asking only
+	 * whether the line began with {@value #COMMENT_START} left those lines visible to
+	 * the reshape and invisible to the rule, so a required section the document had
+	 * commented out was counted as present, never appended, and the adoption failed
+	 * its own {@link VerifyStep}.
+	 *
+	 * @param insideCode whether the line is code, because a comment inside a code
+	 *                   block is sample text rather than a comment: the code wins
 	 */
-	private static boolean applyComment(String line, boolean open, boolean insideFence, boolean[] mask, int index) {
-		if (insideFence) {
+	private static boolean applyComment(String line, boolean open, boolean insideCode, boolean[] mask, int index) {
+		if (insideCode) {
 			return open;
 		}
-		if (open) {
-			mask[index] = true;
-			return !line.contains(COMMENT_END);
-		}
-		mask[index] = line.startsWith(COMMENT_START) && !line.contains(COMMENT_END);
-		return mask[index];
+		mask[index] = open || opensBlock(line);
+		return remainsOpen(line, 0, open);
+	}
+
+	/** Whether the line's own content starts a comment that the same line does not close. */
+	private static boolean opensBlock(String line) {
+		return line.startsWith(COMMENT_START) && remainsOpen(line, 0, false);
+	}
+
+	/**
+	 * Whether a comment is open once {@code line} has been read from {@code from},
+	 * following each delimiter in turn: an open comment looks for its
+	 * {@value #COMMENT_END}, a closed one for the next {@value #COMMENT_START}.
+	 */
+	private static boolean remainsOpen(String line, int from, boolean open) {
+		String delimiter = open ? COMMENT_END : COMMENT_START;
+		int next = line.indexOf(delimiter, from);
+		return next < 0 ? open : remainsOpen(line, next + delimiter.length(), !open);
 	}
 
 	/**

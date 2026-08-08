@@ -292,6 +292,56 @@ class ClaudeMdConformerTest {
 		assertTrue(headings(conformed).contains("## Project"));
 	}
 
+	/**
+	 * Markdown quotes code by indenting it four columns as well as by fencing it, and
+	 * the rule reads both the same way. Reading only fences here let the reshape act
+	 * on a sample: the heading below was renamed in place, so the document's example
+	 * came back as {@code ## Testing} with its indentation gone — a rewrite of the
+	 * project's own prose, committed and pushed as part of adopting Claude Code.
+	 */
+	@Test
+	void leavesANearMissHeadingInsideAnIndentedCodeBlockAlone() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				A section skeleton looks like this:
+
+				    ## Testing conventions
+
+				    Write unit tests for all new logic.
+				""";
+		String conformed = conformer.conform(generated);
+		assertTrue(conformed.contains("    ## Testing conventions"),
+				"the indented sample must be left untouched:\n" + conformed);
+		assertTrue(headings(conformed).contains("## Testing"),
+				"the section the sample only illustrates must still be appended:\n" + conformed);
+	}
+
+	/**
+	 * A body shown as an indented sample is code, and the rule counts a code block as
+	 * a section's body — so the section is not empty and must not be given a stub in
+	 * front of the body it already carries.
+	 */
+	@Test
+	void countsAnIndentedCodeBlockAsASectionBody() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				## Testing
+
+				    mvn -pl adopt -am test
+				""";
+		String conformed = conformer.conform(generated);
+		List<String> body = conformed.lines().dropWhile(line -> !line.equals("## Testing")).skip(1)
+				.dropWhile(String::isBlank).toList();
+		assertEquals("    mvn -pl adopt -am test", body.getFirst(),
+				"the indented body must stay the section's first content:\n" + conformed);
+	}
+
 	@Test
 	void addsTheAgentsReferenceWhenTheOnlyMentionIsInsideAFence() {
 		String generated = """

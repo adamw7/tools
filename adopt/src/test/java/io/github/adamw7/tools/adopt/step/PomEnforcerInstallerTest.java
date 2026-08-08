@@ -512,6 +512,53 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired in");
 	}
 
+	/**
+	 * The rule is looked up by the component name it is published under, which the
+	 * enforcer only does from 3.1.0. Splicing the execution into an older plugin left
+	 * a pull request advertising a guard that fails every build it runs in, so the
+	 * project is told to raise its plugin instead — the adoption does not raise it for
+	 * them, since that is the version they chose for the rules they already run.
+	 */
+	@Test
+	void refusesToWireTheRuleIntoAnEnforcerPinnedTooFarBack(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, pomPinningEnforcerTo("3.0.0"));
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> installer.install(pom));
+		assertTrue(failure.getMessage().contains(PomEnforcerInstaller.MINIMUM_ENFORCER_VERSION),
+				"the failure must name the version to raise the plugin to: " + failure.getMessage());
+		assertFalse(Files.readString(pom).contains("claudeMdFormat"), "nothing may be written to a refused POM");
+	}
+
+	@Test
+	void augmentsAnEnforcerPinnedToTheMinimumVersion(@TempDir Path dir) throws IOException {
+		String result = install(dir, pomPinningEnforcerTo(PomEnforcerInstaller.MINIMUM_ENFORCER_VERSION));
+		assertTrue(result.contains("claudeMdFormat"), "the minimum version runs the rule and must be augmented");
+	}
+
+	/**
+	 * A version left to a property, a {@code pluginManagement} entry, or a parent
+	 * cannot be read from the POM in hand. Refusing on what cannot be read would turn
+	 * an ordinary project into an unadoptable one, and {@link VerifyStep} still runs
+	 * the guard before the branch is pushed.
+	 */
+	@Test
+	void augmentsAnEnforcerWhoseVersionCannotBeReadFromThePom(@TempDir Path dir) throws IOException {
+		assertTrue(install(dir, pomPinningEnforcerTo("${enforcer.version}")).contains("claudeMdFormat"),
+				"a version given as a property must not be read as an old one");
+		assertTrue(install(dir, POM_WITH_ENFORCER).contains("claudeMdFormat"),
+				"a plugin declaring no version at all must not be read as an old one");
+	}
+
+	/**
+	 * The version is written as a child of the plugin itself. {@link #POM_WITH_ENFORCER}
+	 * already carries a {@code <version>3.9.0</version>} inside a
+	 * {@code requireMavenVersion} rule, so a fixture built here also shows the plugin's
+	 * own version is the one read rather than whichever comes first below it.
+	 */
+	private String pomPinningEnforcerTo(String version) {
+		return POM_WITH_ENFORCER.replace("<artifactId>maven-enforcer-plugin</artifactId>",
+				"<artifactId>maven-enforcer-plugin</artifactId>\n        <version>" + version + "</version>");
+	}
+
 	@Test
 	void secondInstallIsIdempotent(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_BUILD);

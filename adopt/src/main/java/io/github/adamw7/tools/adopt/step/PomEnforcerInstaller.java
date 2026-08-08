@@ -7,6 +7,8 @@ import java.util.function.Supplier;
 
 import org.jsoup.nodes.Element;
 
+import io.github.adamw7.tools.adopt.AdoptionException;
+
 /**
  * Adds the {@code claude-code-enforcer} to a Maven project's {@code pom.xml} by
  * wiring the {@code maven-enforcer-plugin} with the {@code claudeMdFormat} rule,
@@ -16,14 +18,26 @@ import org.jsoup.nodes.Element;
  * <p>The install is idempotent: a POM that already wires the rule is left
  * untouched, and one whose {@code build} already uses the plugin for other rules
  * has that declaration augmented in place, so the project keeps a single enforcer
- * entry. {@link PomDocument} does the reading, splicing, and verbatim writing, and
- * the rule version comes from {@link EnforcerRuleVersion} and must be a release.
+ * entry — unless that declaration is pinned too far back to run the rule at all,
+ * which is refused rather than wired in (see {@link #requireRunnableEnforcer}).
+ * {@link PomDocument} does the reading, splicing, and verbatim writing, and the
+ * rule version comes from {@link EnforcerRuleVersion} and must be a release.
  */
 public class PomEnforcerInstaller {
 
 	private static final String ENFORCER_GROUP_ID = "org.apache.maven.plugins";
 	static final String ENFORCER_ARTIFACT_ID = "maven-enforcer-plugin";
 	static final String ENFORCER_VERSION = "3.6.3";
+
+	/**
+	 * The oldest {@value #ENFORCER_ARTIFACT_ID} that can run the rule wired in here.
+	 * {@value #CLAUDE_MD_RULE} is looked up by the component name it is published
+	 * under, which the plugin only does from this version; an older one fails the
+	 * build complaining it cannot find a rule the POM plainly declares. A declaration
+	 * this installer writes itself pins {@value #ENFORCER_VERSION}, so only a plugin
+	 * the project pinned can be too old — see {@link #requireRunnableEnforcer}.
+	 */
+	static final String MINIMUM_ENFORCER_VERSION = "3.1.0";
 	private static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
 	private static final String RULE_GROUP_ID = "io.github.adamw7";
 	private static final String CLAUDE_MD_FILE = "${project.basedir}/CLAUDE.md";
@@ -93,6 +107,8 @@ public class PomEnforcerInstaller {
 	/**
 	 * @return {@code true} when the rule was wired in, {@code false} when the POM
 	 *         already runs the {@code claudeMdFormat} rule and was left unchanged.
+	 * @throws io.github.adamw7.tools.adopt.AdoptionException when the project's own
+	 *         {@value #ENFORCER_ARTIFACT_ID} is pinned too far back to run the rule
 	 */
 	public boolean install(Path pomFile) {
 		PomDocument pom = PomDocument.read(pomFile);
@@ -189,10 +205,39 @@ public class PomEnforcerInstaller {
 	 * leave the plugin's classpath deciding between two versions of it.
 	 */
 	private void augment(PomDocument pom, Element plugin) {
+		requireRunnableEnforcer(plugin);
 		if (!declaresRuleDependency(plugin)) {
 			pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
 		}
 		pom.insertUnder(plugin, List.of("executions"), EXECUTION);
+	}
+
+	/**
+	 * Refuses to splice the execution into a {@value #ENFORCER_ARTIFACT_ID} the
+	 * project pinned below {@value #MINIMUM_ENFORCER_VERSION}, which cannot resolve
+	 * the rule by name. Adding it anyway left the adoption advertising a guard that
+	 * fails every build it runs in — for a reason no reader of the pull request would
+	 * connect to the plugin version a line above it.
+	 *
+	 * <p>Raising the project's pinned version instead is not the adoption's call to
+	 * make: it is the version the project chose for the rules it already runs, and
+	 * bumping it under them would change how those behave — the same reason
+	 * {@link CommitStep} refuses an ignored path rather than forcing the file in.
+	 *
+	 * <p>Only a version literal is judged. One the POM leaves to a
+	 * {@code pluginManagement} entry, a parent, or a property cannot be read from
+	 * here, and refusing on that would turn the ordinary POM into an unadoptable one;
+	 * see {@link PluginVersion}.
+	 */
+	private void requireRunnableEnforcer(Element plugin) {
+		String version = PomDocument.childText(plugin, "version").orElse("");
+		if (PluginVersion.isBelow(version, MINIMUM_ENFORCER_VERSION)) {
+			throw new AdoptionException("Cannot wire the " + CLAUDE_MD_RULE + " rule into the "
+					+ ENFORCER_ARTIFACT_ID + " this project pins to " + version + ": the rule is looked up by name,"
+					+ " which the plugin only does from " + MINIMUM_ENFORCER_VERSION + ", so the guard would fail"
+					+ " every build that runs it. Raise " + ENFORCER_ARTIFACT_ID + " to "
+					+ MINIMUM_ENFORCER_VERSION + " or later, then adopt the repository again.");
+		}
 	}
 
 	/** A freshly declared enforcer plugin: pinned to a version, carrying the rule and its execution. */

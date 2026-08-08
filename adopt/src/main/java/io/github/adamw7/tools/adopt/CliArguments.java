@@ -367,7 +367,21 @@ public final class CliArguments {
 		}
 	}
 
+	/**
+	 * An argument {@link RepositoryUrl} cannot parse at all names no owner either —
+	 * and no repository, so no adoption was ever going to be made of it whichever
+	 * argument the operator meant it to be. Answering the question rather than
+	 * letting the parse failure out is what puts the refusal above in front of them:
+	 * a {@code /tmp/workspace//} whose trailing slashes leave no last segment, or a
+	 * {@code C:\workspaces\ws} on Windows, was refused with the parser's own
+	 * "repositoryUrl must end in a repository name" — which names neither the
+	 * argument that was misread nor the flag that was meant.
+	 */
 	private boolean namesNoOwner(String url) {
-		return RepositoryUrl.of(url).slug().isEmpty();
+		try {
+			return RepositoryUrl.of(url).slug().isEmpty();
+		} catch (IllegalArgumentException e) {
+			return true;
+		}
 	}
 }

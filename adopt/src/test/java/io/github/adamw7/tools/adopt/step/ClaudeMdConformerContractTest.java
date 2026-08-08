@@ -226,6 +226,177 @@ class ClaudeMdConformerContractTest {
 		assertRuleAccepts(conformer.conform(generated));
 	}
 
+	/**
+	 * Markdown quotes code by indenting it four columns as readily as by fencing it,
+	 * and the rule reads both as code. A conformer that only knew fences counted this
+	 * sample's heading as the section the document already had, appended nothing, and
+	 * left the rule demanding a section the document never carried.
+	 */
+	@Test
+	void appendsASectionThatAppearsOnlyInsideAnIndentedCodeBlock() {
+		String generated = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Dependencies
+
+				Existing only.
+
+				A section skeleton looks like this:
+
+				    ## Testing
+
+				    Write unit tests for all new logic.
+				""";
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformer.conform(generated));
+	}
+
+	/**
+	 * The reference is held to the same reading as a heading: the rule's
+	 * {@code containsInProse} looks only at the lines that carry structure, so a
+	 * mention shown as an indented sample satisfies it no more than one inside a
+	 * fence.
+	 */
+	@Test
+	void addsTheReferenceWhenTheOnlyMentionIsInsideAnIndentedCodeBlock() {
+		String generated = """
+				# CLAUDE.md
+
+				An example of the line to add:
+
+				    See [AGENTS.md](AGENTS.md) for the guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Testing
+
+				JUnit 5.
+
+				## Dependencies
+
+				Existing only.
+				""";
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformer.conform(generated));
+	}
+
+	/** A commented-out mention is inert for the rule, so the reference still has to be added. */
+	@Test
+	void addsTheReferenceWhenTheOnlyMentionIsInsideAnHtmlComment() {
+		String generated = """
+				# CLAUDE.md
+
+				<!--
+				See [AGENTS.md](AGENTS.md) for the full guide.
+				-->
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Testing
+
+				JUnit 5.
+
+				## Dependencies
+
+				Existing only.
+				""";
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformer.conform(generated));
+	}
+
+	/**
+	 * The rule ends a comment's reach by following every delimiter on the line, so a
+	 * comment opened after text hides what comes below it. A conformer that only
+	 * recognised a comment beginning at the start of a line read the hidden section as
+	 * present and appended nothing.
+	 */
+	@Test
+	void appendsASectionHiddenByACommentOpenedAfterText() {
+		String generated = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				Superseded: <!--
+				## Testing
+
+				JUnit 5.
+				-->
+
+				## Dependencies
+
+				Existing only.
+				""";
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformer.conform(generated));
+	}
+
 	@Test
 	void leavesADocumentThatAlreadySatisfiesTheRuleAcceptable() {
 		String conforming = """

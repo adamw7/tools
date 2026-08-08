@@ -188,6 +188,23 @@ class HooksFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A hook run under {@code set -euo pipefail} hands {@code pipefail} to the
+	 * {@code -o} ending the cluster. Reading that word as the script left the script
+	 * behind it unread, and so reported a script the hook really does run as
+	 * referenced by nothing.
+	 */
+	@Test
+	void treatsTheScriptBehindAnOptionValueAsReferenced() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("bash -euo pipefail .claude/hooks/session-start.sh"));
+		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	/** An argument is not a script, so it cannot mark one referenced or be required to exist. */
 	@Test
 	void doesNotTreatAnArgumentThatLooksLikeAPathAsAScript() {

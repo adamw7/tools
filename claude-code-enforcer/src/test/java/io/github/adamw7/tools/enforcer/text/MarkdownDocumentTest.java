@@ -254,6 +254,51 @@ class MarkdownDocumentTest {
 		assertTrue(document.hasHeading("## Testing"));
 	}
 
+	/**
+	 * A lone {@code ```} shown four columns in is how a document explains what a
+	 * fence looks like, not a fence this document opens. Reading the fences first and
+	 * the indents afterwards let that delimiter open a block nothing closed, which
+	 * masked every line below it — the document's remaining headings included — as
+	 * code.
+	 */
+	@Test
+	void doesNotOpenAFenceOnADelimiterShownInsideAnIndentedBlock() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				A block is delimited by three backticks:
+
+				    ```
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(4), codeLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
+	/** A balanced pair shown that way is the sample's too, so nothing below it changes. */
+	@Test
+	void readsABalancedFencePairInsideAnIndentedBlockAsThatBlock() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				Write it like this:
+
+				    ```java
+				    int x;
+				    ```
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(4, 5, 6), codeLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+	}
+
 	/** An indented block is content, so a section whose only body is one is not empty. */
 	@Test
 	void readsAnIndentedBlockAsASectionBody() {

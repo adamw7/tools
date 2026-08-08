@@ -45,6 +45,14 @@ import java.util.stream.IntStream;
  * shown as an example satisfy the very check that demands that section, and
  * reported the sample's own {@code TODO} and its {@code [link](sample.md)} as the
  * document's own — while the identical text inside a fence was correctly ignored.
+ * <p>
+ * The two ways are read in a single pass, because each decides what the other may
+ * read. A fence inside an indented block is the delimiter that block illustrates,
+ * not one this document opens: a lone {@code ```} shown four columns in is exactly
+ * how a document explains what a fence looks like. Marking the fences first and the
+ * indents afterwards left that lone delimiter opening a block nothing closed, and
+ * so masked every line below it — the document's remaining headings included — as
+ * code.
  */
 public final class MarkdownDocument {
 
@@ -211,43 +219,17 @@ public final class MarkdownDocument {
 	}
 
 	/**
-	 * Marks every line Markdown reads as code, both ways it is quoted: the fenced
-	 * blocks first, then the indented ones over the same mask, so a fence's own
-	 * lines are already spoken for and an indent inside one is content rather than a
-	 * block of its own.
+	 * Marks every line Markdown reads as code, both ways it is quoted, in one left
+	 * to right pass, so a fence's own lines are spoken for before an indent is read
+	 * into them and an indented block's lines before a fence is.
 	 */
 	private static boolean[] codeMask(List<String> lines) {
-		boolean[] mask = fenceMask(lines);
-		boolean mayOpen = true;
-		for (int i = 0; i < lines.size(); i++) {
-			mayOpen = applyIndent(lines.get(i), mayOpen, mask, i);
-		}
-		return mask;
-	}
-
-	private static boolean[] fenceMask(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
-		Delimiter open = null;
+		Scan scan = Scan.start();
 		for (int i = 0; i < lines.size(); i++) {
-			open = applyFence(lines.get(i).strip(), open, mask, i);
+			scan = scan.read(lines.get(i), mask, i);
 		}
 		return mask;
-	}
-
-	/**
-	 * Marks line {@code index} as indented code or not and returns whether an
-	 * indented line below it would open a block. Only a blank line, a line already
-	 * masked as code, and the start of the document leave that open: an indented
-	 * line below a paragraph is a lazy continuation of it, which is what stops an
-	 * indented code block interrupting one. A blank line is left unmarked, since it
-	 * carries nothing to read either way.
-	 */
-	private static boolean applyIndent(String line, boolean mayOpen, boolean[] mask, int index) {
-		if (mask[index] || line.isBlank()) {
-			return true;
-		}
-		mask[index] = mayOpen && indentWidth(line) >= CODE_INDENT;
-		return mask[index];
 	}
 
 	/** The line's indent in columns, a tab counting on to the next four-column stop. */
@@ -315,17 +297,49 @@ public final class MarkdownDocument {
 	}
 
 	/**
-	 * Marks line {@code index} as code or structure and returns the fence delimiter
-	 * still open afterwards.
+	 * The state one pass over the document carries: the fence delimiter still open,
+	 * and whether an indented line would open a code block. Only a blank line, a line
+	 * already read as code, and the start of the document leave the latter open — an
+	 * indented line below a paragraph is a lazy continuation of it, which is what
+	 * stops an indented code block interrupting one.
 	 */
-	private static Delimiter applyFence(String line, Delimiter open, boolean[] mask, int index) {
-		Delimiter delimiter = delimiterOf(line);
-		if (open == null) {
-			mask[index] = delimiter != null;
-			return delimiter;
+	private record Scan(Delimiter fence, boolean mayIndent) {
+
+		static Scan start() {
+			return new Scan(null, true);
 		}
-		mask[index] = true;
-		return delimiter != null && delimiter.closes(open) ? null : open;
+
+		/**
+		 * Marks line {@code index} and answers the state the next line is read in. An
+		 * open fence claims the line first, then a blank line, which carries nothing to
+		 * read either way and so is left unmarked; only then may an indent open a block,
+		 * and only a line no indent claimed is read as a fence delimiter.
+		 */
+		Scan read(String line, boolean[] mask, int index) {
+			if (fence != null) {
+				return insideFence(line, mask, index);
+			}
+			if (line.isBlank()) {
+				return start();
+			}
+			if (mayIndent && indentWidth(line) >= CODE_INDENT) {
+				mask[index] = true;
+				return start();
+			}
+			return atDelimiter(line, mask, index);
+		}
+
+		private Scan insideFence(String line, boolean[] mask, int index) {
+			mask[index] = true;
+			Delimiter delimiter = delimiterOf(line.strip());
+			return new Scan(delimiter != null && delimiter.closes(fence) ? null : fence, true);
+		}
+
+		private Scan atDelimiter(String line, boolean[] mask, int index) {
+			Delimiter delimiter = delimiterOf(line.strip());
+			mask[index] = delimiter != null;
+			return new Scan(delimiter, delimiter != null);
+		}
 	}
 
 	/** The fence delimiter a line declares, or null when the line is not one. */

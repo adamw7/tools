@@ -104,6 +104,61 @@ class CommandTokensTest {
 		assertEquals(List.of("bash"), CommandTokens.scriptCandidatesOf("bash -ec \"run.sh --flag\""));
 	}
 
+	/**
+	 * The {@code pipefail} of {@code -euo pipefail} is the value the {@code o}
+	 * ending the cluster takes, not the script. Reading the first non-option
+	 * argument blindly took it for one and left the real script — the word behind
+	 * it — unread.
+	 */
+	@Test
+	void readsPastTheValueAShortOptionClusterTakes() {
+		assertEquals(List.of("bash", ".claude/hooks/run.sh"),
+				CommandTokens.scriptCandidatesOf("bash -euo pipefail .claude/hooks/run.sh"));
+	}
+
+	/** Only the last flag of a cluster can take a value, so {@code -oe} takes none. */
+	@Test
+	void readsAValueOnlyForTheFlagThatEndsACluster() {
+		assertEquals(List.of("bash", "run.sh"), CommandTokens.scriptCandidatesOf("bash -oe run.sh"));
+	}
+
+	@Test
+	void readsPastTheValueALongOptionTakes() {
+		assertEquals(List.of("bash", ".claude/hooks/run.sh"),
+				CommandTokens.scriptCandidatesOf("bash --rcfile config/bashrc .claude/hooks/run.sh"));
+	}
+
+	/** A python {@code -m} names a module, not a file, so the segment names no script. */
+	@Test
+	void readsNoScriptFromAModuleName() {
+		assertEquals(List.of("python3"), CommandTokens.scriptCandidatesOf("python3 -m tools.runner"));
+	}
+
+	/**
+	 * The {@code -e} of node, perl and ruby carries the script's text the way a
+	 * shell's {@code -c} does. Reading only {@code -c} took that text for a path,
+	 * and {@code require('./boot')} was reported as a script missing from disk.
+	 */
+	@Test
+	void readsNoScriptFromAnInlineRuntimeScript() {
+		assertEquals(List.of("node"), CommandTokens.scriptCandidatesOf("node -e \"require('./boot')\""));
+		assertEquals(List.of("perl"), CommandTokens.scriptCandidatesOf("perl -e 'print \"a/b\"'"));
+		assertEquals(List.of("ruby"), CommandTokens.scriptCandidatesOf("ruby -e 'puts 1/2'"));
+	}
+
+	/** A shell's {@code -e} stops on error; only a runtime's carries a script. */
+	@Test
+	void readsTheScriptOfAShellRunWithErrexit() {
+		assertEquals(List.of("sh", ".claude/hooks/run.sh"),
+				CommandTokens.scriptCandidatesOf("sh -e .claude/hooks/run.sh"));
+	}
+
+	/** Node's {@code -c} checks the syntax of a file it is handed, unlike a shell's. */
+	@Test
+	void readsTheScriptNodeIsAskedToCheck() {
+		assertEquals(List.of("node", "boot.js"), CommandTokens.scriptCandidatesOf("node -c boot.js"));
+	}
+
 	@Test
 	void recognisesAnInterpreterNamedByAnAbsolutePath() {
 		assertEquals(List.of("/usr/bin/bash", "run.sh"), CommandTokens.scriptCandidatesOf("/usr/bin/bash run.sh"));

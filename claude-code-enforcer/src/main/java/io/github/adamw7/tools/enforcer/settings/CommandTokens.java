@@ -2,10 +2,12 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -37,16 +39,21 @@ final class CommandTokens {
 	private static final char PATH_SEPARATOR = '/';
 	private static final String OPTION_PREFIX = "-";
 	private static final String LONG_OPTION_PREFIX = "--";
-	private static final char INLINE_SCRIPT_FLAG = 'c';
+	private static final char SET_OPTION_PREFIX = '+';
 
 	/**
-	 * The programs that run a script named by their first non-option argument rather
-	 * than being that script themselves. A hook wired as {@code bash <script>} names a
-	 * file that must exist just as plainly as one wired as {@code <script>}, and
-	 * reading only the program would leave it unchecked.
+	 * The programs that run a script named by one of their arguments rather than
+	 * being that script themselves, each described by how its own options are
+	 * written. A hook wired as {@code bash <script>} names a file that must exist
+	 * just as plainly as one wired as {@code <script>}, and reading only the program
+	 * would leave it unchecked.
+	 * <p>
+	 * The descriptions differ per program because the same letter means different
+	 * things to different ones: a shell's {@code -e} stops on error while node's,
+	 * perl's and ruby's carries the script's own text, and python's {@code -m} takes
+	 * a module name where a shell's takes nothing at all.
 	 */
-	private static final List<String> INTERPRETERS = List.of(
-			"bash", "sh", "zsh", "dash", "ksh", "python", "python3", "node", "ruby", "perl");
+	private static final Map<String, Interpreter> INTERPRETERS = interpreters();
 
 	/**
 	 * The shell operators that end a token just as whitespace does, and that end one
@@ -126,31 +133,119 @@ final class CommandTokens {
 		return ASSIGNMENT.matcher(token).matches() || RESERVED_WORDS.contains(token);
 	}
 
-	/**
-	 * The script an interpreter is handed: its first non-option argument. A segment
-	 * carrying the {@code -c} flag names no file at all — the argument is the script's
-	 * text — so it yields nothing rather than a path that was never meant to be one.
-	 */
+	/** The script an interpreter is handed, or nothing when the program is not one. */
 	private static Optional<String> interpretedScript(String program, List<String> arguments) {
-		if (!INTERPRETERS.contains(commandName(program)) || arguments.stream().anyMatch(CommandTokens::isInlineScript)) {
-			return Optional.empty();
-		}
-		return arguments.stream().filter(argument -> !argument.startsWith(OPTION_PREFIX)).findFirst();
-	}
-
-	/**
-	 * True for the {@code -c} flag, alone or inside a cluster of short ones. A shell
-	 * reads {@code -ec} as {@code -e -c} just as it reads {@code -c}, and missing the
-	 * cluster would take the inline script's text for a path on disk.
-	 */
-	private static boolean isInlineScript(String argument) {
-		return argument.startsWith(OPTION_PREFIX) && !argument.startsWith(LONG_OPTION_PREFIX)
-				&& argument.indexOf(INLINE_SCRIPT_FLAG) > 0;
+		Interpreter interpreter = INTERPRETERS.get(commandName(program));
+		return interpreter == null ? Optional.empty() : interpreter.scriptIn(arguments);
 	}
 
 	/** The program's own name, so an interpreter is recognised however it was spelled on disk. */
 	private static String commandName(String program) {
 		return program.substring(program.lastIndexOf(PATH_SEPARATOR) + 1);
+	}
+
+	/**
+	 * How one interpreter writes its options, which is all a reader needs to find the
+	 * script among its arguments: the short flags whose argument is the script's own
+	 * text rather than a path, the long options that say the same, and the flags and
+	 * options that consume the word after them.
+	 * <p>
+	 * The last of these is what a naive "first non-option argument" misses. A hook
+	 * wired as {@code bash -euo pipefail .claude/hooks/session-start.sh} hands the
+	 * word {@code pipefail} to the {@code -o} ending the cluster, so reading it as the
+	 * script both invented a file no hook ever named and hid the real one behind it —
+	 * and with {@code reportUnreferencedScripts}, reported a script the hook really
+	 * does run as referenced by nothing.
+	 *
+	 * @param inlineFlags   the short flags carrying the script's text, e.g. a
+	 *                      shell's {@code c} or node's {@code e} and {@code p}
+	 * @param valueFlags    the short flags consuming the word after them, e.g. a
+	 *                      shell's {@code o}
+	 * @param inlineOptions the long options carrying the script's text
+	 * @param valueOptions  the long options consuming the word after them
+	 */
+	private record Interpreter(String inlineFlags, String valueFlags, Set<String> inlineOptions,
+			Set<String> valueOptions) {
+
+		/**
+		 * The script this interpreter is handed. A segment carrying an inline-script
+		 * option names no file at all, so it yields nothing rather than a path that was
+		 * never meant to be one.
+		 */
+		Optional<String> scriptIn(List<String> arguments) {
+			if (arguments.stream().anyMatch(this::isInlineScript)) {
+				return Optional.empty();
+			}
+			return IntStream.range(0, arguments.size())
+					.filter(index -> isOperand(arguments, index))
+					.mapToObj(arguments::get)
+					.findFirst();
+		}
+
+		/** True for the first word that is neither an option nor the value of the option before it. */
+		private boolean isOperand(List<String> arguments, int index) {
+			return !isOption(arguments.get(index))
+					&& (index == 0 || !consumesValue(arguments.get(index - 1)));
+		}
+
+		/**
+		 * An option is written with a leading dash, or is one of the {@code +o}
+		 * spellings a shell also takes — which a leading dash alone would leave looking
+		 * like the script.
+		 */
+		private boolean isOption(String argument) {
+			return argument.startsWith(OPTION_PREFIX) || consumesValue(argument);
+		}
+
+		private boolean isInlineScript(String argument) {
+			return inlineOptions.contains(argument) || carriesFlag(argument, inlineFlags);
+		}
+
+		private boolean consumesValue(String argument) {
+			return valueOptions.contains(argument) || endsWithFlag(argument, valueFlags);
+		}
+
+		/**
+		 * True when a cluster of short options carries one of {@code flags} anywhere in
+		 * it. A shell reads {@code -ec} as {@code -e -c} just as it reads {@code -c},
+		 * and missing the cluster would take the inline script's text for a path on
+		 * disk.
+		 */
+		private boolean carriesFlag(String argument, String flags) {
+			return isShortCluster(argument) && argument.chars().skip(1).anyMatch(flag -> flags.indexOf(flag) >= 0);
+		}
+
+		/**
+		 * True when a cluster of short options <em>ends</em> in one of {@code flags}.
+		 * Only the last flag of a cluster can take the word after it, which is why
+		 * {@code -euo} swallows a value and {@code -oe} does not.
+		 */
+		private boolean endsWithFlag(String argument, String flags) {
+			return isShortCluster(argument) && flags.indexOf(argument.charAt(argument.length() - 1)) >= 0;
+		}
+
+		/** A run of short options, written with the leading {@code -} or the {@code +} that unsets them. */
+		private static boolean isShortCluster(String argument) {
+			return argument.length() > 1 && !argument.startsWith(LONG_OPTION_PREFIX)
+					&& (argument.startsWith(OPTION_PREFIX) || argument.charAt(0) == SET_OPTION_PREFIX);
+		}
+	}
+
+	/**
+	 * The interpreters this reader knows, each named by every spelling a hook invokes
+	 * it with. Only the options that decide where the script is are listed: one that
+	 * neither carries the script nor takes a value needs no entry, because a leading
+	 * dash is already enough to skip it.
+	 */
+	private static Map<String, Interpreter> interpreters() {
+		Interpreter shell = new Interpreter("c", "o", Set.of(), Set.of("--rcfile", "--init-file"));
+		Interpreter python = new Interpreter("c", "mWXQ", Set.of(), Set.of("--check-hash-based-pycs"));
+		Interpreter node = new Interpreter("ep", "r", Set.of("--eval", "--print"),
+				Set.of("--require", "--import", "--loader", "--experimental-loader", "--conditions"));
+		Interpreter ruby = new Interpreter("e", "rICEK", Set.of(), Set.of());
+		Interpreter perl = new Interpreter("e", "IMm", Set.of(), Set.of());
+		return Map.of("bash", shell, "sh", shell, "zsh", shell, "dash", shell, "ksh", shell,
+				"python", python, "python3", python, "node", node, "ruby", ruby, "perl", perl);
 	}
 
 	/** Splits on every {@code separator} character outside quotes, dropping the empty pieces. */

@@ -10,12 +10,6 @@ GitHub repository, wires Claude Code into it, and opens a pull request. The
 module's rules are unusually strict because it shells out to `git`, `gh` and
 `claude` against real repositories.
 
-## When to Use
-- Adding, reordering, or changing an `AdoptionStep`
-- Changing what the CLI or the `adopt_repo` MCP tool accepts
-- A run fails at a step and you need to know what that step does
-- The user says "adopt" / "adoption pipeline" / "adopt_repo" / "dry run"
-
 ## The pipeline, in order
 `GitHubRepoAdopter.defaultSteps(options)` assembles:
 

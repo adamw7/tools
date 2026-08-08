@@ -11,14 +11,6 @@ protobuf builders only detect a missing `required` field at runtime (an
 `UninitializedMessageException` from `build()`), while the generated builder
 chain makes the same mistake **fail to compile**.
 
-## When to Use
-- Wiring `protogen-maven-plugin` into a `pom.xml`
-- Explaining or debugging why generated builders won't compile until every
-  required field is set
-- Questions about proto2 vs proto3 handling, presence accessors, or `oneof`
-- The user says "generate builders" / "protobuf builder" / "required field" /
-  "shift-left validation"
-
 ## How the plugin is wired
 The plugin runs **after** protobuf classes exist, so it consumes the compiled
 `*.proto` output and emits builder sources. Bind its `code-generator` goal to a

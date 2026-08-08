@@ -13,17 +13,7 @@ commits, `MarkdownDocument` and `ClaudeMdConformer` in four or five.
 
 Every one of those fixes was the same thing — real input the reader had not been
 written for. This skill is the accumulated list, so the next change starts from
-it instead of rediscovering it. `FrontMatter` is the one that has since been
-handed to a library: it composes the block with SnakeYAML rather than scanning
-quotes and comments itself, and its section below says what that changed.
-
-## When to Use
-- Changing any reader in `claude-code-enforcer/.../text`, `.../doc/ImportGraph`,
-  `.../settings/CommandTokens`, or `adopt`'s `ClaudeMdConformer`
-- A rule fails a valid document, or passes an invalid one
-- Adding a rule that reads document structure rather than a whole file
-- The user says "fence", "front matter", "heading", "memory import",
-  "hook command", or "the enforcer rejects a file it shouldn't"
+it instead of rediscovering it.
 
 ## The one rule that matters most
 
@@ -145,7 +135,7 @@ When you touch either side:
 
 Skipping step 3 is what shipped #536: four defects where the conformer produced a
 document the rule it exists to satisfy rejects, so the adoption failed its own
-`VerifyStep` on a file it had just reshaped to pass it. On someone else's
+`VerifyStep` on a file it had just reshaped to pass it — on someone else's
 repository, after the branch was pushed.
 
 ## Adversarial input checklist

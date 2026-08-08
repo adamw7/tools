@@ -9,11 +9,6 @@ Review and apply SOLID in the `tools` reactor. The heuristics below are the fast
 path; long before/after code lives in **`examples.md`** next to this file — load
 it only when a worked example would actually help.
 
-## When to Use
-- User says "check SOLID" / "SOLID review" / "is this class doing too much?"
-- Reviewing class design or refactoring a large class
-- Choosing where a new abstraction belongs
-
 ## Quick reference
 
 | Letter | Principle | One-liner |

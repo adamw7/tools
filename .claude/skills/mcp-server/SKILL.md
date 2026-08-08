@@ -10,11 +10,6 @@ shared scaffolding behind all three servers here (`data` uniqueness,
 `code/context`, `adopt`). Transport, registration and error handling are already
 solved — a new tool writes none of that.
 
-## When to Use
-- Adding a tool to an existing MCP server, or standing a new server up
-- Changing a tool's input schema or its result
-- The user says "MCP tool" / "MCP server" / "stdio transport" / "streamable HTTP"
-
 ## The SPI — a tool never mentions the MCP SDK
 ```java
 public class MyTool implements McpTool {   // Function<Map<String,Object>, ToolResult>

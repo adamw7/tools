@@ -9,12 +9,6 @@ Pick the right data source in the `data` module, respect the schema contract
 that keeps forward-only sources away from schema-dependent callers, and run the
 uniqueness checker to find whether a set of columns can serve as a key.
 
-## When to Use
-- Reading tabular data from CSV, a JDBC query, Parquet, JSON, YAML, or TOON
-- Adding a brand-new data source
-- Checking whether columns are unique / finding a smaller key
-- The user says "data source" / "uniqueness check" / "find a key"
-
 ## In-memory vs iterative — pick first
 Every format ships in two variants:
 - **`InMemory…`** — loads all rows once (`readAll()`), then runs multiple

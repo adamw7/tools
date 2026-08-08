@@ -310,6 +310,33 @@ class HookCommandsValidRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * The {@code -e} of node, perl and ruby carries the script's own text the way a
+	 * shell's {@code -c} does. Reading only {@code -c} took that text for a path, so
+	 * the {@code ./boot} inside an inline script was reported as a file missing from
+	 * the repository.
+	 */
+	@Test
+	void doesNotReadAnInlineRuntimeScriptAsAPath() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("node -e \\\"require('./boot')\\\""));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * A word an option takes as its value is not the script, and the script is the
+	 * word behind it. Reading the first non-option argument blindly checked
+	 * {@code pipefail} and left the real script unchecked.
+	 */
+	@Test
+	void checksTheScriptBehindAnOptionValue() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("bash -euo pipefail .claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing script", "gone.sh");
+	}
+
 	/** A bare program name is looked up on the PATH, so it is no repository file to require. */
 	@Test
 	void doesNotReadABareProgramNameAsAProjectScript() {

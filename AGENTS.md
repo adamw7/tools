@@ -118,6 +118,14 @@ What is worth knowing before changing any of it:
   adopted project's CI unable to build.
 - **Detection reads what a pom *binds***, in the build or a profile — not a
   `pluginManagement` entry, which pins a version and runs nothing.
+- **A pom is edited as text, never re-serialised** (`PomDocument`): the addition
+  is spliced into the bytes the file already held, at the source offsets
+  **jsoup**'s XML parser reports for every start and end tag, so the adoption
+  commit shows only the block that was added. A DOM records nothing about where
+  its elements were read from, which is why this used to pair a JAXP parse with a
+  lexical scan of its own; a pom that leaves an element open is refused, because
+  jsoup repairs what it reads and an edit at a repaired offset would land inside
+  an element it was never meant to touch.
 - **`--assets` commits starter configuration** — an `AGENTS.md` pointer, a
   `.claude/settings.json` denying reads of obvious secret files and wiring a
   `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a workflow
@@ -733,7 +741,12 @@ Skill: `maven-conventions`.
 
 - All dependency **versions and scopes** are declared only in the root `pom.xml`
   under `<dependencyManagement>`; all **plugin versions** only under
-  `<pluginManagement>`. Module poms reference both without versions.
+  `<pluginManagement>`. Module poms reference both without versions. The one
+  thing a module may say about a managed dependency is a *narrower* scope, where
+  two modules genuinely want different ones: `enforcer-api` is managed
+  `provided` and narrowed to `test` by `adopt`, and `jsoup` is managed unscoped —
+  `adopt` parses every `pom.xml` it edits — and narrowed to `test` by
+  `claude-code-enforcer`, which only reads HTML back in its own tests.
 - **Do not add a new dependency without asking first.**
 - A family of artifacts that must move together shares one property rather than a
   version each: `protobuf.version` (the runtime *and* the `protoc` the plugin

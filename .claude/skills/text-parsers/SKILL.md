@@ -150,7 +150,7 @@ in its column before calling it done.
 | `Superseded: <!--`; `<!-- a --> <!-- b`; comment inside a fence; unterminated comment at EOF | comments |
 | `name: "git-commit"`; `Don't stop # a note`; `version: 1.0#2`; `description: >` then indented lines; `key:` bare; a key declared twice; `key:value` with no space | front matter |
 | `[logo](assets/logo(1).png)`; a link inside backticks; a link inside a comment | links |
-| `@claude` in prose; `@adamw7`; `` `@docs/x.md` ``; `see @docs/setup.md.`; `@~/global.md`; `@/rooted.md` | imports |
+| `@claude` in prose; `@adamw7`; `` `@docs/x.md` ``; `see @docs/setup.md.`; `@~/global.md`; `@/rooted.md`; `@RUNNER~1/notes.md` | imports |
 | `a.sh; b.sh`; a command across two lines; `( a.sh )`; `FOO=bar a.sh`; `if [ -n "$CI" ]; then a.sh; fi`; `bash -ec 'echo hi'`; `"my hook.sh"` | hook commands |
 | A UTF-8 BOM; a file that is not UTF-8 at all; CRLF line endings; an empty file | every file reader |
 

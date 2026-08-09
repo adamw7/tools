@@ -39,7 +39,9 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * illustrates rather than makes, and one an author commented out is one it no
  * longer makes. A
  * home-relative import ({@code @~/...}) points at machine-specific state a build
- * cannot see and is skipped, as is any import listed in {@code ignoredImports}.
+ * cannot see and is skipped, as is any import listed in {@code ignoredImports};
+ * only a leading {@code ~} makes an import home-relative, so a path carrying a
+ * Windows short name such as {@code RUNNER~1} is still followed.
  * Each file is scanned once; all problems found are reported together.
  */
 @Named("memoryImports")

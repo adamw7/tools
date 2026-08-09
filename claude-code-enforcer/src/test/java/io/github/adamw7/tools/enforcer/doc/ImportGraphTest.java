@@ -154,6 +154,21 @@ class ImportGraphTest {
 		assertEquals(List.of(), graphFrom(root).importsOf(root));
 	}
 
+	/**
+	 * Only a leading {@code ~} is home-relative. Windows shortens a long directory
+	 * name to an 8.3 one — {@code RUNNER~1} — so a path a document spells on such a
+	 * machine carries a {@code ~} the import syntax has to be able to write.
+	 */
+	@Test
+	void followsAnImportThroughAPathSegmentCarryingATilde() {
+		File target = write("RUNNER~1/notes.md", "# Notes\n");
+		File root = write("CLAUDE.md", "See @RUNNER~1/notes.md\n");
+		ImportGraph graph = graphFrom(root);
+
+		assertEquals(List.of("RUNNER~1/notes.md"), textOf(graph.importsOf(root)));
+		assertEquals(1, graph.hopsTo(target));
+	}
+
 	@Test
 	void dropsSentencePunctuationFromTheImportPath() {
 		File root = write("CLAUDE.md", "See @docs.md.\n");

@@ -36,8 +36,11 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * an import, an import shown as a sample (fenced or indented) is one the document
  * illustrates rather than makes, and one an author commented out is one it no
  * longer makes. A
- * home-relative import ({@code @~/...}) does not match the path syntax at all and
- * so is skipped, as is any import the {@code ignored} predicate accepts. A file
+ * home-relative import ({@code @~/...}) names machine-specific state a build
+ * cannot see and is skipped, as is any import the {@code ignored} predicate
+ * accepts. Only a <em>leading</em> {@code ~} makes an import home-relative: one
+ * inside a path is an ordinary character, which is how Windows spells a short
+ * (8.3) name such as {@code RUNNER~1}. A file
  * that cannot be read as text is treated as a leaf rather than a failure, because
  * an imported file may be any format.
  */
@@ -47,10 +50,11 @@ final class ImportGraph {
 	record Reference(String text, File target) {
 	}
 
-	private static final Pattern IMPORT = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9_./-]+)");
+	private static final Pattern IMPORT = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9_./~-]+)");
 	private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
 	private static final char PATH_SEPARATOR = '/';
 	private static final char EXTENSION_SEPARATOR = '.';
+	private static final String HOME_PREFIX = "~";
 
 	private final Map<Path, List<Reference>> references = new LinkedHashMap<>();
 	private final Map<Path, Integer> hops = new LinkedHashMap<>();
@@ -135,6 +139,7 @@ final class ImportGraph {
 				.results()
 				.map(match -> withoutTrailingDots(match.group(1)))
 				.filter(ImportGraph::isPath)
+				.filter(imported -> !isHomeRelative(imported))
 				.filter(imported -> !ignored.test(imported))
 				.map(imported -> new Reference(imported, resolve(file, imported)));
 	}
@@ -155,6 +160,17 @@ final class ImportGraph {
 	 */
 	private static boolean isPath(String imported) {
 		return imported.indexOf(PATH_SEPARATOR) >= 0 || imported.indexOf(EXTENSION_SEPARATOR) >= 0;
+	}
+
+	/**
+	 * True when the import starts at the importing user's home directory, which is
+	 * machine-specific state a build cannot see. Only the leading position counts:
+	 * a {@code ~} further along is an ordinary path character — {@code RUNNER~1} is
+	 * how Windows shortens a profile name, and an import spelling an absolute path
+	 * on such a machine has to carry it.
+	 */
+	private static boolean isHomeRelative(String imported) {
+		return imported.startsWith(HOME_PREFIX);
 	}
 
 	private File resolve(File file, String imported) {

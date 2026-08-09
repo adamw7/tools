@@ -95,6 +95,13 @@ class MemoryImportsRuleTest {
 		assertDoesNotThrow(ruleFor("# CLAUDE.md\n\nAlso @~/personal/prefs.md is loaded.\n")::execute);
 	}
 
+	/** A {@code ~} inside a path — a Windows short name — is read, not skipped as home-relative. */
+	@Test
+	void readsAnImportThroughAPathSegmentCarryingATilde() {
+		assertFailure(EnforcerRuleException.class, ruleFor("# CLAUDE.md\n\nSee @RUNNER~1/absent.md\n")::execute,
+				"imports a missing file: @RUNNER~1/absent.md");
+	}
+
 	@Test
 	void skipsExplicitlyIgnoredImports() {
 		MemoryImportsRule rule = ruleFor("# CLAUDE.md\n\nSee @docs/absent.md\n");

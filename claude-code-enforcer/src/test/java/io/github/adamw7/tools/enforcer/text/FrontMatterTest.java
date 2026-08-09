@@ -418,4 +418,41 @@ class FrontMatterTest {
 		assertTrue(frontMatter.value("f").orElseThrow().length() <= 8192, "the expansion must be capped");
 	}
 
+	/**
+	 * An anchor may name a node that contains it, which composes to a graph with a
+	 * cycle rather than a tree. The walk of such a graph never reaches a leaf to append
+	 * at, so the length cap alone never came into play and it recursed until the stack
+	 * ran out — and a {@link StackOverflowError} is not the {@code YAMLException} the
+	 * parse catches, so it failed the build as an internal error instead of being read
+	 * as the front matter it is.
+	 */
+	@Test
+	void readsAnAnchorThatContainsItselfWithoutExhaustingTheStack() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				type: concept
+				description: &loop
+				  - *loop
+				---
+				""").orElseThrow();
+
+		assertEquals(List.of("type", "description"), frontMatter.keys());
+		assertTrue(frontMatter.value("description").orElseThrow().length() <= 8192, "the walk must be capped");
+	}
+
+	/** A mapping can name itself the same way a sequence can. */
+	@Test
+	void readsAMappingThatContainsItselfWithoutExhaustingTheStack() {
+		FrontMatter frontMatter = FrontMatter.parse("""
+				---
+				name: skill
+				generated: &loop
+				  by: *loop
+				---
+				""").orElseThrow();
+
+		assertEquals(List.of("name", "generated"), frontMatter.keys());
+		assertTrue(frontMatter.value("generated").orElseThrow().length() <= 8192, "the walk must be capped");
+	}
+
 }

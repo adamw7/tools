@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -121,9 +122,23 @@ final class Baseline {
 
 	/**
 	 * Rewrites the project base directory in a violation message as the
-	 * {@code ${basedir}} token, which is what makes a recorded baseline portable.
+	 * {@code ${basedir}} token, which is what makes a recorded baseline portable, and
+	 * folds the message onto one line, which is what makes it storable at all.
 	 */
 	private record Signatures(String base) {
+
+		/**
+		 * Any line break. A baseline stores one accepted violation per line, so a
+		 * violation carrying a break of its own could not survive the round trip: it was
+		 * written as several lines, each of which was read back as a separate entry that
+		 * no violation ever matches. The violation was therefore never suppressed and the
+		 * fragments were reported as stale for ever after. A rule builds its messages on
+		 * one line, but it interpolates text it did not write — the entry
+		 * {@code permissionsFormat} quotes back is any string the settings file declared,
+		 * newlines included — so the fold belongs here, where it is applied to a live
+		 * violation and a recorded entry alike and the two still compare equal.
+		 */
+		private static final Pattern LINE_BREAK = Pattern.compile("\\R");
 
 		/** Rooted at {@code baseDir}, or at the working directory when none was configured. */
 		static Signatures rootedAt(File baseDir) {
@@ -132,7 +147,7 @@ final class Baseline {
 		}
 
 		String normalize(String signature) {
-			return signature.replace(base, BASE_DIR_TOKEN);
+			return LINE_BREAK.matcher(signature.replace(base, BASE_DIR_TOKEN)).replaceAll(" ");
 		}
 	}
 }

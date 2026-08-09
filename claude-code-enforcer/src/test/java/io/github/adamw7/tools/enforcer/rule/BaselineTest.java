@@ -144,6 +144,25 @@ class BaselineTest {
 		assertTrue(readString(file).contains("${basedir}/CLAUDE.md is over budget"), readString(file));
 	}
 
+	/**
+	 * A rule builds its messages on one line, but it quotes back text it did not write
+	 * — {@code permissionsFormat} echoes whatever string the settings file declared, a
+	 * newline in it included. Written verbatim, such a violation spanned several lines
+	 * of a file that stores one per line, so nothing ever matched it again: it was
+	 * never suppressed, and its fragments were reported as stale for ever after.
+	 */
+	@Test
+	void aViolationCarryingALineBreakIsRecordedAndSuppressedAsOneEntry() {
+		File file = tempDir.resolve("baseline.txt").toFile();
+		List<String> violations = List.of("settings.json entry 'Bash(a\nb)' is not of the form Tool");
+
+		assertDoesNotThrow(() -> Baseline.write(file, violations, projectDir()));
+
+		assertEquals(1, filteredLines(file).size(), readString(file));
+		assertEquals(List.of(), assertDoesNotThrow(() -> Baseline.read(file, projectDir()).newViolations(violations)));
+		assertEquals(List.of(), assertDoesNotThrow(() -> Baseline.read(file, projectDir()).staleEntries(violations)));
+	}
+
 	/** The project base directory a rule would be configured with, as {@code ${project.basedir}}. */
 	private File projectDir() {
 		return tempDir.toFile();

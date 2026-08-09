@@ -239,6 +239,103 @@ class MarkdownDocumentTest {
 		assertTrue(document.containsInProse("continued"));
 	}
 
+	/**
+	 * A list item indents its own continuation paragraphs to the column its content
+	 * starts at, so four columns from the margin is prose inside a list rather than
+	 * code. Reading it as code hid what such a paragraph says from every check that
+	 * asks the document what it mentions.
+	 */
+	@Test
+	void treatsAnIndentedParagraphContinuingAListItemAsProse() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				- the modules are:
+
+				    `data`, `code`, and `adopt` are the reactor modules.
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+		assertTrue(document.containsInProse("adopt"));
+	}
+
+	/** Inside a list the code indent is measured from the item's content, not the margin. */
+	@Test
+	void masksABlockIndentedFourColumnsPastAListItemsContent() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				- run it with:
+
+				      mvn install
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(4), codeLines(document));
+		assertFalse(document.containsInProse("mvn install"));
+	}
+
+	/** A paragraph back at the margin ends the list, so the indent is measured from it again. */
+	@Test
+	void measuresTheCodeIndentFromTheMarginOnceAListHasEnded() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				- an item.
+
+				A paragraph of its own.
+
+				    TODO left in a sample
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(6), codeLines(document));
+		assertFalse(document.containsInProse("TODO"));
+	}
+
+	/** A thematic break carries no whitespace after its first dash, so it opens no list. */
+	@Test
+	void doesNotReadAThematicBreakAsAListItem() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				---
+
+				    TODO left in a sample
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(4), codeLines(document));
+		assertFalse(document.containsInProse("TODO"));
+	}
+
+	/** An ordered marker indents its content just as a bullet does. */
+	@Test
+	void treatsAnIndentedParagraphContinuingAnOrderedItemAsProse() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				1. the first step:
+
+				    Run the build afterwards.
+
+				## Maven
+				Body.
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+		assertTrue(document.containsInProse("Run the build"));
+	}
+
 	/** Three spaces is the deepest a heading may be indented and stay one. */
 	@Test
 	void doesNotTreatAThreeSpaceIndentAsCode() {

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -395,6 +396,122 @@ class ClaudeMdConformerContractTest {
 
 		assertRuleRejects(generated);
 		assertRuleAccepts(conformer.conform(generated));
+	}
+
+	/**
+	 * A lone fence delimiter shown four columns in is how a document explains what a
+	 * fence looks like, and the rule reads it as the indented code it is. A conformer
+	 * that marked fences before indents opened a block on it that nothing closed, read
+	 * every heading below as code, and appended its own closing delimiter — so the
+	 * sections it then added landed after that delimiter, where the rule reads them as
+	 * code too. The document came back still missing the sections the reshape had just
+	 * written, which is the adoption failing its own {@link VerifyStep}.
+	 */
+	@Test
+	void appendsSectionsOutsideAFenceShownInsideAnIndentedCodeBlock() {
+		String generated = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full guide.
+
+				## Project
+
+				A fenced block opens with a line like this:
+
+				    ```
+
+				and closes with the same run.
+				""";
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformer.conform(generated));
+	}
+
+	/**
+	 * The same reading, on a document that already conforms. The reshape must be a
+	 * no-op: the two-pass masking left a stray delimiter at the end of the file and
+	 * appended a duplicate of every section it had read as code, and committed both.
+	 */
+	@Test
+	void leavesADocumentCarryingAnIndentedFenceSampleUnchanged() {
+		String conforming = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				A fenced block opens with a line like this:
+
+				    ```
+
+				and closes with the same run.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Testing
+
+				JUnit 5.
+
+				## Dependencies
+
+				Ask before adding a new one.
+				""";
+
+		assertRuleAccepts(conforming);
+		assertEquals(conforming, conformer.conform(conforming));
+	}
+
+	/**
+	 * A paragraph continuing a list item is prose to the rule, so a conformer that read
+	 * it as code would append a section the document already carries.
+	 */
+	@Test
+	void leavesADocumentWhoseSectionBodyContinuesAListItemUnchanged() {
+		String conforming = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+				## Project
+
+				- the modules are:
+
+				    `data`, `code`, and `adopt` are the reactor modules.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Testing
+
+				JUnit 5.
+
+				## Dependencies
+
+				Ask before adding a new one.
+				""";
+
+		assertRuleAccepts(conforming);
+		assertEquals(conforming, conformer.conform(conforming));
 	}
 
 	@Test

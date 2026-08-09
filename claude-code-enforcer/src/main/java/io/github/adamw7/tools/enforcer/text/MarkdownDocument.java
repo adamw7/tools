@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -46,6 +47,15 @@ import java.util.stream.IntStream;
  * reported the sample's own {@code TODO} and its {@code [link](sample.md)} as the
  * document's own — while the identical text inside a fence was correctly ignored.
  * <p>
+ * Where that indent is measured from is the enclosing list item, not the margin. A
+ * list item indents its own continuation paragraphs to the column its content
+ * starts at, so the four columns that quote code are four columns past
+ * <em>that</em> — a paragraph continuing a {@code -} item is prose however deep the
+ * item is nested. Measuring from the margin read every such paragraph as code: a
+ * module named only in one went unmentioned as far as
+ * {@link #containsInProse} was concerned, and a token a document forbids could be
+ * written there without the check that forbids it ever seeing it.
+ * <p>
  * The two ways are read in a single pass, because each decides what the other may
  * read. A fence inside an indented block is the delimiter that block illustrates,
  * not one this document opens: a lone {@code ```} shown four columns in is exactly
@@ -72,6 +82,14 @@ public final class MarkdownDocument {
 
 	/** One to six {@code #} characters, then whitespace and any text, or nothing at all. */
 	private static final Pattern ATX_HEADING = Pattern.compile("#{1,6}(\\s.*)?");
+
+	/**
+	 * The marker opening a list item, with the whitespace that separates it from the
+	 * item's content: a bullet, or an ordered marker, indented too little to be code
+	 * itself. What the match is wanted for is its width — the column the item's
+	 * content, and so its continuation paragraphs, are indented to.
+	 */
+	private static final Pattern LIST_MARKER = Pattern.compile("[ \\t]{0,3}(?:[-+*]|\\d{1,9}[.)])(?:[ \\t]+|$)");
 
 	private final List<String> lines;
 	private final boolean[] insideCode;
@@ -234,17 +252,40 @@ public final class MarkdownDocument {
 
 	/** The line's indent in columns, a tab counting on to the next four-column stop. */
 	private static int indentWidth(String line) {
-		int width = 0;
 		int index = 0;
 		while (index < line.length() && isIndent(line.charAt(index))) {
-			width += line.charAt(index) == TAB ? CODE_INDENT - width % CODE_INDENT : 1;
 			index++;
+		}
+		return widthOf(line, index);
+	}
+
+	/**
+	 * The display width of the line's first {@code length} characters, a tab counting
+	 * on to the next four-column stop. Both the indent that quotes code and the marker
+	 * that indents a list item's content are measured in these columns, so a tabbed
+	 * list is read the same way a spaced one is.
+	 */
+	private static int widthOf(String line, int length) {
+		int width = 0;
+		for (int index = 0; index < length; index++) {
+			width += line.charAt(index) == TAB ? CODE_INDENT - width % CODE_INDENT : 1;
 		}
 		return width;
 	}
 
 	private static boolean isIndent(char character) {
 		return character == SPACE || character == TAB;
+	}
+
+	/**
+	 * The column a list item's content is indented to when {@code line} opens one, or
+	 * {@link Scan#NO_LIST} when it opens none. A thematic break is not a list: its
+	 * {@code ---} carries no whitespace after the first dash, which is what separates a
+	 * marker from the content it introduces.
+	 */
+	private static int listContentIndent(String line) {
+		Matcher marker = LIST_MARKER.matcher(line);
+		return marker.lookingAt() ? widthOf(line, marker.end()) : Scan.NO_LIST;
 	}
 
 	/**
@@ -298,15 +339,19 @@ public final class MarkdownDocument {
 
 	/**
 	 * The state one pass over the document carries: the fence delimiter still open,
-	 * and whether an indented line would open a code block. Only a blank line, a line
-	 * already read as code, and the start of the document leave the latter open — an
-	 * indented line below a paragraph is a lazy continuation of it, which is what
-	 * stops an indented code block interrupting one.
+	 * whether an indented line would open a code block, and the list item an indent is
+	 * measured against. Only a blank line, a line already read as code, and the start
+	 * of the document leave the second open — an indented line below a paragraph is a
+	 * lazy continuation of it, which is what stops an indented code block interrupting
+	 * one.
 	 */
-	private record Scan(Delimiter fence, boolean mayIndent) {
+	private record Scan(Delimiter fence, boolean mayIndent, int listIndent) {
+
+		/** No list is open, so an indented line quotes code from the margin. */
+		static final int NO_LIST = -1;
 
 		static Scan start() {
-			return new Scan(null, true);
+			return new Scan(null, true, NO_LIST);
 		}
 
 		/**
@@ -320,25 +365,47 @@ public final class MarkdownDocument {
 				return insideFence(line, mask, index);
 			}
 			if (line.isBlank()) {
-				return start();
+				return new Scan(null, true, listIndent);
 			}
-			if (mayIndent && indentWidth(line) >= CODE_INDENT) {
+			if (mayIndent && indentWidth(line) >= codeIndent()) {
 				mask[index] = true;
-				return start();
+				return new Scan(null, true, listIndent);
 			}
 			return atDelimiter(line, mask, index);
+		}
+
+		/**
+		 * The column an indented code block opens at: four, or four past the content of
+		 * the list item the line sits in. A blank line does not close a list, so this
+		 * still stands over the gap between an item and its continuation paragraph.
+		 */
+		private int codeIndent() {
+			return listIndent == NO_LIST ? CODE_INDENT : listIndent + CODE_INDENT;
 		}
 
 		private Scan insideFence(String line, boolean[] mask, int index) {
 			mask[index] = true;
 			Delimiter delimiter = delimiterOf(line.strip());
-			return new Scan(delimiter != null && delimiter.closes(fence) ? null : fence, true);
+			return new Scan(delimiter != null && delimiter.closes(fence) ? null : fence, true, listIndent);
 		}
 
 		private Scan atDelimiter(String line, boolean[] mask, int index) {
 			Delimiter delimiter = delimiterOf(line.strip());
 			mask[index] = delimiter != null;
-			return new Scan(delimiter, delimiter != null);
+			return new Scan(delimiter, delimiter != null, listAfter(line));
+		}
+
+		/**
+		 * The list this line leaves open: the one its own marker opens, the one it
+		 * continues by staying indented to that item's content, or none when it falls
+		 * back to the margin and so ends the list.
+		 */
+		private int listAfter(String line) {
+			int opened = listContentIndent(line);
+			if (opened != NO_LIST) {
+				return opened;
+			}
+			return indentWidth(line) >= listIndent ? listIndent : NO_LIST;
 		}
 	}
 

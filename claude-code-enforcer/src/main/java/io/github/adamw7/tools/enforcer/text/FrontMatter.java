@@ -63,6 +63,9 @@ public final class FrontMatter {
 	/** How much of one entry is rendered before the walk gives up. See {@link #folded}. */
 	private static final int MAX_VALUE_LENGTH = 8192;
 
+	/** How deep the walk follows a node before it gives up. See {@link #folded}. */
+	private static final int MAX_DEPTH = 64;
+
 	private final List<NodeTuple> entries;
 
 	private FrontMatter(List<NodeTuple> entries) {
@@ -146,43 +149,64 @@ public final class FrontMatter {
 	 * YAML block writes them in. Every result is folded onto one line, so a literal
 	 * block scalar's newlines read the same way a folded one's do.
 	 * <p>
-	 * The rendering stops at {@value #MAX_VALUE_LENGTH} characters. Composing is
-	 * linear in the size of the document, but the node graph it answers is a graph
-	 * rather than a tree — an alias is the node it names, not a copy of it — so
-	 * walking it is not. Nine aliases nested nine deep is a few lines of YAML that
-	 * expands to hundreds of millions of characters, the shape known as a billion
-	 * laughs, and a rule that reads a repository's own files should not be the thing
-	 * that expands it. The cap is far above any value a rule meaningfully checks: a
-	 * description this long has already failed whatever length it was held to.
+	 * The rendering stops at {@value #MAX_VALUE_LENGTH} characters and
+	 * {@value #MAX_DEPTH} levels. Composing is linear in the size of the document, but
+	 * the node graph it answers is a graph rather than a tree — an alias is the node it
+	 * names, not a copy of it — so walking it is not. Nine aliases nested nine deep is a
+	 * few lines of YAML that expands to hundreds of millions of characters, the shape
+	 * known as a billion laughs, and a rule that reads a repository's own files should
+	 * not be the thing that expands it.
+	 * <p>
+	 * The two caps answer two different shapes, and the length alone answered only one.
+	 * An alias may name a node that <em>contains</em> it — {@code description: &loop}
+	 * over a {@code - *loop} composes to a graph with a cycle in it — and the walk of
+	 * such a graph never reaches a leaf to append at, so it recurses until the stack
+	 * runs out. A {@link StackOverflowError} is not a {@link YAMLException}: it escaped
+	 * {@link #entriesOf} and failed the build as an internal error rather than as the
+	 * unreadable front matter it is. Both caps are far above any value a rule
+	 * meaningfully checks: a description this long, or this deep, has already failed
+	 * whatever it was held to.
 	 */
 	private static String folded(Node node) {
 		StringBuilder text = new StringBuilder();
-		render(node, text);
+		render(node, text, 0);
 		return onOneLine(text.length() > MAX_VALUE_LENGTH ? text.substring(0, MAX_VALUE_LENGTH) : text.toString());
 	}
 
-	private static void render(Node node, StringBuilder text) {
+	/**
+	 * A scalar is rendered at any depth, since it ends the walk by itself. Only a
+	 * collection is held to {@value #MAX_DEPTH}, because only a collection can name a
+	 * node that leads back to it.
+	 */
+	private static void render(Node node, StringBuilder text, int depth) {
 		if (node instanceof ScalarNode scalar) {
 			text.append(scalar.getValue());
-		} else if (node instanceof MappingNode entries) {
-			entries.getValue().stream().takeWhile(entry -> hasRoom(text))
-					.forEach(entry -> renderEntry(entry, text));
-		} else if (node instanceof SequenceNode items) {
-			items.getValue().stream().takeWhile(item -> hasRoom(text)).forEach(item -> renderItem(item, text));
+		} else if (depth < MAX_DEPTH) {
+			renderCollection(node, text, depth);
 		}
 	}
 
-	private static void renderEntry(NodeTuple entry, StringBuilder text) {
-		separate(text);
-		render(entry.getKeyNode(), text);
-		text.append(KEY_VALUE_SEPARATOR).append(' ');
-		render(entry.getValueNode(), text);
+	private static void renderCollection(Node node, StringBuilder text, int depth) {
+		if (node instanceof MappingNode entries) {
+			entries.getValue().stream().takeWhile(entry -> hasRoom(text))
+					.forEach(entry -> renderEntry(entry, text, depth + 1));
+		} else if (node instanceof SequenceNode items) {
+			items.getValue().stream().takeWhile(item -> hasRoom(text))
+					.forEach(item -> renderItem(item, text, depth + 1));
+		}
 	}
 
-	private static void renderItem(Node item, StringBuilder text) {
+	private static void renderEntry(NodeTuple entry, StringBuilder text, int depth) {
+		separate(text);
+		render(entry.getKeyNode(), text, depth);
+		text.append(KEY_VALUE_SEPARATOR).append(' ');
+		render(entry.getValueNode(), text, depth);
+	}
+
+	private static void renderItem(Node item, StringBuilder text, int depth) {
 		separate(text);
 		text.append("- ");
-		render(item, text);
+		render(item, text, depth);
 	}
 
 	/** Separates one entry or item from the one before it, never doubling a space already there. */

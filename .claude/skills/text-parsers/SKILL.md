@@ -42,6 +42,8 @@ construction, so structural checks share them.
 | Headings are recognised **outside fences and outside comments** | A commented-out section must not satisfy the check that demands it. |
 | Comment state is tracked from **every delimiter on the line**, not the first characters | `Superseded: <!--` opens a block. `<!-- a --> <!-- b` ends open. Both were missed by a `startsWith`/`contains` pair. |
 | A comment inside a fence is sample text — **the fence wins** | Ordering matters: `commentMask` takes `insideFence` as input. |
+| Fences and indented code are marked in **one left-to-right pass**, not one after the other | Each decides what the other may read. A lone ```` ``` ```` shown four columns in is an *indented sample*, not an opening fence; marking fences first opens a block nothing closes and masks the rest of the file as code. |
+| The code indent is measured **from the enclosing list item's content**, not the margin | A list item indents its own continuation paragraphs. Measuring from the margin read every such paragraph as code, so a module named only there counted as unmentioned and a forbidden token written there was never seen. |
 | `containsInProse` skips comments *and* fences, both directions | A commented-out mention must neither satisfy a required-token check nor trip a forbidden-token one. |
 | A blank line and a commented-out line do **not** settle whether a section has a body | A section whose only content is commented out reads as empty, which is what commenting it out meant. |
 
@@ -60,6 +62,7 @@ re-derived by hand; those rules now come from the loader.
 | A key declared twice yields its **last** declaration | That is the one a YAML loader keeps, so the one Claude Code acts on. `duplicateKeys()` reports the duplication separately. |
 | A block no loader can read is **not front matter** | `description: "a" and "b"` and an unterminated `"oops` have no YAML meaning, and Claude Code's loader fails on them too. `parse` answers empty and the rules report the block's absence, which says more than a guess at the malformed line. A block that *reads* but is not a mapping — `name:value`, no space — is present and declares nothing. |
 | Front matter opens on the **very first line** | Content reaching `---` after blank lines has no front matter, because Claude Code sees none either. |
+| The walk is capped on **length and depth**, both | An alias is the node it names, so a few nested ones expand to hundreds of millions of characters — and one that names a node *containing* it composes to a cycle, which the length cap never sees because the walk never reaches a leaf to append at. It recursed until the stack ran out, and a `StackOverflowError` is not the `YAMLException` `parse` catches: it failed the build as an internal error. |
 
 The cases that used to need their own hand-written rule — `name: "git-commit"`
 unquoted, `Don't stop # a note` keeping its apostrophe, `version: 1.0#2` having
@@ -138,6 +141,14 @@ document the rule it exists to satisfy rejects, so the adoption failed its own
 `VerifyStep` on a file it had just reshaped to pass it — on someone else's
 repository, after the branch was pushed.
 
+**Mirroring the invariant is not enough; mirror the *algorithm*.** The conformer
+once read fences and indents in two passes where the rule read them in one. Every
+row of the table above still held on each pass alone, and the contract test had a
+case for a fenced sample and a case for an indented one — but none for a fence
+*inside* an indented sample, which is the only input the two orderings disagree
+on. Both readers now run the same single-pass `Scan`, which is what makes a case
+like that impossible to have on one side only.
+
 ## Adversarial input checklist
 
 Every row has broken a reader here. Run a new or changed reader against the ones
@@ -145,10 +156,11 @@ in its column before calling it done.
 
 | Input | Reader |
 |---|---|
-| ```` ```` ````-wrapped ```` ``` ````; `~~~` inside backticks; ```` ```java ```` as a closer | fences |
+| ```` ```` ````-wrapped ```` ``` ````; `~~~` inside backticks; ```` ```java ```` as a closer; a lone ```` ``` ```` indented four columns | fences |
 | `#1 rule: …`; `#hashtag`; `####### seven` | headings |
+| A paragraph indented four columns under a `-` or `1.` item; a six-column block under one; `---` as a thematic break, not a marker | indented code |
 | `Superseded: <!--`; `<!-- a --> <!-- b`; comment inside a fence; unterminated comment at EOF | comments |
-| `name: "git-commit"`; `Don't stop # a note`; `version: 1.0#2`; `description: >` then indented lines; `key:` bare; a key declared twice; `key:value` with no space | front matter |
+| `name: "git-commit"`; `Don't stop # a note`; `version: 1.0#2`; `description: >` then indented lines; `key:` bare; a key declared twice; `key:value` with no space; `&loop` over a `- *loop` that names it | front matter |
 | `[logo](assets/logo(1).png)`; a link inside backticks; a link inside a comment | links |
 | `@claude` in prose; `@adamw7`; `` `@docs/x.md` ``; `see @docs/setup.md.`; `@~/global.md`; `@/rooted.md`; `@RUNNER~1/notes.md` | imports |
 | `a.sh; b.sh`; a command across two lines; `( a.sh )`; `FOO=bar a.sh`; `if [ -n "$CI" ]; then a.sh; fi`; `bash -ec 'echo hi'`; `"my hook.sh"` | hook commands |

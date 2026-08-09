@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -90,6 +91,14 @@ public class ClaudeMdConformer {
 	 * front of the prose it already carried.
 	 */
 	private static final Pattern ATX_HEADING = Pattern.compile("#{1,6}(\\s.*)?");
+
+	/**
+	 * The marker opening a list item, with the whitespace that separates it from the
+	 * item's content: a bullet, or an ordered marker, indented too little to be code
+	 * itself. What the match is wanted for is its width — the column the item's content,
+	 * and so its continuation paragraphs, are indented to.
+	 */
+	private static final Pattern LIST_MARKER = Pattern.compile("[ \\t]{0,3}(?:[-+*]|\\d{1,9}[.)])(?:[ \\t]+|$)");
 
 	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
 	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
@@ -417,74 +426,142 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * Marks every line Markdown quotes as code, both ways it allows: the fenced
-	 * blocks first, then the indented ones over the same mask, so a fence's own lines
-	 * are already spoken for and an indent inside one is content rather than a block
-	 * of its own. This mirrors {@code MarkdownDocument} in the
-	 * {@code claude-code-enforcer} module, as {@link Delimiter} does; keep the two in
-	 * sync.
+	 * Marks every line Markdown quotes as code, both ways it allows, in one left to
+	 * right pass — so a fence's own lines are spoken for before an indent is read into
+	 * them, and an indented block's lines before a fence is. This mirrors
+	 * {@code MarkdownDocument} in the {@code claude-code-enforcer} module, as
+	 * {@link Delimiter} does; keep the two in sync.
+	 *
+	 * <p>The single pass is the whole point, because each way decides what the other
+	 * may read. Marking the fences first and the indents afterwards made a lone
+	 * {@code ```} shown four columns in — which is exactly how a document explains what
+	 * a fence looks like — open a block nothing closed. The reshape then read every
+	 * heading below it as code: it appended a closing fence of its own at the end of
+	 * the document and every section it went on to add landed <em>after</em> that
+	 * fence, where the rule reads them as code too. An already-conforming
+	 * {@code CLAUDE.md} came back with a stray delimiter and three duplicated sections,
+	 * and one that was missing a section came back still missing it — the adoption
+	 * failing its own {@link VerifyStep} on the very sections it had just written.
 	 *
 	 * @return the fence delimiter still open at the end of the document, or
 	 *         {@code null} when its fences balance
 	 */
 	private static Delimiter markCode(List<String> lines, boolean[] mask) {
-		Delimiter openFence = markFences(lines, mask);
-		markIndentedCode(lines, mask);
-		return openFence;
-	}
-
-	private static Delimiter markFences(List<String> lines, boolean[] mask) {
-		Delimiter open = null;
+		Scan scan = Scan.start();
 		for (int index = 0; index < lines.size(); index++) {
-			open = applyFence(lines.get(index).strip(), open, mask, index);
+			scan = scan.read(lines.get(index), mask, index);
 		}
-		return open;
+		return scan.fence();
 	}
 
 	/**
-	 * Marks the code Markdown quotes the other way it allows — by indenting it four
-	 * columns, a tab counting on to the next four-column stop. The rule has always
-	 * read those lines as code, and reading them as prose here made the reshape act
-	 * on a sample: a {@code ## Testing} shown as an indented example was taken for the
-	 * section the document already had, so the real one was never appended and the
-	 * adoption failed its own {@link VerifyStep} — and a near-miss heading inside one
-	 * was renamed in place, rewriting the sample and losing its indentation.
+	 * The state one pass over the document carries: the fence delimiter still open,
+	 * whether an indented line would open a code block, and the list item an indent is
+	 * measured against. Only a blank line, a line already read as code, and the start
+	 * of the document leave the second open — an indented line below a paragraph is a
+	 * lazy continuation of it rather than code. This mirrors {@code MarkdownDocument}'s
+	 * scan in the {@code claude-code-enforcer} module; keep the two in sync.
 	 */
-	private static void markIndentedCode(List<String> lines, boolean[] mask) {
-		boolean mayOpen = true;
-		for (int index = 0; index < lines.size(); index++) {
-			mayOpen = applyIndent(lines.get(index), mayOpen, mask, index);
-		}
-	}
+	private record Scan(Delimiter fence, boolean mayIndent, int listIndent) {
 
-	/**
-	 * Marks whether the line is indented code and returns whether an indented line
-	 * below it would open a block. Only a blank line, a line already masked as code,
-	 * and the start of the document leave that open: an indented line below a
-	 * paragraph is a lazy continuation of that paragraph rather than code. A blank
-	 * line is left unmarked, since it carries nothing to read either way.
-	 */
-	private static boolean applyIndent(String line, boolean mayOpen, boolean[] mask, int index) {
-		if (mask[index] || line.isBlank()) {
-			return true;
+		/** No list is open, so an indented line quotes code from the margin. */
+		static final int NO_LIST = -1;
+
+		static Scan start() {
+			return new Scan(null, true, NO_LIST);
 		}
-		mask[index] = mayOpen && indentWidth(line) >= CODE_INDENT;
-		return mask[index];
+
+		/**
+		 * Marks line {@code index} and answers the state the next line is read in. An
+		 * open fence claims the line first, then a blank line, which carries nothing to
+		 * read either way and so is left unmarked; only then may an indent open a block,
+		 * and only a line no indent claimed is read as a fence delimiter.
+		 */
+		Scan read(String line, boolean[] mask, int index) {
+			if (fence != null) {
+				return insideFence(line, mask, index);
+			}
+			if (line.isBlank()) {
+				return new Scan(null, true, listIndent);
+			}
+			if (mayIndent && indentWidth(line) >= codeIndent()) {
+				mask[index] = true;
+				return new Scan(null, true, listIndent);
+			}
+			return atDelimiter(line, mask, index);
+		}
+
+		/**
+		 * The column an indented code block opens at: four, or four past the content of
+		 * the list item the line sits in, since a list item indents its own continuation
+		 * paragraphs to that column. A blank line does not close a list, so this still
+		 * stands over the gap between an item and its continuation.
+		 */
+		private int codeIndent() {
+			return listIndent == NO_LIST ? CODE_INDENT : listIndent + CODE_INDENT;
+		}
+
+		private Scan insideFence(String line, boolean[] mask, int index) {
+			mask[index] = true;
+			Delimiter delimiter = delimiterOf(line.strip());
+			return new Scan(delimiter != null && delimiter.closes(fence) ? null : fence, true, listIndent);
+		}
+
+		private Scan atDelimiter(String line, boolean[] mask, int index) {
+			Delimiter delimiter = delimiterOf(line.strip());
+			mask[index] = delimiter != null;
+			return new Scan(delimiter, delimiter != null, listAfter(line));
+		}
+
+		/**
+		 * The list this line leaves open: the one its own marker opens, the one it
+		 * continues by staying indented to that item's content, or none when it falls
+		 * back to the margin and so ends the list.
+		 */
+		private int listAfter(String line) {
+			int opened = listContentIndent(line);
+			if (opened != NO_LIST) {
+				return opened;
+			}
+			return indentWidth(line) >= listIndent ? listIndent : NO_LIST;
+		}
 	}
 
 	/** The line's indent in columns, a tab counting on to the next four-column stop. */
 	private static int indentWidth(String line) {
-		int width = 0;
 		int index = 0;
 		while (index < line.length() && isIndent(line.charAt(index))) {
-			width += line.charAt(index) == TAB ? CODE_INDENT - width % CODE_INDENT : 1;
 			index++;
+		}
+		return widthOf(line, index);
+	}
+
+	/**
+	 * The display width of the line's first {@code length} characters, a tab counting
+	 * on to the next four-column stop. Both the indent that quotes code and the marker
+	 * that indents a list item's content are measured in these columns.
+	 */
+	private static int widthOf(String line, int length) {
+		int width = 0;
+		for (int index = 0; index < length; index++) {
+			width += line.charAt(index) == TAB ? CODE_INDENT - width % CODE_INDENT : 1;
 		}
 		return width;
 	}
 
 	private static boolean isIndent(char character) {
 		return character == SPACE || character == TAB;
+	}
+
+	/**
+	 * The column a list item's content is indented to when {@code line} opens one, or
+	 * {@link Scan#NO_LIST} when it opens none. A thematic break is not a list: its
+	 * {@code ---} carries no whitespace after the first dash, which is what separates a
+	 * marker from the content it introduces.
+	 */
+	private static int listContentIndent(String line) {
+		Matcher marker = LIST_MARKER.matcher(line);
+		return marker.lookingAt() ? widthOf(line, marker.end()) : Scan.NO_LIST;
 	}
 
 	private static boolean markComments(List<String> lines, boolean[] code, boolean[] mask) {
@@ -535,23 +612,6 @@ public class ClaudeMdConformer {
 		String delimiter = open ? COMMENT_END : COMMENT_START;
 		int next = line.indexOf(delimiter, from);
 		return next < 0 ? open : remainsOpen(line, next + delimiter.length(), !open);
-	}
-
-	/**
-	 * Marks whether the line is code and returns the fence delimiter still open after
-	 * it. A fence is closed only by a delimiter that {@link Delimiter#closes} it, so a
-	 * {@code ~~~} line inside a {@code ```} block, a {@code ```java} line inside a
-	 * {@code ```} block, and a {@code ```} line inside a {@code ````} wrapper all stay
-	 * content.
-	 */
-	private static Delimiter applyFence(String line, Delimiter open, boolean[] mask, int index) {
-		Delimiter delimiter = delimiterOf(line);
-		if (open == null) {
-			mask[index] = delimiter != null;
-			return delimiter;
-		}
-		mask[index] = true;
-		return delimiter != null && delimiter.closes(open) ? null : open;
 	}
 
 	/** @return the fence delimiter the line declares, or {@code null} when it declares none */

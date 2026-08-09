@@ -18,6 +18,32 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 
 class BuildSystemsTest {
 
+	/**
+	 * {@link AdoptionAssets#WRITTEN_PATHS} is built once from {@link BuildSystems#DEFAULTS},
+	 * but the pipeline runs on {@link BuildSystems#defaults(Optional)} with whatever rule
+	 * version the run pinned. The two lists are read for different things and nothing
+	 * makes them agree, so a build system whose written paths depended on its
+	 * configuration would drop out of the guards that list feeds: {@link CloneStep} would
+	 * read the file it writes as a contributor's uncommitted work and refuse to resume,
+	 * and {@link CommitStep} would stop noticing that the checkout ignores it — the
+	 * adoption reported complete with the guard it wired in missing from the branch.
+	 * Pinning the invariant here fails this module's build the day one does, rather than
+	 * some adopted repository's.
+	 */
+	@Test
+	void everyPinnedRuleVersionYieldsTheWrittenPathsTheGuardsWereBuiltFrom() {
+		List<String> fromDefaults = writtenPathsOf(BuildSystems.DEFAULTS);
+
+		assertEquals(fromDefaults, writtenPathsOf(BuildSystems.defaults(Optional.empty())));
+		assertEquals(fromDefaults, writtenPathsOf(BuildSystems.defaults(Optional.of("2.5.0"))));
+		assertTrue(AdoptionAssets.WRITTEN_PATHS.containsAll(fromDefaults),
+				"every build file a guard is wired into must be a path the adoption accounts for");
+	}
+
+	private List<String> writtenPathsOf(List<BuildSystem> buildSystems) {
+		return buildSystems.stream().map(BuildSystem::writtenPaths).flatMap(List::stream).toList();
+	}
+
 	@Test
 	void detectsMavenFromPom(@TempDir Path directory) throws IOException {
 		Files.writeString(directory.resolve("pom.xml"), "<project/>");

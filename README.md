@@ -246,7 +246,7 @@ Solution:
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
 	<!-- Use the latest release: https://github.com/adamw7/tools/releases/latest -->
-	<version>2.4.0</version>
+	<version>2.5.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
 		<pkgs>
@@ -368,9 +368,24 @@ Given [`greeter.proto`](grpc-example/src/main/proto/greeter.proto):
 ```proto
 syntax = "proto2";
 
-message HelloRequest {
+package greeter;
+
+option java_multiple_files = true;
+option java_package = "io.github.adamw7.tools.grpc.proto";
+
+message Address {
+  required string city = 1;
+  optional string country = 2;
+}
+
+message Person {
   required string name = 1;
   optional string title = 2;
+  optional Address address = 3;
+}
+
+message HelloRequest {
+  required Person person = 1;
 }
 
 message HelloReply {
@@ -384,7 +399,16 @@ service Greeter {
 
 Two generators run during the build:
 1. **`protobuf-maven-plugin`** compiles the proto definitions into protobuf message classes and gRPC service stubs (`GreeterGrpc`).
-2. **`protogen-maven-plugin`** (this repo) generates compile-time-safe builders (`HelloRequestBuilder`, `HelloReplyBuilder`) that refuse to call `build()` until every `required` field is set.
+2. **`protogen-maven-plugin`** (this repo) generates compile-time-safe builders (`AddressBuilder`, `PersonBuilder`, `HelloRequestBuilder`, `HelloReplyBuilder`) that refuse to call `build()` until every `required` field is set.
+
+The messages are composed — a `HelloRequest` points to a `Person`, which points to
+an `Address` — so the generated builders compose the same way, assembling a request
+bottom-up through a three-level chain:
+```java
+Address address = new AddressBuilder().setCity("London").setCountry("UK").build();
+Person person = new PersonBuilder().setName("Smith").setTitle("Dr.").setAddress(address).build();
+HelloRequest request = new HelloRequestBuilder().setPerson(person).build();
+```
 
 The service implementation uses the generated builder:
 ```java
@@ -1039,9 +1063,8 @@ The default pipeline runs these steps in order:
    (`Adopt Claude Code: add CLAUDE.md`), reported as `commit:claude-md`.
 9. **`EnforcerStep`** — detects the checkout's build system and wires the
    `CLAUDE.md` guard into it. A Maven project has the `claude-code-enforcer` added
-   to its root `pom.xml` via `PomEnforcerInstaller` (the edit is done on the JDK's
-   DOM — no third-party XML library — is namespace-aware, and is idempotent); a
-   Gradle project has a `enforceClaudeMd` guard task appended to its
+   to its root `pom.xml` via `PomEnforcerInstaller` (namespace-aware and
+   idempotent); a Gradle project has a `enforceClaudeMd` guard task appended to its
    `build.gradle`/`build.gradle.kts` via `GradleGuardInstaller`, wired into
    `check`. A repository with no recognised build file falls back to a
    `FallbackBuildSystem` that installs a GitHub Actions workflow and the portable
@@ -1054,8 +1077,9 @@ The default pipeline runs these steps in order:
    only its `build/plugins`: a project running the rule behind an opt-in profile,
    or declaring it in `pluginManagement`, is left alone instead of being given a
    second, always-on copy. The POM edit is spliced into the bytes the file already
-   holds, so the adoption commit shows the added block and nothing else — writing
-   the edited DOM out whole would normalise details a DOM does not record,
+   holds, at the source offsets `PomDocument` reads back from **jsoup**'s XML
+   parser, so the adoption commit shows the added block and nothing else — writing
+   a parsed document out whole would normalise details a DOM does not record,
    collapsing a start tag spread over several lines and rewriting `<rule />` as
    `<rule/>`, turning a fourteen-line addition into a diff across the file.
 10. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
@@ -1194,7 +1218,7 @@ mvn -pl data -am test
 `ReactorModuleConvergence` enforcer rule.)
 or across the whole repository as part of `mvn install`.
 
-# Building
+## Building
 ```
 mvn clean install
 ```
@@ -1202,13 +1226,13 @@ The clean part is needed since the build contain code generation so if you remov
 ```
 mvn install
 ```
-# Releasing
+## Releasing
 In order to release a new version - X you need to:
 1. Change the revision property to X in root pom.xml
 2. Commit and push
 3. Check if all builds pass
 4. Release and mark as latest in GitHub
 
-# License
+## License
 
 This project is licensed under the [MIT License](LICENSE).

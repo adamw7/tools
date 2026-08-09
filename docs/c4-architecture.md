@@ -528,7 +528,7 @@ flowchart TB
         direction TB
 
         subgraph base ["rule — shared bases"]
-            entry["<b>ClaudeCodeEnforcerRule</b><br/><i>the aggregate entry rule</i>"]
+            entry["<b>ClaudeCodeEnforcerRule</b><br/><i>the base every rule extends:<br/>severity · reportFile · baselineFile</i>"]
             bases["<b>MarkdownFormatRule ·<br/>JsonFileRule · ScanTargets ·<br/>JsonNodes · Baseline · HtmlReport</b>"]
         end
 
@@ -548,6 +548,10 @@ flowchart TB
             secrets["<b>NoSecretsRule / CredentialPattern</b>"]
         end
 
+        subgraph okfRules ["okf — Open Knowledge Format bundles"]
+            okf["<b>OkfBundleFormatRule</b>"]
+        end
+
         subgraph textSupport ["text — parsing support"]
             text["<b>MarkdownDocument · FrontMatter ·<br/>FrontMatterFixer · NameConvention</b>"]
         end
@@ -556,32 +560,41 @@ flowchart TB
     docsFiles["📄 CLAUDE.md · AGENTS.md · README.md"]
     config["🗂️ .claude/ · .mcp.json ·<br/>.claude-plugin/plugin.json"]
     pom["📦 Root pom.xml<br/><i>&lt;module&gt; list</i>"]
+    bundle["🗂️ OKF bundle<br/><i>bundleDir</i>"]
 
-    build --> entry
+    build -->|"runs the configured rules"| docs
+    build --> defs
+    build --> sets
+    build --> secrets
+    build --> okf
+    docs -.->|"extends"| entry
+    defs -.->|"extends"| entry
+    sets -.->|"extends"| entry
+    secrets -.->|"extends"| entry
+    okf -.->|"extends"| entry
     entry --> bases
-    entry --> docs
-    entry --> defs
-    entry --> sets
-    entry --> secrets
     docs --> text
     defs --> text
+    okf --> text
     docs --> docsFiles
     docs --> pom
     defs --> config
     sets --> config
     secrets --> config
     secrets --> docsFiles
+    okf --> bundle
 
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class entry,bases,docs,defs,sets,secrets,text comp
-    class build,docsFiles,config,pom ext
+    class entry,bases,docs,defs,sets,secrets,okf,text comp
+    class build,docsFiles,config,pom,bundle ext
     style enforcer fill:#f2f7fc,stroke:#438dd5,color:#08427b
     style base fill:#eef4ec,stroke:#6b3fa0,color:#46296b
     style docRules fill:#fff7ec,stroke:#d59a43,color:#7a5418
     style defRules fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
     style setRules fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
     style secRules fill:#f0f0fb,stroke:#6b3fa0,color:#46296b
+    style okfRules fill:#fdf0f0,stroke:#d56b6b,color:#7a3030
     style textSupport fill:#f5f5f5,stroke:#999999,color:#333333
 ```
 
@@ -654,7 +667,7 @@ flowchart TB
     dev["👤 Java Developer<br/><i>./k8s/run-on-minikube.sh</i>"]
 
     subgraph build ["Build host (docker + Maven)"]
-        maven["<b>mvn package</b><br/><i>assembly fat jar</i>"]
+        maven["<b>mvn package</b><br/><i>assembly distribution:<br/>launcher jar + lib/</i>"]
         image["<b>tools-k8s image</b><br/><i>assembly/Dockerfile</i><br/>launcher jar + lib/ + console log4j2"]
     end
 

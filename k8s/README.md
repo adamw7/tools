@@ -12,7 +12,6 @@ for a run-to-completion workload is a **Job**, not a Deployment.
 
 | File                         | Purpose                                                             |
 | ---------------------------- | ------------------------------------------------------------------- |
-| `Dockerfile`                 | Runnable deployment image (fixed numeric UID for `runAsNonRoot`).   |
 | `configmap-sample-data.yaml` | Sample CSV (`people.csv`) mounted at `/data`.                       |
 | `job-uniqueness-check.yaml`  | Job that runs `SampleApp` against the CSV and prints the result.    |
 | `kustomization.yaml`         | Bundles the ConfigMap + Job for `kubectl apply -k k8s/`.            |

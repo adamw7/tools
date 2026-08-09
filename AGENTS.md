@@ -514,10 +514,12 @@ Every workflow builds on JDK 25 (Temurin) and passes `-ntp`.
 
 ### Dependency updates
 
-Version bumps arrive from two bots with a deliberate division of labour
-([ADR 0005](docs/adr/0005-renovate-dependency-updates.md),
+Two bots are meant to split the work ([ADR 0005](docs/adr/0005-renovate-dependency-updates.md),
 [ADR 0006](docs/adr/0006-dependabot-security-updates.md)): **Renovate** owns
-routine version currency, **Dependabot** owns security remediation. Renovate's
+routine version currency, **Dependabot** owns security remediation. Only Renovate
+is in force today — ADR 0006 is still `Proposed`, because Dependabot security
+updates are a repository *setting* rather than a committed file and have not been
+switched on; the record flips to `Accepted` when they are. Renovate's
 configuration is `.github/renovate.json`:
 
 - It runs on a **schedule** (Monday before 06:00 UTC, ≤ 5 open PRs, 2 per hour),

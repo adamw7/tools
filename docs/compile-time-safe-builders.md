@@ -86,7 +86,7 @@ exist on the earlier interfaces.
 
 ```mermaid
 flowchart LR
-    start(["Person.newBuilder()<br/>returns <b>IdIfc</b>"])
+    start(["new PersonBuilder()<br/>is an <b>IdIfc</b>"])
 
     subgraph req ["REQUIRED — one interface per field, no build() here"]
         direction LR

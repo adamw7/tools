@@ -195,7 +195,10 @@ If the uniqueness_check tool doesn't appear in your MCP client:
 The server communicates using the Model Context Protocol over stdio:
 - **Input**: JSON-RPC messages via standard input
 - **Output**: JSON-RPC responses via standard output
-- **Logging**: Log messages are written to stderr (configured via Log4j2)
+- **Logging**: Log messages go to a rolling file, `logs/app.log`
+  (`src/main/resources/log4j2.properties`). The configuration is deliberately
+  file-only: this server owns standard output for the JSON-RPC stream, and a
+  console appender there would corrupt the protocol
 
 ### Server Capabilities
 
@@ -233,51 +236,67 @@ mvn test
 
 ### Debugging
 
-To enable debug logging, modify the Log4j2 configuration or set system properties:
+To enable debug logging, modify the Log4j2 configuration or point Log4j2 at
+another one. Keep the replacement file-based for the stdio transport — a console
+appender would write into the JSON-RPC stream:
 
 ```bash
-java -Dlog4j.configurationFile=log4j2-debug.xml -jar tools.data-{version}-boot.jar
+java -Dlog4j2.configurationFile=log4j2-debug.xml -jar tools.data-{version}-boot.jar
 ```
 
 ## Extending the Server
 
-To add new tools to the MCP server:
+Tools are written against the `mcp-common` module's own SPI, never against the
+MCP SDK: a tool implements `McpTool` and speaks in the transport-neutral
+`ToolDefinition`, `ToolArguments` and `ToolResult` types, and
+`AbstractMcpConfiguration` translates them for the SDK when it wires the server.
+An ArchUnit rule pins this — every concrete `*Tool` must implement `McpTool`.
 
-1. Create a new tool class implementing `Function<Map<String, Object>, CallToolResult>`
-2. Define the tool specification using `Tool.builder()`
-3. Register the tool in `McpConfiguration.java` using `syncServer.addTool()`
+1. Create a new tool class implementing `McpTool`, exposing its
+   `ToolDefinition` (name, description, JSON input schema) and mapping the
+   call's arguments to a `ToolResult`
+2. Read arguments through `ToolArguments`, which reports a missing or
+   ill-typed one for you
+3. Add it to the list `McpConfiguration.tools()` returns
 
 Example:
 ```java
-@Component
-public class MyNewTool implements Function<Map<String, Object>, CallToolResult> {
+public class MyNewTool implements McpTool {
 
-    private final Tool toolDefinition = Tool.builder()
-        .name("my_tool")
-        .description("Description of what this tool does")
-        .inputSchema("{ /* JSON schema */ }")
-        .build();
+    private final ToolDefinition toolDefinition = new ToolDefinition("my_tool",
+            "Description of what this tool does",
+            Map.of(
+                "type", "object",
+                "properties", Map.of(
+                    "file", Map.of("type", "string", "description", "filename")
+                ),
+                "required", List.of("file")
+            ));
 
     @Override
-    public CallToolResult apply(Map<String, Object> arguments) {
-        // Tool implementation
-        return new CallToolResult(List.of(new TextContent(result)), false);
+    public ToolDefinition getToolDefinition() {
+        return toolDefinition;
     }
 
-    public Tool getToolDefinition() {
-        return toolDefinition;
+    @Override
+    public ToolResult apply(Map<String, Object> arguments) {
+        String file = ToolArguments.requiredString(arguments, "file");
+        return ToolResult.success(resultFor(file));
     }
 }
 ```
 
 Then register it in `McpConfiguration`:
 ```java
-MyNewTool myTool = new MyNewTool();
-SyncToolSpecification.Builder toolSpec = SyncToolSpecification.builder()
-    .tool(myTool.getToolDefinition())
-    .callHandler((exchange, request) -> myTool.apply(request.arguments()));
-syncServer.addTool(toolSpec.build());
+@Override
+protected List<McpTool> tools() {
+    confineFileAccess();
+    return List.of(new UniquenessTool(), new MyNewTool());
+}
 ```
+
+A `RuntimeException` thrown out of `apply` already becomes an error result, so
+there is no need to catch one just to report it over the protocol.
 
 ## Related Documentation
 

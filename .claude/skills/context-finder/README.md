@@ -9,7 +9,7 @@
 Helps Claude use the `code/context` module: the `Context` contract, the
 name-based `Finder` vs the `PackageAwareFinder`, `ProjectSources` loading,
 `BudgetedContext` with a `TokenEstimator`, the project-tree builder and its
-serializers, and the three MCP tools over them.
+serializers, OKF bundles, and the four MCP tools over them.
 
 ---
 

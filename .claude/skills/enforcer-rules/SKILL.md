@@ -87,6 +87,14 @@ Report *all* violations together, not the first one. A rule that throws mid-scan
 makes a contributor fix one problem per build. Build a `List<String>` and hand it
 to `report(...)`.
 
+**One violation is one line.** A baseline stores one accepted violation per line,
+so a message spanning several could never be matched again: it was suppressed by
+nothing and reported as stale for ever. Rules build their own messages on one
+line, but they quote back text they did not write — the entry `permissionsFormat`
+echoes is any string the settings file declared — so `Baseline` folds every line
+break out of a live violation and a recorded entry alike. Interpolating
+untrusted text is fine; emitting a deliberate `\n` in a message is not.
+
 ## Testing a rule
 - Tests live beside the rule (`…/enforcer/<package>/MyNewRuleTest.java`) and lay
   out fixtures in a `@TempDir` with the `TestFiles` helpers

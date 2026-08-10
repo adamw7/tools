@@ -46,6 +46,25 @@ class AdoptionReportWriterTest {
 		assertTrue(node.get("completedSteps").isEmpty());
 	}
 
+	/**
+	 * A dry run publishes nothing and a caller that named no workspace was given a
+	 * temporary one, so without this field neither has anything to be pointed at: the
+	 * checkout the adoption committed to is the whole of what such a run produced.
+	 */
+	@Test
+	void serialisesTheCheckoutTheAdoptionWorkedIn() throws IOException {
+		AdoptionReport report = new AdoptionReport();
+		report.recordCheckout("/tmp/claude-adopt-1234/repo");
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context, report))));
+		assertEquals("/tmp/claude-adopt-1234/repo", node.get("checkout").asText());
+	}
+
+	@Test
+	void serialisesAMissingCheckoutAsNull() throws IOException {
+		JsonNode node = mapper.readTree(writer.toJson(List.of(run(context))));
+		assertTrue(node.get("checkout").isNull(), "a run that never claimed one keeps the document's shape");
+	}
+
 	@Test
 	void serialisesASuccessfulRunAsSucceededWithNoFailure() throws IOException {
 		AdoptionReport report = new AdoptionReport();

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.adopt;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -410,6 +411,45 @@ class CliArgumentsTest {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, CliArguments.HELP_FLAG });
 		assertTrue(cli.helpRequested());
 		assertEquals(List.of(REPO_URL), cli.repositoryUrls());
+	}
+
+	/**
+	 * picocli calls an option's method as it parses, so an argument it cannot read is
+	 * raised while {@code --help} is still only a flag further along the line. The
+	 * operator asking what the flags are was answered with the failure of one of them.
+	 */
+	@Test
+	void answersHelpEvenWhenAnotherArgumentCouldNotBeRead(@TempDir Path dir) {
+		String missing = dir.resolve("absent.txt").toString();
+		assertTrue(CliArguments.parse(new String[] { CliArguments.HELP_FLAG, "--repos", missing }).helpRequested());
+		assertTrue(CliArguments.parse(new String[] { "--timeout", "soon", CliArguments.HELP_FLAG }).helpRequested());
+		assertTrue(CliArguments.parse(new String[] { "--not-a-flag", CliArguments.HELP_SHORTHAND }).helpRequested());
+	}
+
+	/** Without {@code --help} on the line, an unreadable argument is still the answer. */
+	@Test
+	void stillRefusesAnUnreadableArgumentWhenNoHelpIsAsked(@TempDir Path dir) {
+		String missing = dir.resolve("absent.txt").toString();
+		assertFailure(AdoptionException.class, () -> CliArguments.parse(new String[] { "--repos", missing }),
+				"Could not read the repository URL list");
+	}
+
+	/**
+	 * The parser quotes the argument it could not place, and one of this command's
+	 * arguments is a clone URL carrying credentials. A fourth positional — an operator
+	 * writing two repositories where the slots hold one — was refused with the token
+	 * spelled out, and that refusal is the last thing the run prints. The parser's own
+	 * exception must not be chained either: its message carries the same text, which
+	 * the stack trace of an uncaught refusal prints straight back out.
+	 */
+	@Test
+	void masksCredentialsInTheRefusalOfAnArgumentTheParserCannotPlace() {
+		String credentialled = "https://x-access-token:s3cr3t@github.com/owner/repo.git";
+		RuntimeException refusal = assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { credentialled, "/tmp/ws", "main", credentialled }),
+				"***@github.com", CliArguments.USAGE);
+		assertFalse(refusal.getMessage().contains("s3cr3t"), refusal.getMessage());
+		assertNull(refusal.getCause(), "the parser's exception carries the unmasked argument as its message");
 	}
 
 	@Test

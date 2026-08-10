@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 
@@ -32,6 +33,27 @@ class CloneStepTest {
 		assertEquals(List.of("git", "clone", "https://github.com/adamw7/tools.git",
 				workspace.resolve("tools").toString()), runner.commandAt(0));
 		assertEquals(workspace, runner.invocations().get(0).workingDirectory());
+	}
+
+	/**
+	 * The checkout is the run's one output that never reaches GitHub, so a caller that
+	 * named no workspace — and a dry run, which publishes nothing at all — has nothing
+	 * else to be pointed at.
+	 */
+	@Test
+	void reportsTheCheckoutItWorksIn() {
+		AdoptionReport report = new AdoptionReport();
+		step.execute(context, new RecordingCommandRunner(), report);
+		assertEquals(workspace.resolve("tools").toAbsolutePath().toString(), report.checkout().orElseThrow());
+	}
+
+	/** Recorded before the clone runs, so a run that stopped part-way still says where it stopped. */
+	@Test
+	void reportsTheCheckoutEvenWhenTheCloneFails() {
+		AdoptionReport report = new AdoptionReport();
+		RecordingCommandRunner runner = RecordingCommandRunner.failing(128, "fatal: repository not found");
+		assertThrows(AdoptionException.class, () -> step.execute(context, runner, report));
+		assertEquals(workspace.resolve("tools").toAbsolutePath().toString(), report.checkout().orElseThrow());
 	}
 
 	/**

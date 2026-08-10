@@ -14,9 +14,17 @@ class AdoptionReportTest {
 	void startsEmpty() {
 		AdoptionReport report = new AdoptionReport();
 		assertTrue(report.completedSteps().isEmpty());
+		assertTrue(report.checkout().isEmpty());
 		assertTrue(report.pullRequestUrl().isEmpty());
 		assertTrue(report.failure().isEmpty());
 		assertTrue(report.succeeded());
+	}
+
+	@Test
+	void recordsCheckout() {
+		AdoptionReport report = new AdoptionReport();
+		report.recordCheckout("/tmp/claude-adopt-1234/repo");
+		assertEquals("/tmp/claude-adopt-1234/repo", report.checkout().orElseThrow());
 	}
 
 	@Test

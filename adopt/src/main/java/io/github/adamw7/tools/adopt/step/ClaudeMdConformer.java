@@ -79,6 +79,9 @@ public class ClaudeMdConformer {
 	private static final char TAB = '\t';
 	private static final char SPACE = ' ';
 
+	/** The mark a UTF-8 document may open with; see {@link #splitLines}. */
+	private static final char BYTE_ORDER_MARK = '\uFEFF';
+
 	/** The indent Markdown reads as a code block, and the width a tab advances to. */
 	private static final int CODE_INDENT = 4;
 
@@ -142,8 +145,21 @@ public class ClaudeMdConformer {
 		return join(lines);
 	}
 
+	/**
+	 * A leading byte-order mark is dropped, the same reading {@code MarkdownText} takes
+	 * before the rule sees the document. Keeping it left the title line as a
+	 * {@code U+FEFF} in front of {@code # CLAUDE.md}, which {@link String#strip()} does
+	 * not shorten — the mark is not whitespace — so the reshape concluded the title was
+	 * missing and prepended a second one. The rule accepted the result either way,
+	 * having stripped the mark itself, so nothing downstream reported the duplicated
+	 * title the adoption had just committed.
+	 */
 	private List<String> splitLines(String content) {
-		return new ArrayList<>(List.of(LineTerminators.normalized(content).split("\n", -1)));
+		return new ArrayList<>(List.of(LineTerminators.normalized(withoutByteOrderMark(content)).split("\n", -1)));
+	}
+
+	private static String withoutByteOrderMark(String content) {
+		return content.isEmpty() || content.charAt(0) != BYTE_ORDER_MARK ? content : content.substring(1);
 	}
 
 	/**

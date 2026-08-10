@@ -150,6 +150,22 @@ class ClaudeMdConformerTest {
 		assertEquals(ClaudeMdConformer.TITLE, conformed.lines().findFirst().orElseThrow());
 	}
 
+	/**
+	 * The rule strips a leading byte-order mark before it reads the document, and
+	 * {@link String#strip()} does not — the mark is not whitespace. So a title the rule
+	 * was perfectly happy with read as absent here, and the reshape prepended a second
+	 * one, leaving the adoption's first commit carrying the title twice with nothing
+	 * downstream to report it.
+	 */
+	@Test
+	void recognisesATitleBehindAByteOrderMark() {
+		String conforming = conforming();
+		String conformed = conformer.conform("\uFEFF" + conforming);
+		assertEquals(1, conformed.lines().filter(ClaudeMdConformer.TITLE::equals).count(),
+				"the title must be recognised, not added a second time:\n" + conformed);
+		assertEquals(conforming, conformed, "nothing but the mark itself may change");
+	}
+
 	@Test
 	void ignoresHeadingsInsideCodeFencesWhenCanonicalising() {
 		String generated = """
@@ -192,10 +208,15 @@ class ClaudeMdConformerTest {
 
 	@Test
 	void leavesAnAlreadyConformingDocumentUnchanged() {
-		String conforming = ("# CLAUDE.md\n\n" + ClaudeMdConformer.AGENTS_REFERENCE_LINE + "\n\n"
-				+ requiredSectionsBody()).stripTrailing() + "\n";
+		String conforming = conforming();
 		String conformed = conformer.conform(conforming);
 		assertEquals(conforming, conformed, "a conforming document must be a no-op");
+	}
+
+	/** A document the reshape has nothing to do to, for the tests that are about what it leaves alone. */
+	private String conforming() {
+		return ("# CLAUDE.md\n\n" + ClaudeMdConformer.AGENTS_REFERENCE_LINE + "\n\n"
+				+ requiredSectionsBody()).stripTrailing() + "\n";
 	}
 
 	@Test

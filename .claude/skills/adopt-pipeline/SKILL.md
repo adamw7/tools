@@ -51,7 +51,8 @@ public interface AdoptionStep {
 }
 ```
 Implement the three-argument variant only when the step contributes a fact to
-the report (e.g. `PullRequestStep` and the PR URL).
+the report: `CloneStep` records the checkout directory, `PullRequestStep` the
+pull request's URL.
 
 ### Adding a step — the checklist ArchUnit enforces
 - Class name **ends with `Step`** and lives in `…adopt.step`.

@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.jsoup.nodes.Element;
 
@@ -123,23 +124,32 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Asks every plugin the POM <em>binds</em>, not only its {@code build/plugins},
-	 * because a project that already runs the rule may well wire it behind an opt-in
-	 * profile. Looking only at the build would report such a POM as unguarded and
-	 * wire in a second, always-on copy of a rule the project already runs on its own
-	 * terms.
+	 * Asks the plugins of the POM's own {@code build} — the one place a rule runs on
+	 * every build, and the very place {@link #enforcerPluginOfTheBuild} would add one.
+	 * The guard is looked for exactly where it would be written, so what is inspected
+	 * and what is edited cannot disagree.
 	 *
-	 * <p>What it does not ask is {@code pluginManagement}, which binds nothing: a
-	 * rule declared only there never runs, so treating it as a guard left the project
-	 * with none and the pull request still claiming one — the same silent outcome
-	 * {@link #enforcerPluginOfTheBuild} refuses to produce from the other direction,
-	 * since {@link VerifyStep}'s {@code mvn -N validate} passes either way.
+	 * <p>A rule declared anywhere else is not one an ordinary build runs, so it is not
+	 * a guard this installer may stand down for. A {@code pluginManagement} entry binds
+	 * nothing at all; a {@code profile} binds only while that profile is activated, and
+	 * a {@code reporting} plugin does not run in the build lifecycle. Counting any of
+	 * them left the project with no guard on the build its contributors and its CI
+	 * actually run, and nothing downstream said so — {@link VerifyStep}'s
+	 * {@code mvn -N validate} passes precisely because the rule never ran — so the
+	 * adoption opened a pull request claiming a guard the default build does not have.
+	 * That is the outcome {@link #enforcerPluginOfTheBuild} already refuses to produce
+	 * when <em>adding</em>; accepting it when <em>detecting</em> produced it anyway.
+	 *
+	 * <p>A project that deliberately gated the rule behind a profile therefore ends up
+	 * running it on every build too. That is the direction to err in: an extra run of a
+	 * rule the project chose is visible and removable, while a guard nobody runs reads
+	 * as adopted and is not.
 	 *
 	 * <p>What counts as already running it is the rule being configured, not the
 	 * artifact that supplies it being on the plugin — see {@link #runsClaudeMdRule}.
 	 */
 	private boolean alreadyRunsTheRule(PomDocument pom) {
-		return pom.boundPlugins().stream().anyMatch(this::runsClaudeMdRule);
+		return buildPlugins(pom).anyMatch(this::runsClaudeMdRule);
 	}
 
 	/**
@@ -176,21 +186,29 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
-	 * one. Where the rule is <em>looked for</em> is every plugin the POM binds — see
-	 * {@link #alreadyRunsTheRule} — but where it is <em>added</em> cannot be: an
-	 * execution spliced into {@code pluginManagement} only configures a plugin the
-	 * build never runs, and one spliced into a profile runs only when that profile is
-	 * activated. Neither enforces anything, and neither shows up as a failure —
+	 * one. An execution spliced into {@code pluginManagement} only configures a plugin
+	 * the build never runs, and one spliced into a profile runs only when that profile
+	 * is activated. Neither enforces anything, and neither shows up as a failure —
 	 * {@link VerifyStep}'s {@code mvn -N validate} would pass without the rule ever
 	 * executing and the adoption would advertise a guard the project does not have. A
 	 * POM whose only enforcer sits somewhere else therefore gets its own declaration
 	 * in {@code build/plugins}.
 	 */
 	private Optional<Element> enforcerPluginOfTheBuild(PomDocument pom) {
-		return pom.at(BUILD_PLUGINS).stream()
-				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream())
-				.filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
+		return buildPlugins(pom).filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
 				.findFirst();
+	}
+
+	/**
+	 * The plugins the POM's own {@code build} binds, which every build runs. Said once
+	 * because {@link #alreadyRunsTheRule} and {@link #enforcerPluginOfTheBuild} ask
+	 * about the same place for the same reason, and a guard looked for somewhere other
+	 * than where it would be written is a guard the installer can stand down for
+	 * without one ever being run.
+	 */
+	private Stream<Element> buildPlugins(PomDocument pom) {
+		return pom.at(BUILD_PLUGINS).stream()
+				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream());
 	}
 
 	/**

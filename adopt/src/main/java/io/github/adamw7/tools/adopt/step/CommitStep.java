@@ -46,6 +46,9 @@ public class CommitStep extends AbstractCommandStep {
 	/** The step name an unqualified commit reports, and the prefix a qualified one carries. */
 	static final String NAME = "commit";
 
+	/** The exit code {@code git diff --quiet} reports differences with; see {@link #hasStagedChanges}. */
+	private static final int STAGED_CHANGES = 1;
+
 	private final String message;
 	private final String name;
 
@@ -130,10 +133,22 @@ public class CommitStep extends AbstractCommandStep {
 				.toList();
 	}
 
+	/**
+	 * {@code git diff --quiet} answers with its exit code: zero for nothing staged, and
+	 * {@value #STAGED_CHANGES} for something. Anything above that is the command failing
+	 * rather than answering — a checkout it could not read, a repository it could not
+	 * open — and reading every non-zero code as "there is something to commit" turned
+	 * that into a {@code git commit} failure two lines later, naming the commit rather
+	 * than the query that could not be run.
+	 */
 	private boolean hasStagedChanges(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),
 				List.of("git", "diff", "--cached", "--quiet"));
-		return !result.succeeded();
+		if (result.exitCode() > STAGED_CHANGES) {
+			throw new AdoptionException(name() + " could not ask git what is staged in "
+					+ context.repositoryDirectory() + ": " + result.redactedOutput().strip());
+		}
+		return result.exitCode() == STAGED_CHANGES;
 	}
 
 	private void commit(AdoptionContext context, CommandRunner runner) {

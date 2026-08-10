@@ -120,6 +120,36 @@ class GradleGuardInstallerTest {
 	}
 
 	/**
+	 * The block comment is the form a whole declaration is commented out with, since it
+	 * takes the registration's braces and its body in one go. Reading only the line form
+	 * left the task name plainly in the text, so the script was taken to declare the
+	 * task already and the guard was never appended — and
+	 * {@link GradleBuildSystem#verifyCommand(Path)} then ran a task the build has not.
+	 */
+	@Test
+	void installsTheGuardWhenADeclarationIsInsideABlockComment(@TempDir Path directory) throws IOException {
+		Path buildFile = write(directory, "build.gradle",
+				"/*\ntasks.register('enforceClaudeMd') {\n    doLast { }\n}\n*/\nplugins { id 'java' }\n");
+		assertTrue(installer.install(buildFile));
+		assertTrue(Files.readString(buildFile).contains("tasks.register('enforceClaudeMd')"));
+	}
+
+	/**
+	 * An unterminated block comment is a syntax error whichever way it is read, so the
+	 * script is left as it is rather than having everything below the {@code /*} treated
+	 * as commented out — which would append a second registration to a script that
+	 * plainly declares one.
+	 */
+	@Test
+	void stillSeesADeclarationBelowAnUnterminatedBlockComment(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		String own = "/* work in progress\ntasks.register('enforceClaudeMd') {\n    doLast { }\n}\n";
+		Files.writeString(buildFile, own);
+		assertFalse(installer.install(buildFile));
+		assertEquals(own, Files.readString(buildFile));
+	}
+
+	/**
 	 * A project that registers the task itself keeps its own version: appending a
 	 * second registration of the same name would fail the Gradle build outright.
 	 */

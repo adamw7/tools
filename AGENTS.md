@@ -112,12 +112,18 @@ What is worth knowing before changing any of it:
   drift. `CliArguments` declares the command line to **picocli**, binding each
   option to a method so a batch mixing `--repo` and `--repos` keeps the order it
   was written in; refusals are re-raised as an `IllegalArgumentException`
-  carrying the hand-written usage line.
+  carrying the hand-written usage line, with the parser's own message masked
+  through `Redaction` and its exception left unchained — it quotes the argument it
+  could not place, which for this command can be a credentialled clone URL.
+  `--help` is answered with the usage line even when another argument on the same
+  line could not be read.
 - **The wired rule version may not be a `-SNAPSHOT`** (`EnforcerRuleVersion`): it
   resolves only from the adopting machine's local repository and would leave the
   adopted project's CI unable to build.
-- **Detection reads what a pom *binds***, in the build or a profile — not a
-  `pluginManagement` entry, which pins a version and runs nothing.
+- **Detection reads the pom's own `build/plugins`** — the one place a rule runs on
+  every build, and the very place the installer would add one. A rule declared only
+  in `pluginManagement`, a profile, or `reporting` runs on no ordinary build, so the
+  project gets an always-on declaration of its own and keeps the one it had.
 - **A pom is edited as text, never re-serialised** (`PomDocument`): the addition
   is spliced into the bytes the file already held, at the source offsets
   **jsoup**'s XML parser reports for every start and end tag, so the adoption

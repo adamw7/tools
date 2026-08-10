@@ -6,10 +6,10 @@ import java.util.Optional;
 
 /**
  * The machine-readable outcome of an adoption run: the steps that completed, in
- * order, and the URL of the pull request the run opened (or found already open).
- * {@link GitHubRepoAdopter#adopt} fills one in and returns it, so callers can
- * report what happened without scraping logs. The pull-request URL is absent until
- * a step records it.
+ * order, the checkout they were made in, and the URL of the pull request the run
+ * opened (or found already open). {@link GitHubRepoAdopter#adopt} fills one in and
+ * returns it, so callers can report what happened without scraping logs. The
+ * checkout and the pull-request URL are absent until a step records them.
  *
  * <p>A run that fails part-way is reported too: the steps that did complete stay
  * recorded and the failing step's message becomes the run's failure, so an
@@ -18,11 +18,17 @@ import java.util.Optional;
 public final class AdoptionReport {
 
 	private final List<String> completedSteps = new ArrayList<>();
+	private String checkout;
 	private String pullRequestUrl;
 	private String failure;
 
 	public void recordStep(String name) {
 		completedSteps.add(name);
+	}
+
+	/** @param directory the checkout the adoption works in, as an absolute path */
+	public void recordCheckout(String directory) {
+		this.checkout = directory;
 	}
 
 	public void recordPullRequestUrl(String url) {
@@ -35,6 +41,17 @@ public final class AdoptionReport {
 
 	public List<String> completedSteps() {
 		return List.copyOf(completedSteps);
+	}
+
+	/**
+	 * @return the directory the adoption's checkout was made in, or empty when the run
+	 *         stopped before it claimed one. It is the run's one output that does not
+	 *         reach GitHub, so a dry run — which pushes nothing and opens no pull
+	 *         request — has nothing else to point a caller at, and a caller that named
+	 *         no workspace could not otherwise find the temporary one it was given.
+	 */
+	public Optional<String> checkout() {
+		return Optional.ofNullable(checkout);
 	}
 
 	public Optional<String> pullRequestUrl() {

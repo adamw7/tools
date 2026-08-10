@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
@@ -83,6 +84,20 @@ public class CloneStep extends AbstractCommandStep {
 	@Override
 	public String name() {
 		return "clone";
+	}
+
+	/**
+	 * Records the checkout before doing anything to it, so a run that fails part-way
+	 * still says where the working tree it left behind is. It is recorded here because
+	 * this is the step that owns the checkout, and it is worth recording at all because
+	 * nothing else answers the question: a caller that named no workspace was given a
+	 * temporary one, and a dry run — which pushes nothing and opens no pull request —
+	 * leaves that directory as the only thing there is to read.
+	 */
+	@Override
+	public void execute(AdoptionContext context, CommandRunner runner, AdoptionReport report) {
+		report.recordCheckout(context.repositoryDirectory().toAbsolutePath().toString());
+		execute(context, runner);
 	}
 
 	@Override

@@ -10,10 +10,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Renders the outcome of an adoption run as JSON, to a string or to a file:
- * repository, branch, pull-request URL, whether the run succeeded, and the steps
- * that completed. An absent pull-request URL, and a successful run's
- * {@code failure}, are serialised as JSON {@code null} so the document's shape
- * stays stable for consumers.
+ * repository, branch, the checkout the adoption was made in, pull-request URL,
+ * whether the run succeeded, and the steps that completed. An absent checkout or
+ * pull-request URL, and a successful run's {@code failure}, are serialised as JSON
+ * {@code null} so the document's shape stays stable for consumers.
+ *
+ * <p>The checkout is in the document because it is the one output a run has that
+ * does not reach GitHub: a dry run publishes nothing, and a caller that named no
+ * workspace was given a temporary one it has no other way to find.
  *
  * <p>A run over several repositories is wrapped in a batch document instead: an
  * overall {@code succeeded}, true only when every repository was adopted, plus a
@@ -52,6 +56,7 @@ public class AdoptionReportWriter {
 		ObjectNode node = mapper.createObjectNode();
 		node.put("repositoryUrl", run.repositoryUrl());
 		node.put("branch", run.branchName());
+		node.put("checkout", run.report().checkout().orElse(null));
 		node.put("pullRequestUrl", run.report().pullRequestUrl().orElse(null));
 		node.put("succeeded", run.succeeded());
 		node.put("failure", run.failure().orElse(null));

@@ -79,20 +79,23 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 - `dry_run` (boolean, optional): rehearse the adoption — clone, branch, commit,
   wire in the guard, and verify it, but push nothing and open no pull request.
   The pipeline is assembled without those two steps, so `completedSteps` ends at
-  `verify` and the checkout is left in the workspace to be read. Worth reaching
-  for before letting a call write to GitHub
+  `verify` and the checkout is left to be read at the `checkout` path the report
+  answers with. Worth reaching for before letting a call write to GitHub
 - `timeout_minutes` (integer, optional): how long any one `git`/`claude`/`gh`/build
   command may run before it is killed. Defaults to 10, and is bounded to a day —
   this server is long-lived, so a command it could never reclaim is refused
 
 **Returns** a JSON report. Each commit the adoption makes is named for what it
 commits (`commit:claude-md`, `commit:guard`, `commit:assets`), so a run that
-stopped part-way says which of them landed:
+stopped part-way says which of them landed. `checkout` is where the adoption's
+working tree is — the run's one output that never reaches GitHub, and the only
+way to find the temporary directory a call that named no `workspace` was given:
 
 ```json
 {
   "repositoryUrl" : "https://github.com/owner/repo.git",
   "branch" : "claude/adopt-claude-code",
+  "checkout" : "/tmp/claude-adopt-4711/repo",
   "pullRequestUrl" : "https://github.com/owner/repo/pull/42",
   "succeeded" : true,
   "failure" : null,

@@ -90,28 +90,6 @@ final class PomDocument {
 	}
 
 	/**
-	 * Every {@code plugin} the POM binds to a build, wherever that build sits: the
-	 * project's own or a profile's. A project can wire a plugin somewhere other than
-	 * its build — behind an opt-in profile, most often — and a check that only looked
-	 * there would conclude the plugin is absent and add a second declaration of it.
-	 *
-	 * <p>A {@code pluginManagement} entry is deliberately not one of them. It says
-	 * which version to use if the plugin is ever bound and nothing more, so a rule
-	 * declared only there is a rule no build ever runs.
-	 */
-	List<Element> boundPlugins() {
-		return selfAndDescendants(root).stream()
-				.filter(element -> "plugin".equals(localName(element)))
-				.filter(element -> !isManaged(element))
-				.toList();
-	}
-
-	/** Whether the element sits under a {@code pluginManagement}, at any depth. */
-	private static boolean isManaged(Element element) {
-		return element.parents().stream().anyMatch(parent -> "pluginManagement".equals(localName(parent)));
-	}
-
-	/**
 	 * The element the nested {@code path} names below the root, or empty when the POM
 	 * does not carry every level of it. The counterpart of {@link #insertUnder}: a
 	 * caller asks about the very place it would add to, so what it inspects and what

@@ -401,17 +401,29 @@ class PomEnforcerInstallerTest {
 	}
 
 	/**
-	 * A project may well run the guard from somewhere other than its {@code build}:
-	 * behind an opt-in profile, most often, so ordinary builds are unaffected.
-	 * Looking only at {@code build/plugins} reports such a POM as unguarded and wires
-	 * in a second, always-on copy of a rule the project already runs on its own
-	 * terms.
+	 * A rule behind an opt-in profile is not one an ordinary build runs, so it is not a
+	 * guard the installer may stand down for. Counting it left the project with no
+	 * guard on the build its contributors and its CI actually run, and nothing said so:
+	 * {@link VerifyStep}'s {@code mvn -N validate} passes precisely because the rule
+	 * never ran, so the adoption opened a pull request claiming a guard the default
+	 * build does not have — the outcome the installer already refuses to produce when
+	 * it <em>adds</em>, reached by the way it <em>detects</em> instead.
+	 *
+	 * <p>The profile keeps its own declaration verbatim, so the project runs the rule
+	 * twice under that profile. That is the direction to err in: an extra run of a rule
+	 * the project chose is visible and removable, while a guard nobody runs reads as
+	 * adopted and is not.
 	 */
 	@Test
-	void leavesAPomThatWiresTheRuleInsideAProfileAlone(@TempDir Path dir) throws IOException {
+	void wiresTheRuleIntoTheBuildWhenAProfileIsTheOnlyPlaceItRuns(@TempDir Path dir) throws IOException {
 		Path pom = write(dir, POM_WITH_RULE_IN_A_PROFILE);
-		assertFalse(installer.install(pom), "the rule is already wired in, in the profile");
-		assertEquals(POM_WITH_RULE_IN_A_PROFILE, Files.readString(pom), "the POM must not have been touched");
+		assertTrue(installer.install(pom), "a profiled rule runs only when the profile is activated");
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<build>"), "the POM had no build of its own and needs one to run the rule from");
+		assertTrue(result.contains(CLAUDE_RULE_DECLARATION), "the profile's own declaration must be left verbatim");
+		assertEquals(2, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
+				"the build needs its own declaration alongside the profile's:\n" + result);
+		assertTrue(result.contains("<claudeMdFile>"), "the added rule must be the configured, always-on one");
 	}
 
 	/**
@@ -447,11 +459,12 @@ class PomEnforcerInstallerTest {
 	}
 
 	/**
-	 * A profile binds the rule on its own terms and is therefore respected;
-	 * {@code pluginManagement} binds nothing at all. Counting a managed declaration as
-	 * a guard left the project with none, silently: nothing was added, and
+	 * {@code pluginManagement} binds nothing at all: it says which version to use if
+	 * the plugin is ever bound, and no more. Counting a managed declaration as a guard
+	 * left the project with none, silently — nothing was added, and
 	 * {@link VerifyStep}'s {@code mvn -N validate} passed because the rule never ran,
-	 * so the pull request advertised a guard that did not exist.
+	 * so the pull request advertised a guard that did not exist. It is the same reason
+	 * a profiled rule does not count either.
 	 */
 	@Test
 	void wiresTheRuleInWhenTheOnlyDeclarationIsManaged(@TempDir Path dir) throws IOException {

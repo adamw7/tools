@@ -46,8 +46,20 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 		assignees = supplied(assignees);
 	}
 
-	/** @return the entries that name something, stripped — the rule {@link Text} defines for every optional input */
+	/**
+	 * An absent list is read as naming nobody, the same answer a blank title gets from
+	 * {@link Text#orDefault}: this is the record's promise that its lists are never
+	 * {@code null}, so it cannot be the one place a caller has to satisfy it first. A
+	 * {@code null} reached here as a message-less {@link NullPointerException} out of a
+	 * constructor whose documentation says the lists are defensively copied.
+	 *
+	 * @return the entries that name something, stripped — the rule {@link Text} defines
+	 *         for every optional input
+	 */
 	private static List<String> supplied(List<String> values) {
+		if (values == null) {
+			return List.of();
+		}
 		return values.stream().filter(Text::isPresent).map(String::strip).toList();
 	}
 

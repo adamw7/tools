@@ -42,6 +42,15 @@ public class GradleGuardInstaller {
 	private static final Pattern DECLARATION = Pattern.compile(
 			"(?:register|create)\\s*\\(\\s*[\"']" + GUARD_TASK + "[\"']|\\btask\\s+" + GUARD_TASK + "\\b");
 
+	/**
+	 * A terminated {@code /*} … {@code *}{@code /} comment, however many lines it spans.
+	 * The shortest match is taken so two comments on one line stay two, and an
+	 * unterminated one is left in the script: it is a syntax error either way, and
+	 * swallowing the rest of the file would read every real declaration below it as
+	 * commented out.
+	 */
+	private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
+
 	private static final String GROOVY_BLOCK = """
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
@@ -90,15 +99,26 @@ public class GradleGuardInstaller {
 	 * than left without the one {@link GradleBuildSystem#verifyCommand(Path)} runs.
 	 */
 	private boolean declaresGuard(String script) {
-		return DECLARATION.matcher(withoutCommentLines(script)).find();
+		return DECLARATION.matcher(withoutComments(script)).find();
 	}
 
 	/**
-	 * The lines are rejoined rather than matched one at a time so a registration
-	 * spread over several lines is still recognised.
+	 * Both ways either DSL lets a registration be commented out. The block form is
+	 * removed first and by span rather than by line, because it is the form a whole
+	 * declaration is commented out with — a {@code /*} … {@code *}{@code /} around
+	 * {@code tasks.register('enforceClaudeMd')} left the name plainly in the text, so
+	 * the script was read as already declaring the task and the guard was never
+	 * appended; {@link VerifyStep} then ran a task the build does not have.
+	 *
+	 * <p>The line form is dropped afterwards, and the lines are rejoined rather than
+	 * matched one at a time so a registration spread over several lines is still
+	 * recognised.
 	 */
-	private String withoutCommentLines(String script) {
-		return script.lines().filter(line -> !line.strip().startsWith(LINE_COMMENT)).collect(Collectors.joining("\n"));
+	private String withoutComments(String script) {
+		String withoutBlocks = BLOCK_COMMENT.matcher(script).replaceAll("");
+		return withoutBlocks.lines()
+				.filter(line -> !line.strip().startsWith(LINE_COMMENT))
+				.collect(Collectors.joining("\n"));
 	}
 
 	private String blockFor(Path buildFile) {

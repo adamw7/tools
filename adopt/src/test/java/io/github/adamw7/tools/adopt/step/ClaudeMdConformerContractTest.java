@@ -514,6 +514,50 @@ class ClaudeMdConformerContractTest {
 		assertEquals(conforming, conformer.conform(conforming));
 	}
 
+	/**
+	 * The rule strips a leading byte-order mark before reading; {@link String#strip()}
+	 * does not, the mark being no kind of whitespace. So a conformer that did not strip
+	 * one either read the title as absent and prepended a second — and the rule accepted
+	 * that too, which is why only comparing the two readings catches it.
+	 */
+	@Test
+	void leavesADocumentOpeningWithAByteOrderMarkAcceptableAndTitledOnce() {
+		String conforming = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Testing
+
+				JUnit 5.
+
+				## Dependencies
+
+				Ask before adding a new one.
+				""";
+
+		String conformed = conformer.conform("\uFEFF" + conforming);
+		assertRuleAccepts(conformed);
+		assertEquals(1, conformed.lines().filter("# CLAUDE.md"::equals).count(),
+				"the rule reads the title through the mark, so the reshape must not add another:\n" + conformed);
+	}
+
 	@Test
 	void leavesADocumentThatAlreadySatisfiesTheRuleAcceptable() {
 		String conforming = """

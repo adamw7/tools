@@ -31,6 +31,22 @@ class CommitStepTest {
 		assertEquals(List.of("git", "commit", "-m", "my message"), runner.commandAt(5));
 	}
 
+	/**
+	 * {@code git diff --quiet} answers with its exit code: zero for nothing staged, one
+	 * for something. A higher code is the command failing rather than answering, and
+	 * reading every non-zero one as "there is something to commit" reported it as a
+	 * {@code git commit} that failed — naming the commit rather than the query that
+	 * could not be run.
+	 */
+	@Test
+	void reportsAStagingAreaItCouldNotReadRatherThanCommittingAnyway() {
+		RecordingCommandRunner runner = new RecordingCommandRunner(this::unreadableStagingArea);
+		assertFailure(AdoptionException.class, () -> new CommitStep("my message").execute(context, runner),
+				"could not ask git what is staged", "not a git repository");
+		assertTrue(runner.invocations().stream().noneMatch(invocation -> invocation.command().contains("commit")),
+				"a query that could not be run must not be read as work to commit");
+	}
+
 	@Test
 	void suppliesAFallbackIdentityWhenGitHasNone() {
 		RecordingCommandRunner runner = new RecordingCommandRunner(this::stagedChangesWithoutIdentity);
@@ -154,6 +170,13 @@ class CommitStepTest {
 		}
 		if (command.contains("config")) {
 			return new CommandResult(command, 1, "");
+		}
+		return new CommandResult(command, 0, "");
+	}
+
+	private CommandResult unreadableStagingArea(List<String> command) {
+		if (command.contains("diff")) {
+			return new CommandResult(command, 128, "fatal: not a git repository");
 		}
 		return new CommandResult(command, 0, "");
 	}

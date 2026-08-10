@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import picocli.CommandLine;
@@ -29,7 +30,8 @@ import picocli.CommandLine.ParameterException;
  * ({@code --report <file>}). A blank workspace or branch positional falls back to
  * its default; an unknown flag, or one missing its value, fails with the usage
  * line rather than being ignored — as does {@code --help}, which asks for that
- * line and so is answered with it instead.
+ * line and so is answered with it instead, whatever else on the command line
+ * could not be read.
  *
  * <p>The arguments are matched by picocli rather than by a loop of this module's
  * own: the option names, their values, the three positional slots and the
@@ -102,14 +104,35 @@ public final class CliArguments {
 
 	public static CliArguments parse(String[] args) {
 		CliArguments cli = new CliArguments();
+		String[] arguments = args == null ? new String[0] : args;
 		try {
-			new CommandLine(cli).setOverwrittenOptionsAllowed(true)
-					.parseArgs(args == null ? new String[0] : args);
+			new CommandLine(cli).setOverwrittenOptionsAllowed(true).parseArgs(arguments);
 		} catch (ParameterException e) {
-			throw refusal(e);
+			return helpOrRefusal(cli, arguments, e);
 		}
 		cli.requireSomethingToAdopt();
 		return cli;
+	}
+
+	/**
+	 * A command line that asked for the usage line is answered with it even when
+	 * another of its arguments could not be read. picocli calls an option's method as
+	 * it parses, so an unreadable {@code --repos} file, a {@code --timeout} that is not
+	 * a number, or a misspelled flag is raised while {@code --help} is still only a flag
+	 * further along the list — and {@code --help --repos missing.txt} was refused for the
+	 * file rather than answered with the line it asked for. The refusal is the answer
+	 * only for a run that was asking to adopt something.
+	 */
+	private static CliArguments helpOrRefusal(CliArguments cli, String[] args, ParameterException e) {
+		if (asksForHelp(args)) {
+			cli.help = true;
+			return cli;
+		}
+		throw refusal(e);
+	}
+
+	private static boolean asksForHelp(String[] args) {
+		return Stream.of(args).anyMatch(arg -> HELP_FLAG.equals(arg) || HELP_SHORTHAND.equals(arg));
 	}
 
 	/**
@@ -158,12 +181,22 @@ public final class CliArguments {
 	 * still sees an {@link AdoptionException} for a file it could not read. Anything
 	 * else is the parser's own complaint about the command line, which is answered
 	 * with the usage line as every other bad argument is.
+	 *
+	 * <p>The parser's complaint quotes the argument it could not place, and one of the
+	 * arguments this command takes is a clone URL carrying credentials: a fourth
+	 * positional — an operator writing two repositories where the slots hold one — was
+	 * refused with {@code Unmatched argument at index 3:
+	 * 'https://x-access-token:TOKEN@github.com/owner/repo.git'}, which is the last thing
+	 * the run prints. It goes through {@link Redaction}, as every other message the
+	 * adoption raises about a URL does. The parser's own exception is deliberately
+	 * <em>not</em> chained: it carries the unmasked text as its message, which the
+	 * stack trace of an uncaught refusal would print straight back out.
 	 */
 	private static RuntimeException refusal(ParameterException e) {
 		if (e.getCause() instanceof RuntimeException raised) {
 			return raised;
 		}
-		return new IllegalArgumentException(e.getMessage() + ". " + USAGE, e);
+		return new IllegalArgumentException(Redaction.of(e.getMessage()) + ". " + USAGE);
 	}
 
 	/**

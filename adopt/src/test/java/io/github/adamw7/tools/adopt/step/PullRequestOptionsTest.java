@@ -34,6 +34,20 @@ class PullRequestOptionsTest {
 		assertTrue(options.draft());
 	}
 
+	/**
+	 * The record documents its lists as defensively copied and never {@code null}, so
+	 * an absent one is read as naming nobody — the answer a blank title already gets.
+	 * A {@code null} used to come back out as a message-less
+	 * {@link NullPointerException} from the very constructor making that promise.
+	 */
+	@Test
+	void readsAnAbsentListAsNamingNobody() {
+		PullRequestOptions options = new PullRequestOptions("Title", "Body", null, null, null, false);
+		assertTrue(options.reviewers().isEmpty());
+		assertTrue(options.labels().isEmpty());
+		assertTrue(options.assignees().isEmpty());
+	}
+
 	@Test
 	void trimsTitleAndBody() {
 		PullRequestOptions options = options("  Title  ", "  Body  ");

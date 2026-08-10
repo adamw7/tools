@@ -895,7 +895,9 @@ the branch is never pushed and no pull request is opened. The pipeline is
 assembled *without* those two steps rather than with steps that decide to do
 nothing, so the report's `completedSteps` ends at `verify` and says what really
 happened. The checkout is left in the workspace for the adoption's commits to be
-read before any of it is published:
+read before any of it is published, and the report's `checkout` says where it is
+— which is the only way to find the temporary workspace a run that named none was
+given:
 
 ```bash
 mvn -pl adopt exec:java \
@@ -943,6 +945,7 @@ single-repository run writes unwrapped:
   "repositories" : [ {
     "repositoryUrl" : "https://github.com/owner/repo.git",
     "branch" : "claude/adopt-claude-code",
+    "checkout" : "/tmp/claude-adopt-4711/repo",
     "pullRequestUrl" : "https://github.com/owner/repo/pull/42",
     "succeeded" : true,
     "failure" : null,
@@ -950,6 +953,7 @@ single-repository run writes unwrapped:
   }, {
     "repositoryUrl" : "https://github.com/owner/other.git",
     "branch" : "claude/adopt-claude-code",
+    "checkout" : "/tmp/claude-adopt-4711/other",
     "pullRequestUrl" : null,
     "succeeded" : false,
     "failure" : "clone: repository not found",
@@ -1073,10 +1077,15 @@ The default pipeline runs these steps in order:
    carries — a repository with its own `claude-md-guard.yml` or its own
    `enforceClaudeMd` registration keeps it. Supporting a new build tool is a
    matter of adding a `BuildSystem` implementation rather than branching inside
-   the step. For Maven that already-declared check spans the whole POM rather than
-   only its `build/plugins`: a project running the rule behind an opt-in profile,
-   or declaring it in `pluginManagement`, is left alone instead of being given a
-   second, always-on copy. The POM edit is spliced into the bytes the file already
+   the step. For Maven that already-declared check asks the POM's own
+   `build/plugins` — the one place a rule runs on every build, and the very place
+   the installer would add one, so what it inspects and what it edits cannot
+   disagree. A rule declared only in `pluginManagement`, only inside a profile, or
+   only under `reporting` is not one an ordinary build runs, so the project is
+   given an always-on declaration of its own and the one it had is left verbatim.
+   Standing down for any of those left the build its contributors and its CI
+   actually run with no guard at all, which `VerifyStep` cannot catch — its
+   `mvn -N validate` passes precisely because the rule never ran. The POM edit is spliced into the bytes the file already
    holds, at the source offsets `PomDocument` reads back from **jsoup**'s XML
    parser, so the adoption commit shows the added block and nothing else — writing
    a parsed document out whole would normalise details a DOM does not record,

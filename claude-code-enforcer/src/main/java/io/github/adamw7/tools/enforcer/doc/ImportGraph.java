@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -80,7 +81,7 @@ final class ImportGraph {
 
 	/** The imports {@code file} declares, in document order, or none when it was never reached. */
 	List<Reference> importsOf(File file) {
-		return references.getOrDefault(normalized(file), List.of());
+		return references.getOrDefault(ProjectFiles.normalized(file), List.of());
 	}
 
 	/**
@@ -88,18 +89,13 @@ final class ImportGraph {
 	 * when no chain of imports reaches it.
 	 */
 	int hopsTo(File file) {
-		return hops.getOrDefault(normalized(file), Integer.MAX_VALUE);
-	}
-
-	/** The absolute, symlink-free-of-dot-segments path a file is keyed by. */
-	static Path normalized(File file) {
-		return file.toPath().toAbsolutePath().normalize();
+		return hops.getOrDefault(ProjectFiles.normalized(file), Integer.MAX_VALUE);
 	}
 
 	/** Breadth-first, so a file is first reached by its shortest chain of imports. */
 	private void explore(File root) {
 		Deque<File> queue = new ArrayDeque<>();
-		hops.put(normalized(root), 0);
+		hops.put(ProjectFiles.normalized(root), 0);
 		queue.add(root);
 		while (!queue.isEmpty()) {
 			expand(queue.poll(), queue);
@@ -107,7 +103,7 @@ final class ImportGraph {
 	}
 
 	private void expand(File file, Deque<File> queue) {
-		Path path = normalized(file);
+		Path path = ProjectFiles.normalized(file);
 		List<Reference> found = referencesIn(file);
 		references.put(path, found);
 		int depth = hops.get(path);
@@ -118,7 +114,7 @@ final class ImportGraph {
 
 	/** A target is queued once, at the first — and so shortest — depth it is reached by. */
 	private void enqueue(Reference reference, int depth, Deque<File> queue) {
-		Path path = normalized(reference.target());
+		Path path = ProjectFiles.normalized(reference.target());
 		if (reference.target().isFile() && !hops.containsKey(path)) {
 			hops.put(path, depth);
 			queue.add(reference.target());
@@ -189,7 +185,7 @@ final class ImportGraph {
 	 * to be started on.
 	 */
 	private File rootedAt(File file, String imported) {
-		return normalized(file).getRoot().resolve(imported.substring(1)).toFile();
+		return ProjectFiles.normalized(file).getRoot().resolve(imported.substring(1)).toFile();
 	}
 
 	/**

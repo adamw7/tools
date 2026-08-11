@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import javax.inject.Named;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
+
 /**
  * Enforcer rule that fails the build when any sub-agent definition under the
  * configured agents directory is malformed. Every {@code *.md} file directly in
@@ -54,7 +56,7 @@ public class SubAgentFormatRule extends DefinitionFormatRule {
 	private void collectFrontMatterViolations(File definition, FrontMatterChecks checks) {
 		checks.requireKeys(Objects.requireNonNullElse(requiredKeys, DEFAULT_REQUIRED_KEYS));
 		checks.rejectDuplicateKeys();
-		checks.checkName(DefinitionFiles.baseName(definition));
+		checks.checkName(ProjectFiles.markdownBaseName(definition));
 		checks.checkDescription(0);
 		checks.checkModel(allowedModels);
 	}

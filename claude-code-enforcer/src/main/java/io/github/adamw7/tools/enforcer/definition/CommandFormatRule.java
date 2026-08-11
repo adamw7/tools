@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.inject.Named;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -50,7 +51,7 @@ public class CommandFormatRule extends DefinitionFormatRule {
 
 	/** A command answers to its file name, so the convention check compares that name only to itself. */
 	private void collectNamedViolations(File command, String content, List<String> violations) {
-		String baseName = DefinitionFiles.baseName(command);
+		String baseName = ProjectFiles.markdownBaseName(command);
 		NameConvention.collect(baseName, baseName, command.toString(), violations);
 		frontMatterOf(content, command, violations).ifPresent(this::collectFrontMatterViolations);
 	}

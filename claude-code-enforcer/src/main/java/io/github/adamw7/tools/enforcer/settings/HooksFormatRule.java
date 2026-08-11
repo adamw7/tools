@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
 /**
@@ -78,27 +78,12 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	public void execute() throws EnforcerRuleException {
 		requireConfigured(hooksDir, "hooksDir");
 		List<String> violations = new ArrayList<>();
-		List<File> scripts = scriptFiles();
+		List<File> scripts = ProjectFiles.filesIn(hooksDir);
 		for (File script : scripts) {
 			collectScriptViolations(script, violations);
 		}
 		collectWiringViolations(scripts, violations);
 		report("Hook scripts are not well formed:", violations);
-	}
-
-	/**
-	 * The regular files directly under the hooks directory, sorted.
-	 * {@link File#listFiles} yields entries in an unspecified, filesystem-dependent
-	 * order, which would let this rule report the same violations in a different
-	 * order run-to-run and so churn both the HTML report and a recorded baseline.
-	 */
-	private List<File> scriptFiles() {
-		File[] files = hooksDir.listFiles(File::isFile);
-		if (files == null) {
-			return List.of();
-		}
-		Arrays.sort(files);
-		return List.of(files);
 	}
 
 	/**
@@ -234,7 +219,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	 * script is still resolved beneath the real hooks directory so it is reported.
 	 */
 	private Path canonical(Path path) {
-		Path absolute = path.toAbsolutePath().normalize();
+		Path absolute = ProjectFiles.normalized(path);
 		Path existing = absolute;
 		while (existing != null && !Files.exists(existing, LinkOption.NOFOLLOW_LINKS)) {
 			existing = existing.getParent();
@@ -249,7 +234,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		try {
 			return path.toRealPath();
 		} catch (IOException e) {
-			return path.toAbsolutePath().normalize();
+			return ProjectFiles.normalized(path);
 		}
 	}
 

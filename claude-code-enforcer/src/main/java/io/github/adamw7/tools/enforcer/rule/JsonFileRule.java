@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.rule;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
@@ -66,6 +67,28 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	 * in {@code violations}.
 	 */
 	protected abstract void collectViolations(JsonNode root, List<String> violations) throws EnforcerRuleException;
+
+	/**
+	 * The optional object at {@code key}, for a rule that validates one section of a
+	 * larger file: empty when the file declares no such section, which is a pass, and
+	 * empty with a violation collected when it declares one that is not an object,
+	 * because a mistyped section must not slip through unvalidated.
+	 * <p>
+	 * The message names the file the way every other message from this rule does, so
+	 * the three rules that each validate a section of {@code settings.json} or
+	 * {@code .mcp.json} no longer spell the same sentence out three times.
+	 */
+	protected final Optional<JsonNode> section(JsonNode root, String key, List<String> violations) {
+		if (!root.has(key)) {
+			return Optional.empty();
+		}
+		JsonNode section = JsonNodes.objectAt(root, key);
+		if (section == null) {
+			violations.add(description + " '" + key + "' must be a JSON object");
+			return Optional.empty();
+		}
+		return Optional.of(section);
+	}
 
 	/**
 	 * The header that prefixes the grouped violation report. A rule that validates

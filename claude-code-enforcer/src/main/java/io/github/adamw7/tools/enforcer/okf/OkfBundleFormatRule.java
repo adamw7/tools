@@ -19,6 +19,7 @@ import javax.inject.Named;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.enforcer.rule.Violations;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
@@ -63,7 +64,6 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 
 	private static final String INDEX = "index.md";
 	private static final String LOG = "log.md";
-	private static final String MARKDOWN_SUFFIX = ".md";
 	private static final String TYPE_KEY = "type";
 	private static final String STATUS_KEY = "status";
 	private static final String STALE_AFTER_KEY = "stale_after";
@@ -133,7 +133,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 
 	private List<File> markdownFiles() {
 		return new ScanTargets(List.of(), List.of(bundleDir))
-				.filesInDirectories(path -> path.getFileName().toString().endsWith(MARKDOWN_SUFFIX));
+				.filesInDirectories(ProjectFiles::isMarkdown);
 	}
 
 	private void collectDocumentViolations(File document, List<String> violations) {
@@ -310,8 +310,8 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 
 	/** Bundle-relative and always {@code /}-separated, so a message reads the same on every platform. */
 	private String relativePath(File document) {
-		return bundleDir.toPath().toAbsolutePath().normalize()
-				.relativize(document.toPath().toAbsolutePath().normalize())
+		return ProjectFiles.normalized(bundleDir)
+				.relativize(ProjectFiles.normalized(document))
 				.toString().replace(File.separator, SEPARATOR);
 	}
 

@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import javax.inject.Named;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.NameConvention;
 
 /**
@@ -27,7 +28,7 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
 @Named("skillFilesExist")
 public class SkillFilesExistRule extends DefinitionFormatRule {
 
-	private static final String SKILL_FILE_NAME = "SKILL.md";
+	private static final String SKILL_FILE_NAME = DefinitionFiles.SKILL_FILE_NAME;
 	private static final List<String> DEFAULT_REQUIRED_KEYS = List.of("name", "description");
 	private static final int DEFAULT_MAX_DESCRIPTION_LENGTH = 1024;
 
@@ -55,13 +56,13 @@ public class SkillFilesExistRule extends DefinitionFormatRule {
 
 	/** A skill is a directory, and the definition it carries is the {@code SKILL.md} inside it. */
 	@Override
-	protected File[] entriesIn(File directory) {
-		return DefinitionFiles.subdirectories(directory);
+	protected List<File> entriesIn(File directory) {
+		return ProjectFiles.subdirectoriesOf(directory);
 	}
 
 	@Override
 	protected void collectEntryViolations(File skillDirectory, List<String> violations) {
-		File skillFile = new File(skillDirectory, SKILL_FILE_NAME);
+		File skillFile = DefinitionFiles.skillFile(skillDirectory);
 		if (!skillFile.isFile()) {
 			violations.add("Missing " + SKILL_FILE_NAME + " in skill directory: " + skillDirectory);
 			return;

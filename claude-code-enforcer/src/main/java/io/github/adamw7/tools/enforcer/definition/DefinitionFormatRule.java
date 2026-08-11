@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 
 /**
@@ -59,7 +60,7 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 	public final void execute() throws EnforcerRuleException {
 		File directory = definitionDir();
 		requireConfigured(directory, naming.directoryParameter());
-		DefinitionFiles.verifyDirectory(directory, naming.directoryLabel());
+		ProjectFiles.requireDirectory(directory, naming.directoryLabel());
 		List<String> violations = new ArrayList<>();
 		for (File entry : entriesIn(directory)) {
 			collectEntryViolations(entry, violations);
@@ -76,8 +77,8 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 	 * definition is a directory instead — a skill, carrying a {@code SKILL.md} —
 	 * says so by overriding.
 	 */
-	protected File[] entriesIn(File directory) {
-		return DefinitionFiles.markdownFiles(directory);
+	protected List<File> entriesIn(File directory) {
+		return ProjectFiles.markdownFilesIn(directory);
 	}
 
 	/** Collects everything wrong with the definition that {@code entry} carries. */

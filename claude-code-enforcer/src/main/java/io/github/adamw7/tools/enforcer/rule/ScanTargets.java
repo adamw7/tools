@@ -74,7 +74,7 @@ public final class ScanTargets {
 	}
 
 	private static Path key(File file) {
-		return file.toPath().toAbsolutePath().normalize();
+		return ProjectFiles.normalized(file);
 	}
 
 	/** The regular files under the configured directories that {@code accepted} matches. */

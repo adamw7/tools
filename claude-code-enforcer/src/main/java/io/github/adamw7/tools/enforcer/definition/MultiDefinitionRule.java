@@ -5,6 +5,7 @@ import java.io.File;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 
 /**
  * Base for the enforcer rules that check a property across <em>every</em> Claude
@@ -20,8 +21,6 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * build-setup mistake rather than a content problem.
  */
 abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {
-
-	private static final String SKILL_FILE_NAME = "SKILL.md";
 
 	/** The {@code .claude/commands} directory to scan. Injected from the rule configuration. */
 	private File commandsDir;
@@ -69,9 +68,9 @@ abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {
 		if (directory == null) {
 			return;
 		}
-		DefinitionFiles.verifyDirectory(directory, label);
-		for (File markdown : DefinitionFiles.markdownFiles(directory)) {
-			visitor.visit(markdown, markdown, DefinitionFiles.baseName(markdown));
+		ProjectFiles.requireDirectory(directory, label);
+		for (File markdown : ProjectFiles.markdownFilesIn(directory)) {
+			visitor.visit(markdown, markdown, ProjectFiles.markdownBaseName(markdown));
 		}
 	}
 
@@ -79,9 +78,9 @@ abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {
 		if (directory == null) {
 			return;
 		}
-		DefinitionFiles.verifyDirectory(directory, "Skills");
-		for (File skill : DefinitionFiles.subdirectories(directory)) {
-			visitor.visit(new File(skill, SKILL_FILE_NAME), skill, skill.getName());
+		ProjectFiles.requireDirectory(directory, "Skills");
+		for (File skill : ProjectFiles.subdirectoriesOf(directory)) {
+			visitor.visit(DefinitionFiles.skillFile(skill), skill, skill.getName());
 		}
 	}
 

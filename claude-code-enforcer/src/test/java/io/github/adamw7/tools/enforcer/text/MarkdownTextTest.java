@@ -2,10 +2,13 @@ package io.github.adamw7.tools.enforcer.text;
 
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
+import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -77,6 +80,32 @@ class MarkdownTextTest {
 		writeString(file, BYTE_ORDER_MARK + "# Title\nbody");
 
 		assertEquals("# Title\nbody", MarkdownText.read(file.toFile(), "doc.md"));
+	}
+
+	@Test
+	void startsWithByteOrderMarkAnswersForBothSpellings() {
+		assertTrue(MarkdownText.startsWithByteOrderMark(BYTE_ORDER_MARK + "#!/bin/sh"));
+		assertFalse(MarkdownText.startsWithByteOrderMark("#!/bin/sh"));
+		assertFalse(MarkdownText.startsWithByteOrderMark(""));
+	}
+
+	/** A rule judging a script has to see the mark the kernel sees, so this read keeps it. */
+	@Test
+	void readIfTextWithByteOrderMarkKeepsTheMarkThatReadIfTextStrips() {
+		Path file = tempDir.resolve("hook.sh");
+		writeString(file, BYTE_ORDER_MARK + "#!/bin/sh\n");
+
+		assertEquals(BYTE_ORDER_MARK + "#!/bin/sh\n",
+				MarkdownText.readIfTextWithByteOrderMark(file.toFile()).orElseThrow());
+		assertEquals("#!/bin/sh\n", MarkdownText.readIfText(file.toFile()).orElseThrow());
+	}
+
+	@Test
+	void readIfTextWithByteOrderMarkIsEmptyForAFileThatIsNotText() {
+		Path file = tempDir.resolve("logo.png");
+		writeBytes(file, new byte[] { (byte) 0x89, 0x50, (byte) 0xFF, (byte) 0xFE });
+
+		assertTrue(MarkdownText.readIfTextWithByteOrderMark(file.toFile()).isEmpty());
 	}
 
 	@Test

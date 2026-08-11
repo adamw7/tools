@@ -44,7 +44,9 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * renamed on disk but not in settings;
  * {@code reportUnreferencedScripts} also reports a script no hook references. The
  * {@code hooksDir} parameter must be configured, but an absent directory is a pass
- * because hooks are optional. All problems found are reported together.
+ * because hooks are optional; a {@code settingsFile} that is configured and absent
+ * fails outright, because that is a build-setup mistake. All problems found are
+ * reported together.
  */
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {
@@ -105,18 +107,18 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	 * file must not abort the build before the remaining scripts are checked.
 	 */
 	private void collectScriptViolations(File script, List<String> violations) {
-		Optional<String> text = MarkdownText.readIfText(script);
+		Optional<String> text = MarkdownText.readIfTextWithByteOrderMark(script);
 		if (text.isEmpty()) {
 			violations.add("hook script cannot be read as a text script: " + script);
 			return;
 		}
-		String content = text.get();
-		if (content.isBlank()) {
+		String raw = text.get();
+		if (MarkdownText.stripByteOrderMark(raw).isBlank()) {
 			violations.add("hook script is empty: " + script);
 			return;
 		}
-		if (requireShebang && !content.startsWith(SHEBANG)) {
-			violations.add("hook script must start with a '#!' shebang line: " + script);
+		if (requireShebang) {
+			collectShebangViolation(script, raw, violations);
 		}
 		if (requireExecutable && !script.canExecute()) {
 			violations.add("hook script is not executable: " + script);
@@ -126,22 +128,52 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
+	/**
+	 * The shebang is read from the raw text, byte-order mark and all. The kernel
+	 * reads bytes, so a mark in front of the {@code #!} makes the script unrunnable
+	 * — and reading the stripped text reported exactly that script, the one this
+	 * rule exists to catch before it is committed, as well formed. A script with no
+	 * shebang at all is still reported as the missing shebang it is, so the message
+	 * names the problem the author has rather than the one behind it.
+	 */
+	private void collectShebangViolation(File script, String raw, List<String> violations) {
+		if (!MarkdownText.stripByteOrderMark(raw).startsWith(SHEBANG)) {
+			violations.add("hook script must start with a '#!' shebang line: " + script);
+		} else if (MarkdownText.startsWithByteOrderMark(raw)) {
+			violations.add("hook script has a byte-order mark before its '#!' shebang line, so it cannot be run: "
+					+ script);
+		}
+	}
+
 	private String extensionOf(File script) {
 		String name = script.getName();
 		int dot = name.lastIndexOf('.');
 		return dot < 0 ? "" : name.substring(dot + 1);
 	}
 
-	private void collectWiringViolations(List<File> scripts, List<String> violations) {
+	/**
+	 * A configured settings file that is not there is a build-setup mistake, so it
+	 * always fails, whatever the severity: reporting it as a violation let
+	 * {@code severity=warn} turn the whole wiring cross-check off silently, which is
+	 * the one outcome a rule must not have.
+	 * <p>
+	 * A file that is there but cannot be decoded is reported instead of thrown. This
+	 * rule reads settings.json as a second opinion on the scripts, and the rules that
+	 * own that file — {@code settingsJsonValid} and the two beside it — fail on it in
+	 * their own right, so an undecodable one is never left unreported by this one
+	 * declining to abort the build over it.
+	 */
+	private void collectWiringViolations(List<File> scripts, List<String> violations) throws EnforcerRuleException {
 		if (settingsFile == null) {
 			return;
 		}
-		if (!settingsFile.isFile()) {
-			violations.add("settings.json does not exist at " + settingsFile);
+		requireExists(settingsFile, "settings.json");
+		Optional<String> content = MarkdownText.readIfText(settingsFile);
+		if (content.isEmpty()) {
+			violations.add("settings.json cannot be read as text: " + settingsFile);
 			return;
 		}
-		String content = MarkdownText.read(settingsFile, "settings.json");
-		JsonNode settings = JsonNodes.parseObject(content, "settings.json", violations);
+		JsonNode settings = JsonNodes.parseObject(content.get(), "settings.json", violations);
 		if (settings == null) {
 			return;
 		}

@@ -596,6 +596,137 @@ class MarkdownDocumentTest {
 		assertEquals(List.of(2, 3, 4), commentedLines(document));
 	}
 
+	/**
+	 * A heading is the text it carries, so the closing {@code #} run Markdown lets an
+	 * author balance it with is spelling. Matching the raw line reported a document
+	 * that has the section as missing it, and gave the section's content to the one
+	 * above it.
+	 */
+	@Test
+	void readsAHeadingClosedByATrailingHashRun() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title #
+
+				## Testing ##
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
+	/** Only whitespace makes a trailing run a closing one, so a hash inside the text stays in it. */
+	@Test
+	void keepsATrailingHashThatNoWhitespacePrecedes() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## C#
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "## C#"), document.headings());
+	}
+
+	@Test
+	void readsAHeadingThatIsNothingButItsClosingRun() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## ###
+				Body.
+				""");
+
+		assertEquals(Set.of("# Title", "##"), document.headings());
+	}
+
+	/** A tab separates a heading from its text as a space does, so the two name one heading. */
+	@Test
+	void readsAHeadingSeparatedByATab() {
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n##\tTesting\nBody.\n");
+
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
+	/**
+	 * The order comparison reads headings alone. Reading every structural line let a
+	 * wanted entry that is no heading — a section configured without its {@code ##} —
+	 * be answered by a line of prose, so a document was reported both as missing the
+	 * section and as having it out of order.
+	 */
+	@Test
+	void headingsInOrderIgnoresAProseLineThatMatchesAWantedEntry() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				Testing
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of("## Testing"), document.headingsInOrder(List.of("Testing", "## Testing")));
+	}
+
+	@Test
+	void headingsInOrderListsTheWantedHeadingsAsTheDocumentOrdersThem() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## Maven
+				Body.
+
+				## Testing ##
+				Body.
+				""");
+
+		// The document's order, not the wanted list's, and a closed heading counts.
+		assertEquals(List.of("## Maven", "## Testing"),
+				document.headingsInOrder(List.of("## Testing", "## Maven")));
+	}
+
+	/** A token quoted as code is the document illustrating it, exactly as a fenced sample is. */
+	@Test
+	void doesNotReadATokenInsideAnInlineCodeSpanAsUnquoted() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				Never leave a `TODO` behind.
+				""");
+
+		assertFalse(document.containsUnquoted("TODO"));
+		assertTrue(document.containsInProse("TODO"));
+	}
+
+	@Test
+	void readsATokenOutsideACodeSpanOnTheSameLineAsUnquoted() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				A `TODO` marker: TODO finish this.
+				""");
+
+		assertTrue(document.containsUnquoted("TODO"));
+	}
+
+	@Test
+	void doesNotReadATokenInsideACodeFenceOrAnHtmlCommentAsUnquoted() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				```
+				TODO in a sample
+				```
+
+				<!--
+				TODO removed
+				-->
+				""");
+
+		assertFalse(document.containsUnquoted("TODO"));
+	}
+
 	/** The indices of the lines the document masks as code, in document order. */
 	private static List<Integer> codeLines(MarkdownDocument document) {
 		return IntStream.range(0, document.lineCount()).filter(document::isInsideCode).boxed().toList();

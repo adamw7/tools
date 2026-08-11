@@ -63,6 +63,36 @@ class HooksFormatRuleTest {
 		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "not executable");
 	}
 
+	/**
+	 * The kernel reads bytes: a mark before the {@code #!} makes the script
+	 * unrunnable, however well formed the text behind the mark reads.
+	 */
+	@Test
+	void failsWhenAByteOrderMarkPrecedesTheShebang() {
+		writeScript("session-start.sh", (char) 0xFEFF + "#!/bin/sh\necho hi\n", true);
+
+		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "byte-order mark", "session-start.sh");
+	}
+
+	/** A script with no shebang is named for the shebang it lacks, mark or no mark. */
+	@Test
+	void reportsTheMissingShebangRatherThanTheMarkWhenThereIsNoShebangAtAll() {
+		writeScript("session-start.sh", (char) 0xFEFF + "echo hi\n", true);
+
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, ruleFor()::execute, "shebang");
+		assertFalse(exception.getMessage().contains("byte-order mark"), exception.getMessage());
+	}
+
+	@Test
+	void passesForAByteOrderMarkWhenTheShebangCheckIsOff() {
+		writeScript("session-start.sh", (char) 0xFEFF + "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setRequireShebang(false);
+		rule.setRequireExecutable(false);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	@Test
 	void failsWhenScriptIsEmpty() {
 		writeScript("session-start.sh", "   \n", true);
@@ -298,6 +328,38 @@ class HooksFormatRuleTest {
 		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json does not exist");
 	}
 
+	/**
+	 * A configured settings file that is not there is a build-setup mistake, so warn
+	 * severity must not turn it — and with it the whole wiring cross-check — into a
+	 * line in the log.
+	 */
+	@Test
+	void failsForAnAbsentSettingsFileEvenAtWarnSeverity() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+		rule.setSeverity("warn");
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json does not exist");
+	}
+
+	/**
+	 * A settings file that is there but is not text is reported, not thrown: the
+	 * rules that own settings.json fail on it in their own right, so this one
+	 * aborting the build as an internal error would only lose the script violations
+	 * beside it.
+	 */
+	@Test
+	void reportsASettingsFileThatCannotBeDecodedAsText() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		Path settings = tempDir.resolve(".claude/settings.json");
+		TestFiles.writeBytes(settings, new byte[] { (byte) 0xFF, (byte) 0xFE, 0x00, (byte) 0x80 });
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settings.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json cannot be read as text");
+	}
+
 	@Test
 	void failsWhenTheSettingsFileIsNotValidJson() {
 		writeScript("session-start.sh", "#!/bin/sh\n", true);
@@ -388,6 +450,25 @@ class HooksFormatRuleTest {
 		rule.setReportUnreferencedScripts(true);
 
 		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void countsAScriptRunThroughExecAsAReference() {
+		writeScript("a.sh", "#!/bin/sh\necho a\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("exec .claude/hooks/a.sh"));
+		rule.setReportUnreferencedScripts(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** The other half of reading {@code exec}: the script behind it is resolved, so a rename is caught. */
+	@Test
+	void failsWhenExecRunsAMissingHookScript() {
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(settingsReferencing("exec $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	@Test

@@ -274,4 +274,47 @@ class CommandTokensTest {
 	void stillReadsAReservedWordSpelledAsAPath() {
 		assertEquals(List.of("./then"), CommandTokens.scriptCandidatesOf("./then --flag"));
 	}
+
+	/**
+	 * {@code exec} replaces the shell with what follows it, so the script it hands on
+	 * is the one the hook runs. Reading {@code exec} as the program left that script
+	 * unresolved: a rename of it passed the missing-script check, and
+	 * {@code reportUnreferencedScripts} called it referenced by nothing.
+	 */
+	@Test
+	void skipsExecToReachTheScriptItRuns() {
+		assertEquals(List.of(".claude/hooks/session-start.sh"),
+				CommandTokens.scriptCandidatesOf("exec .claude/hooks/session-start.sh"));
+	}
+
+	@Test
+	void skipsEveryWrapperThatRunsTheCommandAfterIt() {
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("command a.sh"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("builtin a.sh"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("nohup a.sh"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("env a.sh"));
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("time a.sh"));
+	}
+
+	/** A wrapper and an assignment are skipped over alike, in whichever order they are written. */
+	@Test
+	void skipsAnAssignmentPassedThroughAWrapper() {
+		assertEquals(List.of("a.sh"), CommandTokens.scriptCandidatesOf("env LOG_LEVEL=debug a.sh"));
+	}
+
+	@Test
+	void skipsAWrapperInEverySegmentOfAChainedCommand() {
+		assertEquals(List.of("a.sh", "b.sh"), CommandTokens.scriptCandidatesOf("exec a.sh; nohup b.sh"));
+	}
+
+	/** {@code time} names what follows it, but a file really called {@code time} is a program. */
+	@Test
+	void stillReadsAWrapperSpelledAsAPath() {
+		assertEquals(List.of("./time"), CommandTokens.scriptCandidatesOf("./time a.sh"));
+	}
+
+	@Test
+	void yieldsNoProgramForAWrapperAlone() {
+		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("exec; nohup"));
+	}
 }

@@ -112,7 +112,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	/** Reached only for an import target that cannot be read, so the log is looked up lazily. */
 	private void debug(String message) {
-		getLog().debug(message);
+		log().debug(message);
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {

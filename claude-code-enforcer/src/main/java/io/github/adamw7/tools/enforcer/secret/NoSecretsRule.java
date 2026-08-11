@@ -58,10 +58,9 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		ScanTargets targets = new ScanTargets(files, directories);
 		targets.requireConfigured();
 		requirePatterns(patterns);
-		List<String> violations = targets.allFiles().stream()
-				.filter(File::isFile)
-				.flatMap(file -> scan(file, patterns))
-				.toList();
+		List<File> scanned = targets.allFiles().stream().filter(File::isFile).toList();
+		log().debug(() -> "Scanning " + scanned.size() + " file(s) for " + patterns.size() + " credential pattern(s)");
+		List<String> violations = scanned.stream().flatMap(file -> scan(file, patterns)).toList();
 		report("Files contain what look like secrets:", violations);
 	}
 
@@ -108,7 +107,7 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 	private List<String> readTextLines(File file) {
 		Optional<String> content = MarkdownText.readIfText(file);
 		if (content.isEmpty()) {
-			getLog().debug("Skipping undecodable file " + file);
+			log().debug("Skipping undecodable file " + file);
 		}
 		return content.map(text -> text.lines().toList()).orElseGet(List::of);
 	}

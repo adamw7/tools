@@ -3,6 +3,9 @@ package io.github.adamw7.tools.adopt;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -26,6 +29,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class AdoptionReportWriter {
 
+	private static final Logger log = LogManager.getLogger(AdoptionReportWriter.class);
+
 	private final ObjectMapper mapper = new ObjectMapper();
 
 	public String toJson(List<AdoptionRun> runs) {
@@ -36,8 +41,16 @@ public class AdoptionReportWriter {
 		}
 	}
 
+	/**
+	 * The path is logged because a run that failed writes one too, and the operator
+	 * reading the failure on the console is the one who has to be told there is a
+	 * document saying how far it got. {@code --report} otherwise confirms nothing:
+	 * a run that stopped before the file was named looks exactly like one that
+	 * wrote it.
+	 */
 	public void write(Path file, List<AdoptionRun> runs) {
 		AdoptionFiles.write(file, toJson(runs), "the adoption report");
+		log.info("Wrote the adoption report to {}", file);
 	}
 
 	private ObjectNode toNode(List<AdoptionRun> runs) {

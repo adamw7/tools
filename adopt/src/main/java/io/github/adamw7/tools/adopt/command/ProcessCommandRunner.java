@@ -6,7 +6,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.Elapsed;
 import io.github.adamw7.tools.adopt.Redaction;
 
 /**
@@ -20,8 +24,18 @@ import io.github.adamw7.tools.adopt.Redaction;
  * <p>The child's standard input is closed as soon as it starts, so a tool that
  * reads from it — a {@code git} or {@code gh} credential prompt — sees
  * end-of-stream and fails fast instead of blocking until the timeout kills it.
+ *
+ * <p>Every command is traced at debug — what was run, where, how it exited and
+ * how long it took — because this is the one place the adoption learns anything
+ * from the outside world, and the steps above it report only the commands that
+ * stopped the run. A tolerated failure, a clone skipped because the checkout was
+ * already there, a step that decided it had nothing to do: none of those leave a
+ * trace anywhere else, so a run that did less than it was expected to reads
+ * exactly like one that did everything.
  */
 public class ProcessCommandRunner implements CommandRunner {
+
+	private static final Logger log = LogManager.getLogger(ProcessCommandRunner.class);
 
 	/**
 	 * How long a command may run when the caller names no timeout of its own. Sized
@@ -53,11 +67,36 @@ public class ProcessCommandRunner implements CommandRunner {
 
 	@Override
 	public CommandResult run(Path workingDirectory, List<String> command) {
+		log.debug("Running in {}: {}", workingDirectory, CommandResult.describe(command));
+		Elapsed elapsed = Elapsed.started();
 		ProcessBuilder builder = new ProcessBuilder(resolver.resolve(command))
 				.directory(workingDirectory.toFile())
 				.redirectErrorStream(true);
 		Process process = start(builder, command);
-		return awaitOrDestroy(process, command);
+		CommandResult result = awaitOrDestroy(process, command);
+		logOutcome(result, elapsed);
+		return result;
+	}
+
+	/**
+	 * The transcript of a command that exited non-zero is logged here as well as
+	 * being handed back, because whether it reaches a message at all is the
+	 * caller's decision: a step running through
+	 * {@link io.github.adamw7.tools.adopt.step.AbstractCommandStep#runTolerating}
+	 * discards a tolerated failure whole, and the tool's own account of what it
+	 * refused to do — the one thing that says which of the tolerated cases this
+	 * was — went with it.
+	 *
+	 * <p>Redacting it is not optional: a tool handed a credentialled clone URL
+	 * echoes it back when it cannot use it, so the transcript carries a token as
+	 * readily as the command does. The guard keeps that scan off the path a
+	 * disabled log takes.
+	 */
+	private void logOutcome(CommandResult result, Elapsed elapsed) {
+		log.debug("Exited {} after {}: {}", result.exitCode(), elapsed, result.describe());
+		if (!result.succeeded() && log.isDebugEnabled()) {
+			log.debug("Output of the failed command:{}{}", System.lineSeparator(), result.redactedOutput());
+		}
 	}
 
 	/**

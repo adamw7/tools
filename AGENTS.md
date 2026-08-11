@@ -145,6 +145,16 @@ What is worth knowing before changing any of it:
   refused as an unknown option. It goes to the log, whose console appender writes
   to standard error, because the same jar is the MCP server and its stdio
   transport owns standard output.
+- **The console and the log file carry different things.** The console is
+  threshold-filtered to `info` and shows progress: the repository being adopted
+  and which of how many, `Step 4/12: branch`, what each step cost, and a closing
+  count of the repositories that landed. `logs/adopt.log` additionally carries the
+  adoption's own `debug` (`io.github.adamw7.tools.adopt` is set to it; the root
+  stays at `info` so the embedded Spring Boot MCP server does not bury it) —
+  every `git`/`claude`/`gh` invocation with its working directory, exit code and
+  duration, and the redacted transcript of the ones that failed. That trace exists
+  because a step may *tolerate* a non-zero exit, which otherwise leaves a run that
+  quietly did nothing looking exactly like one that did everything.
 
 An **MCP server** (`io.github.adamw7.tools.adopt.mcp`) exposes the pipeline as an
 `adopt_repo` tool answering with the JSON `AdoptionReport` (completed steps, the
@@ -676,6 +686,18 @@ together (never stopping at the first) and offers:
   Maven runs every module from wherever it was invoked, so without it the token
   falls back to the working directory and a baseline recorded from the root
   suppresses nothing when the build starts elsewhere.
+- **A debug trace of what each rule was pointed at** — `mvn -X` prints one line
+  per rule naming its configured input files and how many violations survived the
+  baseline, plus the scan counts (`Skills: checking 13 definition(s) in …`) and
+  the accepted absences (`mcp.json is absent at …; nothing to check`).
+  maven-enforcer's own verdict names only the class, so a rule that read a
+  document and one that passed because it was pointed at nothing read alike. Log
+  through the base class's `log()`, never `getLog()`: the enforcer injects a
+  logger and nothing else does, so `getLog()` is null wherever a rule is built
+  directly and `log()` falls back to a silent one.
+- **A `severity=warn` violation says it was tolerated** — the warning carries the
+  rule and its inputs and states that the build was not failed, so it is not read
+  as one more `[WARNING]` worded exactly like the failure it would have been.
 
 `claudeMdFormat` and `agentsMdFormat` share a `MarkdownFormatRule` base doing the
 existence, BOM, title and section checks, with optional `forbiddenTokens`,

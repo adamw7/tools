@@ -144,9 +144,11 @@ public final class CliArguments {
 	}
 
 	/**
-	 * @return every repository to adopt in this run — the positional URL first, then
-	 *         the ones the flags added — without duplicates, since the same
-	 *         repository twice would adopt one checkout a second time
+	 * @return every repository to adopt in this run, in the order the operator named
+	 *         them — the positional and the flags interleaved as they were written,
+	 *         which is the order the options are bound to methods to preserve — and
+	 *         without duplicates, since the same repository twice would adopt one
+	 *         checkout a second time
 	 */
 	public List<String> repositoryUrls() {
 		return RepositoryUrls.distinct(repositoryUrls);

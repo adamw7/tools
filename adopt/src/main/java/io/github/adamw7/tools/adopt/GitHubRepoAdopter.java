@@ -46,6 +46,18 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  */
 public class GitHubRepoAdopter {
 
+	/**
+	 * What the guard commit says it did. It names the guard rather than the artifact
+	 * that supplies one of them, because which guard {@link EnforcerStep} wires in is
+	 * the checkout's build system to decide and is not known when the pipeline is
+	 * assembled: only the Maven path adds the {@code claude-code-enforcer}, while a
+	 * Gradle project gets a task and a project with no build file gets a workflow. A
+	 * message naming the enforcer therefore landed in the history of repositories that
+	 * were given neither — a claim the diff beside it plainly does not support, in a
+	 * commit the adopted project's reviewers read.
+	 */
+	static final String GUARD_COMMIT_MESSAGE = "Adopt Claude Code: add the CLAUDE.md guard";
+
 	private static final Logger log = LogManager.getLogger(GitHubRepoAdopter.class);
 
 	private final CommandRunner runner;
@@ -87,7 +99,7 @@ public class GitHubRepoAdopter {
 				new ClaudeMdConformanceStep(buildSystems),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md", "claude-md"),
 				new EnforcerStep(buildSystems),
-				new CommitStep("Add claude-code-enforcer to the build", "guard"));
+				new CommitStep(GUARD_COMMIT_MESSAGE, "guard"));
 	}
 
 	/**

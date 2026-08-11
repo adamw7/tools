@@ -78,8 +78,17 @@ public class CloneStep extends AbstractCommandStep {
 	 * changes the checkout did not have. A line that is not an entry is therefore
 	 * skipped rather than read as one, the same reading {@link #namesThisRepository}
 	 * takes of that transcript's noise.
+	 *
+	 * <p>At least one of the two letters has to say something, because git never
+	 * reports a path whose index and work tree are both unchanged — leaving it out of
+	 * the output is what "unchanged" means. Accepting two spaces let through any line
+	 * indented by three of them, so a warning that wraps or indents its continuation
+	 * was still read as an entry, and its fourth character onwards taken for a path:
+	 * no path the adoption writes, and so the resume this step promises refused over a
+	 * change the checkout does not have — the very outcome the paragraph above is
+	 * about.
 	 */
-	private static final Pattern STATUS_ENTRY = Pattern.compile("^[ MTADRCU?!]{2} .+");
+	private static final Pattern STATUS_ENTRY = Pattern.compile("^(?! {2})[ MTADRCU?!]{2} .+");
 
 	@Override
 	public String name() {

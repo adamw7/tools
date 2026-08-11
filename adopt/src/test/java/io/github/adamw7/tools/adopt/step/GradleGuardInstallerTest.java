@@ -170,4 +170,51 @@ class GradleGuardInstallerTest {
 		assertFalse(installer.install(buildFile));
 		assertEquals(own, Files.readString(buildFile));
 	}
+
+	/**
+	 * A registered task nothing depends on is a guard the project's ordinary build
+	 * never runs, and {@link VerifyStep} cannot notice — it invokes the task directly,
+	 * so it passes either way and the adoption opens a pull request advertising a guard
+	 * the project does not have. An Android or aggregator root script, which routinely
+	 * declares a {@code clean} task and no lifecycle task at all, is exactly that case.
+	 */
+	@Test
+	void givesAProjectWithNoLifecycleTaskOneToHangTheGuardFrom(@TempDir Path directory) throws IOException {
+		Path buildFile = write(directory, "build.gradle", "task clean(type: Delete) { delete rootProject.buildDir }\n");
+		assertTrue(installer.install(buildFile));
+		String script = Files.readString(buildFile);
+		assertTrue(script.contains("tasks.matching { it.name == 'check' }.configureEach { it.dependsOn('"
+				+ GradleGuardInstaller.GUARD_TASK + "') }"), "the guard hangs from check when there is one: " + script);
+		assertTrue(script.contains("if (!tasks.names.contains('check'))"),
+				"and a check task is created when there is not: " + script);
+		assertTrue(script.contains("tasks.register('check') { it.dependsOn('" + GradleGuardInstaller.GUARD_TASK + "') }"),
+				"the created task must depend on the guard: " + script);
+	}
+
+	/**
+	 * The fallback registration waits for {@code afterEvaluate} because the name has to
+	 * be free: claiming {@code check} while the script is still being read would collide
+	 * with a plugin applied below the appended block and fail the whole build.
+	 */
+	@Test
+	void defersTheFallbackRegistrationUntilTheScriptHasBeenEvaluated(@TempDir Path directory) throws IOException {
+		Path buildFile = write(directory, "build.gradle", "plugins { id 'java' }\n");
+		installer.install(buildFile);
+		String script = Files.readString(buildFile);
+		assertTrue(script.indexOf("project.afterEvaluate") < script.indexOf("tasks.register('check')"),
+				"the fallback must be registered inside afterEvaluate: " + script);
+	}
+
+	@Test
+	void hangsTheKotlinGuardFromCheckAndCreatesOneWhenAbsent(@TempDir Path directory) throws IOException {
+		Path buildFile = write(directory, "build.gradle.kts", "plugins { java }\n");
+		assertTrue(installer.install(buildFile));
+		String script = Files.readString(buildFile);
+		assertTrue(script.contains("tasks.matching { it.name == \"check\" }.configureEach { dependsOn(\""
+				+ GradleGuardInstaller.GUARD_TASK + "\") }"), "the guard hangs from check: " + script);
+		assertTrue(script.contains("if (!tasks.names.contains(\"check\"))"),
+				"and a check task is created when there is not: " + script);
+		assertTrue(script.contains("tasks.register(\"check\") { dependsOn(\"" + GradleGuardInstaller.GUARD_TASK
+				+ "\") }"), "the created task must depend on the guard: " + script);
+	}
 }

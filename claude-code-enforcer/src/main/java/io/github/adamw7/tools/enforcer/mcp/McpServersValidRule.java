@@ -73,9 +73,7 @@ public class McpServersValidRule extends JsonFileRule {
 			violations.add("mcp.json is missing the 'mcpServers' object");
 			return;
 		}
-		for (String name : JsonNodes.fieldNames(servers)) {
-			collectServerViolations(name, JsonNodes.objectAt(servers, name), violations);
-		}
+		McpServers.forEach(servers, (name, server) -> collectServerViolations(name, server, violations));
 		Violations.each(requiredServers, name -> !servers.has(name),
 				name -> "mcp.json is missing required server: " + name, violations);
 		Violations.each(forbiddenServers, servers::has,
@@ -124,9 +122,8 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	/** Every violation names the server whose entry is malformed. */
 	private void add(String name, String problem, List<String> violations) {
-		violations.add("mcp.json server '" + name + "' " + problem);
+		violations.add(McpServers.problem(name, problem));
 	}
 
 	void setMcpFile(File mcpFile) {

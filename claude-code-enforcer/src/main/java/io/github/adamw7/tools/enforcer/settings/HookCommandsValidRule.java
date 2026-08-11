@@ -67,14 +67,10 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) {
-		if (!settings.has(HOOKS_KEY)) {
-			return;
-		}
-		JsonNode hooks = JsonNodes.objectAt(settings, HOOKS_KEY);
-		if (hooks == null) {
-			violations.add("settings.json 'hooks' must be a JSON object");
-			return;
-		}
+		section(settings, HOOKS_KEY, violations).ifPresent(hooks -> collectHookViolations(hooks, violations));
+	}
+
+	private void collectHookViolations(JsonNode hooks, List<String> violations) {
 		for (String event : JsonNodes.fieldNames(hooks)) {
 			collectEventViolations(event, JsonNodes.arrayAt(hooks, event), violations);
 		}

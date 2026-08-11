@@ -1,18 +1,10 @@
 package io.github.adamw7.tools.enforcer.definition;
 
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
-import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Comparator;
 
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -22,112 +14,14 @@ class DefinitionFilesTest {
 	private Path tempDir;
 
 	@Test
-	void verifyDirectoryPassesForAnExistingDirectory() {
-		assertDoesNotThrow(() -> DefinitionFiles.verifyDirectory(tempDir.toFile(), "Commands"));
+	void skillFileIsTheSkillMarkdownInsideTheSkillDirectory() {
+		File skillDirectory = tempDir.resolve("git-commit").toFile();
+
+		assertEquals(new File(skillDirectory, "SKILL.md"), DefinitionFiles.skillFile(skillDirectory));
 	}
 
 	@Test
-	void verifyDirectoryFailsWithLabelWhenDirectoryIsMissing() {
-		File absent = tempDir.resolve("absent").toFile();
-
-		assertFailure(EnforcerRuleException.class, () -> DefinitionFiles.verifyDirectory(absent, "Agents"),
-				"Agents directory does not exist at", absent.toString());
-	}
-
-	@Test
-	void verifyDirectoryFailsWhenPathIsAFileRatherThanADirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
-
-		assertFailure(EnforcerRuleException.class, () -> DefinitionFiles.verifyDirectory(file, "Skills"),
-				"Skills directory does not exist at");
-	}
-
-	@Test
-	void markdownFilesReturnsOnlyMarkdownFiles() {
-		writeString(tempDir.resolve("review.md"), "body");
-		writeString(tempDir.resolve("commit.md"), "body");
-		writeString(tempDir.resolve("notes.txt"), "ignored");
-
-		assertArrayEquals(new String[] { "commit.md", "review.md" }, sortedNames(DefinitionFiles.markdownFiles(tempDir.toFile())));
-	}
-
-	@Test
-	void markdownFilesExcludesSubdirectoriesEvenWhenNamedLikeMarkdown() {
-		createDirectory(tempDir.resolve("nested.md"));
-		writeString(tempDir.resolve("real.md"), "body");
-
-		assertArrayEquals(new String[] { "real.md" }, sortedNames(DefinitionFiles.markdownFiles(tempDir.toFile())));
-	}
-
-	@Test
-	void markdownFilesReturnsResultsSortedByName() {
-		writeString(tempDir.resolve("review.md"), "body");
-		writeString(tempDir.resolve("apply.md"), "body");
-		writeString(tempDir.resolve("commit.md"), "body");
-
-		assertArrayEquals(new String[] { "apply.md", "commit.md", "review.md" },
-				names(DefinitionFiles.markdownFiles(tempDir.toFile())));
-	}
-
-	@Test
-	void markdownFilesReturnsEmptyArrayForAnEmptyDirectory() {
-		assertEquals(0, DefinitionFiles.markdownFiles(tempDir.toFile()).length);
-	}
-
-	@Test
-	void markdownFilesReturnsEmptyArrayWhenPathIsNotAListableDirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
-
-		assertArrayEquals(new File[0], DefinitionFiles.markdownFiles(file));
-	}
-
-	@Test
-	void subdirectoriesReturnsOnlyDirectories() {
-		createDirectory(tempDir.resolve("commands"));
-		createDirectory(tempDir.resolve("agents"));
-		writeString(tempDir.resolve("review.md"), "body");
-
-		assertArrayEquals(new String[] { "agents", "commands" }, sortedNames(DefinitionFiles.subdirectories(tempDir.toFile())));
-	}
-
-	@Test
-	void subdirectoriesReturnsResultsSortedByName() {
-		createDirectory(tempDir.resolve("skills"));
-		createDirectory(tempDir.resolve("agents"));
-		createDirectory(tempDir.resolve("commands"));
-
-		assertArrayEquals(new String[] { "agents", "commands", "skills" },
-				names(DefinitionFiles.subdirectories(tempDir.toFile())));
-	}
-
-	@Test
-	void subdirectoriesReturnsEmptyArrayForAnEmptyDirectory() {
-		assertEquals(0, DefinitionFiles.subdirectories(tempDir.toFile()).length);
-	}
-
-	@Test
-	void subdirectoriesReturnsEmptyArrayWhenPathIsNotAListableDirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
-
-		assertArrayEquals(new File[0], DefinitionFiles.subdirectories(file));
-	}
-
-	@Test
-	void baseNameStripsTheMarkdownSuffix() {
-		assertEquals("git-commit", DefinitionFiles.baseName(tempDir.resolve("git-commit.md").toFile()));
-	}
-
-	@Test
-	void baseNameStripsOnlyTheTrailingSuffix() {
-		assertEquals("notes.md.backup", DefinitionFiles.baseName(tempDir.resolve("notes.md.backup.md").toFile()));
-	}
-
-	private static String[] sortedNames(File[] files) {
-		return Arrays.stream(files).map(File::getName).sorted(Comparator.naturalOrder()).toArray(String[]::new);
-	}
-
-	/** Names in the array's own order, so a test can assert the helper's sorting rather than re-sort it. */
-	private static String[] names(File[] files) {
-		return Arrays.stream(files).map(File::getName).toArray(String[]::new);
+	void skillFileNamesTheDefinitionEveryRuleWalkingSkillsLooksFor() {
+		assertEquals("SKILL.md", DefinitionFiles.SKILL_FILE_NAME);
 	}
 }

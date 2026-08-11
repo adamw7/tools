@@ -79,17 +79,9 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode mcp, List<String> violations) {
-		if (!mcp.has(MCP_SERVERS_KEY)) {
-			return;
-		}
-		JsonNode servers = JsonNodes.objectAt(mcp, MCP_SERVERS_KEY);
-		if (servers == null) {
-			violations.add("mcp.json 'mcpServers' must be a JSON object");
-			return;
-		}
-		for (String name : JsonNodes.fieldNames(servers)) {
-			collectServerViolations(name, JsonNodes.objectAt(servers, name), violations);
-		}
+		section(mcp, MCP_SERVERS_KEY, violations)
+				.ifPresent(servers -> McpServers.forEach(servers,
+						(name, server) -> collectServerViolations(name, server, violations)));
 	}
 
 	private void collectServerViolations(String name, JsonNode server, List<String> violations) {
@@ -162,9 +154,8 @@ public class McpConfigFormatRule extends JsonFileRule {
 		return EXPANSION.matcher(url).find();
 	}
 
-	/** Every violation names the server whose entry is malformed. */
 	private void add(String name, String problem, List<String> violations) {
-		violations.add("mcp.json server '" + name + "' " + problem);
+		violations.add(McpServers.problem(name, problem));
 	}
 
 	/**

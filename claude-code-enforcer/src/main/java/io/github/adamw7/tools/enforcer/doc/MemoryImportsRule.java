@@ -15,6 +15,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.doc.ImportGraph.Reference;
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 
 /**
  * Enforcer rule that validates the {@code @path} memory imports of
@@ -81,7 +82,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void scan(File file, Traversal traversal) {
-		Path path = ImportGraph.normalized(file);
+		Path path = ProjectFiles.normalized(file);
 		traversal.scanned().add(path);
 		traversal.chain().push(path);
 		for (Reference reference : traversal.graph().importsOf(file)) {
@@ -91,7 +92,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void checkImport(File file, Reference reference, Traversal traversal) {
-		Path path = ImportGraph.normalized(reference.target());
+		Path path = ProjectFiles.normalized(reference.target());
 		if (traversal.chain().contains(path)) {
 			traversal.violations().add(file + " has a circular import: @" + reference.text());
 		} else if (!reference.target().isFile()) {

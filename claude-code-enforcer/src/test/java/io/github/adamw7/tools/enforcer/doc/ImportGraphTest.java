@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.enforcer.doc.ImportGraph.Reference;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 
 /**
  * Tests for the import graph behind {@link MemoryImportsRule}. The hop counts are
@@ -202,7 +203,7 @@ class ImportGraphTest {
 
 		// The root the importing file sits on, not the one the build was launched
 		// from — the two differ on a file system with more than one root.
-		assertEquals(tempDir.getRoot().resolve("elsewhere.md"), ImportGraph.normalized(target));
+		assertEquals(tempDir.getRoot().resolve("elsewhere.md"), ProjectFiles.normalized(target));
 	}
 
 	@Test
@@ -246,8 +247,8 @@ class ImportGraphTest {
 		File root = write("CLAUDE.md", "# CLAUDE.md\n");
 		File roundabout = new File(tempDir.toFile(), "docs/../CLAUDE.md");
 
-		assertEquals(ImportGraph.normalized(root), ImportGraph.normalized(roundabout));
-		assertFalse(roundabout.getPath().equals(ImportGraph.normalized(roundabout).toString()));
+		assertEquals(ProjectFiles.normalized(root), ProjectFiles.normalized(roundabout));
+		assertFalse(roundabout.getPath().equals(ProjectFiles.normalized(roundabout).toString()));
 	}
 
 	@Test

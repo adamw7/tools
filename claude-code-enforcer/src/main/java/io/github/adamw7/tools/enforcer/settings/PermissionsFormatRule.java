@@ -79,12 +79,8 @@ public class PermissionsFormatRule extends JsonFileRule {
 
 	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) throws EnforcerRuleException {
-		if (!settings.has(PERMISSIONS_KEY)) {
-			return;
-		}
-		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
+		JsonNode permissions = section(settings, PERMISSIONS_KEY, violations).orElse(null);
 		if (permissions == null) {
-			violations.add("settings.json 'permissions' must be a JSON object");
 			return;
 		}
 		for (String key : LIST_KEYS) {

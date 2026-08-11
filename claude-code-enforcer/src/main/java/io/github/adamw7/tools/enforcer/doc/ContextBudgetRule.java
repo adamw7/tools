@@ -1,7 +1,6 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +10,7 @@ import javax.inject.Named;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
 
@@ -32,7 +32,6 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
 @Named("contextBudget")
 public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 
-	private static final String MARKDOWN_EXTENSION = ".md";
 	private static final int CHARS_PER_TOKEN = 4;
 
 	/** Files that must fit the budget. Each configured file must exist. */
@@ -59,7 +58,7 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 			requireExists(file, file.getName());
 		}
 		List<String> violations = new ArrayList<>();
-		for (File file : targets.allFiles(ContextBudgetRule::isMarkdown)) {
+		for (File file : targets.allFiles(ProjectFiles::isMarkdown)) {
 			collectBudgetViolations(file, violations);
 		}
 		report("Context budget exceeded:", violations);
@@ -77,10 +76,6 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		if (maxBytes <= 0 && maxLines <= 0 && maxTokens <= 0) {
 			throw new EnforcerRuleException("Configure at least one of maxBytes, maxLines, or maxTokens");
 		}
-	}
-
-	private static boolean isMarkdown(Path path) {
-		return path.getFileName().toString().endsWith(MARKDOWN_EXTENSION);
 	}
 
 	private void collectBudgetViolations(File file, List<String> violations) {

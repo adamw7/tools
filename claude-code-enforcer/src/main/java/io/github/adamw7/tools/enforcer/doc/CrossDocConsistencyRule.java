@@ -1,13 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.util.List;
 
 import javax.inject.Named;
-
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 
 /**
  * Enforcer rule that keeps two documents from contradicting each other. Because
@@ -22,7 +17,7 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * are reported together.
  */
 @Named("crossDocConsistency")
-public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
+public class CrossDocConsistencyRule extends ConsistencyRule {
 
 	/** The first document to compare. Injected from the rule configuration. */
 	private File claudeMdFile;
@@ -30,15 +25,19 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 	/** The second document to compare. Injected from the rule configuration. */
 	private File agentsMdFile;
 
-	/** Regular expressions, each with one capturing group, whose captured value must agree. */
-	private List<String> consistentPatterns;
+	/** These are mirror documents, so a fact one states and the other omits is a mismatch. */
+	public CrossDocConsistencyRule() {
+		super(new Comparison("claudeMdFile", "agentsMdFile", "Documents are inconsistent:", true));
+	}
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		requireDocument(claudeMdFile, "claudeMdFile");
-		requireDocument(agentsMdFile, "agentsMdFile");
-		report("Documents are inconsistent:",
-				new DocumentConsistency(consistentPatterns, true).violations(claudeMdFile, agentsMdFile));
+	protected File firstFile() {
+		return claudeMdFile;
+	}
+
+	@Override
+	protected File secondFile() {
+		return agentsMdFile;
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {
@@ -47,9 +46,5 @@ public class CrossDocConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	void setAgentsMdFile(File agentsMdFile) {
 		this.agentsMdFile = agentsMdFile;
-	}
-
-	void setConsistentPatterns(List<String> consistentPatterns) {
-		this.consistentPatterns = consistentPatterns;
 	}
 }

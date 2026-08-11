@@ -1,13 +1,8 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.util.List;
 
 import javax.inject.Named;
-
-import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
-
-import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 
 /**
  * Enforcer rule that keeps the README from drifting away from the agent docs.
@@ -22,7 +17,7 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  * version. All mismatches are reported together.
  */
 @Named("readmeConsistency")
-public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
+public class ReadmeConsistencyRule extends ConsistencyRule {
 
 	/** The README under review. Injected from the rule configuration. */
 	private File readmeFile;
@@ -30,15 +25,19 @@ public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
 	/** The agent docs treated as the source of truth. Injected from the rule configuration. */
 	private File agentDocFile;
 
-	/** Regular expressions, each with one capturing group, whose captured value must agree. */
-	private List<String> consistentPatterns;
+	/** A curated view may leave a fact out, so only a value present in both and disagreeing fails. */
+	public ReadmeConsistencyRule() {
+		super(new Comparison("readmeFile", "agentDocFile", "README has drifted from the agent docs:", false));
+	}
 
 	@Override
-	public void execute() throws EnforcerRuleException {
-		requireDocument(readmeFile, "readmeFile");
-		requireDocument(agentDocFile, "agentDocFile");
-		report("README has drifted from the agent docs:",
-				new DocumentConsistency(consistentPatterns, false).violations(readmeFile, agentDocFile));
+	protected File firstFile() {
+		return readmeFile;
+	}
+
+	@Override
+	protected File secondFile() {
+		return agentDocFile;
 	}
 
 	void setReadmeFile(File readmeFile) {
@@ -47,9 +46,5 @@ public class ReadmeConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	void setAgentDocFile(File agentDocFile) {
 		this.agentDocFile = agentDocFile;
-	}
-
-	void setConsistentPatterns(List<String> consistentPatterns) {
-		this.consistentPatterns = consistentPatterns;
 	}
 }

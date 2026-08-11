@@ -151,6 +151,52 @@ class ClaudeMdConformerTest {
 	}
 
 	/**
+	 * The rule reads the title on the first line and nowhere else, so a document
+	 * carrying it lower down still needs one put in front. Prepending it left the file
+	 * with two {@code # CLAUDE.md} headings, which the rule accepts — it never looks
+	 * past the first line — so the duplicate was committed to the adopted repository
+	 * with nothing downstream to report it, and the reshape being idempotent meant a
+	 * re-adoption did not clear it either.
+	 */
+	@Test
+	void movesAMisplacedTitleUpRatherThanAddingASecondOne() {
+		String generated = "A preamble the generator wrote.\n\n# CLAUDE.md\n\nBody here.\n";
+		String conformed = conformer.conform(generated);
+		assertEquals(ClaudeMdConformer.TITLE, conformed.lines().findFirst().orElseThrow());
+		assertEquals(1, conformed.lines().filter(ClaudeMdConformer.TITLE::equals).count(),
+				"the title must be moved, not duplicated:\n" + conformed);
+		assertTrue(conformed.contains("A preamble the generator wrote."), "the preamble survives");
+		assertTrue(conformed.contains("Body here."), "the body survives");
+		assertEquals(conformed, conformer.conform(conformed), "the move must be idempotent");
+	}
+
+	/**
+	 * Only the document's own title moves. One inside a code sample belongs to the
+	 * sample — the rule reads it as code — so removing it would rewrite the sample.
+	 */
+	@Test
+	void leavesATitleInsideACodeFenceWhereItIs() {
+		String generated = "A preamble.\n\n```markdown\n# CLAUDE.md\n```\n";
+		String conformed = conformer.conform(generated);
+		assertEquals(ClaudeMdConformer.TITLE, conformed.lines().findFirst().orElseThrow());
+		assertEquals(2, conformed.lines().filter(ClaudeMdConformer.TITLE::equals).count(),
+				"the sample keeps its line and the document gains a title of its own:\n" + conformed);
+		assertTrue(conformed.contains("```markdown"), "the fence survives");
+	}
+
+	/**
+	 * The blank line below a moved title goes with it only when one above it is left
+	 * behind; otherwise the paragraph that followed the title would be pulled up
+	 * against the one before it and the two would read as a single paragraph.
+	 */
+	@Test
+	void doesNotRunTwoParagraphsTogetherWhenMovingTheTitle() {
+		String conformed = conformer.conform("A preamble.\n# CLAUDE.md\n\nBody here.\n");
+		assertTrue(conformed.contains("A preamble.\n\nBody here."),
+				"the two paragraphs must stay separate:\n" + conformed);
+	}
+
+	/**
 	 * The rule strips a leading byte-order mark before it reads the document, and
 	 * {@link String#strip()} does not — the mark is not whitespace. So a title the rule
 	 * was perfectly happy with read as absent here, and the reshape prepended a second

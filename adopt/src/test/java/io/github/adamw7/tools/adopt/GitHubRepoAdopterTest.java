@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -196,6 +197,23 @@ class GitHubRepoAdopterTest {
 		AdoptionStep toolchain = GitHubRepoAdopter.defaultSteps(withAssets()).get(0);
 		RecordingCommandRunner runner = RecordingCommandRunner.failingOn("gh", 127, "gh: not found");
 		assertThrows(AdoptionException.class, () -> toolchain.execute(context, runner));
+	}
+
+	/**
+	 * Which guard {@link io.github.adamw7.tools.adopt.step.EnforcerStep} wires in is the
+	 * checkout's build system to decide and is not known when the pipeline is assembled:
+	 * only a Maven project gets the {@code claude-code-enforcer}, while a Gradle one gets
+	 * a task and a project with no build file gets a workflow. A message naming the
+	 * enforcer therefore landed in the history of repositories given neither, claiming
+	 * something the diff beside it does not support.
+	 */
+	@Test
+	void theGuardCommitDoesNotNameAnArtifactOnlyTheMavenPathAdds() {
+		assertFalse(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE.contains("claude-code-enforcer"),
+				"the guard commit must describe the guard, not one build system's artifact: "
+						+ GitHubRepoAdopter.GUARD_COMMIT_MESSAGE);
+		assertTrue(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE.contains("CLAUDE.md guard"),
+				GitHubRepoAdopter.GUARD_COMMIT_MESSAGE);
 	}
 
 	private List<String> stepNames(AdoptionOptions options) {

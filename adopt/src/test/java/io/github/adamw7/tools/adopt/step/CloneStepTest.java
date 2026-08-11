@@ -459,6 +459,36 @@ class CloneStepTest {
 		assertFalse(failure.getMessage().contains("warning"), failure.getMessage());
 	}
 
+	/**
+	 * A warning whose continuation is indented reaches the transcript as a line of
+	 * three spaces and then text. git never reports a path whose index and work tree
+	 * are both unchanged, so two blank status letters name no entry — but the pattern
+	 * accepted them, and the continuation's fourth character onwards was taken for a
+	 * path the adoption does not write, refusing the resume all the same.
+	 */
+	@Test
+	void resumesReusedCheckoutWhoseWarningWrapsOntoAnIndentedLine(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", String.join(
+				System.lineSeparator(),
+				"warning: could not open directory 'vendor/':",
+				"   Permission denied",
+				"?? CLAUDE.md"));
+
+		step.execute(existing, runner);
+
+		assertEquals(3, runner.count());
+	}
+
+	/** A status letter in either column still names an entry, so real work is not waved through. */
+	@Test
+	void refusesReusedCheckoutChangedOnlyInTheWorkTree(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = answering("https://github.com/adamw7/tools.git", " M src/Main.java");
+
+		assertFailure(AdoptionException.class, () -> step.execute(existing, runner), "src/Main.java");
+	}
+
 	@Test
 	void isNamedClone() {
 		assertEquals("clone", step.name());

@@ -630,7 +630,7 @@ sequenceDiagram
         A->>W: conform CLAUDE.md, add AGENTS.md
         A->>R: commit "Adopt Claude Code: add CLAUDE.md"
         A->>W: enforcer — wire the guard into the build
-        A->>R: commit "Add claude-code-enforcer to the build"
+        A->>R: commit "Adopt Claude Code: add the CLAUDE.md guard"
         opt --assets
             A->>W: assets — .claude/settings.json, hook, .mcp.json, workflow
             A->>R: commit "Add Claude Code configuration assets"

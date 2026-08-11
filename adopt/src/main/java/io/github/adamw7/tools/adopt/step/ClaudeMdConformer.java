@@ -185,10 +185,50 @@ public class ClaudeMdConformer {
 		}
 	}
 
+	/**
+	 * Puts the title on the document's first line, which is where the rule reads it:
+	 * its {@code firstNonBlankLine} check is satisfied by nothing further down.
+	 *
+	 * <p>A title the document already carries lower down is <em>moved</em> rather than
+	 * left where it is, because prepending a second one leaves the file with two
+	 * {@code # CLAUDE.md} headings. The rule accepts that — it only reads the first
+	 * line — so nothing downstream reported the duplicate the adoption had just
+	 * committed to someone else's repository, and the reshape being idempotent meant a
+	 * re-adoption did not clear it either. This is the same shape the byte-order mark
+	 * once produced (see {@link #splitLines}), reached from a document whose title
+	 * simply was not first.
+	 */
 	private void ensureTitle(List<String> lines) {
-		if (!TITLE.equals(firstNonBlank(lines))) {
-			lines.addAll(0, List.of(TITLE, ""));
+		if (TITLE.equals(firstNonBlank(lines))) {
+			return;
 		}
+		misplacedTitles(lines).forEach(index -> removeHeading(lines, index));
+		lines.addAll(0, List.of(TITLE, ""));
+	}
+
+	/**
+	 * The title headings the document carries, latest first so removing one cannot
+	 * shift the index of the next. Only structural lines are offered: a
+	 * {@code # CLAUDE.md} inside a code sample is the sample's, not the document's.
+	 */
+	private List<Integer> misplacedTitles(List<String> lines) {
+		return Outline.of(lines).structural(line -> TITLE.equals(line.strip())).boxed().toList().reversed();
+	}
+
+	/**
+	 * Removes the heading, and the blank line below it only when the line above was
+	 * blank too — otherwise the paragraph that followed the heading would be pulled up
+	 * against the one that preceded it and the two would read as a single paragraph.
+	 */
+	private static void removeHeading(List<String> lines, int index) {
+		lines.remove(index);
+		if (isBlankAt(lines, index) && precededByBlank(lines, index)) {
+			lines.remove(index);
+		}
+	}
+
+	private static boolean precededByBlank(List<String> lines, int index) {
+		return index == 0 || lines.get(index - 1).isBlank();
 	}
 
 	private String firstNonBlank(List<String> lines) {

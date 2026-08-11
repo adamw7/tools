@@ -76,8 +76,8 @@ class CliArgumentsTest {
 	}
 
 	/**
-	 * The list is read in the order the operator wrote it — the positional first,
-	 * then each flag as it was met — so the run's report reads in the order they
+	 * The list is read in the order the operator wrote it — the positional and each
+	 * flag interleaved as they were met — so the run's report reads in the order they
 	 * expect.
 	 */
 	@Test
@@ -86,6 +86,18 @@ class CliArgumentsTest {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--repo", OTHER_URL, "--repos", list.toString(),
 				"--repo", FOURTH_URL });
 		assertEquals(List.of(REPO_URL, OTHER_URL, THIRD_URL, FOURTH_URL), cli.repositoryUrls());
+	}
+
+	/**
+	 * The positional takes no precedence over the flags: it is read where it was
+	 * written, not hoisted to the front. Pinning it from a command line that opens
+	 * with a flag is what tells the two readings apart — one that opens with the
+	 * positional cannot.
+	 */
+	@Test
+	void readsAPositionalNamedAfterAFlagAfterIt() {
+		CliArguments cli = CliArguments.parse(new String[] { "--repo", OTHER_URL, REPO_URL });
+		assertEquals(List.of(OTHER_URL, REPO_URL), cli.repositoryUrls());
 	}
 
 	@Test

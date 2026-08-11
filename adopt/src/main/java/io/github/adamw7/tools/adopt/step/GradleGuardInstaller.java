@@ -25,6 +25,26 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * execution time: Gradle's configuration cache rejects a task holding a script or
  * {@code Project} reference, which would break {@code check} for every contributor
  * afterwards.
+ *
+ * <p>Registering the task is not enough on its own: a task nothing depends on is a
+ * guard the project's ordinary build never runs. It is hung from
+ * {@value #LIFECYCLE_TASK} through a live {@code matching}/{@code configureEach}
+ * view, so a plugin applied further down the script still wires it in — and a
+ * project that ends up with no {@value #LIFECYCLE_TASK} at all is given one. That
+ * case is not exotic: an Android or aggregator root script routinely declares a
+ * {@code clean} task and nothing else, and the guard was left registered, verified
+ * by {@link VerifyStep} running it directly, and unreachable from any build a
+ * contributor or CI would run — the pull request advertising a guard the project
+ * does not have, which is exactly what {@link PomEnforcerInstaller} refuses to
+ * produce on the Maven path.
+ *
+ * <p>The fallback registration is deferred to {@code afterEvaluate} rather than
+ * made inline, because the name has to be free: claiming {@value #LIFECYCLE_TASK}
+ * while the script is still being read would collide with a plugin applied below
+ * this block and fail the whole build. By {@code afterEvaluate} there is no "below"
+ * left. Applying Gradle's {@code base} plugin to obtain the task instead was
+ * rejected for the same reason — it also registers {@code clean}, which is the one
+ * task those root scripts already declare.
  */
 public class GradleGuardInstaller {
 
@@ -51,10 +71,13 @@ public class GradleGuardInstaller {
 	 */
 	private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
 
+	/** The lifecycle task the guard is hung from, and the one created when the project has none. */
+	static final String LIFECYCLE_TASK = "check";
+
 	private static final String GROOVY_BLOCK = """
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
-			tasks.register('%s') {
+			tasks.register('%1$s') {
 			    def claudeMd = project.file('CLAUDE.md')
 			    doLast {
 			        if (!claudeMd.isFile() || claudeMd.text.trim().isEmpty()) {
@@ -62,13 +85,18 @@ public class GradleGuardInstaller {
 			        }
 			    }
 			}
-			tasks.matching { it.name == 'check' }.configureEach { it.dependsOn('%s') }
-			""".formatted(GUARD_TASK, GUARD_TASK);
+			tasks.matching { it.name == '%2$s' }.configureEach { it.dependsOn('%1$s') }
+			project.afterEvaluate {
+			    if (!tasks.names.contains('%2$s')) {
+			        tasks.register('%2$s') { it.dependsOn('%1$s') }
+			    }
+			}
+			""".formatted(GUARD_TASK, LIFECYCLE_TASK);
 
 	private static final String KOTLIN_BLOCK = """
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
-			tasks.register("%s") {
+			tasks.register("%1$s") {
 			    val claudeMd = project.file("CLAUDE.md")
 			    doLast {
 			        if (!claudeMd.isFile || claudeMd.readText().trim().isEmpty()) {
@@ -76,8 +104,13 @@ public class GradleGuardInstaller {
 			        }
 			    }
 			}
-			tasks.matching { it.name == "check" }.configureEach { dependsOn("%s") }
-			""".formatted(GUARD_TASK, GUARD_TASK);
+			tasks.matching { it.name == "%2$s" }.configureEach { dependsOn("%1$s") }
+			project.afterEvaluate {
+			    if (!tasks.names.contains("%2$s")) {
+			        tasks.register("%2$s") { dependsOn("%1$s") }
+			    }
+			}
+			""".formatted(GUARD_TASK, LIFECYCLE_TASK);
 
 	/**
 	 * @return {@code true} when the guard was appended, {@code false} when the

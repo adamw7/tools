@@ -21,11 +21,12 @@ import io.github.adamw7.tools.enforcer.text.MarkdownText;
  * leading UTF-8 BOM is tolerated), and contain every required section heading as a
  * real, non-empty heading.
  * <p>
- * Headings are matched on whole lines outside code, so a heading mentioned in a
- * sample — fenced or indented — or in prose does not satisfy a requirement, and a
- * partial match such as {@code # CLAUDE.md-extended} does not satisfy
- * {@code # CLAUDE.md}. All structural problems are collected and reported
- * together.
+ * Headings are matched outside code, so a heading mentioned in a sample — fenced or
+ * indented — or in prose does not satisfy a requirement, and a partial match such as
+ * {@code # CLAUDE.md-extended} does not satisfy {@code # CLAUDE.md}. They are
+ * matched by the text they carry rather than by the line they were typed on, so a
+ * heading balanced with a closing {@code #} run satisfies the requirement its plain
+ * spelling does. All structural problems are collected and reported together.
  * <p>
  * Several optional checks, each disabled by default, can be switched on from the
  * rule configuration: {@code forbiddenTokens} that must not appear outside code,
@@ -205,7 +206,7 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 			return;
 		}
 		for (String token : forbiddenTokens) {
-			if (document.containsInProse(token)) {
+			if (document.containsUnquoted(token)) {
 				violations.add(documentName() + " must not contain forbidden token: " + token);
 			}
 		}

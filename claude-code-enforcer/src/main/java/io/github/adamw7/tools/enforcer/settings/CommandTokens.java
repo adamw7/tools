@@ -91,6 +91,25 @@ final class CommandTokens {
 			"case", "in", "esac",
 			"{", "}", "!");
 
+	/**
+	 * The programs that run the command their arguments name rather than being that
+	 * command themselves. A hook wired as {@code exec .claude/hooks/session-start.sh}
+	 * runs that script exactly as the bare path does, and reading the first word
+	 * blindly took {@code exec} for the program — so the script went unresolved, a
+	 * rename of it passed the missing-script check, and
+	 * {@code reportUnreferencedScripts} reported a script the hook really does run as
+	 * referenced by nothing.
+	 * <p>
+	 * They are listed apart from the reserved words because they are programs rather
+	 * than shell grammar, even though what a reader does with them is the same: skip
+	 * over them to reach what runs. Only the wrappers whose <em>next</em> word is the
+	 * command are listed. One that takes an option carrying a value — {@code sudo -u}
+	 * — would need its options described the way an {@link Interpreter}'s are, and
+	 * skipping it without that would name the option as the program.
+	 */
+	private static final Set<String> COMMAND_WRAPPERS = Set.of(
+			"exec", "command", "builtin", "nohup", "env", "time");
+
 	private CommandTokens() {
 	}
 
@@ -128,9 +147,13 @@ final class CommandTokens {
 		return Stream.concat(Stream.of(program), interpretedScript(program, words.subList(1, words.size())).stream());
 	}
 
-	/** True for a word that precedes the program rather than being it: an assignment or a reserved word. */
+	/**
+	 * True for a word that precedes the program rather than being it: an assignment,
+	 * a reserved word, or a wrapper that runs what follows it.
+	 */
 	private static boolean isPrefix(String token) {
-		return ASSIGNMENT.matcher(token).matches() || RESERVED_WORDS.contains(token);
+		return ASSIGNMENT.matcher(token).matches() || RESERVED_WORDS.contains(token)
+				|| COMMAND_WRAPPERS.contains(token);
 	}
 
 	/** The script an interpreter is handed, or nothing when the program is not one. */

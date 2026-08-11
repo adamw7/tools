@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.enforcer.text;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -8,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * A parsed Markdown document: its lines plus the masks marking which of them are
@@ -155,17 +155,47 @@ public final class MarkdownDocument {
 	 * outside code and outside HTML comments alike. A commented-out mention is inert
 	 * both ways round — it must not satisfy a check that demands the token, and must
 	 * not trip one that forbids it.
+	 * <p>
+	 * An inline code span does count as a mention, because naming a file in
+	 * backticks is how prose names a file: a document that says "see
+	 * {@code `AGENTS.md`}" has referenced it. A check that <em>forbids</em> a token
+	 * cannot read a span that way and asks {@link #containsUnquoted} instead.
 	 */
 	public boolean containsInProse(String token) {
 		return structuralLines().anyMatch(index -> lines.get(index).contains(token));
 	}
 
-	/** The heading lines outside fenced code blocks and HTML comments, in document order. */
+	/**
+	 * True when {@code token} appears on a line that carries document structure and
+	 * outside an inline code span. A token quoted as code is the document
+	 * illustrating the token rather than writing one, exactly as a fenced sample is:
+	 * a document that forbids {@code TODO} must still be able to say "never leave a
+	 * {@code `TODO`} behind", which the line-level reading of {@link #containsInProse}
+	 * reported as the very thing it forbids.
+	 */
+	public boolean containsUnquoted(String token) {
+		return structuralLines()
+				.anyMatch(index -> MarkdownText.withoutCodeSpans(lines.get(index)).contains(token));
+	}
+
+	/** The headings outside fenced code blocks and HTML comments, in document order. */
 	public Set<String> headings() {
+		return headingTexts().collect(Collectors.toCollection(LinkedHashSet::new));
+	}
+
+	/**
+	 * The heading each structural line declares, in document order, canonical rather
+	 * than verbatim. A heading is matched by the text it carries, so the closing
+	 * {@code #} run Markdown lets an author balance a heading with — {@code ## Testing
+	 * ##} — and the tab a heading may be separated by are not part of it. Comparing
+	 * the raw line reported a document that has {@code ## Testing} written that way as
+	 * missing the section, and attributed the section's content to the one above it.
+	 */
+	private Stream<String> headingTexts() {
 		return structuralLines()
 				.mapToObj(index -> lines.get(index).strip())
 				.filter(MarkdownDocument::isHeading)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
+				.map(MarkdownDocument::headingText);
 	}
 
 	/** True when {@code heading} appears as a real heading outside code fences. */
@@ -190,18 +220,27 @@ public final class MarkdownDocument {
 	 * more than once is reported by its first occurrence, so the order comparison
 	 * matches the de-duplicated set of present sections rather than reporting a
 	 * spurious out-of-order failure.
+	 * <p>
+	 * Only a heading answers, which is what keeps this in step with
+	 * {@link #headings()}. Reading every structural line let an entry of
+	 * {@code wanted} that is not a heading at all — a section configured as
+	 * {@code Testing} rather than {@code ## Testing} — be answered by a line of prose,
+	 * so the same document was reported both as missing that section and as having it
+	 * out of order.
 	 */
 	public List<String> headingsInOrder(List<String> wanted) {
 		Set<String> required = new LinkedHashSet<>(wanted);
-		List<String> ordered = new ArrayList<>();
-		structuralLines().mapToObj(index -> lines.get(index).strip())
-				.filter(required::remove)
-				.forEach(ordered::add);
-		return ordered;
+		return headingTexts().filter(required::remove).toList();
 	}
 
 	private int headingIndex(String section) {
-		return structuralLines().filter(index -> lines.get(index).strip().equals(section)).findFirst().orElse(-1);
+		return structuralLines().filter(index -> declares(index, section)).findFirst().orElse(-1);
+	}
+
+	/** True when the line at {@code index} is the heading {@code section} names. */
+	private boolean declares(int index, String section) {
+		String line = lines.get(index).strip();
+		return isHeading(line) && headingText(line).equals(section);
 	}
 
 	/** The first line that settles the question decides it; a section nothing settles has no body. */
@@ -230,6 +269,38 @@ public final class MarkdownDocument {
 
 	private static boolean isHeading(String line) {
 		return ATX_HEADING.matcher(line).matches();
+	}
+
+	/**
+	 * The heading a line declares, written canonically: its {@code #} run, then a
+	 * single space and the text it carries, or the run alone when it carries none.
+	 * A heading is the text it names, not the line it was typed on, so the whitespace
+	 * separating the two — a tab counts — and the closing {@code #} run Markdown
+	 * allows are spelling rather than content.
+	 */
+	private static String headingText(String line) {
+		int level = headingLevel(line);
+		String hashes = line.substring(0, level);
+		String text = withoutClosingRun(line.substring(level).strip());
+		return text.isEmpty() ? hashes : hashes + SPACE + text;
+	}
+
+	/**
+	 * The heading's text without the {@code #} run that closes it. The run only
+	 * closes a heading when whitespace precedes it, so {@code ## C#} keeps its hash
+	 * while {@code ## Testing ##} loses both of its; a text that is nothing but
+	 * hashes — the {@code ###} of {@code ## ###} — is the closing run itself and
+	 * leaves an empty heading.
+	 */
+	private static String withoutClosingRun(String text) {
+		int end = text.length();
+		while (end > 0 && text.charAt(end - 1) == HEADING_CHAR) {
+			end--;
+		}
+		if (end == text.length()) {
+			return text;
+		}
+		return end == 0 || isIndent(text.charAt(end - 1)) ? text.substring(0, end).strip() : text;
 	}
 
 	private static int headingLevel(String heading) {

@@ -43,8 +43,20 @@ public final class MarkdownText {
 	 * error rather than as the violation the rule exists to report.
 	 */
 	public static Optional<String> readIfText(File file) {
+		return readIfTextWithByteOrderMark(file).map(MarkdownText::stripByteOrderMark);
+	}
+
+	/**
+	 * Reads {@code file} the way {@link #readIfText} does but keeps a leading
+	 * byte-order mark, for a rule that must judge the file as the program that runs
+	 * it will read it rather than as a document. A shell script is the case in
+	 * point: the kernel reads bytes, so a mark in front of the {@code #!} line makes
+	 * the script unrunnable, and a reader that strips the mark first can never see
+	 * that — it reported such a script as well formed.
+	 */
+	public static Optional<String> readIfTextWithByteOrderMark(File file) {
 		try {
-			return Optional.of(stripByteOrderMark(Files.readString(file.toPath())));
+			return Optional.of(Files.readString(file.toPath()));
 		} catch (IOException e) {
 			return Optional.empty();
 		}
@@ -72,10 +84,15 @@ public final class MarkdownText {
 
 	/** Removes a single leading UTF-8 byte-order mark, if present. */
 	public static String stripByteOrderMark(String content) {
-		if (!content.isEmpty() && content.charAt(0) == BYTE_ORDER_MARK) {
+		if (startsWithByteOrderMark(content)) {
 			return content.substring(1);
 		}
 		return content;
+	}
+
+	/** True when {@code content} still carries the mark {@link #stripByteOrderMark} removes. */
+	public static boolean startsWithByteOrderMark(String content) {
+		return !content.isEmpty() && content.charAt(0) == BYTE_ORDER_MARK;
 	}
 
 	/**

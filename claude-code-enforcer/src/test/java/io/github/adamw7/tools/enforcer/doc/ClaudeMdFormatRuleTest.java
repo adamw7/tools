@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.doc;
 import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -186,6 +187,18 @@ class ClaudeMdFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A token quoted as code is the document illustrating it, exactly as a fenced
+	 * sample is — so a document may say what it bans without banning itself.
+	 */
+	@Test
+	void ignoresAForbiddenTokenInsideAnInlineCodeSpan() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nNever leave a `TODO` behind.\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	/** Commented-out text is inert, so a token an author retired no longer trips the ban. */
 	@Test
 	void ignoresAForbiddenTokenInsideAnHtmlComment() {
@@ -349,6 +362,31 @@ class ClaudeMdFormatRuleTest {
 
 		// The sections are in the configured order; a repeated "## Testing" must be
 		// counted once by its first occurrence, not flagged as out of order.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * A section configured without its {@code ##} is missing whatever the document
+	 * says, so the order check must not answer it with a line of prose and report
+	 * the same document as both missing the section and misordering it.
+	 */
+	@Test
+	void reportsOnlyTheMissingSectionWhenARequiredEntryIsNotAHeading() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setRequiredSections(java.util.List.of("Testing"));
+		rule.setEnforceSectionOrder(true);
+
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, rule::execute,
+				"missing required section heading: Testing");
+		assertFalse(exception.getMessage().contains("out of order"), exception.getMessage());
+	}
+
+	/** A heading balanced with a closing hash run is the section it names. */
+	@Test
+	void acceptsARequiredSectionClosedByATrailingHashRun() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("## Testing", "## Testing ##"));
+		rule.setEnforceSectionOrder(true);
+
 		assertDoesNotThrow(rule::execute);
 	}
 

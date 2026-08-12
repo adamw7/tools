@@ -61,8 +61,10 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 		File directory = definitionDir();
 		requireConfigured(directory, naming.directoryParameter());
 		ProjectFiles.requireDirectory(directory, naming.directoryLabel());
+		List<File> entries = entriesIn(directory);
+		log().debug(() -> naming.directoryLabel() + ": checking " + entries.size() + " definition(s) in " + directory);
 		List<String> violations = new ArrayList<>();
-		for (File entry : entriesIn(directory)) {
+		for (File entry : entries) {
 			collectEntryViolations(entry, violations);
 		}
 		report(naming.header(), violations);
@@ -89,7 +91,7 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 	 * when a violation was collected instead of content worth checking further.
 	 */
 	protected final Optional<String> contentOf(File file, List<String> violations) {
-		return DefinitionContent.of(file, naming.definitionLabel(), autoFix, getLog(), violations);
+		return DefinitionContent.of(file, naming.definitionLabel(), autoFix, log(), violations);
 	}
 
 	/**

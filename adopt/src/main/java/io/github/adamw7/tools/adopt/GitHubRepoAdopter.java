@@ -149,22 +149,38 @@ public class GitHubRepoAdopter {
 	 * @return the same report, once every step has completed
 	 */
 	public AdoptionReport adopt(AdoptionContext context, AdoptionReport report) {
-		log.info("Adopting Claude Code into {}", context.displayUrl());
-		for (AdoptionStep step : steps) {
-			runStep(step, context, report);
+		log.info("Adopting Claude Code into {} in {} steps", context.displayUrl(), steps.size());
+		Elapsed elapsed = Elapsed.started();
+		for (int index = 0; index < steps.size(); index++) {
+			runStep(steps.get(index), index + 1, context, report);
 		}
-		log.info("Adoption complete for {}", context.displayUrl());
+		log.info("Adoption complete for {} in {}", context.displayUrl(), elapsed);
 		return report;
 	}
 
-	private void runStep(AdoptionStep step, AdoptionContext context, AdoptionReport report) {
-		log.info("Step: {}", step.name());
+	/**
+	 * Each step is announced with its position in the pipeline and closed with what
+	 * it cost, because the two questions an operator has of a run that is still
+	 * going are how much of it is left and whether the step it is on is working or
+	 * stuck. The pipeline is assembled per run — an {@link AssetsStep} on request, no
+	 * publication steps on a dry run — so the count is the run's own, not a constant
+	 * a reader could have learnt once.
+	 *
+	 * <p>A failing step is named here as well, without its stack trace: the exception
+	 * carries the failure and {@link BatchAdoption} logs it once, but nothing in that
+	 * account says which stage produced it or how far it had got.
+	 */
+	private void runStep(AdoptionStep step, int ordinal, AdoptionContext context, AdoptionReport report) {
+		log.info("Step {}/{}: {}", ordinal, steps.size(), step.name());
+		Elapsed elapsed = Elapsed.started();
 		try {
 			step.execute(context, runner, report);
 		} catch (RuntimeException e) {
+			log.warn("Step {} failed after {}", step.name(), elapsed);
 			report.recordFailure(describe(step, e));
 			throw e;
 		}
+		log.info("Step {} completed in {}", step.name(), elapsed);
 		report.recordStep(step.name());
 	}
 

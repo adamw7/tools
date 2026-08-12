@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -51,23 +52,52 @@ public final class BatchAdoption {
 	 * @return one run per repository, in the order the repositories were given
 	 */
 	public List<AdoptionRun> adoptAll(List<String> repositoryUrls, Checkouts checkouts) {
-		log.info("Adopting Claude Code into {} repositories", repositoryUrls.size());
-		return repositoryUrls.stream().map(url -> adoptOne(url, checkouts)).toList();
+		log.info("Adopting Claude Code into {} repositories on branch {}", repositoryUrls.size(),
+				checkouts.branchName());
+		Elapsed elapsed = Elapsed.started();
+		List<AdoptionRun> runs = IntStream.range(0, repositoryUrls.size())
+				.mapToObj(index -> adoptOne(repositoryUrls, index, checkouts))
+				.toList();
+		logSummary(runs, elapsed);
+		return runs;
 	}
 
 	/**
 	 * The URL is redacted up front so a repository that fails its claim — and so
 	 * never has a context to ask — is still reported without its credentials.
+	 *
+	 * <p>The repository is taken by position rather than by value so the line
+	 * announcing it can say which of how many it is. Every line below it names a
+	 * step, not a repository, and a batch of twenty is otherwise read by counting
+	 * the "Adopting Claude Code into ..." lines above wherever the reader is.
 	 */
-	private AdoptionRun adoptOne(String repositoryUrl, Checkouts checkouts) {
+	private AdoptionRun adoptOne(List<String> repositoryUrls, int index, Checkouts checkouts) {
+		String repositoryUrl = repositoryUrls.get(index);
 		AdoptionReport report = new AdoptionReport();
 		String displayUrl = Redaction.of(repositoryUrl);
+		log.info("Repository {} of {}: {}", index + 1, repositoryUrls.size(), displayUrl);
 		try {
 			adoption.adopt(checkouts.claim(repositoryUrl), report);
 		} catch (RuntimeException e) {
 			recordFailure(displayUrl, report, e);
 		}
 		return new AdoptionRun(displayUrl, checkouts.branchName(), report);
+	}
+
+	/**
+	 * Closes the batch with what the operator has to act on: how much of it landed,
+	 * what it cost, and — when some of it did not — which repositories to re-run.
+	 * A partly failed batch is the case this class exists to produce, and its
+	 * failures are scattered through however many repositories' worth of steps
+	 * separate them, so naming them together at the end is the difference between
+	 * reading the run and searching it.
+	 */
+	private void logSummary(List<AdoptionRun> runs, Elapsed elapsed) {
+		List<String> failed = runs.stream().filter(run -> !run.succeeded()).map(AdoptionRun::repositoryUrl).toList();
+		log.info("Adopted {} of {} repositories in {}", runs.size() - failed.size(), runs.size(), elapsed);
+		if (!failed.isEmpty()) {
+			log.warn("Adoption failed for {} of {} repositories: {}", failed.size(), runs.size(), failed);
+		}
 	}
 
 	/**

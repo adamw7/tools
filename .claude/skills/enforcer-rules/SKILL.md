@@ -67,6 +67,15 @@ parsing again.
 | `requireConfigured` / `requireExists` / `requireDocument` | Missing parameter or file — always fails, whatever the severity |
 | `requireContent` | Read a required file and fail when blank |
 | `howToFix()` | Override to give the HTML report rule-specific remediation steps |
+| `log()` | Logging — **never `getLog()`**, which is null outside a Maven session |
+
+`report(...)` already debug-logs the rule, its configured input files and the
+violation count. Add a `log().debug(...)` of your own for what that cannot say:
+how much you scanned, or that you passed because an optional input was absent —
+otherwise a rule that checked nothing is indistinguishable from one that checked
+everything. maven-enforcer injects the logger and nothing else does, so `getLog()`
+is null in a unit test; `log()` falls back to a silent logger, which is what makes
+logging safe on any path.
 
 Shared configuration every rule inherits: `severity` (`error` default, `warn`
 logs only), `reportFile` (self-contained HTML), `baselineFile` +
@@ -102,8 +111,9 @@ untrusted text is fine; emitting a deliberate `\n` in a message is not.
   unchecked so a fixture reads as one expression.
 - Assert on the *message*, not just the throw: check
   `EnforcerRuleException#getMessage()` names the offending file and value.
-- `CapturingLogger` lets a test assert what `severity=warn` logged instead of
-  threw.
+- `CapturingLogger` records `warnings()`, `infos()` and `debugs()`, so a test can
+  assert what `severity=warn` logged instead of threw, and what the rule's debug
+  trace said it checked. Every level reports itself enabled.
 - Cover: passes when correct, fails per violation kind, passes on an empty
   directory, and the always-fails build-setup cases (missing parameter/file).
 

@@ -5,9 +5,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
+import org.apache.maven.enforcer.rule.api.EnforcerLogger;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.text.MarkdownText;
@@ -83,15 +85,49 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 		writeReport(header, newViolations);
 		logSuppressed(violations.size() - newViolations.size());
 		logStaleEntries(baseline.staleEntries(violations));
+		logOutcome(newViolations);
 		if (newViolations.isEmpty()) {
 			return;
 		}
 		String message = format(header, newViolations);
 		if (isWarn()) {
-			getLog().warn(message);
+			log().warn(message + System.lineSeparator() + downgradeNotice());
 		} else {
 			throw new EnforcerRuleException(message);
 		}
+	}
+
+	/**
+	 * The logger, never null. maven-enforcer injects one before it runs a rule and
+	 * nothing else does, so a rule constructed directly has none;
+	 * {@link SilentEnforcerLogger} stands in for it, which is what lets a rule log
+	 * on any path rather than only where a Maven session is guaranteed.
+	 */
+	protected final EnforcerLogger log() {
+		return Objects.requireNonNullElse(getLog(), SilentEnforcerLogger.INSTANCE);
+	}
+
+	/**
+	 * One line per rule naming what it was pointed at and what it found there.
+	 * maven-enforcer already reports each rule's verdict, but by class and
+	 * configured name alone: nothing in {@code Rule 8: ...McpServersValidRule
+	 * (mcpServersValid) passed} distinguishes the rule that read a file from the one
+	 * that passed because its optional file is absent, or because a directory
+	 * parameter points somewhere empty. The rule names its own inputs through
+	 * {@link #toString()}, so {@code mvn -X} shows what each verdict was reached on.
+	 */
+	private void logOutcome(List<String> violations) {
+		log().debug(() -> this + " found " + violations.size() + " violation(s)");
+	}
+
+	/**
+	 * Says why a warning did not stop the build, and which rule to configure to make
+	 * it. A downgraded violation is otherwise one more {@code [WARNING]} among a
+	 * build's many, worded exactly like the failure it would have been, leaving a
+	 * reader to guess whether the build tolerated it deliberately.
+	 */
+	private String downgradeNotice() {
+		return "  (" + this + " has severity 'warn', so the build was not failed)";
 	}
 
 	private boolean isWriteBaselineRequested() {
@@ -100,18 +136,18 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	private void recordBaseline(List<String> violations) throws EnforcerRuleException {
 		Baseline.write(baselineFile, violations, baseDir);
-		getLog().info("Recorded " + violations.size() + " violation(s) to the baseline " + baselineFile);
+		log().info("Recorded " + violations.size() + " violation(s) to the baseline " + baselineFile);
 	}
 
 	private void logSuppressed(int suppressed) {
 		if (suppressed > 0) {
-			getLog().info(suppressed + " violation(s) suppressed by the baseline " + baselineFile);
+			log().info(suppressed + " violation(s) suppressed by the baseline " + baselineFile);
 		}
 	}
 
 	private void logStaleEntries(List<String> staleEntries) {
 		if (!staleEntries.isEmpty()) {
-			getLog().info(staleEntries.size() + " baseline entry/entries no longer match and can be removed from "
+			log().info(staleEntries.size() + " baseline entry/entries no longer match and can be removed from "
 					+ baselineFile);
 		}
 	}
@@ -121,6 +157,7 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 			return;
 		}
 		new HtmlReport(header, violations, howToFix()).writeTo(reportFile);
+		log().debug(() -> this + " wrote its report to " + reportFile);
 	}
 
 	/**
@@ -238,7 +275,7 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 			field.setAccessible(true);
 			return field.get(this);
 		} catch (ReflectiveOperationException | RuntimeException e) {
-			getLog().debug("Could not read rule parameter " + field.getName() + ": " + e.getMessage());
+			log().debug("Could not read rule parameter " + field.getName() + ": " + e.getMessage());
 			return null;
 		}
 	}

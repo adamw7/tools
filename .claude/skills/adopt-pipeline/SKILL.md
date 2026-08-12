@@ -82,6 +82,23 @@ included. Preserve that when changing `BatchAdoption` or `Failures`.
 an `AdoptionOptions` (wrapping `PullRequestOptions`) that both entry points —
 `Main` and the MCP `AdoptTool` — hand to the pipeline factory.
 
+## Debugging a run: where the logging goes
+Two channels, from `adopt/src/main/resources/log4j2.properties`. The **console**
+(standard error, threshold-filtered to `info`) is progress: `Repository 2 of 5`,
+`Step 4/12: branch`, what each step cost, and the closing count of repositories
+that landed. **`logs/adopt.log`** adds the adoption's own `debug` —
+`io.github.adamw7.tools.adopt` is set to it while the root stays at `info`, so the
+embedded Spring Boot MCP server does not bury the trace — carrying every
+`git`/`claude`/`gh` invocation with its working directory, exit code and duration,
+plus the redacted transcript of the ones that failed.
+
+Reach for that file first when a run "did nothing": `runTolerating` swallows a
+non-zero exit by design, so the command trace is the only place a tolerated
+refusal is recorded. Durations come from `Elapsed`; log through it rather than
+formatting a `Duration` yourself. Anything reporting a command or its output goes
+through `CommandResult.describe()` / `redactedOutput()`, never the raw values — a
+clone URL's credentials come back in the tool's own error text.
+
 ## Testing
 - Step tests use a fake `CommandRunner`: **a test must never spawn a real
   process** (pinned by `TestConventionsArchitectureTest`).

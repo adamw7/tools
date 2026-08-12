@@ -46,6 +46,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 		requireConfigured(file, fileParameter);
 		if (!file.isFile()) {
 			handleMissingFile(file);
+			log().debug(() -> description + " is absent at " + file + ", which this rule accepts; nothing to check");
 			report(header(), List.of());
 			return;
 		}

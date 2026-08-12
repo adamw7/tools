@@ -53,7 +53,15 @@ public class CodeMojo extends AbstractMojo {
 		}
 	}
 
-	private void extendClassPath() {
+	/**
+	 * Puts the project's runtime classpath on the thread context classloader,
+	 * which is what {@link MessagesFinder} scans through, so a project's own
+	 * generated messages are visible to the scan. Package-private so the
+	 * behaviour can be exercised directly: {@link #execute()} restores the
+	 * original classloader before it returns, leaving no other point from which
+	 * the extension can be observed.
+	 */
+	void extendClassPath() {
 		try {
 			Set<URL> urls = new HashSet<>();
 

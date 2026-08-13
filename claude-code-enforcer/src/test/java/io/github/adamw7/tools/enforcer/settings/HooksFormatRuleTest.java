@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.enforcer.settings;
 
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.TestFiles.assumeSymlink;
+import static io.github.adamw7.tools.test.TestFiles.createDirectory;
+import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.enforcer.rule.CapturingLogger;
-import io.github.adamw7.tools.enforcer.rule.TestFiles;
+import io.github.adamw7.tools.test.TestFiles;
 
 class HooksFormatRuleTest {
 

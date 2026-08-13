@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
-import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.markdown.MarkdownDocument;
+import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Base for enforcer rules that validate a Markdown document follows an expected
@@ -174,11 +174,18 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
+	/**
+	 * Missing and empty are two answers to one lookup, so the heading is located
+	 * once per section and the body question asked of the index it found. Asking
+	 * {@code hasHeading} and then {@code hasBody} walked the document twice per
+	 * section to answer a question the first walk had already settled.
+	 */
 	private void collectSectionViolations(MarkdownDocument document, List<String> violations) {
 		for (String section : requiredSections()) {
-			if (!document.hasHeading(section)) {
+			int index = document.headingIndex(section);
+			if (index < 0) {
 				violations.add(documentName() + " is missing required section heading: " + section);
-			} else if (!document.hasBody(section)) {
+			} else if (!document.hasBodyAt(index)) {
 				violations.add(documentName() + " has an empty section: " + section);
 			}
 		}

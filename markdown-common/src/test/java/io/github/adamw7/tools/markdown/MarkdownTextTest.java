@@ -1,9 +1,9 @@
-package io.github.adamw7.tools.enforcer.text;
+package io.github.adamw7.tools.markdown;
 
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.assumeSymlink;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeBytes;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.TestFiles.assumeSymlink;
+import static io.github.adamw7.tools.test.TestFiles.readString;
+import static io.github.adamw7.tools.test.TestFiles.writeBytes;
+import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,34 +26,26 @@ class MarkdownTextTest {
 
 	@Test
 	void firstNonBlankLineSkipsLeadingBlanksAndStrips() {
-		assertEquals("# Title", MarkdownText.firstNonBlankLine("\n   \n   # Title  \nbody"));
+		assertEquals("# Title", MarkdownText.firstNonBlankLine("\n   \n   # Title  \nbody".lines()));
 	}
 
 	@Test
 	void firstNonBlankLineIsEmptyWhenAllBlank() {
-		assertEquals("", MarkdownText.firstNonBlankLine("\n   \n\t\n"));
+		assertEquals("", MarkdownText.firstNonBlankLine("\n   \n\t\n".lines()));
 	}
 
 	@Test
 	void firstNonBlankLineIsEmptyForEmptyContent() {
-		assertEquals("", MarkdownText.firstNonBlankLine(""));
+		assertEquals("", MarkdownText.firstNonBlankLine("".lines()));
 	}
 
 	@Test
-	void streamOverloadMatchesTheStringOverload() {
-		String content = "\n   \n   # Title  \nbody";
-
-		assertEquals(MarkdownText.firstNonBlankLine(content),
-				MarkdownText.firstNonBlankLine(content.lines()));
-	}
-
-	@Test
-	void streamOverloadStripsAndPicksTheFirstContentLine() {
+	void firstNonBlankLineStripsAndPicksTheFirstContentLine() {
 		assertEquals("# Title", MarkdownText.firstNonBlankLine(Stream.of("", "   ", "  # Title  ", "body")));
 	}
 
 	@Test
-	void streamOverloadIsEmptyWhenNoContentLine() {
+	void firstNonBlankLineIsEmptyWhenNoContentLine() {
 		assertEquals("", MarkdownText.firstNonBlankLine(Stream.of("", "   ", "\t")));
 	}
 

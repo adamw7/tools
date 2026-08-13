@@ -16,8 +16,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
-import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.markdown.MarkdownDocument;
+import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * The {@code @path} memory imports reachable from a root document, together with

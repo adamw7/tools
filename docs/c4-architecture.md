@@ -98,6 +98,7 @@ flowchart TB
 
         subgraph shared ["Shared foundations"]
             enforcer["<b>claude-code-enforcer</b><br/><i>maven-enforcer rules</i><br/>Fails the build on malformed<br/>CLAUDE.md / AGENTS.md / README /<br/>skills / settings / .mcp.json"]
+            markdownCommon["<b>markdown-common</b><br/><i>Shared library</i><br/>MarkdownDocument · MarkdownText:<br/>lines plus the code and comment masks"]
             testCommon["<b>test-common</b><br/><i>test-jar</i><br/>Shared ArchUnit rule libraries:<br/>coding · naming · test conventions"]
             mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · ToolDefinition · TransportConfigurer"]
         end
@@ -155,6 +156,8 @@ flowchart TB
     ownBuild -.->|"runs the architecture tests"| testCommon
 
     adopt -->|"wires the rule into<br/>the adopted build"| enforcer
+    adopt -->|"reads the generated<br/>CLAUDE.md"| markdownCommon
+    enforcer -->|"reads the document<br/>it judges"| markdownCommon
     context -->|"scans"| projectSrc
     data -->|"reads (JDBC / DuckDB)"| db
     data -->|"reads / streams"| files
@@ -553,9 +556,12 @@ flowchart TB
         end
 
         subgraph textSupport ["text — parsing support"]
-            text["<b>MarkdownDocument · FrontMatter ·<br/>FrontMatterFixer · NameConvention</b>"]
+            text["<b>FrontMatter · FrontMatterFixer ·<br/>NameConvention</b>"]
         end
     end
+
+    markdown["<b>markdown-common</b><br/><i>Shared library</i><br/>MarkdownDocument · MarkdownText<br/>also read by adopt's ClaudeMdConformer"]
+    text --> markdown
 
     docsFiles["📄 CLAUDE.md · AGENTS.md · README.md"]
     config["🗂️ .claude/ · .mcp.json ·<br/>.claude-plugin/plugin.json"]

@@ -12,7 +12,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that keeps agent context files within a size budget.

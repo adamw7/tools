@@ -1,6 +1,6 @@
 ---
 name: text-parsers
-description: Work on this repo's text readers — MarkdownDocument, MarkdownText, ImportGraph, CommandTokens, the ClaudeMdConformer copy of them, and the SnakeYAML-backed FrontMatter — and the adversarial input that has broken each. Use when changing how a document, YAML front matter, a memory import or a hook command is read, when a rule fires on valid input or passes invalid input, or when the user says "fence", "front matter", "heading detection", "memory import", or "hook command".
+description: Work on this repo's text readers — the shared MarkdownDocument and MarkdownText in markdown-common, ImportGraph, CommandTokens, the SnakeYAML-backed FrontMatter, and how ClaudeMdConformer reads through them — and the adversarial input that has broken each. Use when changing how a document, YAML front matter, a memory import or a hook command is read, when a rule fires on valid input or passes invalid input, or when the user says "fence", "front matter", "heading detection", "memory import", or "hook command".
 ---
 
 # Text Parsers Skill
@@ -9,7 +9,10 @@ The `claude-code-enforcer` rules and the `adopt` conformer read Markdown, YAML
 front matter, `@path` imports and shell hook commands with small readers of their
 own. Those readers carry the largest share of this repository's shipped defects:
 `FrontMatter` and `CommandTokens` have each been fixed in six or seven separate
-commits, `MarkdownDocument` and `ClaudeMdConformer` in four or five.
+commits, `MarkdownDocument` in four or five — several of those twice over, once
+in the reader and once in the copy `ClaudeMdConformer` used to carry, which is
+why the Markdown reader now lives in `markdown-common` with a single caller-facing
+copy.
 
 Every one of those fixes was the same thing — real input the reader had not been
 written for. This skill is the accumulated list, so the next change starts from
@@ -118,22 +121,33 @@ Splits a hook command the way a shell would.
   `--out target/log.txt` to exist fails a build over a file the hook is about to
   write.
 
-## The two-readers problem
+## The checker and the rewriter
 
-`ClaudeMdConformer` in `adopt` spells out a second copy of `MarkdownDocument`'s
-fence and comment reading, plus `claudeMdFormat`'s required sections. It has to —
+Two callers read a `CLAUDE.md` and must agree about it: `claudeMdFormat` judges
+one, and `adopt`'s `ClaudeMdConformer` reshapes one so that judgement passes.
+They share `markdown-common`, a module carrying nothing but the reader, because
 `adopt` is a plain library and must not put the maven-enforcer API on every
-consumer's classpath.
+consumer's classpath — so it cannot depend on `claude-code-enforcer` to get it.
 
-**A copy is only safe when a test proves it agrees.** The pattern here is
-`ClaudeMdConformerContractTest`: it runs the *real* rule, on a test-scoped
-dependency, over the conformer's output, and asserts the raw fixture is rejected
-first so a conformer that stopped reshaping cannot pass by doing nothing.
+The conformer used to spell out its own copy of the fence and comment reading.
+Every way the two copies drifted apart produced one shape of bug: the conformer
+acted on lines the rule holds to be code, or appended a section the rule already
+reads as present, and the adoption then failed its own `VerifyStep` — after
+committing and pushing the file. **Read a document through `MarkdownDocument`;
+never re-derive a mask, a fence or a heading on either side.**
+
+What the conformer still copies is `claudeMdFormat`'s *required sections* — data,
+not reading. `ClaudeMdConformerContractTest` holds that copy honest: it runs the
+*real* rule, on a test-scoped dependency, over the conformer's output, and
+asserts the raw fixture is rejected first so a conformer that stopped reshaping
+cannot pass by doing nothing.
 
 When you touch either side:
 
-1. Change the enforcer reader.
-2. Mirror it in the conformer.
+1. Change the shared reader in `markdown-common`. Both sides move together, which
+   is the whole point of the module.
+2. If the change is to the *required sections*, mirror the constant in the
+   conformer — that is the one thing still written twice.
 3. Add the case to the contract test — **fixture rejected before, accepted after**.
 
 Skipping step 3 is what shipped #536: four defects where the conformer produced a
@@ -141,13 +155,15 @@ document the rule it exists to satisfy rejects, so the adoption failed its own
 `VerifyStep` on a file it had just reshaped to pass it — on someone else's
 repository, after the branch was pushed.
 
-**Mirroring the invariant is not enough; mirror the *algorithm*.** The conformer
-once read fences and indents in two passes where the rule read them in one. Every
-row of the table above still held on each pass alone, and the contract test had a
+**Why the reader is shared rather than mirrored.** Mirroring the invariant was
+never enough; the *algorithm* had to match too. The conformer once read fences
+and indents in two passes where the rule read them in one. Every row of the table
+above still held on each pass alone, and the contract test had a
 case for a fenced sample and a case for an indented one — but none for a fence
 *inside* an indented sample, which is the only input the two orderings disagree
-on. Both readers now run the same single-pass `Scan`, which is what makes a case
-like that impossible to have on one side only.
+on. There is now one single-pass `Scan` rather than two that have to be kept
+equal, which is what makes a divergence like that unrepresentable instead of
+merely tested for.
 
 ## Adversarial input checklist
 
@@ -201,8 +217,11 @@ in its column before calling it done.
   dependency needs asking first (see `CLAUDE.md`, *Dependencies*).
 
 ## References
+- `markdown-common/src/main/java/io/github/adamw7/tools/markdown/`
+  — `MarkdownDocument`, `MarkdownText`; shared by the enforcer and by `adopt`,
+  and dependency-free so it can be
 - `claude-code-enforcer/src/main/java/io/github/adamw7/tools/enforcer/text/`
-  — `MarkdownDocument`, `FrontMatter`, `MarkdownText`, `FrontMatterFixer`
+  — `FrontMatter`, `FrontMatterFixer`, `NameConvention`
 - `.../enforcer/doc/ImportGraph.java`, `.../enforcer/settings/CommandTokens.java`
 - `adopt/src/main/java/io/github/adamw7/tools/adopt/step/ClaudeMdConformer.java`
   and `ClaudeMdConformerContractTest`

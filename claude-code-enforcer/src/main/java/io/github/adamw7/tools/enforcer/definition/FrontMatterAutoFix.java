@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.apache.maven.enforcer.rule.api.EnforcerLogger;
 
 import io.github.adamw7.tools.enforcer.text.FrontMatterFixer;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Bridges {@link FrontMatterFixer} to the definition rules that read a Markdown

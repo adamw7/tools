@@ -146,6 +146,7 @@
 		</developer>
 	</developers>
 	<modules>
+		<module>markdown-common</module>
 		<module>claude-code-enforcer</module>
 		<module>test-common</module>
 		<module>mcp-common</module>

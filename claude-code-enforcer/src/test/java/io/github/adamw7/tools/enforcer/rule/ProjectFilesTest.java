@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.createDirectory;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.TestFiles.createDirectory;
+import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;

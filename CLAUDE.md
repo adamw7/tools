@@ -43,13 +43,18 @@ run `mvn install` from the repository root.
   credentials are masked everywhere, `--dry-run` leaves out the push and the pull
   request entirely, and one run adopts a list of repositories without letting a
   failure stop the rest. Skill: `adopt-pipeline`.
+- **Markdown reading** (`markdown-common`) — the dependency-free reader both the
+  `claudeMdFormat` rule and `adopt`'s conformer parse a document with, so the
+  checker and the rewriter cannot disagree about what is code, what is
+  commented out, and what heading a line declares. Add no dependency to it.
 
-Module map (root reactor: `claude-code-enforcer`, `test-common`, `mcp-common`,
-`data`, `code`, `adopt`, `grpc-example`, `assembly`; `data-test` is built
-separately):
+Module map (root reactor: `markdown-common`, `claude-code-enforcer`,
+`test-common`, `mcp-common`, `data`, `code`, `adopt`, `grpc-example`,
+`assembly`; `data-test` is built separately):
 
 ```
 tools (root pom, packaging=pom)
+├── markdown-common        # shared Markdown reader (lines + code/comment masks), dependency-free
 ├── claude-code-enforcer   # custom maven-enforcer rules validating CLAUDE.md/AGENTS.md & agent config
 ├── test-common            # shared ArchUnit rule libraries and test assertions (test-jar)
 ├── mcp-common             # shared MCP server scaffolding

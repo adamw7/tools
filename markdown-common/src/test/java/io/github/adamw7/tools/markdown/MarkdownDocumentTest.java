@@ -1,9 +1,10 @@
-package io.github.adamw7.tools.enforcer.text;
+package io.github.adamw7.tools.markdown;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
@@ -796,6 +797,148 @@ class MarkdownDocumentTest {
 				""");
 
 		assertFalse(document.containsUnquoted("TODO"));
+	}
+
+	/*
+	 * From here on: the API a rewriter reads a document through. A checker asks what
+	 * a document says; a rewriter also has to ask where it says it, and what the
+	 * document left open — so it can append below the block rather than inside it.
+	 */
+
+	@Test
+	void alreadySplitLinesKeepTheTrailingEmptyLineStringLinesWouldDrop() {
+		List<String> lines = List.of("# Title", "", "body", "");
+
+		MarkdownDocument document = MarkdownDocument.of(lines);
+
+		assertEquals(4, document.lineCount());
+		assertEquals("", document.line(3));
+		// The same content through parse() loses the trailing entry, which is why a
+		// rewriter that appends to its own list splits for itself.
+		assertEquals(3, MarkdownDocument.parse("# Title\n\nbody\n").lineCount());
+	}
+
+	@Test
+	void aDocumentIsASnapshotSoLaterEditsToTheListDoNotReachIt() {
+		List<String> lines = new ArrayList<>(List.of("# Title", "body"));
+		MarkdownDocument document = MarkdownDocument.of(lines);
+
+		lines.add("## Added");
+
+		assertEquals(2, document.lineCount());
+		assertEquals(-1, document.headingIndex("## Added"));
+	}
+
+	@Test
+	void balancedFencesAndCommentsLeaveNothingToClose() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				```
+				int x;
+				```
+
+				<!-- a note -->
+				""");
+
+		assertTrue(document.openFenceTerminator().isEmpty());
+		assertTrue(document.openCommentTerminator().isEmpty());
+	}
+
+	@Test
+	void anUnclosedFenceIsClosedByARunAsLongAsTheOneThatOpenedIt() {
+		assertEquals("```", terminatorOf("# Title\n\n```\nint x;\n"));
+		assertEquals("````", terminatorOf("# Title\n\n````\n```\nint x;\n"));
+		assertEquals("~~~", terminatorOf("# Title\n\n~~~\nint x;\n"));
+	}
+
+	/**
+	 * The info string is what opened the block, so it must not come back on the line
+	 * that closes it: a {@code ```java} terminator opens a second fence rather than
+	 * ending the first.
+	 */
+	@Test
+	void theClosingDelimiterCarriesNoInfoString() {
+		assertEquals("```", terminatorOf("# Title\n\n```java\nint x;\n"));
+	}
+
+	@Test
+	void anUnterminatedCommentIsClosedByItsOwnDelimiter() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				removed
+				""");
+
+		assertEquals("-->", document.openCommentTerminator().orElseThrow());
+	}
+
+	@Test
+	void structuralLinesSkipCodeAndCommentedOutText() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+				## Testing
+
+				```
+				## Testing
+				```
+
+				<!--
+				## Testing
+				-->
+				""");
+
+		assertEquals(List.of(1), matching(document, "## Testing"));
+	}
+
+	@Test
+	void headingIndicesReportEveryDeclarationAndTheIndexReportsTheFirst() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				##  Testing ##
+				body
+
+				## Testing
+				more
+				""");
+
+		// Both spellings declare the same heading, so both are reported.
+		assertEquals(List.of(2, 5), document.headingIndices("## Testing").boxed().toList());
+		assertEquals(2, document.headingIndex("## Testing"));
+		assertEquals(-1, document.headingIndex("## Absent"));
+	}
+
+	@Test
+	void hasBodyAtAnswersForTheHeadingAtThatIndex() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				## Empty
+				## Filled
+				body
+				""");
+
+		assertFalse(document.hasBodyAt(document.headingIndex("## Empty")));
+		assertTrue(document.hasBodyAt(document.headingIndex("## Filled")));
+	}
+
+	@Test
+	void headingOfWritesTheHeadingCanonicallyAndIsEmptyForProse() {
+		assertEquals("## Testing", MarkdownDocument.headingOf("  ##\tTesting ##  ").orElseThrow());
+		assertEquals("## C#", MarkdownDocument.headingOf("## C#").orElseThrow());
+		assertTrue(MarkdownDocument.headingOf("#1 rule: run mvn install").isEmpty());
+		assertTrue(MarkdownDocument.headingOf("body").isEmpty());
+	}
+
+	private static String terminatorOf(String content) {
+		return MarkdownDocument.parse(content).openFenceTerminator().orElseThrow();
+	}
+
+	/** The indices of the structural lines whose text is exactly {@code heading}. */
+	private static List<Integer> matching(MarkdownDocument document, String heading) {
+		return document.structuralLines(line -> line.strip().equals(heading)).boxed().toList();
 	}
 
 	/** The indices of the lines the document masks as code, in document order. */

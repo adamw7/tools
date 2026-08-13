@@ -57,9 +57,14 @@ profile, is the most common source of avoidable build friction here.
   `shellcheck` and works offline. Skip it with `-Dskip.shellcheck=true` when you
   just want a fast loop.
 - **Java 25** is required: JDK 25 on `PATH` with `JAVA_HOME` set.
-- The root reactor modules are: `claude-code-enforcer`, `test-common`,
-  `mcp-common`, `data`, `code`, `adopt`, `grpc-example`, `assembly`. `data-test`
-  is built separately (not in the root `<modules>`).
+- The root reactor modules are: `markdown-common`, `claude-code-enforcer`,
+  `test-common`, `mcp-common`, `data`, `code`, `adopt`, `grpc-example`,
+  `assembly`. `data-test` is built separately (not in the root `<modules>`).
+- **`markdown-common` takes no dependencies.** It is shared by the enforcer rule
+  and by `adopt` precisely so both read a document identically; anything added
+  there travels to every consumer of either, including repositories that resolve
+  the enforcer rule as a maven-enforcer-plugin dependency. Its architecture test
+  fails the build on a dependency outside `java..`.
 - **A typo in `-P` fails the build**, not the run: the root `enforce` execution
   runs `requireProfileIdsExist`.
 - **A module that is not a reusable library** (example, test harness,

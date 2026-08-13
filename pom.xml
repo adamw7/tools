@@ -655,16 +655,36 @@
 			     The rule must be installed into the local repo first (see
 			     AGENTS.md "CLAUDE.md enforcement"). -->
 			<id>claude-md-enforce</id>
+			<!-- Both conditions must hold, so this activates in the root project
+			     alone: it is the only one with a CLAUDE.md beside its pom. A profile
+			     declared in a parent is inherited, so every module would otherwise
+			     evaluate this one and take on the plugin below — and with it a reactor
+			     edge to claude-code-enforcer, because Maven orders a project after
+			     every plugin dependency it declares. Maven tolerates a cycle whose
+			     closing edge comes from a plugin, which is why an inherited profile
+			     went unnoticed while no reactor module was a real dependency of the
+			     enforcer. markdown-common is one, so the cycle closed through a
+			     dependency edge instead and `mvn -B package -DenforceClaudeMd` could
+			     not sort the reactor at all. Scoping the profile to the project that
+			     owns the documents keeps a module's build order independent of a
+			     profile it never uses. -->
 			<activation>
 				<property>
 					<name>enforceClaudeMd</name>
 				</property>
+				<file>
+					<exists>${basedir}/CLAUDE.md</exists>
+				</file>
 			</activation>
 			<build>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-enforcer-plugin</artifactId>
+						<!-- Belt and braces beside the profile's file activation: even
+						     were this plugin to reach a child module, it would carry no
+						     execution there. -->
+						<inherited>false</inherited>
 						<dependencies>
 							<dependency>
 								<groupId>io.github.adamw7</groupId>
@@ -675,9 +695,6 @@
 						<executions>
 							<execution>
 								<id>enforce-claude-md</id>
-								<!-- CLAUDE.md lives only at the repository root, so run
-								     this at the root reactor module only. -->
-								<inherited>false</inherited>
 								<goals>
 									<goal>enforce</goal>
 								</goals>

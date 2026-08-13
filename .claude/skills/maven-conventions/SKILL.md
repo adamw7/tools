@@ -67,6 +67,17 @@ profile, is the most common source of avoidable build friction here.
   fails the build on a dependency outside `java..`.
 - **A typo in `-P` fails the build**, not the run: the root `enforce` execution
   runs `requireProfileIdsExist`.
+- **The `claude-md-enforce` profile activates on the root project only**, by
+  requiring a `CLAUDE.md` beside the pom as well as the `enforceClaudeMd`
+  property. A profile in a parent is inherited, so without that second condition
+  every module takes on the profile's `maven-enforcer-plugin` declaration — and
+  Maven orders a project after every plugin dependency it declares, giving each
+  module a reactor edge to `claude-code-enforcer`. Maven quietly tolerates a
+  cycle closed by a plugin edge, so that stayed invisible until a reactor module
+  became a real dependency of the enforcer (`markdown-common`); the cycle then
+  closed through a dependency edge and `mvn -B package -DenforceClaudeMd` could
+  not sort the reactor at all. **Do not put a reactor artifact in a plugin's
+  `<dependencies>` in an inherited profile.**
 - **A module that is not a reusable library** (example, test harness,
   distribution) opts out of publishing with `<maven.deploy.skip>` and
   `<central.skipPublishing>` in its `<properties>` — never by redeclaring the

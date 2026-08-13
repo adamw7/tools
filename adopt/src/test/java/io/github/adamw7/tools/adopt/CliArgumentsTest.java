@@ -438,6 +438,29 @@ class CliArgumentsTest {
 		assertTrue(CliArguments.parse(new String[] { "--not-a-flag", CliArguments.HELP_SHORTHAND }).helpRequested());
 	}
 
+	/**
+	 * A help flag written where a value was expected is that value, not a request:
+	 * {@code --title -h} is a flag missing its value and is refused as one. Reading
+	 * every occurrence as a request answered the run with the usage line and exited
+	 * zero, having adopted nothing — a scripted batch that mistyped one flag reported
+	 * success.
+	 */
+	@Test
+	void doesNotReadAHelpFlagSwallowedByAnotherOptionAsARequest() {
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { "--repo", REPO_URL, "--title", CliArguments.HELP_SHORTHAND }),
+				"Usage:");
+		assertFailure(IllegalArgumentException.class,
+				() -> CliArguments.parse(new String[] { REPO_URL, "--branch", CliArguments.HELP_FLAG }),
+				"Usage:");
+	}
+
+	/** A flag that takes no value swallows nothing, so the help flag after it is still a request. */
+	@Test
+	void stillAnswersHelpAfterAFlagThatTakesNoValue() {
+		assertTrue(CliArguments.parse(new String[] { REPO_URL, "--draft", CliArguments.HELP_FLAG }).helpRequested());
+	}
+
 	/** Without {@code --help} on the line, an unreadable argument is still the answer. */
 	@Test
 	void stillRefusesAnUnreadableArgumentWhenNoHelpIsAsked(@TempDir Path dir) {

@@ -5,6 +5,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
@@ -31,7 +34,8 @@ import picocli.CommandLine.ParameterException;
  * its default; an unknown flag, or one missing its value, fails with the usage
  * line rather than being ignored — as does {@code --help}, which asks for that
  * line and so is answered with it instead, whatever else on the command line
- * could not be read.
+ * could not be read. What it is not read as is a value: a {@code --title -h} is a
+ * flag missing its value, and is refused as one.
  *
  * <p>The arguments are matched by picocli rather than by a loop of this module's
  * own: the option names, their values, the three positional slots and the
@@ -105,10 +109,11 @@ public final class CliArguments {
 	public static CliArguments parse(String[] args) {
 		CliArguments cli = new CliArguments();
 		String[] arguments = args == null ? new String[0] : args;
+		CommandLine parser = new CommandLine(cli).setOverwrittenOptionsAllowed(true);
 		try {
-			new CommandLine(cli).setOverwrittenOptionsAllowed(true).parseArgs(arguments);
+			parser.parseArgs(arguments);
 		} catch (ParameterException e) {
-			return helpOrRefusal(cli, arguments, e);
+			return helpOrRefusal(cli, parser, arguments, e);
 		}
 		cli.requireSomethingToAdopt();
 		return cli;
@@ -123,16 +128,49 @@ public final class CliArguments {
 	 * file rather than answered with the line it asked for. The refusal is the answer
 	 * only for a run that was asking to adopt something.
 	 */
-	private static CliArguments helpOrRefusal(CliArguments cli, String[] args, ParameterException e) {
-		if (asksForHelp(args)) {
+	private static CliArguments helpOrRefusal(CliArguments cli, CommandLine parser, String[] args,
+			ParameterException e) {
+		if (asksForHelp(parser, args)) {
 			cli.help = true;
 			return cli;
 		}
 		throw refusal(e);
 	}
 
-	private static boolean asksForHelp(String[] args) {
-		return Stream.of(args).anyMatch(arg -> HELP_FLAG.equals(arg) || HELP_SHORTHAND.equals(arg));
+	/**
+	 * Whether the command line asked for the usage line, rather than merely carrying
+	 * the word somewhere. A help flag written where a value was expected is that
+	 * value — {@code --title -h} names a title, badly — so it is read as the argument
+	 * the operator got wrong and not as a request.
+	 *
+	 * <p>Reading every occurrence as a request answered {@code --repo <url> --title -h}
+	 * with the usage line and exited zero, having adopted nothing: a scripted batch that
+	 * mistyped one flag reported success and left no report to say otherwise. It is the
+	 * one shape this method has to tell apart, because it is also the one picocli
+	 * refuses on purpose — a flag that names something is never followed by another
+	 * flag.
+	 */
+	private static boolean asksForHelp(CommandLine parser, String[] args) {
+		Set<String> valueOptions = optionsTakingAValue(parser);
+		return IntStream.range(0, args.length)
+				.filter(index -> isHelpFlag(args[index]))
+				.anyMatch(index -> index == 0 || !valueOptions.contains(args[index - 1]));
+	}
+
+	private static boolean isHelpFlag(String argument) {
+		return HELP_FLAG.equals(argument) || HELP_SHORTHAND.equals(argument);
+	}
+
+	/**
+	 * The names of the options that consume the argument after them, read from the
+	 * declarations below rather than listed again here, so an option added to this
+	 * command cannot swallow a help flag the parse then answers as a request.
+	 */
+	private static Set<String> optionsTakingAValue(CommandLine parser) {
+		return parser.getCommandSpec().options().stream()
+				.filter(option -> option.arity().max() > 0)
+				.flatMap(option -> Stream.of(option.names()))
+				.collect(Collectors.toSet());
 	}
 
 	/**

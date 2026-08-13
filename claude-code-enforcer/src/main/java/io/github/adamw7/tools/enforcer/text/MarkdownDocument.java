@@ -26,7 +26,8 @@ import java.util.stream.Stream;
  * A heading is also recognised only outside an HTML comment block. A section
  * commented out with {@code <!-- ... -->} is inert text, not structure, so counting
  * it would let a document satisfy a required-section check with the very heading its
- * author had removed.
+ * author had removed. The delimiters that open and close such a block are read only
+ * where a document writes one rather than illustrates one — see {@link #asRead}.
  * <p>
  * A fence is closed only by a run of the <em>same</em> character, at least as long
  * as the one that opened it, carrying no info string. All three conditions matter,
@@ -372,7 +373,7 @@ public final class MarkdownDocument {
 		boolean[] mask = new boolean[lines.size()];
 		boolean open = false;
 		for (int i = 0; i < lines.size(); i++) {
-			open = applyComment(lines.get(i).strip(), open, insideCode[i], mask, i);
+			open = applyComment(lines.get(i), open, insideCode[i], mask, i);
 		}
 		return mask;
 	}
@@ -389,8 +390,29 @@ public final class MarkdownDocument {
 		if (insideCode) {
 			return open;
 		}
-		mask[index] = open || opensBlock(line);
-		return remainsOpen(line, 0, open);
+		String read = asRead(line, open);
+		mask[index] = open || opensBlock(read);
+		return remainsOpen(read, 0, open);
+	}
+
+	/**
+	 * The line as the comment scan reads it. Outside a comment its inline code spans
+	 * are dropped first, because a delimiter quoted as code is the document
+	 * illustrating one rather than writing one — the same reading
+	 * {@link #containsUnquoted} takes, and the reading a fence already gets from
+	 * being matched on whole lines. Documentation about Markdown writes
+	 * {@code `<!--`} in prose precisely because it is an example, and taking it for a
+	 * real delimiter opened a comment nothing closed: every line below it was masked
+	 * as inert, so {@link #hasHeading} reported sections the document plainly carries
+	 * as missing and every check that reads the document's own text stopped seeing
+	 * it — the same silent reclassification a mis-read fence produces.
+	 * <p>
+	 * Inside a comment there are no code spans to honour: the text is already inert,
+	 * so its backticks are ordinary characters and a {@code -->} among them closes
+	 * the block exactly as one anywhere else on the line does.
+	 */
+	private static String asRead(String line, boolean open) {
+		return (open ? line : MarkdownText.withoutCodeSpans(line)).strip();
 	}
 
 	/** True when the line's own content starts a comment that the same line does not close. */

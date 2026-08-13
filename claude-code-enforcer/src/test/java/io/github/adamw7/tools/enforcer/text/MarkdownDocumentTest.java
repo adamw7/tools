@@ -607,6 +607,52 @@ class MarkdownDocumentTest {
 		assertFalse(document.containsInProse("TODO"));
 	}
 
+	/**
+	 * A delimiter quoted as code is the document illustrating a comment rather than
+	 * writing one. Reading it as a real one opened a block nothing closed, so every
+	 * line below the mention was masked as inert and the sections the document plainly
+	 * carries were reported as missing — the same silent reclassification a mis-read
+	 * fence produces, reached from a sentence documentation about Markdown routinely
+	 * writes.
+	 */
+	@Test
+	void doesNotOpenACommentOnADelimiterInsideAnInlineCodeSpan() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				An HTML comment opens with `<!--`.
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(), commentedLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
+	/**
+	 * Inside a comment there are no code spans to honour: the text is already inert,
+	 * so its backticks are ordinary characters and the {@code -->} among them closes
+	 * the block exactly as one anywhere else on the line does.
+	 */
+	@Test
+	void closesACommentOnADelimiterWrittenInsideBackticks() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!--
+				A note.
+				`-->`
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(2, 3, 4), commentedLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+	}
+
 	@Test
 	void marksTheLinesAnHtmlCommentSpansAsCommented() {
 		MarkdownDocument document = MarkdownDocument.parse("""

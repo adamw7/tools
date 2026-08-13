@@ -809,6 +809,49 @@ class ClaudeMdConformerTest {
 	}
 
 	/**
+	 * A delimiter quoted as code is the document illustrating a comment rather than
+	 * writing one, which is how the rule reads it. Taking it for a real one opened a
+	 * block nothing closed: the reshape appended a closing {@code -->} of its own and
+	 * read every heading below the mention as inert, so an already-conforming
+	 * {@code CLAUDE.md} came back with a stray delimiter and a second, stubbed copy of
+	 * five sections it already carried — committed, pushed, and offered for review.
+	 */
+	@Test
+	void leavesADocumentMentioningACommentDelimiterInAnInlineCodeSpanAlone() {
+		String conforming = ("# CLAUDE.md\n\n" + ClaudeMdConformer.AGENTS_REFERENCE_LINE
+				+ "\n\nAn HTML comment opens with `<!--`.\n\n" + requiredSectionsBody()).stripTrailing() + "\n";
+
+		assertEquals(conforming, conformer.conform(conforming),
+				"a mention of the delimiter is not a comment the reshape has to close");
+	}
+
+	/**
+	 * A heading is the text it carries rather than the line it was typed on, which is
+	 * how the rule reads it: {@code ##  Testing} is the {@code ## Testing} section.
+	 * Comparing the line verbatim reported the section as absent and appended a second,
+	 * stubbed copy of it to a document that already had one.
+	 */
+	@Test
+	void recognisesARequiredSectionWrittenWithAWiderSeparator() {
+		String generated = """
+				# CLAUDE.md
+
+				See AGENTS.md.
+
+				##  Testing
+
+				JUnit 5.
+				""";
+		String conformed = conformer.conform(generated);
+
+		assertEquals(1, headings(conformed).stream()
+				.filter(heading -> heading.replaceAll("\\s+", " ").equals("## Testing")).count(),
+				"the section the document already carries must not be appended again:\n" + conformed);
+		assertFalse(conformed.contains("## Testing\n\n" + ClaudeMdConformer.AGENTS_REFERENCE_LINE),
+				"the section already had a body:\n" + conformed);
+	}
+
+	/**
 	 * A line that merely starts with a hash is prose to the rule, so the section it
 	 * sits in already has a body. Reading it as a shallower heading ended the section
 	 * above it, and a stub was inserted in front of the content the section carried.

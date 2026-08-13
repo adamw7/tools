@@ -89,6 +89,17 @@
 	</profiles>
 
 	<dependencies>
+		<!-- Reads the generated CLAUDE.md for ClaudeMdConformer. It is the same
+		     reader the claudeMdFormat rule judges the reshaped file with, which is
+		     the point: the conformer used to carry a copy of it, and every way the
+		     two drifted apart let the adoption commit and push a file that then
+		     failed its own VerifyStep. The module is dependency-free, so sharing it
+		     costs the pipeline nothing it did not already carry. -->
+		<dependency>
+			<groupId>io.github.adamw7</groupId>
+			<artifactId>tools.markdown-common</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>io.github.adamw7</groupId>
 			<artifactId>tools.mcp-common</artifactId>

@@ -57,11 +57,27 @@ profile, is the most common source of avoidable build friction here.
   `shellcheck` and works offline. Skip it with `-Dskip.shellcheck=true` when you
   just want a fast loop.
 - **Java 25** is required: JDK 25 on `PATH` with `JAVA_HOME` set.
-- The root reactor modules are: `claude-code-enforcer`, `test-common`,
-  `mcp-common`, `data`, `code`, `adopt`, `grpc-example`, `assembly`. `data-test`
-  is built separately (not in the root `<modules>`).
+- The root reactor modules are: `markdown-common`, `claude-code-enforcer`,
+  `test-common`, `mcp-common`, `data`, `code`, `adopt`, `grpc-example`,
+  `assembly`. `data-test` is built separately (not in the root `<modules>`).
+- **`markdown-common` takes no dependencies.** It is shared by the enforcer rule
+  and by `adopt` precisely so both read a document identically; anything added
+  there travels to every consumer of either, including repositories that resolve
+  the enforcer rule as a maven-enforcer-plugin dependency. Its architecture test
+  fails the build on a dependency outside `java..`.
 - **A typo in `-P` fails the build**, not the run: the root `enforce` execution
   runs `requireProfileIdsExist`.
+- **The `claude-md-enforce` profile activates on the root project only**, by
+  requiring a `CLAUDE.md` beside the pom as well as the `enforceClaudeMd`
+  property. A profile in a parent is inherited, so without that second condition
+  every module takes on the profile's `maven-enforcer-plugin` declaration — and
+  Maven orders a project after every plugin dependency it declares, giving each
+  module a reactor edge to `claude-code-enforcer`. Maven quietly tolerates a
+  cycle closed by a plugin edge, so that stayed invisible until a reactor module
+  became a real dependency of the enforcer (`markdown-common`); the cycle then
+  closed through a dependency edge and `mvn -B package -DenforceClaudeMd` could
+  not sort the reactor at all. **Do not put a reactor artifact in a plugin's
+  `<dependencies>` in an inherited profile.**
 - **A module that is not a reusable library** (example, test harness,
   distribution) opts out of publishing with `<maven.deploy.skip>` and
   `<central.skipPublishing>` in its `<properties>` — never by redeclaring the

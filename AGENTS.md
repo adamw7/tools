@@ -184,6 +184,8 @@ unwrapped.
 
 ```
 tools (root pom, packaging=pom)
+├── markdown-common             # shared Markdown reader: lines plus the code and
+│                               #   HTML-comment masks (dependency-free)
 ├── claude-code-enforcer        # custom maven-enforcer rules validating CLAUDE.md,
 │                               #   AGENTS.md, README.md and the .claude config
 ├── test-common                 # shared ArchUnit rule libraries and assertions (test-jar)
@@ -200,9 +202,21 @@ tools (root pom, packaging=pom)
 └── data-test                   # standalone test module for the data module
 ```
 
-Root reactor modules are `claude-code-enforcer`, `test-common`, `mcp-common`,
-`data`, `code`, `adopt`, `grpc-example` and `assembly`. `data-test` is built
-separately (it is not in the root `<modules>` list).
+Root reactor modules are `markdown-common`, `claude-code-enforcer`,
+`test-common`, `mcp-common`, `data`, `code`, `adopt`, `grpc-example` and
+`assembly`. `data-test` is built separately (it is not in the root `<modules>`
+list).
+
+`markdown-common` exists because two modules read the same document and must
+agree about it: `claude-code-enforcer`'s `claudeMdFormat` rule judges a
+`CLAUDE.md`, and `adopt`'s `ClaudeMdConformer` reshapes one so that rule passes.
+`adopt` cannot depend on `claude-code-enforcer` to share the reader — that would
+put the maven-enforcer API and a shipped rule on every consumer's classpath — so
+each carried a copy, and every way the copies drifted apart let the adoption
+commit and push a file that then failed its own verification. Keep the module
+free of dependencies beyond the JDK; its architecture test pins that, because
+anything added there travels to both consumers and to every repository that
+resolves the enforcer rule.
 
 Base Java package: `io.github.adamw7` (`io.github.adamw7.context` for the context
 module, `io.github.adamw7.tools.*` elsewhere).
@@ -487,6 +501,7 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   | Module | Threshold | Measured when set |
   | --- | --- | --- |
   | `code/context` | 92 | 95% |
+  | `markdown-common` | 91 | 94% |
   | `adopt` | 88 | 91% |
   | `claude-code-enforcer` | 88 | 91% |
   | `code/protogen-maven-plugin` | 84 | 87% |

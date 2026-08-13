@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer.text;
+package io.github.adamw7.tools.markdown;
 
 import java.io.File;
 import java.io.IOException;
@@ -106,12 +106,12 @@ public final class MarkdownText {
 		return CODE_SPAN.matcher(line).replaceAll(" ");
 	}
 
-	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
-	public static String firstNonBlankLine(String content) {
-		return firstNonBlankLine(content.lines());
-	}
-
-	/** The first line that is not blank, stripped of surrounding whitespace, or empty if none. */
+	/**
+	 * The first line that is not blank, stripped of surrounding whitespace, or empty
+	 * if none. Takes the lines rather than the content, because every caller already
+	 * holds them: a document has split its own, and a caller that has not can pass
+	 * {@code content.lines()}.
+	 */
 	public static String firstNonBlankLine(Stream<String> lines) {
 		return lines.map(String::strip).filter(line -> !line.isEmpty()).findFirst().orElse("");
 	}

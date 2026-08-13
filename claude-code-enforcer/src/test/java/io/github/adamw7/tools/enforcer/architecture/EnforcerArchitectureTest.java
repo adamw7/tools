@@ -37,6 +37,10 @@ import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
  * do at build time: read the project, and nothing else — no process, no network,
  * and no write outside the report, the baseline and the front-matter fix a rule
  * was asked for. Only production classes are analysed.
+ * <p>
+ * The Markdown reader itself lives in {@code markdown-common} and is held to its
+ * own rules there, because the {@code adopt} pipeline reads documents through the
+ * same one and cannot depend on this module to get it.
  */
 @AnalyzeClasses(packages = EnforcerArchitectureTest.ENFORCER_PACKAGE, importOptions = ImportOption.DoNotIncludeTests.class)
 public class EnforcerArchitectureTest {
@@ -49,7 +53,6 @@ public class EnforcerArchitectureTest {
 	private static final String JSON_NODES = ENFORCER_PACKAGE + ".rule.JsonNodes";
 	private static final String BASELINE = ENFORCER_PACKAGE + ".rule.Baseline";
 	private static final String HTML_REPORT = ENFORCER_PACKAGE + ".rule.HtmlReport";
-	private static final String MARKDOWN_TEXT = ENFORCER_PACKAGE + ".text.MarkdownText";
 	private static final String FILE_MUTATIONS =
 			"write|writeString|newBufferedWriter|newOutputStream|createFile|createDirectory|createDirectories"
 					+ "|delete|deleteIfExists|move|copy";
@@ -169,10 +172,10 @@ public class EnforcerArchitectureTest {
 	static final ArchRule rulesDoNotWriteToTheProjectTheyCheck = noClasses()
 			.that().doNotHaveFullyQualifiedName(BASELINE)
 			.and().doNotHaveFullyQualifiedName(HTML_REPORT)
-			.and().doNotHaveFullyQualifiedName(MARKDOWN_TEXT)
 			.should().callMethodWhere(target(owner(type(Files.class))).and(target(nameMatching(FILE_MUTATIONS))))
-			.because("a check reports what it found; the three places that write are the ones a build asked "
-					+ "for — the HTML report, the recorded baseline, and the front-matter fix")
+			.because("a check reports what it found; the two places that write here are the ones a build "
+					+ "asked for — the HTML report and the recorded baseline. The front-matter fix writes "
+					+ "through markdown-common's MarkdownText, which its own module holds to the same rule")
 			.allowEmptyShould(true);
 
 	/**

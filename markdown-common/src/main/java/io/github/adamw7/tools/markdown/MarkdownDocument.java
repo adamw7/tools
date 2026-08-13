@@ -1,8 +1,10 @@
-package io.github.adamw7.tools.enforcer.text;
+package io.github.adamw7.tools.markdown;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -14,6 +16,19 @@ import java.util.stream.Stream;
  * code and which sit inside an HTML comment. Parsing the masks once, at
  * construction, lets the structural checks share them instead of each rebuilding
  * them.
+ * <p>
+ * Two kinds of caller read a document through this class, and they must agree
+ * about it: one that <em>judges</em> a document — the {@code claudeMdFormat}
+ * enforcer rule asking whether a {@code CLAUDE.md} carries a required section —
+ * and one that <em>reshapes</em> a document so that judgement passes, which is
+ * what the adoption pipeline's {@code ClaudeMdConformer} does before it commits a
+ * generated {@code CLAUDE.md}. Every reading below was at some point spelled out
+ * twice, once for each, and every way the two spellings drifted apart produced the
+ * same shape of bug: the rewriter acted on lines the rule holds to be code, or
+ * concluded a section was missing that the rule reads as present, and the adoption
+ * then failed the very check it exists to satisfy — after committing and pushing
+ * the file. That is why the reader is one class in a module of its own rather than
+ * a copy on each side.
  * <p>
  * Headings are recognised on whole lines outside code, so a heading mentioned in a
  * sample or in prose is not treated as document structure. The mask includes a
@@ -96,18 +111,34 @@ public final class MarkdownDocument {
 	private final List<String> lines;
 	private final boolean[] insideCode;
 	private final boolean[] insideComment;
+	private final Delimiter openFence;
+	private final boolean openComment;
 
-	private MarkdownDocument(List<String> lines, boolean[] insideCode, boolean[] insideComment) {
+	private MarkdownDocument(List<String> lines, CodeScan code, CommentScan comment) {
 		this.lines = lines;
-		this.insideCode = insideCode;
-		this.insideComment = insideComment;
+		this.insideCode = code.mask();
+		this.openFence = code.openFence();
+		this.insideComment = comment.mask();
+		this.openComment = comment.open();
 	}
 
 	/** Parses {@code content} into lines, a code mask, and an HTML-comment mask. */
 	public static MarkdownDocument parse(String content) {
-		List<String> lines = content.lines().toList();
-		boolean[] insideCode = codeMask(lines);
-		return new MarkdownDocument(lines, insideCode, commentMask(lines, insideCode));
+		return of(content.lines().toList());
+	}
+
+	/**
+	 * Parses lines a caller has already split, for one that rewrites a document and
+	 * so cannot let the split be re-decided under it: {@link String#lines()} drops
+	 * the empty line a document's trailing newline leaves, which a rewriter that
+	 * appends to those lines has to keep. The lines are copied, so the document is a
+	 * snapshot of the list as it is now — a caller that inserts or removes lines
+	 * parses again rather than carrying this one on.
+	 */
+	public static MarkdownDocument of(List<String> lines) {
+		List<String> snapshot = List.copyOf(lines);
+		CodeScan code = codeScan(snapshot);
+		return new MarkdownDocument(snapshot, code, commentScan(snapshot, code.mask()));
 	}
 
 	public int lineCount() {
@@ -139,17 +170,46 @@ public final class MarkdownDocument {
 		return MarkdownText.firstNonBlankLine(lines.stream());
 	}
 
-	/** The indices of the lines outside code, in document order. */
-	private IntStream outsideCode() {
-		return IntStream.range(0, lines.size()).filter(index -> !insideCode[index]);
+	/**
+	 * The delimiter line that closes a fence this document opened and never closed,
+	 * or empty when its fences balance. The run is as long as the one that opened
+	 * the block and carries no info string, so a {@code ````} wrapper is not left
+	 * open by a {@code ```} line.
+	 * <p>
+	 * A rewriter asks this before it appends anything, because a section appended
+	 * inside an open fence is code as far as every check above is concerned — the
+	 * document would come back still missing the section that had just been added
+	 * to it.
+	 */
+	public Optional<String> openFenceTerminator() {
+		return Optional.ofNullable(openFence).map(Delimiter::closing);
 	}
 
 	/**
-	 * The indices of the lines that can carry document structure: outside code and
-	 * outside HTML comments alike. A heading is only recognised on one of these.
+	 * The delimiter that closes an HTML comment this document opened and never
+	 * closed, or empty when its comments balance. Asked for the same reason as
+	 * {@link #openFenceTerminator}: text appended inside an open comment is inert,
+	 * so a check reads it as absent.
 	 */
+	public Optional<String> openCommentTerminator() {
+		return openComment ? Optional.of(COMMENT_END) : Optional.empty();
+	}
+
+	/**
+	 * The indices of the lines that can carry document structure — outside code and
+	 * outside HTML comments alike — whose raw text {@code match} accepts, in
+	 * document order. A heading is only ever recognised, and only ever rewritten, on
+	 * one of these: a section commented out with {@code <!-- ... -->} is inert text,
+	 * and counting it lets a document satisfy a required-section check with the very
+	 * heading its author had removed.
+	 */
+	public IntStream structuralLines(Predicate<String> match) {
+		return structuralLines().filter(index -> match.test(lines.get(index)));
+	}
+
 	private IntStream structuralLines() {
-		return outsideCode().filter(index -> !insideComment[index]);
+		return IntStream.range(0, lines.size())
+				.filter(index -> !insideCode[index] && !insideComment[index]);
 	}
 
 	/**
@@ -195,14 +255,22 @@ public final class MarkdownDocument {
 	 */
 	private Stream<String> headingTexts() {
 		return structuralLines()
-				.mapToObj(index -> lines.get(index).strip())
-				.filter(MarkdownDocument::isHeading)
-				.map(MarkdownDocument::headingText);
+				.mapToObj(index -> lines.get(index))
+				.map(MarkdownDocument::headingOf)
+				.flatMap(Optional::stream);
 	}
 
-	/** True when {@code heading} appears as a real heading outside code fences. */
+	/**
+	 * True when {@code heading} appears as a real heading outside code fences.
+	 * <p>
+	 * Answered by the same lookup {@link #hasBody} and {@link #headingIndex} use.
+	 * It used to ask {@link #headings()} instead, which is a second implementation
+	 * of one question: two readings of what counts as a heading, kept equal only by
+	 * being edited together, and a whole document walked to answer a question the
+	 * first match settles.
+	 */
 	public boolean hasHeading(String heading) {
-		return headings().contains(heading);
+		return headingIndex(heading) >= 0;
 	}
 
 	/**
@@ -210,6 +278,10 @@ public final class MarkdownDocument {
 	 * at its own level or shallower, by any prose, a code block, or a deeper
 	 * sub-heading. A deeper heading is content that belongs to the section; a
 	 * sibling or parent heading ends it.
+	 * <p>
+	 * A caller that has to tell a missing section from an empty one asks
+	 * {@link #headingIndex} and then {@link #hasBodyAt}, so the document is walked
+	 * once for the pair rather than once for each.
 	 */
 	public boolean hasBody(String heading) {
 		int index = headingIndex(heading);
@@ -235,18 +307,43 @@ public final class MarkdownDocument {
 		return headingTexts().filter(required::remove).toList();
 	}
 
-	private int headingIndex(String section) {
-		return structuralLines().filter(index -> declares(index, section)).findFirst().orElse(-1);
+	/**
+	 * @return the index of the first line declaring {@code section}, outside code and
+	 *         comments, or {@code -1} when the document declares it nowhere. The
+	 *         <em>first</em> is what answers, because that is the one every other
+	 *         reading here takes when a document carries the section twice — a
+	 *         rewriter that stubbed a later copy would be editing a section no check
+	 *         is judging.
+	 */
+	public int headingIndex(String section) {
+		return headingIndices(section).findFirst().orElse(-1);
 	}
 
-	/** True when the line at {@code index} is the heading {@code section} names. */
-	private boolean declares(int index, String section) {
-		String line = lines.get(index).strip();
-		return isHeading(line) && headingText(line).equals(section);
+	/**
+	 * Every structural line declaring {@code section}, in document order. A document
+	 * that carries a heading more than once is a document a rewriter has to see
+	 * whole: only the first counts as the section, so the rest are duplicates it may
+	 * have to remove.
+	 */
+	public IntStream headingIndices(String section) {
+		return structuralLines(line -> declares(line, section));
 	}
 
-	/** The first line that settles the question decides it; a section nothing settles has no body. */
-	private boolean hasBodyAt(int headingIndex) {
+	/** True when {@code line} is the heading {@code section} names. */
+	private static boolean declares(String line, String section) {
+		return headingOf(line).filter(section::equals).isPresent();
+	}
+
+	/**
+	 * True when the heading at {@code headingIndex} is followed, before the next
+	 * heading at its own level or shallower, by any prose, a code block, or a deeper
+	 * sub-heading. The index form is for a caller that has already located the
+	 * heading — see {@link #hasBody}.
+	 * <p>
+	 * The first line that settles the question decides it; a section nothing settles
+	 * has no body.
+	 */
+	public boolean hasBodyAt(int headingIndex) {
 		int sectionLevel = headingLevel(lines.get(headingIndex).strip());
 		return IntStream.range(headingIndex + 1, lines.size())
 				.filter(this::decidesBody)
@@ -274,12 +371,29 @@ public final class MarkdownDocument {
 	}
 
 	/**
-	 * The heading a line declares, written canonically: its {@code #} run, then a
-	 * single space and the text it carries, or the run alone when it carries none.
-	 * A heading is the text it names, not the line it was typed on, so the whitespace
-	 * separating the two — a tab counts — and the closing {@code #} run Markdown
-	 * allows are spelling rather than content.
+	 * The heading {@code line} declares, written canonically — its {@code #} run,
+	 * then a single space and the text it carries, or the run alone when it carries
+	 * none — or empty when the line declares no heading at all.
+	 * <p>
+	 * A heading is the text it names, not the line it was typed on, so the
+	 * surrounding whitespace, the separator between the run and the text (a tab
+	 * counts), and the closing {@code #} run Markdown lets an author balance a
+	 * heading with are spelling rather than content. Comparing raw lines instead
+	 * made a checker and a rewriter disagree about which lines are the required
+	 * sections: a {@code ##  Testing} this reads as {@code ## Testing} was reported
+	 * as no section at all, so a second, stubbed copy of it was appended to a file
+	 * the adoption went on to commit and push.
+	 * <p>
+	 * Whether the line is <em>structure</em> is a separate question this does not
+	 * answer — a {@code ## Testing} inside a code sample still reads as a heading
+	 * here. Callers pair this with {@link #structuralLines} rather than asking it of
+	 * an arbitrary line, which is what {@link #headingIndices} does.
 	 */
+	public static Optional<String> headingOf(String line) {
+		String stripped = line.strip();
+		return isHeading(stripped) ? Optional.of(headingText(stripped)) : Optional.empty();
+	}
+
 	private static String headingText(String line) {
 		int level = headingLevel(line);
 		String hashes = line.substring(0, level);
@@ -309,18 +423,26 @@ public final class MarkdownDocument {
 		return runLength(heading, HEADING_CHAR);
 	}
 
+	/** What one pass over the document found: the mask, and the fence it left open. */
+	private record CodeScan(boolean[] mask, Delimiter openFence) {
+	}
+
+	/** What one pass over the document found: the mask, and whether a comment is still open. */
+	private record CommentScan(boolean[] mask, boolean open) {
+	}
+
 	/**
 	 * Marks every line Markdown reads as code, both ways it is quoted, in one left
 	 * to right pass, so a fence's own lines are spoken for before an indent is read
 	 * into them and an indented block's lines before a fence is.
 	 */
-	private static boolean[] codeMask(List<String> lines) {
+	private static CodeScan codeScan(List<String> lines) {
 		boolean[] mask = new boolean[lines.size()];
 		Scan scan = Scan.start();
 		for (int i = 0; i < lines.size(); i++) {
 			scan = scan.read(lines.get(i), mask, i);
 		}
-		return mask;
+		return new CodeScan(mask, scan.fence());
 	}
 
 	/** The line's indent in columns, a tab counting on to the next four-column stop. */
@@ -369,13 +491,13 @@ public final class MarkdownDocument {
 	 * and satisfied it at the same time. A comment inside code is sample text, so
 	 * the code wins.
 	 */
-	private static boolean[] commentMask(List<String> lines, boolean[] insideCode) {
+	private static CommentScan commentScan(List<String> lines, boolean[] insideCode) {
 		boolean[] mask = new boolean[lines.size()];
 		boolean open = false;
 		for (int i = 0; i < lines.size(); i++) {
 			open = applyComment(lines.get(i), open, insideCode[i], mask, i);
 		}
-		return mask;
+		return new CommentScan(mask, open);
 	}
 
 	/**
@@ -560,6 +682,11 @@ public final class MarkdownDocument {
 		 */
 		boolean closes(Delimiter open) {
 			return character == open.character() && length >= open.length() && !info;
+		}
+
+		/** The delimiter line that closes this one: the same run, carrying no info string. */
+		String closing() {
+			return String.valueOf(character).repeat(length);
 		}
 	}
 }

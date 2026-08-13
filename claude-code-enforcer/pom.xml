@@ -60,6 +60,18 @@
 	     because it is consumed as a maven-enforcer-plugin dependency resolved
 	     from a repository outside the reactor. -->
 	<dependencies>
+		<!-- Reads a Markdown document into its lines plus the code and HTML-comment
+		     masks every structural check is made against. It is a module of its own
+		     because the adopt pipeline's ClaudeMdConformer reshapes a CLAUDE.md so
+		     the claudeMdFormat rule below passes, and the two have to read the
+		     document identically; adopt cannot depend on this module to get that,
+		     since it would put the maven-enforcer API and a shipped rule on every
+		     consumer's classpath. -->
+		<dependency>
+			<groupId>io.github.adamw7</groupId>
+			<artifactId>tools.markdown-common</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.maven.enforcer</groupId>
 			<artifactId>enforcer-api</artifactId>

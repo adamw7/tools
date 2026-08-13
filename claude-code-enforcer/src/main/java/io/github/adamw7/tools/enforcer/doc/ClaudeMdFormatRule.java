@@ -6,7 +6,7 @@ import java.util.List;
 import javax.inject.Named;
 
 import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
-import io.github.adamw7.tools.enforcer.text.MarkdownDocument;
+import io.github.adamw7.tools.markdown.MarkdownDocument;
 
 /**
  * Enforcer rule that fails the build when {@code CLAUDE.md} is missing or does

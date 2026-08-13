@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
-import io.github.adamw7.tools.enforcer.text.MarkdownText;
+import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * The cross-check between the scripts in a hooks directory and the command hooks

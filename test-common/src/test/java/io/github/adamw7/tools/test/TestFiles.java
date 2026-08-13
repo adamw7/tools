@@ -1,4 +1,4 @@
-package io.github.adamw7.tools.enforcer.rule;
+package io.github.adamw7.tools.test;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 

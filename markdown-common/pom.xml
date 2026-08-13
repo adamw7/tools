@@ -1,0 +1,48 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.github.adamw7</groupId>
+		<artifactId>tools</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>tools.markdown-common</artifactId>
+	<packaging>jar</packaging>
+	<name>Shared Markdown reader</name>
+	<description>Reads a Markdown document into its lines plus the masks marking which of them are code and which sit inside an HTML comment, so a checker and a rewriter agree on what the document says.</description>
+	<properties>
+		<!-- Mutation-score floor for this module, a few points under what it
+		     measures today so an equivalent refactor cannot turn the build red.
+		     See the root pom's pitest.mutationThreshold. -->
+		<pitest.mutationThreshold>91</pitest.mutationThreshold>
+	</properties>
+	<!-- Deliberately dependency-free beyond the JDK. Two modules read Markdown the
+	     same way and must keep agreeing about it: claude-code-enforcer's
+	     claudeMdFormat rule judges a CLAUDE.md, and adopt's ClaudeMdConformer
+	     reshapes one so that rule passes. They used to carry a copy of this reader
+	     each, because adopt cannot depend on claude-code-enforcer without putting
+	     the maven-enforcer API and a shipped rule on every consumer's classpath.
+	     Carving the reader out is what lets both depend on the same one instead —
+	     which only works while it stays free of either module's dependencies, so
+	     add nothing here without a very good reason. -->
+	<dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.github.adamw7</groupId>
+			<artifactId>tools.test-common</artifactId>
+			<version>${project.version}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

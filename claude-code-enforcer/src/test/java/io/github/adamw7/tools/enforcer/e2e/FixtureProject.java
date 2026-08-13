@@ -1,7 +1,7 @@
 package io.github.adamw7.tools.enforcer.e2e;
 
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.readString;
-import static io.github.adamw7.tools.enforcer.rule.TestFiles.writeString;
+import static io.github.adamw7.tools.test.TestFiles.readString;
+import static io.github.adamw7.tools.test.TestFiles.writeString;
 
 import java.nio.file.Path;
 

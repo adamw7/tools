@@ -7,10 +7,10 @@
 ## Description
 
 Carries the invariants of this repo's text readers — the hand-rolled
-`MarkdownDocument`, `MarkdownText`, `ImportGraph` and `CommandTokens`, the
-`ClaudeMdConformer` copy of them, and the SnakeYAML-backed `FrontMatter` —
-together with the adversarial input that has broken each one, so a change starts
-from that list instead of rediscovering it.
+`MarkdownDocument` and `MarkdownText` that `claude-code-enforcer` and `adopt`
+share through `markdown-common`, plus `ImportGraph`, `CommandTokens` and the
+SnakeYAML-backed `FrontMatter` — together with the adversarial input that has
+broken each one, so a change starts from that list instead of rediscovering it.
 
 ---
 

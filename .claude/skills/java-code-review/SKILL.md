@@ -102,13 +102,19 @@ reader's invariants and the adversarial-input checklist.
 
 ### 2.2 Two implementations of one format, drifting
 
-`ClaudeMdConformer` duplicates `claudeMdFormat`'s reading of a Markdown document
-because `adopt` must not ship the maven-enforcer API. #536 was four defects from
-that copy drifting: the conformer produced a document the rule it exists to
-satisfy rejects, so the adoption failed its own `VerifyStep` on a file it had just
-reshaped to pass. #557 is the same shape one level up — detection asked whether a
-pom *depended on* the enforcer artifact rather than whether it *configures the
-rule*.
+`ClaudeMdConformer` used to duplicate `claudeMdFormat`'s reading of a Markdown
+document, because `adopt` must not ship the maven-enforcer API. #536 was four
+defects from that copy drifting: the conformer produced a document the rule it
+exists to satisfy rejects, so the adoption failed its own `VerifyStep` on a file
+it had just reshaped to pass. #557 is the same shape one level up — detection
+asked whether a pom *depended on* the enforcer artifact rather than whether it
+*configures the rule*.
+
+The reading now lives once, in `markdown-common`, which both modules depend on.
+That is the fix this defect shape usually wants: when two implementations must
+agree, look for the third place they could both depend on before reaching for a
+test that compares them. What survives as a copy is the *required sections* list
+— data, guarded by `ClaudeMdConformerContractTest`.
 
 **Ask:**
 - Is there a second implementation of this format, constant, or predicate

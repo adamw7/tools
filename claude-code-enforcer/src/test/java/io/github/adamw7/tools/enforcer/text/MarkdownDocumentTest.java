@@ -376,6 +376,31 @@ class MarkdownDocumentTest {
 		assertTrue(document.hasBody("## Testing"));
 	}
 
+	/**
+	 * The same delimiter directly below a paragraph, with no blank line to open a code
+	 * block at it. It is a lazy continuation of that paragraph — a fence opener may be
+	 * indented at most three columns — so it is neither code nor a fence. Reading it as
+	 * one opened a block nothing closed and masked the whole of the document below it,
+	 * so {@code claudeMdFormat} reported sections the document plainly carries as
+	 * missing.
+	 */
+	@Test
+	void doesNotOpenAFenceOnADelimiterIndentedBelowAParagraph() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				A block is delimited by three backticks:
+				    ```
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
 	/** A balanced pair shown that way is the sample's too, so nothing below it changes. */
 	@Test
 	void readsABalancedFencePairInsideAnIndentedBlockAsThatBlock() {

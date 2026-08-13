@@ -497,7 +497,9 @@ public class ClaudeMdConformer {
 	 * fence, where the rule reads them as code too. An already-conforming
 	 * {@code CLAUDE.md} came back with a stray delimiter and three duplicated sections,
 	 * and one that was missing a section came back still missing it — the adoption
-	 * failing its own {@link VerifyStep} on the very sections it had just written.
+	 * failing its own {@link VerifyStep} on the very sections it had just written. The
+	 * indent speaks for the line wherever it sits, whether a code block may open at it
+	 * or it merely continues the paragraph above; see {@link Scan#atIndent}.
 	 *
 	 * @return the fence delimiter still open at the end of the document, or
 	 *         {@code null} when its fences balance
@@ -530,8 +532,9 @@ public class ClaudeMdConformer {
 		/**
 		 * Marks line {@code index} and answers the state the next line is read in. An
 		 * open fence claims the line first, then a blank line, which carries nothing to
-		 * read either way and so is left unmarked; only then may an indent open a block,
-		 * and only a line no indent claimed is read as a fence delimiter.
+		 * read either way and so is left unmarked; then the indent, which speaks for the
+		 * line whether or not a block may open at it, and only a line the indent left
+		 * alone is read as a fence delimiter.
 		 */
 		Scan read(String line, boolean[] mask, int index) {
 			if (fence != null) {
@@ -540,11 +543,33 @@ public class ClaudeMdConformer {
 			if (line.isBlank()) {
 				return new Scan(null, true, listIndent);
 			}
-			if (mayIndent && indentWidth(line) >= codeIndent()) {
-				mask[index] = true;
-				return new Scan(null, true, listIndent);
+			if (indentWidth(line) >= codeIndent()) {
+				return atIndent(mask, index);
 			}
 			return atDelimiter(line, mask, index);
+		}
+
+		/**
+		 * The line is indented too deep to be read as anything but its indent: code
+		 * where a block may open, and otherwise the lazy continuation of the paragraph
+		 * above it — prose either way rather than markup.
+		 * <p>
+		 * That it is not a fence delimiter is the point, and it is the reshape's
+		 * problem as much as the rule's. A fence opener may be indented at most three
+		 * columns past its container, so a {@code ```} shown four columns in below a
+		 * paragraph opens nothing. Falling through to {@link #atDelimiter} read one as a
+		 * fence the document opened and never closed: the reshape then appended a
+		 * closing delimiter of its own, read every heading below the indent as code, and
+		 * appended a second copy of five sections the document already carried — to a
+		 * file it went on to commit, push, and open a pull request for. The rule reads
+		 * the result as conforming, because it made the same mistake, so
+		 * {@link VerifyStep} passed on it. The blank-line case was already answered
+		 * here; only a paragraph directly above the indent reached the delimiter
+		 * reading.
+		 */
+		private Scan atIndent(boolean[] mask, int index) {
+			mask[index] = mayIndent;
+			return new Scan(null, mayIndent, listIndent);
 		}
 
 		/**

@@ -490,6 +490,62 @@ class ClaudeMdConformerTest {
 		assertEquals(once, conformer.conform(once), "a second reshape must not append the sections again");
 	}
 
+	/**
+	 * A conforming document that shows what a fence looks like, four columns in,
+	 * directly below the sentence introducing it — with no blank line, so no code
+	 * block opens at the indent either. It is a lazy continuation of that paragraph
+	 * and opens nothing.
+	 */
+	private static final String INDENTED_FENCE_BELOW_A_PARAGRAPH = """
+			# CLAUDE.md
+
+			See [AGENTS.md](AGENTS.md) for the companion agent guide.
+
+			## Project
+
+			A block is delimited by three backticks:
+			    ```
+
+			## Java version
+
+			Java 25.
+
+			## Maven
+
+			Root pom is packaging=pom.
+
+			## Principles for Java Development
+
+			SOLID.
+
+			## Testing
+
+			JUnit 5.
+
+			## Dependencies
+
+			Existing only.
+			""";
+
+	/**
+	 * Reading that delimiter as a fence opened a block nothing closed, so the reshape
+	 * saw every heading below it as code: it appended a closing delimiter of its own
+	 * and a second copy of the five sections the document already carried, then
+	 * committed and pushed the result. The rule read it as conforming because it made
+	 * the same mistake, so the verification never caught it.
+	 */
+	@Test
+	void leavesAConformingDocumentWithAnIndentedFenceBelowAParagraphAlone() {
+		assertEquals(INDENTED_FENCE_BELOW_A_PARAGRAPH, conformer.conform(INDENTED_FENCE_BELOW_A_PARAGRAPH));
+	}
+
+	/** Each required section is written once, so no reader meets two of any of them. */
+	@Test
+	void doesNotDuplicateSectionsBelowAnIndentedFence() {
+		List<String> headings = headings(conformer.conform(INDENTED_FENCE_BELOW_A_PARAGRAPH));
+		assertEquals(headings.stream().distinct().toList(), headings, "no heading may be written twice: " + headings);
+	}
+
 	/** Mirrors how the rule finds headings: a heading inside a fence is code, not structure. */
 	private List<String> headingsOutsideFences(String content) {
 		return linesOutsideFences(content).stream().filter(line -> line.startsWith("#")).toList();

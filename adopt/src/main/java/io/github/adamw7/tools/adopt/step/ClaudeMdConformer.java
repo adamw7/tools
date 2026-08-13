@@ -71,9 +71,13 @@ public class ClaudeMdConformer {
 
 	private static final char BACKTICK = '`';
 	private static final char TILDE = '~';
+	private static final char HEADING_CHAR = '#';
 	private static final int MIN_FENCE_LENGTH = 3;
 	private static final String COMMENT_START = "<!--";
 	private static final String COMMENT_END = "-->";
+
+	/** An inline code span, which quotes whatever it carries rather than writing it; see {@link #asRead}. */
+	private static final Pattern CODE_SPAN = Pattern.compile("`[^`]*`");
 	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
 
 	private static final char TAB = '\t';
@@ -212,7 +216,7 @@ public class ClaudeMdConformer {
 	 * {@code # CLAUDE.md} inside a code sample is the sample's, not the document's.
 	 */
 	private List<Integer> misplacedTitles(List<String> lines) {
-		return Outline.of(lines).structural(line -> TITLE.equals(line.strip())).boxed().toList().reversed();
+		return Outline.of(lines).structural(line -> declares(line, TITLE)).boxed().toList().reversed();
 	}
 
 	/**
@@ -252,7 +256,7 @@ public class ClaudeMdConformer {
 	 * required section.
 	 */
 	private Set<Integer> reservedHeadings(Outline outline) {
-		return outline.structural(line -> requiredSections.contains(line.strip()))
+		return outline.structural(line -> requiredSections.stream().anyMatch(required -> declares(line, required)))
 				.boxed()
 				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
@@ -279,12 +283,67 @@ public class ClaudeMdConformer {
 	 * A near-miss is the required heading in a different case, or followed by a
 	 * space and extra words — the two shapes {@code claude init} produces
 	 * ({@code ## Project purpose} for {@code ## Project}). The trailing space keeps
-	 * {@code ## Maven} from matching an unrelated {@code ## Mavenish} heading.
+	 * {@code ## Maven} from matching an unrelated {@code ## Mavenish} heading. The
+	 * line is compared as {@link #headingText} writes it, so which spelling a
+	 * near-miss was typed in does not decide whether it is one.
 	 */
 	private static boolean isNearMatch(String stripped, String required) {
-		String actual = stripped.toLowerCase(Locale.ROOT);
+		if (!isHeading(stripped)) {
+			return false;
+		}
+		String actual = headingText(stripped).toLowerCase(Locale.ROOT);
 		String wanted = required.toLowerCase(Locale.ROOT);
-		return isHeading(stripped) && (actual.equals(wanted) || actual.startsWith(wanted + " "));
+		return actual.equals(wanted) || actual.startsWith(wanted + " ");
+	}
+
+	/**
+	 * Whether the line declares the heading {@code required} names — the reading the
+	 * {@code claudeMdFormat} rule takes, mirroring {@code MarkdownDocument}'s
+	 * {@code headingText} in the {@code claude-code-enforcer} module.
+	 * <p>
+	 * A heading is the text it carries rather than the line it was typed on, so the
+	 * whitespace between its {@code #} run and that text — a tab, or two spaces — and
+	 * the closing {@code #} run Markdown lets an author balance it with are spelling.
+	 * Comparing the line verbatim made the reshape and the rule disagree about which
+	 * lines are the required sections: a document whose {@code ##  Testing} the rule
+	 * reads as {@code ## Testing} was reported here as not having the section at all,
+	 * so a second, stubbed copy of it was appended to a file the adoption went on to
+	 * commit and push. Where a document carries the section twice, in two spellings,
+	 * the two also disagreed about <em>which</em> of them the rule would judge, and
+	 * the reshape then stubbed a section the rule was not reading.
+	 */
+	private static boolean declares(String line, String required) {
+		String stripped = line.strip();
+		return isHeading(stripped) && headingText(stripped).equals(required);
+	}
+
+	/**
+	 * The heading a line declares, written canonically: its {@code #} run, then a
+	 * single space and the text it carries, or the run alone when it carries none.
+	 */
+	private static String headingText(String stripped) {
+		int level = headingLevel(stripped);
+		String hashes = stripped.substring(0, level);
+		String text = withoutClosingRun(stripped.substring(level).strip());
+		return text.isEmpty() ? hashes : hashes + SPACE + text;
+	}
+
+	/**
+	 * The heading's text without the {@code #} run that closes it. The run only
+	 * closes a heading when whitespace precedes it, so {@code ## C#} keeps its hash
+	 * while {@code ## Testing ##} loses both of its; a text that is nothing but
+	 * hashes — the {@code ###} of {@code ## ###} — is the closing run itself and
+	 * leaves an empty heading.
+	 */
+	private static String withoutClosingRun(String text) {
+		int end = text.length();
+		while (end > 0 && text.charAt(end - 1) == HEADING_CHAR) {
+			end--;
+		}
+		if (end == text.length()) {
+			return text;
+		}
+		return end == 0 || isIndent(text.charAt(end - 1)) ? text.substring(0, end).strip() : text;
 	}
 
 	/**
@@ -318,7 +377,7 @@ public class ClaudeMdConformer {
 	}
 
 	private static int headingLevel(String heading) {
-		return (int) heading.chars().takeWhile(character -> character == '#').count();
+		return (int) heading.chars().takeWhile(character -> character == HEADING_CHAR).count();
 	}
 
 	/**
@@ -407,9 +466,14 @@ public class ClaudeMdConformer {
 			return matching(match).filter(index -> !comment[index]);
 		}
 
-		/** @return the index of the heading outside code and comments, or {@code -1} when absent */
+		/**
+		 * @return the index of the first line declaring the heading, outside code and
+		 *         comments, or {@code -1} when the document declares it nowhere. The
+		 *         <em>first</em> is what answers, because that is the one the rule reads
+		 *         when a document carries the section twice; see {@link #declares}.
+		 */
 		int indexOfHeading(String heading) {
-			return structural(line -> line.strip().equals(heading)).findFirst().orElse(-1);
+			return structural(line -> declares(line, heading)).findFirst().orElse(-1);
 		}
 
 		/**
@@ -648,9 +712,29 @@ public class ClaudeMdConformer {
 	private static boolean markComments(List<String> lines, boolean[] code, boolean[] mask) {
 		boolean open = false;
 		for (int index = 0; index < lines.size(); index++) {
-			open = applyComment(lines.get(index).strip(), open, code[index], mask, index);
+			open = applyComment(lines.get(index), open, code[index], mask, index);
 		}
 		return open;
+	}
+
+	/**
+	 * The line as the comment scan reads it, mirroring {@code MarkdownDocument} in the
+	 * {@code claude-code-enforcer} module. Outside a comment its inline code spans are
+	 * dropped first, because a delimiter quoted as code is the document illustrating
+	 * one rather than writing one: a {@code CLAUDE.md} whose prose says an HTML
+	 * comment opens with {@code `<!--`} was read as opening one that nothing closes,
+	 * so the reshape appended a closing {@code -->} of its own and then read every
+	 * heading below the mention as inert — appending a second copy of five sections
+	 * the document already carried, to a file it went on to commit, push, and open a
+	 * pull request for. The rule reads the mention the same way, so {@link VerifyStep}
+	 * passed on the result.
+	 *
+	 * <p>Inside a comment there are no code spans to honour: the text is already
+	 * inert, so its backticks are ordinary characters and a {@code -->} among them
+	 * closes the block exactly as one anywhere else on the line does.
+	 */
+	private static String asRead(String line, boolean open) {
+		return (open ? line : CODE_SPAN.matcher(line).replaceAll(" ")).strip();
 	}
 
 	/**
@@ -675,8 +759,9 @@ public class ClaudeMdConformer {
 		if (insideCode) {
 			return open;
 		}
-		mask[index] = open || opensBlock(line);
-		return remainsOpen(line, 0, open);
+		String read = asRead(line, open);
+		mask[index] = open || opensBlock(read);
+		return remainsOpen(read, 0, open);
 	}
 
 	/** Whether the line's own content starts a comment that the same line does not close. */

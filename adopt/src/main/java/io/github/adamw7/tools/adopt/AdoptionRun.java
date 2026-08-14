@@ -28,10 +28,8 @@ public record AdoptionRun(String repositoryUrl, String branchName, AdoptionRepor
 
 	/**
 	 * Whether a whole run landed. The fold lives here because the answer is read in
-	 * three places that must agree — the CLI's exit status, the MCP result's
-	 * success flag, and the {@code succeeded} field of the report itself — and a
-	 * report that contradicted the exit code would be the worst of the three to
-	 * debug.
+	 * three places that must agree: the CLI's exit status, the MCP result's success
+	 * flag, and the {@code succeeded} field of the report itself.
 	 *
 	 * @param runs the runs of one batch, which succeeds only when every one of them did
 	 */

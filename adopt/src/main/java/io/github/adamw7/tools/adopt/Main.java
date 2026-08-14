@@ -18,12 +18,11 @@ import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
  * under the workspace, named after the repository.
  *
  * <p>When {@code --report} names a file, the run's {@link AdoptionReport} is
- * written there as JSON, for a failed run as well as a successful one, so it can
- * say how far the adoption got and why it stopped. A run over several
- * repositories writes the batch document {@link AdoptionReportWriter} describes.
+ * written there as JSON, for a failed run as well as a successful one. A run over
+ * several repositories writes the batch document {@link AdoptionReportWriter}
+ * describes.
  *
- * <p>{@code --help} is answered with the usage line and nothing is adopted, so the
- * flag every operator reaches for first is not refused as an unknown option. The
+ * <p>{@code --help} is answered with the usage line and nothing is adopted. The
  * line goes to the log, which the console appender writes to standard error: the
  * same jar is the adoption MCP server, whose stdio transport owns standard output.
  *

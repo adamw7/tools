@@ -25,12 +25,11 @@ public interface BuildSystem {
 	 * the build system that writes it so {@link AdoptionAssets} can account for the
 	 * adoption's own files without keeping a second copy of each name.
 	 *
-	 * <p>Deliberately not defaulted. {@link AdoptionAssets#WRITTEN_PATHS} is what
+	 * <p>Deliberately not defaulted: {@link AdoptionAssets#WRITTEN_PATHS} is what
 	 * {@link CloneStep} tells the adoption's work apart with and what
-	 * {@link CommitStep} refuses an ignored path over, so a build system that wrote a
-	 * file this list did not name would have it silently dropped from the branch. A
-	 * default of "none" would let a new build system be added without anyone noticing
-	 * that gap; requiring an answer makes the compiler ask.
+	 * {@link CommitStep} refuses an ignored path over, so a file this list did not
+	 * name would be silently dropped from the branch. Requiring an answer makes the
+	 * compiler ask a new build system for one.
 	 *
 	 * @return the paths, listed whether or not the checkout happens to carry them
 	 */
@@ -79,13 +78,9 @@ public interface BuildSystem {
 	 * more than one word to launch its tool — a wrapper the checkout committed
 	 * without its executable bit goes through {@code sh}, whose own
 	 * {@code --version} is not portable — and probing only the program would then
-	 * answer for the shell rather than for the build tool.
-	 *
-	 * <p>A build system whose verification names no command at all has nothing to
-	 * probe, and is answered as such rather than with the
-	 * {@link IndexOutOfBoundsException} that reading its first word would raise —
-	 * this is the extension point a new build system is added through, so it says
-	 * what it expects instead of failing an adoption several steps in.
+	 * answer for the shell rather than for the build tool. A verification that names
+	 * no command has nothing to probe, and is answered as such rather than with the
+	 * {@link IndexOutOfBoundsException} reading its first word would raise.
 	 *
 	 * @return the probe command, or empty when the verification needs nothing beyond
 	 *         the shell

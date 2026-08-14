@@ -127,10 +127,8 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	/**
 	 * The CLI's own transcript is carried into the failure, because a run that exits
 	 * cleanly without writing the file has said why in it — it declined, it asked a
-	 * question headless mode could not answer, it wrote somewhere else — and that
-	 * transcript is otherwise discarded, {@link #runOrFail} only reporting the output
-	 * of a command that failed. Without it the adoption stops on a message that names
-	 * the missing file and nothing that would explain it.
+	 * question headless mode could not answer, it wrote somewhere else — and
+	 * {@link #runOrFail} only reports the output of a command that failed.
 	 */
 	private void requireGenerated(AdoptionContext context, CommandResult result) {
 		if (!Files.isRegularFile(context.repositoryDirectory().resolve(CLAUDE_MD))) {

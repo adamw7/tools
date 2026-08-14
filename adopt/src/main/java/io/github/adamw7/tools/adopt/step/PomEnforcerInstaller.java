@@ -83,11 +83,8 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Pins an explicitly supplied version instead of the running build's. It is
-	 * checked here, before anything is cloned, because a version named on the command
-	 * line is worth rejecting immediately rather than at the one step that edits a
-	 * POM; the reason a snapshot cannot be wired in does not change for being asked
-	 * for on purpose.
+	 * Pins an explicitly supplied version instead of the running build's, checked here
+	 * — before anything is cloned — rather than at the one step that edits a POM.
 	 *
 	 * @param ruleVersion a released {@code claude-code-enforcer} version
 	 */
@@ -125,28 +122,18 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * Asks the plugins of the POM's own {@code build} — the one place a rule runs on
-	 * every build, and the very place {@link #enforcerPluginOfTheBuild} would add one.
-	 * The guard is looked for exactly where it would be written, so what is inspected
-	 * and what is edited cannot disagree.
+	 * every build, and the very place {@link #enforcerPluginOfTheBuild} would add one,
+	 * so what is inspected and what is edited cannot disagree.
 	 *
 	 * <p>A rule declared anywhere else is not one an ordinary build runs, so it is not
-	 * a guard this installer may stand down for. A {@code pluginManagement} entry binds
-	 * nothing at all; a {@code profile} binds only while that profile is activated, and
-	 * a {@code reporting} plugin does not run in the build lifecycle. Counting any of
-	 * them left the project with no guard on the build its contributors and its CI
-	 * actually run, and nothing downstream said so — {@link VerifyStep}'s
-	 * {@code mvn -N validate} passes precisely because the rule never ran — so the
-	 * adoption opened a pull request claiming a guard the default build does not have.
-	 * That is the outcome {@link #enforcerPluginOfTheBuild} already refuses to produce
-	 * when <em>adding</em>; accepting it when <em>detecting</em> produced it anyway.
-	 *
-	 * <p>A project that deliberately gated the rule behind a profile therefore ends up
-	 * running it on every build too. That is the direction to err in: an extra run of a
-	 * rule the project chose is visible and removable, while a guard nobody runs reads
-	 * as adopted and is not.
-	 *
-	 * <p>What counts as already running it is the rule being configured, not the
-	 * artifact that supplies it being on the plugin — see {@link #runsClaudeMdRule}.
+	 * a guard this installer may stand down for: {@code pluginManagement} binds
+	 * nothing, a {@code profile} binds only while activated, and a {@code reporting}
+	 * plugin does not run in the lifecycle. Counting any of them left the project with
+	 * no guard on the build it actually runs, and nothing downstream said so —
+	 * {@link VerifyStep}'s {@code mvn -N validate} passes precisely because the rule
+	 * never ran. A project that gated the rule behind a profile therefore ends up
+	 * running it on every build too, which is the direction to err in: an extra run is
+	 * visible and removable, a guard nobody runs reads as adopted and is not.
 	 */
 	private boolean alreadyRunsTheRule(PomDocument pom) {
 		return buildPlugins(pom).anyMatch(this::runsClaudeMdRule);
@@ -154,14 +141,11 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * Whether the plugin actually configures the {@code claudeMdFormat} rule, rather
-	 * than merely carrying the artifact that supplies it. The two are not the same
-	 * question: {@value #RULE_ARTIFACT_ID} ships a rule per document and per piece of
-	 * agent configuration, so a project that wired in {@code noSecrets} or
-	 * {@code settingsJsonValid} has the dependency and no {@code CLAUDE.md} guard at
-	 * all. Reading the dependency as the guard left that project's POM untouched, and
-	 * {@link VerifyStep} confirmed nothing — its {@code mvn -N validate} passes on the
-	 * rule the project already had — so the adoption ran to the end and opened a pull
-	 * request claiming a guard the build does not run.
+	 * than merely carrying the artifact that supplies it. {@value #RULE_ARTIFACT_ID}
+	 * ships a rule per document and per piece of agent configuration, so a project
+	 * that wired in {@code noSecrets} has the dependency and no {@code CLAUDE.md}
+	 * guard at all — and reading the dependency as the guard left that POM untouched
+	 * while {@link VerifyStep} passed on the rule the project already had.
 	 *
 	 * <p>The rule is looked for at any depth below the plugin, because it is
 	 * configured either on an execution or on the plugin itself, and only directly
@@ -186,13 +170,10 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
-	 * one. An execution spliced into {@code pluginManagement} only configures a plugin
-	 * the build never runs, and one spliced into a profile runs only when that profile
-	 * is activated. Neither enforces anything, and neither shows up as a failure —
-	 * {@link VerifyStep}'s {@code mvn -N validate} would pass without the rule ever
-	 * executing and the adoption would advertise a guard the project does not have. A
-	 * POM whose only enforcer sits somewhere else therefore gets its own declaration
-	 * in {@code build/plugins}.
+	 * one: an execution spliced into {@code pluginManagement} configures a plugin the
+	 * build never runs, and one spliced into a profile runs only when that profile is
+	 * activated. A POM whose only enforcer sits somewhere else therefore gets its own
+	 * declaration in {@code build/plugins}.
 	 */
 	private Optional<Element> enforcerPluginOfTheBuild(PomDocument pom) {
 		return buildPlugins(pom).filter(plugin -> PomDocument.hasArtifactId(plugin, ENFORCER_ARTIFACT_ID))
@@ -202,9 +183,7 @@ public class PomEnforcerInstaller {
 	/**
 	 * The plugins the POM's own {@code build} binds, which every build runs. Said once
 	 * because {@link #alreadyRunsTheRule} and {@link #enforcerPluginOfTheBuild} ask
-	 * about the same place for the same reason, and a guard looked for somewhere other
-	 * than where it would be written is a guard the installer can stand down for
-	 * without one ever being run.
+	 * about the same place for the same reason.
 	 */
 	private Stream<Element> buildPlugins(PomDocument pom) {
 		return pom.at(BUILD_PLUGINS).stream()
@@ -233,14 +212,11 @@ public class PomEnforcerInstaller {
 	/**
 	 * Refuses to splice the execution into a {@value #ENFORCER_ARTIFACT_ID} the
 	 * project pinned below {@value #MINIMUM_ENFORCER_VERSION}, which cannot resolve
-	 * the rule by name. Adding it anyway left the adoption advertising a guard that
-	 * fails every build it runs in — for a reason no reader of the pull request would
-	 * connect to the plugin version a line above it.
-	 *
-	 * <p>Raising the project's pinned version instead is not the adoption's call to
-	 * make: it is the version the project chose for the rules it already runs, and
-	 * bumping it under them would change how those behave — the same reason
-	 * {@link CommitStep} refuses an ignored path rather than forcing the file in.
+	 * the rule by name: adding it anyway left the adoption advertising a guard that
+	 * fails every build it runs in. Raising the project's pinned version instead is
+	 * not the adoption's call — bumping it would change how the rules the project
+	 * already runs behave, the same reason {@link CommitStep} refuses an ignored path
+	 * rather than forcing the file in.
 	 *
 	 * <p>Only a version literal is judged. One the POM leaves to a
 	 * {@code pluginManagement} entry, a parent, or a property cannot be read from

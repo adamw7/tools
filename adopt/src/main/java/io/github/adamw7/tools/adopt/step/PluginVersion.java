@@ -10,16 +10,15 @@ import java.util.stream.Stream;
  * too old to run the rule being wired into it.
  *
  * <p>Only the numeric prefix is read, so {@code 3.0.0-M3} compares as
- * {@code 3.0.0}. That is the safe direction for the one question asked: a
- * qualifier only ever precedes the release it qualifies, so a milestone of the
- * minimum reads as the release and is not refused, while every version genuinely
- * below it still is.
+ * {@code 3.0.0}: a qualifier only ever precedes the release it qualifies, so a
+ * milestone of the minimum reads as the release and is not refused, while every
+ * version genuinely below it still is.
  *
  * <p>A literal carrying no leading number at all — an unsubstituted
  * {@code ${enforcer.version}}, or the empty text of a version the POM leaves to a
- * {@code pluginManagement} entry or a parent — is <em>not</em> below anything.
- * Refusing what cannot be read here would turn an ordinary POM into an unadoptable
- * one, and {@link VerifyStep} still runs the guard before any of it is pushed.
+ * parent — is <em>not</em> below anything. Refusing what cannot be read here would
+ * turn an ordinary POM into an unadoptable one, and {@link VerifyStep} still runs
+ * the guard before any of it is pushed.
  */
 final class PluginVersion {
 

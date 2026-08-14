@@ -50,11 +50,9 @@ public class GitHubRepoAdopter {
 	 * What the guard commit says it did. It names the guard rather than the artifact
 	 * that supplies one of them, because which guard {@link EnforcerStep} wires in is
 	 * the checkout's build system to decide and is not known when the pipeline is
-	 * assembled: only the Maven path adds the {@code claude-code-enforcer}, while a
-	 * Gradle project gets a task and a project with no build file gets a workflow. A
-	 * message naming the enforcer therefore landed in the history of repositories that
-	 * were given neither — a claim the diff beside it plainly does not support, in a
-	 * commit the adopted project's reviewers read.
+	 * assembled: only the Maven path adds the {@code claude-code-enforcer}. A message
+	 * naming the enforcer landed in the history of repositories given a Gradle task or
+	 * a workflow instead — a claim the diff beside it does not support.
 	 */
 	static final String GUARD_COMMIT_MESSAGE = "Adopt Claude Code: add the CLAUDE.md guard";
 
@@ -121,13 +119,10 @@ public class GitHubRepoAdopter {
 	/**
 	 * A dry run ends at the verification, so the pipeline is assembled without the
 	 * two steps that write to GitHub rather than with steps that decide for
-	 * themselves to do nothing. The report then says what a dry run really did: the
-	 * steps it completed stop at {@code verify}, instead of listing a {@code push}
-	 * and a {@code pull-request} that only pretended to run.
-	 *
-	 * <p>Everything before the verification still happens for real — the checkout is
-	 * cloned, branched, and committed on — so the operator has the adoption's commits
-	 * in the workspace to read before any of it is published.
+	 * themselves to do nothing. The report then says what a dry run really did,
+	 * stopping at {@code verify} instead of listing a {@code push} and a
+	 * {@code pull-request} that only pretended to run. Everything before it still
+	 * happens for real, so the operator has the adoption's commits to read.
 	 */
 	private static List<AdoptionStep> publicationSteps(AdoptionOptions options) {
 		if (options.dryRun()) {
@@ -160,11 +155,9 @@ public class GitHubRepoAdopter {
 
 	/**
 	 * Each step is announced with its position in the pipeline and closed with what
-	 * it cost, because the two questions an operator has of a run that is still
-	 * going are how much of it is left and whether the step it is on is working or
-	 * stuck. The pipeline is assembled per run — an {@link AssetsStep} on request, no
-	 * publication steps on a dry run — so the count is the run's own, not a constant
-	 * a reader could have learnt once.
+	 * it cost, because the two questions an operator has of a run that is still going
+	 * are how much of it is left and whether the step it is on is working or stuck.
+	 * The pipeline is assembled per run, so the count is the run's own.
 	 *
 	 * <p>A failing step is named here as well, without its stack trace: the exception
 	 * carries the failure and {@link BatchAdoption} logs it once, but nothing in that

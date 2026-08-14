@@ -67,9 +67,7 @@ public class ToolchainStep implements AdoptionStep {
 	 * The check for a run that will not publish. Holding a rehearsal to the
 	 * credentials of the one capability it has been told not to exercise failed
 	 * {@code --dry-run} on its very first step, for want of a {@code gh} the run was
-	 * never going to call — on a host with no GitHub CLI installed, and on a token
-	 * that cannot read the repository, both of which leave the rest of the pipeline
-	 * perfectly runnable. Dropping {@code gh} from the list also settles the login
+	 * never going to call. Dropping {@code gh} from the list also settles the login
 	 * probe, which asks about GitHub only while the pull request is still ahead.
 	 */
 	public static ToolchainStep forDryRun() {
@@ -109,12 +107,10 @@ public class ToolchainStep implements AdoptionStep {
 
 	/**
 	 * Asks about the repository the run is going to open a pull request on, rather
-	 * than about the token's owner. {@code gh api user} is a user-scoped call, and a
-	 * GitHub App installation token — what a CI run is handed, and the credential
-	 * behind the {@code x-access-token:TOKEN@github.com} clone URLs the adoption is
-	 * built to accept — is refused by it with "Resource not accessible by
-	 * integration". Probing with it therefore aborted, on its very first step, every
-	 * adoption driven by the CI credential that would have opened the pull request
+	 * than about the token's owner. {@code gh api user} is a user-scoped call that a
+	 * GitHub App installation token — what a CI run is handed — is refused by with
+	 * "Resource not accessible by integration", so probing with it aborted every
+	 * adoption driven by the credential that would have opened the pull request
 	 * perfectly well.
 	 *
 	 * <p>Reading the repository is also the stronger question: it covers a token

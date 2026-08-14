@@ -89,12 +89,10 @@ public class ClaudeMdConformanceStep implements AdoptionStep {
 	/**
 	 * Reshapes to the contract of the guard {@link EnforcerStep} is about to wire
 	 * into this very checkout, detected from the same build-system list that step is
-	 * given, so the two never disagree about what the file has to carry.
-	 *
-	 * <p>A list detection comes up empty on — one configured without a catch-all,
-	 * since {@link BuildSystems#DEFAULTS} always matches — leaves no guard to satisfy
-	 * and so demands no section, the same answer as a guard that only wants the file
-	 * to be there.
+	 * given, so the two never disagree about what the file has to carry. A list
+	 * detection comes up empty on — one configured without a catch-all, since
+	 * {@link BuildSystems#DEFAULTS} always matches — leaves no guard to satisfy and so
+	 * demands no section.
 	 */
 	private ClaudeMdConformer conformer(Path checkout) {
 		return new ClaudeMdConformer(BuildSystems.detect(buildSystems, checkout)

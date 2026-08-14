@@ -30,21 +30,16 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * guard the project's ordinary build never runs. It is hung from
  * {@value #LIFECYCLE_TASK} through a live {@code matching}/{@code configureEach}
  * view, so a plugin applied further down the script still wires it in — and a
- * project that ends up with no {@value #LIFECYCLE_TASK} at all is given one. That
- * case is not exotic: an Android or aggregator root script routinely declares a
- * {@code clean} task and nothing else, and the guard was left registered, verified
- * by {@link VerifyStep} running it directly, and unreachable from any build a
- * contributor or CI would run — the pull request advertising a guard the project
- * does not have, which is exactly what {@link PomEnforcerInstaller} refuses to
- * produce on the Maven path.
+ * project that ends up with no {@value #LIFECYCLE_TASK} at all is given one. An
+ * Android or aggregator root script routinely declares a {@code clean} task and
+ * nothing else, and the guard was left registered but unreachable from any build a
+ * contributor or CI would run.
  *
- * <p>The fallback registration is deferred to {@code afterEvaluate} rather than
+ * <p>That fallback registration is deferred to {@code afterEvaluate} rather than
  * made inline, because the name has to be free: claiming {@value #LIFECYCLE_TASK}
  * while the script is still being read would collide with a plugin applied below
- * this block and fail the whole build. By {@code afterEvaluate} there is no "below"
- * left. Applying Gradle's {@code base} plugin to obtain the task instead was
- * rejected for the same reason — it also registers {@code clean}, which is the one
- * task those root scripts already declare.
+ * this block. Applying Gradle's {@code base} plugin to obtain the task instead was
+ * rejected for the same reason — it also registers {@code clean}.
  */
 public class GradleGuardInstaller {
 
@@ -138,14 +133,11 @@ public class GradleGuardInstaller {
 	/**
 	 * Both ways either DSL lets a registration be commented out. The block form is
 	 * removed first and by span rather than by line, because it is the form a whole
-	 * declaration is commented out with — a {@code /*} … {@code *}{@code /} around
-	 * {@code tasks.register('enforceClaudeMd')} left the name plainly in the text, so
-	 * the script was read as already declaring the task and the guard was never
-	 * appended; {@link VerifyStep} then ran a task the build does not have.
-	 *
-	 * <p>The line form is dropped afterwards, and the lines are rejoined rather than
-	 * matched one at a time so a registration spread over several lines is still
-	 * recognised.
+	 * declaration is commented out with, and leaving it made the script read as
+	 * already declaring the task — so the guard was never appended and
+	 * {@link VerifyStep} ran a task the build does not have. The line form is dropped
+	 * afterwards, and the lines are rejoined rather than matched one at a time so a
+	 * registration spread over several lines is still recognised.
 	 */
 	private String withoutComments(String script) {
 		String withoutBlocks = BLOCK_COMMENT.matcher(script).replaceAll("");

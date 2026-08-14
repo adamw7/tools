@@ -18,9 +18,9 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * than with a {@code gradle} off the {@code PATH}. Most Gradle projects ship only
  * the wrapper, so this is the ordinary case rather than the exception: without it
  * {@link BuildToolchainStep} found no {@code gradle} to probe and aborted the
- * adoption. See {@link BuildWrapper}.
+ * adoption. See {@link AbstractWrappedBuildSystem}.
  */
-public class GradleBuildSystem implements BuildSystem {
+public class GradleBuildSystem extends AbstractWrappedBuildSystem {
 
 	static final String GRADLE = "gradle";
 	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", GradleGuardInstaller.GUARD_TASK);
@@ -28,19 +28,13 @@ public class GradleBuildSystem implements BuildSystem {
 	static final String KOTLIN_BUILD_FILE = "build.gradle.kts";
 
 	private final GradleGuardInstaller installer = new GradleGuardInstaller();
-	private final BuildWrapper wrapper;
 
 	public GradleBuildSystem() {
 		this(new BuildWrapper("gradlew", "gradlew.bat"));
 	}
 
 	GradleBuildSystem(BuildWrapper wrapper) {
-		this.wrapper = wrapper;
-	}
-
-	@Override
-	public String name() {
-		return "gradle";
+		super(GRADLE, VERIFY_ARGUMENTS, wrapper);
 	}
 
 	@Override
@@ -63,17 +57,6 @@ public class GradleBuildSystem implements BuildSystem {
 		Path buildFile = locate(repositoryDirectory)
 				.orElseThrow(() -> new AdoptionException("No Gradle build file in " + repositoryDirectory));
 		return installer.install(buildFile);
-	}
-
-	@Override
-	public List<String> verifyCommand(Path repositoryDirectory) {
-		return wrapper.commandIn(repositoryDirectory, GRADLE, VERIFY_ARGUMENTS);
-	}
-
-	/** Probes whatever {@link #verifyCommand(Path)} will launch — the wrapper, however it has to be run. */
-	@Override
-	public Optional<List<String>> toolProbe(Path repositoryDirectory) {
-		return Optional.of(wrapper.probeIn(repositoryDirectory, GRADLE));
 	}
 
 	/**

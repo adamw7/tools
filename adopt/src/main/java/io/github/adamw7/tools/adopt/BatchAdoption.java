@@ -64,12 +64,9 @@ public final class BatchAdoption {
 
 	/**
 	 * The URL is redacted up front so a repository that fails its claim — and so
-	 * never has a context to ask — is still reported without its credentials.
-	 *
-	 * <p>The repository is taken by position rather than by value so the line
-	 * announcing it can say which of how many it is. Every line below it names a
-	 * step, not a repository, and a batch of twenty is otherwise read by counting
-	 * the "Adopting Claude Code into ..." lines above wherever the reader is.
+	 * never has a context to ask — is still reported without its credentials. The
+	 * repository is taken by position so the line announcing it can say which of how
+	 * many it is; every line below it names a step, not a repository.
 	 */
 	private AdoptionRun adoptOne(List<String> repositoryUrls, int index, Checkouts checkouts) {
 		String repositoryUrl = repositoryUrls.get(index);
@@ -87,8 +84,7 @@ public final class BatchAdoption {
 	/**
 	 * Closes the batch with what the operator has to act on: how much of it landed,
 	 * what it cost, and — when some of it did not — which repositories to re-run.
-	 * A partly failed batch is the case this class exists to produce, and its
-	 * failures are scattered through however many repositories' worth of steps
+	 * Those failures are scattered through however many repositories' worth of steps
 	 * separate them, so naming them together at the end is the difference between
 	 * reading the run and searching it.
 	 */

@@ -48,10 +48,9 @@ public class PullRequestStep extends AbstractCommandStep {
 	 * the branches, the GraphQL error names the head) and "No commits between ...".
 	 *
 	 * <p>Each fragment names a pull request, because the transcript these are matched
-	 * against is the whole of {@code gh}'s merged output. A bare "already exists"
-	 * also matched a failure that had nothing to do with an open pull request — a
-	 * label {@code gh} could not add, a ref the push had already published — and left
-	 * the adoption reported as complete with no pull request opened and none to find.
+	 * against is the whole of {@code gh}'s merged output: a bare "already exists" also
+	 * matched a failure that had nothing to do with one — a label {@code gh} could not
+	 * add — and left the adoption reported as complete with no pull request to find.
 	 */
 	private static final List<String> TOLERATED_FAILURES = List.of("a pull request for branch",
 			"a pull request already exists", "no commits between");
@@ -134,12 +133,9 @@ public class PullRequestStep extends AbstractCommandStep {
 	 * the log of an adoption that went on to create a duplicate needs to see which
 	 * of the two it was.
 	 *
-	 * <p>The transcript is redacted for the same reason
-	 * {@link AbstractCommandStep#runOrFail} redacts the one it fails with: a
-	 * {@code gh} left without a {@code --repo} reads the checkout's remote through
-	 * {@code git}, and a {@code git} that cannot use it echoes the credentialled URL
-	 * back — {@code fatal: could not read Username for 'https://...@github.com'}.
-	 * This warning is written to the log, which outlives the run.
+	 * <p>The transcript is redacted because a {@code gh} left without a {@code --repo}
+	 * reads the checkout's remote through {@code git}, which echoes a credentialled
+	 * URL back when it cannot use it — and this warning outlives the run.
 	 *
 	 * @return the URL of the branch's open pull request, or empty when none is open
 	 *         or {@code gh} could not be queried
@@ -181,9 +177,8 @@ public class PullRequestStep extends AbstractCommandStep {
 	 * may carry surrounding noise (update notices merged in from stderr), so parsing
 	 * starts at an opening bracket. Every bracket is tried rather than only the first,
 	 * because a diagnostic printed <em>before</em> the payload can itself contain one;
-	 * stopping there would parse the noise, conclude no pull request is open, and
-	 * create a duplicate {@code gh} rejects — failing an adoption that was only being
-	 * re-run.
+	 * stopping there parsed the noise, concluded no pull request is open, and created
+	 * a duplicate {@code gh} rejects.
 	 *
 	 * @return the first element's {@code url}, or empty when no bracket starts a
 	 *         JSON array, the array is empty, or it carries no textual URL

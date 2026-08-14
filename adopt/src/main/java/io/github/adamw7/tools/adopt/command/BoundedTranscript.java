@@ -9,21 +9,16 @@ package io.github.adamw7.tools.adopt.command;
  * what a transcript grows by.
  *
  * <p>Bounding it here rather than at the caller matters because the transcript does
- * not stop at the log. {@link io.github.adamw7.tools.adopt.step.AbstractCommandStep}
- * puts a failing command's whole output into the {@link
- * io.github.adamw7.tools.adopt.AdoptionException} it raises, which becomes the
- * {@code failure} field of the JSON report written to disk and answered to MCP
- * clients — so an unbounded transcript is an unbounded response, held in memory for
- * as long as the command's timeout allows.
+ * not stop at the log: a failing command's whole output becomes the {@code failure}
+ * field of the JSON report written to disk and answered to MCP clients, so an
+ * unbounded transcript is an unbounded response.
  *
- * <p>A transcript that fits is answered verbatim, byte for byte, so the common case
- * keeps the child's own line terminators and its trailing newline. Only one that
+ * <p>A transcript that fits is answered verbatim, byte for byte. Only one that
  * overflowed is cut, and then <em>only at line boundaries</em>: a clone URL's
  * credentials are masked by {@link io.github.adamw7.tools.adopt.Redaction} matching
  * the user information that follows a {@code ://}, so a cut through the middle of
- * such a URL would leave the token behind with nothing left to recognise it by.
- * Cutting whole lines cannot split one. A region carrying no line feed at all is
- * therefore dropped whole rather than cut mid-line.
+ * such a URL would leave the token behind with nothing left to recognise it by. A
+ * region carrying no line feed at all is dropped whole rather than cut mid-line.
  */
 final class BoundedTranscript {
 

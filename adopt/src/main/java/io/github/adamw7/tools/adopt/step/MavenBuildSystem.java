@@ -15,9 +15,9 @@ import java.util.Optional;
  * <p>A checkout that ships an {@code mvnw} is verified with that wrapper rather
  * than with a {@code mvn} off the {@code PATH}, so the guard runs under the Maven
  * version the project pinned and a host with no Maven installed can still adopt
- * it. See {@link BuildWrapper}.
+ * it. See {@link AbstractWrappedBuildSystem}.
  */
-public class MavenBuildSystem implements BuildSystem {
+public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 
 	private static final String MAVEN = "mvn";
 	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
@@ -25,7 +25,6 @@ public class MavenBuildSystem implements BuildSystem {
 	static final String POM = "pom.xml";
 
 	private final PomEnforcerInstaller installer;
-	private final BuildWrapper wrapper;
 
 	public MavenBuildSystem() {
 		this(Optional.empty());
@@ -45,8 +44,8 @@ public class MavenBuildSystem implements BuildSystem {
 	}
 
 	MavenBuildSystem(PomEnforcerInstaller installer, BuildWrapper wrapper) {
+		super(MAVEN, VERIFY_ARGUMENTS, wrapper);
 		this.installer = installer;
-		this.wrapper = wrapper;
 	}
 
 	@Override
@@ -79,16 +78,5 @@ public class MavenBuildSystem implements BuildSystem {
 	@Override
 	public List<String> requiredClaudeMdSections() {
 		return ClaudeMdConformer.REQUIRED_SECTIONS;
-	}
-
-	@Override
-	public List<String> verifyCommand(Path repositoryDirectory) {
-		return wrapper.commandIn(repositoryDirectory, MAVEN, VERIFY_ARGUMENTS);
-	}
-
-	/** Probes whatever {@link #verifyCommand(Path)} will launch — the wrapper, however it has to be run. */
-	@Override
-	public Optional<List<String>> toolProbe(Path repositoryDirectory) {
-		return Optional.of(wrapper.probeIn(repositoryDirectory, MAVEN));
 	}
 }

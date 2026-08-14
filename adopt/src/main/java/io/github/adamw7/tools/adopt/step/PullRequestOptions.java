@@ -18,11 +18,10 @@ import io.github.adamw7.tools.adopt.Text;
  * <p>Each list entry is stripped, and a blank one is dropped rather than carried:
  * every entry becomes an argument of its own — {@code gh pr create --reviewer
  * <entry>} — so a blank one reached {@code gh} as an empty argument and failed the
- * adoption at its very last step, with the branch already pushed. The MCP tool
- * already read its arguments this way; doing it here rather than at each entry
- * point is what keeps the command line from disagreeing with it about what an
- * omitted value means. Duplicates are left alone, as {@code gh} treats naming a
- * reviewer twice as naming them once.
+ * adoption at its very last step, with the branch already pushed. Doing it here
+ * rather than at each entry point keeps the command line and the MCP tool from
+ * disagreeing about what an omitted value means. Duplicates are left alone, as
+ * {@code gh} treats naming a reviewer twice as naming them once.
  *
  * @param title     the pull request's title, or blank for {@value #DEFAULT_TITLE}
  * @param body      the pull request's body, or blank for the adoption's own
@@ -49,9 +48,7 @@ public record PullRequestOptions(String title, String body, List<String> reviewe
 	/**
 	 * An absent list is read as naming nobody, the same answer a blank title gets from
 	 * {@link Text#orDefault}: this is the record's promise that its lists are never
-	 * {@code null}, so it cannot be the one place a caller has to satisfy it first. A
-	 * {@code null} reached here as a message-less {@link NullPointerException} out of a
-	 * constructor whose documentation says the lists are defensively copied.
+	 * {@code null}, so it cannot be the one place a caller has to satisfy it first.
 	 *
 	 * @return the entries that name something, stripped — the rule {@link Text} defines
 	 *         for every optional input

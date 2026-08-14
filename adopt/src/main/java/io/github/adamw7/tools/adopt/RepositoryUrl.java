@@ -22,20 +22,16 @@ public final class RepositoryUrl {
 	private static final String GIT_SUFFIX = ".git";
 
 	/**
-	 * The port ending a URL's authority: a {@code ':'} followed by digits and then
-	 * either the path or the end of the URL. It is dropped before the URL is split
-	 * into segments, because splitting on {@code ':'} — which the scp-like form needs
-	 * — otherwise reads the port as a path segment of its own. A
-	 * {@code https://ghe.example.com:8443/owner/repo} then yielded the segments
-	 * {@code [ghe.example.com, 8443, owner, repo]}, whose third-from-last is the port
-	 * rather than the host, so {@link #repositorySlug} concluded the URL named no
-	 * owner: {@code gh} lost its {@code --repo}, the toolchain check fell back to its
-	 * weaker credentials probe, and the command line refused the URL outright.
+	 * The port ending a URL's authority, dropped before the URL is split into
+	 * segments: splitting on {@code ':'} — which the scp-like form needs — otherwise
+	 * reads the port as a path segment of its own, so
+	 * {@code https://ghe.example.com:8443/owner/repo} yielded a third-from-last
+	 * segment that is the port rather than the host and {@link #repositorySlug}
+	 * concluded the URL named no owner.
 	 *
 	 * <p>Only a URL carrying a scheme is treated this way. The scp-like
-	 * {@code git@host:owner/repo} has no scheme and cannot carry a port at all — that
-	 * is what {@code ssh://} exists for — so its {@code ':'} always separates a path,
-	 * even before an owner that happens to be all digits.
+	 * {@code git@host:owner/repo} cannot carry a port at all — that is what
+	 * {@code ssh://} exists for — so its {@code ':'} always separates a path.
 	 */
 	private static final Pattern PORT = Pattern.compile("^([^/]*):\\d+(?=/|$)");
 
@@ -110,11 +106,10 @@ public final class RepositoryUrl {
 	 * {@code .../alice/tools} and {@code .../bob/tools} are two.
 	 *
 	 * <p>Anything that does not reduce to the same text is answered as a different
-	 * repository. The comparison is deliberately conservative in that direction,
-	 * because the caller is deciding whether a checkout it found is the one it was
-	 * asked to adopt: refusing a checkout that was in fact the right one costs a
-	 * clone, while accepting the wrong one commits to it, pushes it, and opens its
-	 * pull request.
+	 * repository. The comparison errs in that direction deliberately, because the
+	 * caller is deciding whether a checkout it found is the one it was asked to
+	 * adopt: refusing a checkout that was in fact the right one costs a clone, while
+	 * accepting the wrong one commits to it, pushes it, and opens its pull request.
 	 *
 	 * @param otherUrl the URL to compare against, typically a checkout's recorded
 	 *                 {@code origin}; blank or {@code null} names no repository and
@@ -128,8 +123,7 @@ public final class RepositoryUrl {
 	 * A port is deliberately <em>not</em> dropped here, unlike in
 	 * {@link #authorityAndPath}: two URLs differing only in their port name two
 	 * servers, and answering them as one repository is the direction this comparison
-	 * must never err in — the caller goes on to commit to that checkout, push it, and
-	 * open its pull request. Reading the port as a path segment keeps them apart.
+	 * must never err in.
 	 *
 	 * @return the comparable form of a clone URL, or the empty string for text that
 	 *         names no repository at all — which never equals the identity of a
@@ -151,11 +145,9 @@ public final class RepositoryUrl {
 
 	/**
 	 * The URL's final path segment, ended by either separator git accepts — so the
-	 * scp-like {@code git@host:repo}, whose {@code ':'} is the path separator it is,
-	 * names the checkout directory {@code repo} rather than {@code git@host:repo}.
-	 * This is the same reading of {@code ':'} that {@link #repositorySlug} already
-	 * takes; the scheme is dropped first so its own {@code "://"} is never mistaken
-	 * for that separator.
+	 * scp-like {@code git@host:repo} names the checkout directory {@code repo} rather
+	 * than {@code git@host:repo}. The scheme is dropped first so its own {@code "://"}
+	 * is never mistaken for that separator.
 	 */
 	private static String lastSegment(String url) {
 		String withoutScheme = SCHEME.matcher(url).replaceFirst("");
@@ -167,8 +159,7 @@ public final class RepositoryUrl {
 	 * A URL whose last segment is empty or a directory alias — {@code .../repo//},
 	 * {@code .../.git}, or a bare {@code ..} — would resolve the checkout onto the
 	 * workspace itself or above it, so the clone would land beside the other
-	 * repositories the workspace holds. Rejecting it fails the adoption on its input
-	 * rather than several steps later on a checkout directory nobody intended.
+	 * repositories the workspace holds.
 	 */
 	private static String requireName(String name, String repositoryUrl) {
 		if (name.isEmpty() || ".".equals(name) || "..".equals(name) || isPath(name) || isUserInfo(name)) {
@@ -180,17 +171,15 @@ public final class RepositoryUrl {
 
 	/**
 	 * A last segment that ends at an {@code @} is the URL's user information and
-	 * nothing else — {@code https://token@} names credentials and no repository at
-	 * all. Only a URL with no path past its authority reaches this, since every other
-	 * form has a separator after the {@code @} for {@link #lastSegment} to cut at, so
-	 * a checkout directory legitimately containing an {@code @} is unaffected.
+	 * nothing else — {@code https://token@} names credentials and no repository. Only
+	 * a URL with no path past its authority reaches this, so a checkout directory
+	 * legitimately containing an {@code @} is unaffected.
 	 *
 	 * <p>What it protects is {@link #identity}, which strips exactly that user
 	 * information: such a URL reduced to the empty identity that
-	 * {@link #isSameRepositoryAs} answers for text naming no repository, so the two
-	 * compared equal and a checkout of <em>any</em> other repository — or one whose
-	 * {@code origin} could not be read at all — was accepted as this one, then
-	 * branched, committed, and pushed.
+	 * {@link #isSameRepositoryAs} answers for text naming no repository, so a checkout
+	 * of <em>any</em> other repository was accepted as this one, then branched,
+	 * committed, and pushed.
 	 */
 	private static boolean isUserInfo(String name) {
 		return name.endsWith("@");
@@ -200,8 +189,7 @@ public final class RepositoryUrl {
 	 * A repository name never carries a backslash, so a last segment that does is a
 	 * path rather than a name — a Windows-style {@code C:\repos\tools}, or a segment
 	 * carrying a {@code ..} traversal. Resolving one against the workspace would put
-	 * the checkout outside it on a platform that reads {@code '\'} as a separator, so
-	 * it is refused for the same reason an empty or alias segment is.
+	 * the checkout outside it on a platform that reads {@code '\'} as a separator.
 	 */
 	private static boolean isPath(String name) {
 		return name.indexOf('\\') >= 0;
@@ -211,7 +199,7 @@ public final class RepositoryUrl {
 	 * Derives {@code owner/repository} from the clone URL, covering the forms git
 	 * accepts: {@code https://host/owner/repo.git}, {@code ssh://git@host/owner/repo},
 	 * and the scp-like {@code git@host:owner/repo} — hence splitting on both
-	 * separators, so that form's {@code ':'} is the path separator it is.
+	 * separators.
 	 *
 	 * <p>A URL only names an owner when a host-looking segment precedes the last two.
 	 * Without that check a plain filesystem path such as {@code /tmp/workspace/repo}
@@ -258,9 +246,8 @@ public final class RepositoryUrl {
 	/**
 	 * The suffix is matched case-insensitively, because git clones
 	 * {@code .../repo.GIT} as readily as {@code .../repo.git} and both name the one
-	 * repository. Keeping the case would name the checkout {@code repo.GIT} and ask
-	 * GitHub about {@code owner/repo.GIT}, which answers 404 and stops the adoption
-	 * on its very first step.
+	 * repository. Keeping the case would ask GitHub about {@code owner/repo.GIT},
+	 * which answers 404 and stops the adoption on its very first step.
 	 */
 	private static String stripGitSuffix(String segment) {
 		int suffixStart = segment.length() - GIT_SUFFIX.length();

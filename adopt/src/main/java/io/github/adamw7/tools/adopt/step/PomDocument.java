@@ -30,16 +30,14 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  * they nest, and where each of them sits in the source text — while the edit itself
  * is text spliced into the bytes the file already held. Writing an edited tree out
  * whole cannot keep that promise however carefully the serialiser is configured,
- * because the details it reformats are not in the tree to begin with: a start tag
- * spread over several lines and an empty element written {@code <rule />} both come
- * back normalised. Keeping the edit textual also means added elements inherit the
- * POM's default namespace rather than having to be qualified.
+ * because the details it reformats are not in the tree to begin with. Keeping the
+ * edit textual also means added elements inherit the POM's default namespace rather
+ * than having to be qualified.
  *
  * <p>The reading is jsoup's, whose XML parser reports the source range of every
- * start and end tag it reads — the one thing a plain DOM parse cannot answer, and
- * the reason this class used to pair a JAXP parse with a lexical scan of its own.
- * jsoup resolves no DTDs and no external entities at all, so the secure-processing
- * configuration that parse needed has nothing left to switch off.
+ * start and end tag it reads — the one thing a plain DOM parse cannot answer. jsoup
+ * resolves no DTDs and no external entities at all, so the secure-processing
+ * configuration a JAXP parse needed has nothing left to switch off.
  *
  * <p>Added markup arrives one element per line, indented by
  * {@link #FRAGMENT_INDENT} per nesting level, and is re-indented to the document's
@@ -306,11 +304,10 @@ final class PomDocument {
 	/**
 	 * Refuses a POM that left an element open. jsoup repairs what it reads rather than
 	 * rejecting it, so an unclosed element comes back closed at the point its parent
-	 * ends — an end tag that is not in the file, reported as an implicit range — and an
-	 * edit spliced at that offset would land inside an element it was never meant to
-	 * touch. An element written {@code <name/>} reports the same implicit range for the
-	 * end tag it legitimately has none of, so the source has the last word on which of
-	 * the two it is.
+	 * ends — an implicit range — and an edit spliced at that offset would land inside
+	 * an element it was never meant to touch. An element written {@code <name/>}
+	 * reports the same implicit range for the end tag it legitimately has none of, so
+	 * the source has the last word on which of the two it is.
 	 */
 	private static void requireClosedElements(Path file, String original, Element root) {
 		Optional<Element> unclosed = selfAndDescendants(root).stream()

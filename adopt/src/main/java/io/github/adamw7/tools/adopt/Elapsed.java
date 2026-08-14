@@ -3,20 +3,15 @@ package io.github.adamw7.tools.adopt;
 import java.time.Duration;
 
 /**
- * A stopwatch for the log: started when the work starts, and read as text when
- * the line saying how it went is written. An adoption is a sequence of commands
- * that each take between a millisecond and ten minutes, so how long a step took
- * is the one fact a transcript of it cannot be reconstructed from — and the
+ * A stopwatch for the log: started when the work starts, and read as text when the
+ * line saying how it went is written. An adoption is a sequence of commands that
+ * each take between a millisecond and ten minutes, so how long a step took is the
  * question an operator asks first of a run that felt slow.
  *
  * <p>Elapsed time is measured with {@link System#nanoTime()} rather than the wall
- * clock, so a step's duration is not rewritten by a clock correction or a
- * daylight-saving jump landing mid-command.
- *
- * <p>{@link #toString()} is what a log line interpolates, and it reads the
- * stopwatch as it is called: {@link Duration#toString()} answers ISO-8601 —
- * {@code PT4M12.317S} — which a reader scanning a run for the step that cost it
- * has to decode before it means anything.
+ * clock, so a step's duration is not rewritten by a clock correction landing
+ * mid-command. {@link #toString()} is what a log line interpolates, in place of the
+ * ISO-8601 {@link Duration#toString()} a reader would have to decode.
  */
 public final class Elapsed {
 

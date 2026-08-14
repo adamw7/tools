@@ -13,17 +13,14 @@ import java.util.Map;
  * <p>Two repositories that would clone into the same checkout directory are
  * rejected rather than adopted. A checkout is named after the repository alone, so
  * {@code owner/tools} and {@code other-owner/tools} claim one directory, as do a
- * repository's {@code .../repo} and {@code .../repo.git} forms. The second
- * adoption would otherwise run every step against the first repository's working
- * tree and report its pull request as the second's.
+ * repository's {@code .../repo} and {@code .../repo.git} forms; the second adoption
+ * would otherwise run every step against the first repository's working tree.
  *
  * <p>Contexts are claimed one repository at a time rather than built for the whole
  * run up front, because both failures a claim can raise — a URL that names no
  * repository, and a checkout directory already taken — belong to the repository
  * that raised them. Building them all up front made either one abort the batch
- * before its first clone and leave the run with no report at all, which is exactly
- * what {@link BatchAdoption} keeps from happening for every failure the pipeline
- * itself raises.
+ * before its first clone and leave the run with no report at all.
  */
 public final class Checkouts {
 

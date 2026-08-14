@@ -28,10 +28,9 @@ import io.github.adamw7.tools.adopt.Redaction;
  * <p>Every command is traced at debug — what was run, where, how it exited and
  * how long it took — because this is the one place the adoption learns anything
  * from the outside world, and the steps above it report only the commands that
- * stopped the run. A tolerated failure, a clone skipped because the checkout was
- * already there, a step that decided it had nothing to do: none of those leave a
- * trace anywhere else, so a run that did less than it was expected to reads
- * exactly like one that did everything.
+ * stopped the run. A tolerated failure or a step that decided it had nothing to do
+ * leaves no trace anywhere else, so a run that did less than it was expected to
+ * reads exactly like one that did everything.
  */
 public class ProcessCommandRunner implements CommandRunner {
 
@@ -79,18 +78,14 @@ public class ProcessCommandRunner implements CommandRunner {
 	}
 
 	/**
-	 * The transcript of a command that exited non-zero is logged here as well as
-	 * being handed back, because whether it reaches a message at all is the
-	 * caller's decision: a step running through
+	 * The transcript of a command that exited non-zero is logged here as well as being
+	 * handed back, because whether it reaches a message at all is the caller's
+	 * decision: a step running through
 	 * {@link io.github.adamw7.tools.adopt.step.AbstractCommandStep#runTolerating}
-	 * discards a tolerated failure whole, and the tool's own account of what it
-	 * refused to do — the one thing that says which of the tolerated cases this
-	 * was — went with it.
-	 *
-	 * <p>Redacting it is not optional: a tool handed a credentialled clone URL
-	 * echoes it back when it cannot use it, so the transcript carries a token as
-	 * readily as the command does. The guard keeps that scan off the path a
-	 * disabled log takes.
+	 * discards a tolerated failure whole, along with the tool's own account of what it
+	 * refused to do. Redacting it is not optional — a tool handed a credentialled
+	 * clone URL echoes it back — and the guard keeps that scan off the path a disabled
+	 * log takes.
 	 */
 	private void logOutcome(CommandResult result, Elapsed elapsed) {
 		log.debug("Exited {} after {}: {}", result.exitCode(), elapsed, result.describe());

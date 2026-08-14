@@ -109,9 +109,12 @@ What is worth knowing before changing any of it:
   `PullRequestOptions`) carries the pull-request metadata, the starter assets,
   the rule version, the dry-run flag and the per-command timeout, and both entry
   points hand it to the same pipeline factory, so the CLI and the MCP tool cannot
-  drift. `CliArguments` declares the command line to **picocli**, binding each
-  option to a method so a batch mixing `--repo` and `--repos` keeps the order it
-  was written in; refusals are re-raised as an `IllegalArgumentException`
+  drift. `CliArguments` declares the command line to **picocli**, binding the
+  repository, workspace and branch options to methods — the first so a batch
+  mixing `--repo` and `--repos` keeps the order it was written in, the other two
+  because each shares a field with its positional and the last one named has to
+  win — and everything else straight to a field; refusals are re-raised as an
+  `IllegalArgumentException`
   carrying the hand-written usage line, with the parser's own message masked
   through `Redaction` and its exception left unchained — it quotes the argument it
   could not place, which for this command can be a credentialled clone URL.

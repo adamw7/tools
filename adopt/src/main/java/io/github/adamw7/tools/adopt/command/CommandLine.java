@@ -6,18 +6,12 @@ import java.util.List;
 /**
  * Builds the argument list of one command to hand to a {@link CommandRunner}.
  *
- * <p>Nearly every adoption step assembles its command the same way: a fixed
- * program and its leading arguments, then arguments that depend on the run — a
+ * <p>Nearly every adoption step assembles its command the same way: a fixed program
+ * and its leading arguments, then arguments that depend on the run — a
  * {@code --repo} the URL may not name, a {@code --draft} only a draft pull request
- * carries, a {@code --reviewer} per requested reviewer. Written out directly that
- * is a mutable list seeded from a {@link List#of} literal, a run of {@code add}
- * calls guarded by {@code if}s and {@code forEach}es, and a closing
- * {@link List#copyOf} — the same six lines in every step, with the command itself
- * buried in them.
- *
- * <p>Collecting it here leaves each step naming only its own arguments, and makes
- * the immutable result the single way to finish rather than something each step
- * has to remember.
+ * carries, a {@code --reviewer} per requested reviewer. Collecting that here leaves
+ * each step naming only its own arguments, and makes the immutable result the
+ * single way to finish rather than something each step has to remember.
  */
 public final class CommandLine {
 

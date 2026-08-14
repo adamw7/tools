@@ -52,12 +52,10 @@ public class CloneStep extends AbstractCommandStep {
 	/**
 	 * Makes {@code git status} name every untracked file rather than collapsing a
 	 * wholly-untracked directory into a single entry. Without it a checkout whose
-	 * {@code .claude/} the adoption had just created was reported as the one path
-	 * {@code .claude/}, which is not among {@link AdoptionAssets#WRITTEN_PATHS} — so a
-	 * resumed adoption was refused for changes that were its own. That is the common
-	 * case rather than a corner of one: a repository being adopted has no
-	 * {@code .claude/} to begin with, and the fallback guard's {@code .github/} is
-	 * often new too.
+	 * {@code .claude/} the adoption had just created was reported as that one path,
+	 * which is not among {@link AdoptionAssets#WRITTEN_PATHS} — so a resumed adoption
+	 * was refused for changes that were its own. That is the common case: a repository
+	 * being adopted has no {@code .claude/} to begin with.
 	 */
 	private static final String UNTRACKED_FILES_ALL = "--untracked-files=all";
 
@@ -69,24 +67,13 @@ public class CloneStep extends AbstractCommandStep {
 	 * letters — the alphabet git documents for the format — then the space before the
 	 * path.
 	 *
-	 * <p>The transcript merges the command's standard error into its standard output,
-	 * exactly as {@link #originTranscript} does, so it is not reliably status entries
-	 * and nothing else: a git that warns — about an unreadable system config, or a
-	 * directory it could not open — puts that line in there too. Reading every line as
-	 * an entry took the warning's fourth character onwards for a path, found it among
-	 * no path the adoption writes, and refused the resume this step promises for
-	 * changes the checkout did not have. A line that is not an entry is therefore
-	 * skipped rather than read as one, the same reading {@link #namesThisRepository}
-	 * takes of that transcript's noise.
-	 *
-	 * <p>At least one of the two letters has to say something, because git never
-	 * reports a path whose index and work tree are both unchanged — leaving it out of
-	 * the output is what "unchanged" means. Accepting two spaces let through any line
-	 * indented by three of them, so a warning that wraps or indents its continuation
-	 * was still read as an entry, and its fourth character onwards taken for a path:
-	 * no path the adoption writes, and so the resume this step promises refused over a
-	 * change the checkout does not have — the very outcome the paragraph above is
-	 * about.
+	 * <p>The transcript merges standard error into standard output, so it is not
+	 * reliably status entries and nothing else: a git that warns puts that line in
+	 * there too. Reading every line as an entry took the warning's fourth character
+	 * onwards for a path and refused the resume this step promises. At least one of
+	 * the two letters therefore has to say something — git never reports a path whose
+	 * index and work tree are both unchanged — because accepting two spaces let
+	 * through any line indented by three of them.
 	 */
 	private static final Pattern STATUS_ENTRY = Pattern.compile("^(?! {2})[ MTADRCU?!]{2} .+");
 
@@ -97,11 +84,9 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Records the checkout before doing anything to it, so a run that fails part-way
-	 * still says where the working tree it left behind is. It is recorded here because
-	 * this is the step that owns the checkout, and it is worth recording at all because
-	 * nothing else answers the question: a caller that named no workspace was given a
-	 * temporary one, and a dry run — which pushes nothing and opens no pull request —
-	 * leaves that directory as the only thing there is to read.
+	 * still says where the working tree it left behind is. Nothing else answers the
+	 * question: a caller that named no workspace was given a temporary one, and a dry
+	 * run leaves that directory as the only thing there is to read.
 	 */
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner, AdoptionReport report) {
@@ -180,10 +165,8 @@ public class CloneStep extends AbstractCommandStep {
 	 * The paths one entry changes. A rename or a copy is reported as
 	 * {@code old -> new} and changes <em>both</em> sides, so both are asked about:
 	 * reading only the destination waved the whole entry through whenever that
-	 * destination happened to be a path the adoption writes, and a
-	 * {@code git mv docs/CLAUDE.md CLAUDE.md} a contributor had staged was then swept
-	 * into {@link CommitStep}'s {@code git add -A} and pushed to the feature branch —
-	 * the very outcome this guard exists to prevent. A plain entry names one path.
+	 * destination happened to be a path the adoption writes, so a contributor's staged
+	 * {@code git mv docs/CLAUDE.md CLAUDE.md} was swept into the adoption's commit.
 	 */
 	private Stream<String> changedPaths(String statusLine) {
 		String path = statusLine.substring(STATUS_PREFIX);
@@ -218,14 +201,11 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * The transcript merges the command's standard error into its standard output, so
-	 * the {@code origin} URL is not reliably the whole of it: a git that warns —
-	 * about an unreadable system config, say — puts that line in there too, and
-	 * reading the transcript as one URL then failed a checkout that was the right one
-	 * all along, naming the warning as the repository it supposedly held. Every line
-	 * is therefore asked in turn, which keeps the conservative reading
-	 * {@link AdoptionContext#isSameRepository} is built on: noise names no repository,
-	 * so a transcript carrying nothing else still answers no.
+	 * The transcript merges standard error into standard output, so the {@code origin}
+	 * URL is not reliably the whole of it and reading it as one URL failed a checkout
+	 * that was the right one all along. Every line is asked in turn, which keeps the
+	 * conservative reading {@link AdoptionContext#isSameRepository} is built on: noise
+	 * names no repository, so a transcript carrying nothing else still answers no.
 	 */
 	private boolean namesThisRepository(AdoptionContext context, String transcript) {
 		return transcript.lines().map(String::strip).anyMatch(context::isSameRepository);
@@ -239,11 +219,10 @@ public class CloneStep extends AbstractCommandStep {
 	 * <p>The remote is read from the configuration rather than with {@code git remote
 	 * get-url}, which expands the {@code url.<base>.insteadOf} rewrites the caller's
 	 * git may configure and so answers a URL the checkout never recorded. A rewrite
-	 * onto a mirror or a proxy names a different host and path from the one the run
-	 * was given, so the reused checkout was refused as a different repository — and
-	 * the adoption of the very repository it held aborted at its second step, in
-	 * exactly the environments that configure one. Only the raw configured value
-	 * can be compared with the URL the run was asked to adopt.
+	 * onto a mirror names a different host and path, so the reused checkout was
+	 * refused as a different repository in exactly the environments that configure
+	 * one. Only the raw configured value can be compared with the URL the run was
+	 * asked to adopt.
 	 */
 	private String originTranscript(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),

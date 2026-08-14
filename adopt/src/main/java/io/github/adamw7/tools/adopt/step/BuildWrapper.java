@@ -55,9 +55,8 @@ final class BuildWrapper {
 	 * built from the same launcher {@link #commandIn} uses so what
 	 * {@link BuildToolchainStep} checks is what {@link VerifyStep} will run. Probing
 	 * the launcher rather than the wrapper's file name matters for a wrapper that has
-	 * to go through {@link #SHELL}: {@code sh --version} is not portable — under
-	 * {@code dash} it exits non-zero — so a probe of the program alone would report
-	 * a wrapper that runs perfectly well as one that could not be run.
+	 * to go through {@link #SHELL}, since {@code sh --version} is not portable and a
+	 * probe of the program alone would report a working wrapper as unrunnable.
 	 */
 	List<String> probeIn(Path repositoryDirectory, String fallback) {
 		return commandIn(repositoryDirectory, fallback, List.of(ToolProbe.VERSION_FLAG));
@@ -73,16 +72,12 @@ final class BuildWrapper {
 
 	/**
 	 * A wrapper whose executable bit the project never committed — the usual state of
-	 * one added from Windows, where git records no such bit — cannot be launched as a
-	 * program at all: the checkout is refused with "Permission denied", which
-	 * {@link BuildToolchainStep} reports as a wrapper that could not be run and which
-	 * aborted the adoption of a repository whose build was fine. Running it through
-	 * {@code sh} is what the project's own CI does with it, and needs no change to
-	 * the checkout — where a {@code chmod} would leave a mode change in the adoption's
-	 * commit that nobody asked for.
-	 *
-	 * <p>Only the POSIX wrapper is ever shelled: the Windows {@code .bat}/{@code .cmd}
-	 * carries no executable bit to miss and is not a shell script.
+	 * one added from Windows — cannot be launched as a program at all, so
+	 * {@link BuildToolchainStep} aborted the adoption of a repository whose build was
+	 * fine. Running it through {@code sh} is what the project's own CI does with it,
+	 * and needs no change to the checkout, where a {@code chmod} would leave a mode
+	 * change in the adoption's commit that nobody asked for. Only the POSIX wrapper is
+	 * ever shelled: a {@code .bat}/{@code .cmd} is not a shell script.
 	 */
 	private List<String> launch(String wrapper) {
 		return windows || Files.isExecutable(Path.of(wrapper)) ? List.of(wrapper) : List.of(SHELL, wrapper);

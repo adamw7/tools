@@ -31,10 +31,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * {@link #requireNothingTheAdoptionWroteIsIgnored}.
  *
  * <p>The pipeline runs this step two or three times, so each one is qualified with
- * what it commits. A report whose {@code completedSteps} read {@code commit} three
- * times said only how far the run got by counting; qualified, it says which of the
- * adoption's commits landed — the reading that matters for a run that stopped
- * part-way, which is the only kind of report anyone reads closely.
+ * what it commits: a report whose {@code completedSteps} read {@code commit} three
+ * times said only how far the run got by counting, while a qualified one says which
+ * of the adoption's commits landed.
  */
 public class CommitStep extends AbstractCommandStep {
 
@@ -90,16 +89,10 @@ public class CommitStep extends AbstractCommandStep {
 	 * passing — while the branch that is pushed carries nothing of it.
 	 *
 	 * <p>Nothing downstream could catch that. A repository ignoring {@code CLAUDE.md}
-	 * was adopted, reported as complete with every step passed, and left with the
-	 * guard the adoption had just wired in failing on a clean checkout of its own pull
-	 * request — the one outcome {@link VerifyStep} exists to prevent. One ignoring
-	 * {@code .claude/} had its starter assets logged as installed and committed none
-	 * of them. Neither shows up in {@code git status}, which is exactly what ignoring
-	 * a path means.
-	 *
-	 * <p>Failing is the answer rather than forcing the files in: the pattern is the
-	 * project's own decision about its repository, and the adoption is in no position
-	 * to overrule it.
+	 * was adopted, reported as complete, and left with the guard the adoption had just
+	 * wired in failing on a clean checkout of its own pull request — the one outcome
+	 * {@link VerifyStep} exists to prevent. Failing is the answer rather than forcing
+	 * the files in: the pattern is the project's own decision about its repository.
 	 */
 	private void requireNothingTheAdoptionWroteIsIgnored(AdoptionContext context, CommandRunner runner) {
 		List<String> ignored = ignoredPaths(context, runner);
@@ -135,11 +128,10 @@ public class CommitStep extends AbstractCommandStep {
 
 	/**
 	 * {@code git diff --quiet} answers with its exit code: zero for nothing staged, and
-	 * {@value #STAGED_CHANGES} for something. Anything above that is the command failing
-	 * rather than answering — a checkout it could not read, a repository it could not
-	 * open — and reading every non-zero code as "there is something to commit" turned
-	 * that into a {@code git commit} failure two lines later, naming the commit rather
-	 * than the query that could not be run.
+	 * {@value #STAGED_CHANGES} for something. Anything above that is the command
+	 * failing rather than answering, and reading every non-zero code as "there is
+	 * something to commit" turned it into a {@code git commit} failure two lines
+	 * later, naming the commit rather than the query that could not be run.
 	 */
 	private boolean hasStagedChanges(AdoptionContext context, CommandRunner runner) {
 		CommandResult result = runner.run(context.repositoryDirectory(),

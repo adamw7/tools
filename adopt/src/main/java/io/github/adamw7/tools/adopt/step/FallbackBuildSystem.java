@@ -61,11 +61,9 @@ public class FallbackBuildSystem implements BuildSystem {
 	/**
 	 * The guard runs through {@code sh}, so that is what is probed. Answering "nothing
 	 * to check" instead assumed every host has a shell on its {@code PATH}, which a
-	 * Windows one generally has not: the {@code sh.exe} Git for Windows ships sits
-	 * under the install's {@code usr/bin} and is only on the {@code PATH} if the
-	 * operator opted into the Unix tools. The adoption then ran to
-	 * {@link VerifyStep} — past the clone, the {@code claude init}, and both commits —
-	 * before failing on a shell it could have missed at its second step.
+	 * Windows one generally has not, so the adoption ran to {@link VerifyStep} — past
+	 * the clone, the {@code claude init}, and both commits — before failing on a shell
+	 * it could have missed at its second step.
 	 */
 	@Override
 	public Optional<List<String>> toolProbe(Path repositoryDirectory) {

@@ -52,9 +52,7 @@ public class AdoptTool implements McpTool {
 	 * Builds the adoption a call runs, from the arguments that call supplied. The
 	 * seam is a factory rather than the adoption itself so the pipeline — and the
 	 * command runner behind it — is assembled once and then adopts every repository
-	 * of the batch, exactly as the command line does; assembling it per repository
-	 * would hand each one its own step instances. Tests substitute a recording
-	 * adoption and clone nothing.
+	 * of the batch, exactly as the command line does.
 	 */
 	public interface Pipeline {
 		BatchAdoption.Adoption create(AdoptionOptions options);
@@ -138,13 +136,11 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * The call's arguments as they may be logged. A {@code repository_url} is the
-	 * one argument a client supplies with credentials in it — an adoption driven by
-	 * CI is handed {@code https://x-access-token:TOKEN@github.com/owner/repo.git} —
-	 * and this server is long-lived, so logging the map as it arrived wrote that
-	 * token to the log of every call. The pipeline below redacts the URL from its own
-	 * logs, messages, and report; the arguments have to be redacted here, before they
-	 * reach it.
+	 * The call's arguments as they may be logged. A {@code repository_url} is the one
+	 * argument a client supplies with credentials in it, and this server is
+	 * long-lived, so logging the map as it arrived wrote that token to the log of
+	 * every call. The pipeline redacts the URL from its own logs; the arguments have
+	 * to be redacted here, before they reach it.
 	 */
 	static String describe(Map<String, Object> arguments) {
 		return Redaction.of(String.valueOf(arguments));
@@ -213,11 +209,9 @@ public class AdoptTool implements McpTool {
 
 	/**
 	 * The three list arguments are read through {@link #textList} rather than as
-	 * plain text, because a client that sends a JSON array — the natural shape, and
-	 * the one {@code repository_urls} takes on this very tool — would otherwise have
-	 * the list's {@code toString()} split on its commas and reach {@code gh} as
-	 * {@code --reviewer "[octocat"}, failing the last step of an otherwise complete
-	 * adoption.
+	 * plain text, because a client that sends a JSON array would otherwise have the
+	 * list's {@code toString()} split on its commas and reach {@code gh} as
+	 * {@code --reviewer "[octocat"}, failing the last step of a complete adoption.
 	 */
 	private PullRequestOptions pullRequestOptionsFrom(Map<String, Object> arguments) {
 		return new PullRequestOptions(text(arguments, "title"), text(arguments, "body"),

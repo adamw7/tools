@@ -32,24 +32,18 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  *
  * <p>The read and the write are one exclusive section, because they are a
  * read-modify-write of a file this process does not own. Two adoptions running at
- * once — the MCP server serves calls in parallel — each read the document, each
- * add their own directory, and each write the whole of it back, so the later write
- * dropped the earlier one's entry. The adoption that lost it went on to run
- * {@code claude} in a directory that was never trusted, where it blocked on the
- * interactive prompt until the command timeout killed it. Atomicity of the write
- * alone cannot prevent that: the two writes are each complete, and the second is
- * simply built on a document read before the first landed.
+ * once — the MCP server serves calls in parallel — would each build on a document
+ * read before the other's write landed, so the later write drops the earlier one's
+ * entry and that adoption runs {@code claude} in a directory that was never
+ * trusted. Atomicity of the write alone cannot prevent it: both writes are
+ * complete, the second is simply built on stale text.
  *
  * <p>That lock reaches every adoption and nothing else. {@code claude} writes this
- * file too — an interactive session, or the {@code claude init} the adoption is
- * about to run — and knows nothing of a lock this module invented, so it cannot be
- * shut out of the read-modify-write the way another adoption can. What is done
- * instead is to make the window it can land in small and to notice when it did:
- * the configuration is read again immediately before the move, and an update built
- * on a document that has since been replaced is thrown away and built again on the
- * new one. Serialising the document — the slow part, and the whole of the window
- * before — therefore happens outside it, leaving a read and a move; a write that
- * would have dropped {@code claude}'s own change is retried rather than landing.
+ * file too and knows nothing of a lock this module invented, so its write is
+ * noticed rather than excluded: the configuration is read again immediately before
+ * the move, and an update built on a document that has since been replaced is
+ * thrown away and built again on the new one. Serialising the document — the slow
+ * part — therefore happens outside that window, leaving a read and a move.
  */
 public class ClaudeTrustStore {
 
@@ -64,8 +58,7 @@ public class ClaudeTrustStore {
 	 * process rather than the thread, so it excludes a second adoption process but
 	 * not a second thread of this one — which
 	 * {@link java.nio.channels.OverlappingFileLockException} would answer rather than
-	 * make wait. Both guards are needed, and this one is taken first. Neither reaches
-	 * {@code claude}, which takes no lock of ours; see {@link #moveUnlessChanged}.
+	 * make wait. Both guards are needed, and this one is taken first.
 	 */
 	private static final Object IN_PROCESS_LOCK = new Object();
 
@@ -73,8 +66,7 @@ public class ClaudeTrustStore {
 	 * How many times the read-modify-write is rebuilt when another writer lands
 	 * inside it. Each attempt is a read and a move, so an adoption only exhausts
 	 * these against something rewriting the configuration continuously — at which
-	 * point saying so beats writing over it. Package-visible so a test can pin the
-	 * count: one attempt too many is a silent extra write to a live file.
+	 * point saying so beats writing over it.
 	 */
 	static final int WRITE_ATTEMPTS = 3;
 
@@ -167,10 +159,9 @@ public class ClaudeTrustStore {
 
 	/**
 	 * A field the document does not carry is created, and one that is already an
-	 * object is used as-is. A field carrying anything else is refused rather than
-	 * replaced, for the same reason {@link #asObjectOrFresh} refuses a non-object
-	 * document: writing over it would discard whatever it held, and this is Claude
-	 * Code's own per-user state rather than a file the adoption owns.
+	 * object is used as-is. Anything else is refused rather than replaced: writing
+	 * over it would discard whatever it held, and this is Claude Code's own per-user
+	 * state rather than a file the adoption owns.
 	 */
 	private ObjectNode objectChild(ObjectNode parent, String name) {
 		JsonNode existing = parent.get(name);
@@ -187,13 +178,10 @@ public class ClaudeTrustStore {
 	/**
 	 * The configuration as text: the one read an update is built from, and the one it
 	 * is checked against just before the move. A file that is not there reads as the
-	 * empty string, which {@link #parse} starts fresh from and which a file appearing
-	 * in the meantime no longer equals — so a {@code claude} that created the
-	 * configuration inside the window is caught by the same comparison as one that
-	 * rewrote it.
-	 *
-	 * <p>Package-visible so a test can put a competing writer in that window; there
-	 * is no other way to land one between two reads this method makes.
+	 * empty string, which a file appearing in the meantime no longer equals — so a
+	 * {@code claude} that created the configuration inside the window is caught by
+	 * the same comparison as one that rewrote it. Package-visible so a test can put a
+	 * competing writer in that window.
 	 */
 	String readText() {
 		if (!Files.isRegularFile(configFile)) {
@@ -242,10 +230,8 @@ public class ClaudeTrustStore {
 	 * Writes the document to a sibling temporary file and moves it over the
 	 * configuration, so a reader only ever sees the old file or the new one.
 	 * Truncating {@code ~/.claude.json} in place risked the whole of Claude Code's
-	 * per-user state — its project list, history, and onboarding — on the write
-	 * completing: a crash part-way through left a truncated document behind, and
-	 * this is a live file that an interactive session, or the {@code claude init}
-	 * the adoption is about to run, may be writing at the same moment.
+	 * per-user state on the write completing, and this is a live file an interactive
+	 * session may be writing at the same moment.
 	 *
 	 * @param observed the configuration the document was built on
 	 * @return whether it landed, or {@code false} when the configuration changed
@@ -294,15 +280,10 @@ public class ClaudeTrustStore {
 	 * Reads the configuration one last time and moves the new document over it only
 	 * if it is still the one the update was built on. This is what the lock cannot do
 	 * for {@code claude}: it takes no lock of ours, so the only way to keep its write
-	 * is to notice it. The check sits here, after the serialisation, so the span
-	 * between deciding what to write and writing it is a read and a move rather than
-	 * the whole read-modify-write — narrow enough that losing the race takes a writer
-	 * landing inside it, and cheap enough to simply try again when one does.
-	 *
-	 * <p>The temporary file is removed on the stale path too. It carries a document
-	 * that is never going to land, and leaving it beside the configuration would
-	 * scatter exactly the half-finished files {@link #replaceUnlessChanged} exists to
-	 * clean up.
+	 * is to notice it. The check sits after the serialisation, so the span between
+	 * deciding what to write and writing it is a read and a move rather than the whole
+	 * read-modify-write. The temporary file is removed on the stale path too, since it
+	 * carries a document that is never going to land.
 	 *
 	 * @return whether the document was moved over the configuration
 	 */

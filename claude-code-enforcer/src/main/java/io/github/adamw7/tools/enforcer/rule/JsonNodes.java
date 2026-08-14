@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.rule;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
@@ -55,20 +56,22 @@ public final class JsonNodes {
 
 	/** The child object at {@code key}, or null when it is absent or not an object. */
 	public static JsonNode objectAt(JsonNode node, String key) {
-		JsonNode child = node.get(key);
-		return child != null && child.isObject() ? child : null;
+		return ofKind(node.get(key), JsonNode::isObject);
 	}
 
 	/** The child array at {@code key}, or null when it is absent or not an array. */
 	public static JsonNode arrayAt(JsonNode node, String key) {
-		JsonNode child = node.get(key);
-		return child != null && child.isArray() ? child : null;
+		return ofKind(node.get(key), JsonNode::isArray);
 	}
 
 	/** The array element at {@code index}, or null when it is not an object. */
 	public static JsonNode objectAt(JsonNode array, int index) {
-		JsonNode element = array.get(index);
-		return element != null && element.isObject() ? element : null;
+		return ofKind(array.get(index), JsonNode::isObject);
+	}
+
+	/** The node when it is present and of the expected kind, else null. */
+	private static JsonNode ofKind(JsonNode node, Predicate<JsonNode> expected) {
+		return node != null && expected.test(node) ? node : null;
 	}
 
 	/** The text at {@code key}, or {@code defaultValue} when it is absent or null. */

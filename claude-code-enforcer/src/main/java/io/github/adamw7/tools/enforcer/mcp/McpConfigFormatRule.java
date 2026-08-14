@@ -58,8 +58,9 @@ public class McpConfigFormatRule extends JsonFileRule {
 	/** When true, a server {@code url} must use {@code https} rather than plain {@code http}. */
 	private boolean requireHttps;
 
+	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
 	public McpConfigFormatRule() {
-		super("mcpFile", "mcp.json");
+		super("mcpFile", "mcp.json", OPTIONAL);
 	}
 
 	@Override
@@ -70,11 +71,6 @@ public class McpConfigFormatRule extends JsonFileRule {
 	@Override
 	protected String header() {
 		return "mcp.json server configuration is not well formed:";
-	}
-
-	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
-	@Override
-	protected void handleMissingFile(File file) {
 	}
 
 	@Override

@@ -76,7 +76,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 		requireConfigured(claudeMdFile, "claudeMdFile");
 		requireExists(claudeMdFile, "CLAUDE.md");
 		File root = claudeMdFile.getAbsoluteFile();
-		Traversal traversal = Traversal.of(ImportGraph.from(root, this::isIgnored, this::debug));
+		Traversal traversal = Traversal.of(ImportGraph.from(root, this::isIgnored, message -> log().debug(message)));
 		scan(root, traversal);
 		report("Memory imports are not well formed:", traversal.violations());
 	}
@@ -108,11 +108,6 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	private boolean isIgnored(String imported) {
 		return ignoredImports != null && ignoredImports.contains(imported);
-	}
-
-	/** Reached only for an import target that cannot be read, so the log is looked up lazily. */
-	private void debug(String message) {
-		log().debug(message);
 	}
 
 	void setClaudeMdFile(File claudeMdFile) {

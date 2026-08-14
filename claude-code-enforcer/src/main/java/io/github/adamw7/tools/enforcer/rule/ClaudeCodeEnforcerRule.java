@@ -4,6 +4,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -38,6 +39,16 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * {@code -Dclaude.enforcer.writeBaseline=true}, which writes the baseline and
  * passes — then commit the file. The HTML report and the failure message reflect
  * only the un-suppressed violations.
+ * <p>
+ * A rule's configuration parameters are its <em>fields</em>: Plexus binds a
+ * {@code <claudeMdFile>} element to a field of that name, searching the class and
+ * its superclasses, and it never sees the package-private setters here because it
+ * looks only at public methods. So every concrete rule declares a field named
+ * exactly as its pom element, and a base class that needs it reads it back through
+ * an abstract accessor — {@link MarkdownFormatRule#documentFile()},
+ * {@link JsonFileRule#jsonFile()}. Hoisting those fields into a base under one
+ * shared name compiles, unit-tests green, and then fails every real build with
+ * "Cannot find 'claudeMdFile' in class"; the {@code *IT}s are what catch it.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
@@ -240,19 +251,14 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	public final String toString() {
 		StringJoiner parameters = new StringJoiner(", ", getClass().getSimpleName() + "[", "]");
 		for (Class<?> type = getClass(); type != ClaudeCodeEnforcerRule.class; type = type.getSuperclass()) {
-			appendParameters(type, parameters);
+			Arrays.stream(type.getDeclaredFields()).filter(ClaudeCodeEnforcerRule::isFileParameter)
+					.forEach(field -> appendParameter(field, parameters));
 		}
 		return parameters.toString();
 	}
 
-	private void appendParameters(Class<?> type, StringJoiner parameters) {
-		for (Field field : type.getDeclaredFields()) {
-			appendParameter(field, parameters);
-		}
-	}
-
 	private void appendParameter(Field field, StringJoiner parameters) {
-		Object value = isFileParameter(field) ? valueOf(field) : null;
+		Object value = valueOf(field);
 		if (value != null) {
 			parameters.add(field.getName() + "=" + value);
 		}

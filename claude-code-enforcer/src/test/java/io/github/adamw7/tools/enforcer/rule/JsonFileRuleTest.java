@@ -44,8 +44,7 @@ class JsonFileRuleTest {
 
 	@Test
 	void passesWhenAnOptionalFileIsMissing() {
-		TestJsonRule rule = new TestJsonRule();
-		rule.setOptional(true);
+		TestJsonRule rule = new OptionalTestJsonRule();
 		rule.setFile(tempDir.resolve("absent.json").toFile());
 
 		assertDoesNotThrow(rule::execute);
@@ -130,8 +129,7 @@ class JsonFileRuleTest {
 		assertThrows(EnforcerRuleException.class, failing::execute);
 
 		Files.delete(tempDir.resolve("test.json"));
-		TestJsonRule optional = new TestJsonRule();
-		optional.setOptional(true);
+		TestJsonRule optional = new OptionalTestJsonRule();
 		optional.setFile(tempDir.resolve("test.json").toFile());
 		optional.setReportFile(report);
 
@@ -155,23 +153,22 @@ class JsonFileRuleTest {
 	 * {@link #collectViolations} so the shared scaffolding can be asserted in
 	 * isolation from any real document checks.
 	 */
-	private static final class TestJsonRule extends JsonFileRule {
+	private static sealed class TestJsonRule extends JsonFileRule permits OptionalTestJsonRule {
 
-		private File file;
-		private boolean optional;
 		private final List<String> injectedViolations = new ArrayList<>();
+		private File file;
 		private JsonNode parsedRoot;
 
 		TestJsonRule() {
 			super("testFile", "test.json");
 		}
 
-		void setFile(File file) {
-			this.file = file;
+		TestJsonRule(boolean optional) {
+			super("testFile", "test.json", optional);
 		}
 
-		void setOptional(boolean optional) {
-			this.optional = optional;
+		void setFile(File file) {
+			this.file = file;
 		}
 
 		void addViolation(String violation) {
@@ -184,16 +181,17 @@ class JsonFileRuleTest {
 		}
 
 		@Override
-		protected void handleMissingFile(File missing) throws EnforcerRuleException {
-			if (!optional) {
-				super.handleMissingFile(missing);
-			}
-		}
-
-		@Override
 		protected void collectViolations(JsonNode root, List<String> violations) {
 			this.parsedRoot = root;
 			violations.addAll(injectedViolations);
+		}
+	}
+
+	/** The same rule declared with an optional file, which is now a constructor choice. */
+	private static final class OptionalTestJsonRule extends TestJsonRule {
+
+		OptionalTestJsonRule() {
+			super(OPTIONAL);
 		}
 	}
 }

@@ -52,18 +52,14 @@ public class McpServersValidRule extends JsonFileRule {
 	/** Optional override for the allowed transport types. */
 	private List<String> allowedTypes;
 
+	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
 	public McpServersValidRule() {
-		super("mcpFile", "mcp.json");
+		super("mcpFile", "mcp.json", OPTIONAL);
 	}
 
 	@Override
 	protected File jsonFile() {
 		return mcpFile;
-	}
-
-	/** A project-level {@code .mcp.json} is optional in Claude Code, so an absent file is a pass. */
-	@Override
-	protected void handleMissingFile(File file) {
 	}
 
 	@Override

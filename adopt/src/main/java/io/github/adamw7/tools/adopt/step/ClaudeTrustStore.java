@@ -77,8 +77,13 @@ public class ClaudeTrustStore {
 		this(defaultConfigFile());
 	}
 
+	/**
+	 * The path is absolutised once here rather than at each place that needs it, so
+	 * the lock file, the temporary file, and the move all resolve against the same
+	 * directory — and a configuration named relatively still has a parent to create.
+	 */
 	public ClaudeTrustStore(Path configFile) {
-		this.configFile = configFile;
+		this.configFile = configFile.toAbsolutePath();
 	}
 
 	private static Path defaultConfigFile() {
@@ -94,10 +99,9 @@ public class ClaudeTrustStore {
 	 *         when it was already trusted and the file was left unchanged.
 	 */
 	public boolean trust(Path directory) {
-		Path target = configFile.toAbsolutePath();
-		createConfigDirectory(target);
+		createConfigDirectory();
 		synchronized (IN_PROCESS_LOCK) {
-			return trustExclusively(directory, target);
+			return trustExclusively(directory);
 		}
 	}
 
@@ -108,8 +112,8 @@ public class ClaudeTrustStore {
 	 * file is left behind on the way out, since a lock file deleted by the process
 	 * releasing it is a lock the next one takes on an inode of its own.
 	 */
-	private boolean trustExclusively(Path directory, Path target) {
-		Path lockFile = target.resolveSibling(target.getFileName() + LOCK_SUFFIX);
+	private boolean trustExclusively(Path directory) {
+		Path lockFile = configFile.resolveSibling(configFile.getFileName() + LOCK_SUFFIX);
 		try (FileChannel channel = FileChannel.open(lockFile, StandardOpenOption.CREATE,
 				StandardOpenOption.WRITE); FileLock exclusive = channel.lock()) {
 			return update(directory, WRITE_ATTEMPTS);
@@ -238,26 +242,26 @@ public class ClaudeTrustStore {
 	 *         under the update and it has to be built again
 	 */
 	private boolean writeUnlessChanged(ObjectNode root, String observed) {
-		Path target = configFile.toAbsolutePath();
 		try {
-			return replaceUnlessChanged(root, temporaryBeside(target), target, observed);
+			return replaceUnlessChanged(root, temporaryBeside(), observed);
 		} catch (IOException e) {
 			throw new AdoptionException("Could not write Claude config: " + configFile, e);
 		}
 	}
 
 	/** Created before the lock file is opened beside it, and so before anything is read. */
-	private void createConfigDirectory(Path target) {
+	private void createConfigDirectory() {
+		Path directory = configFile.getParent();
 		try {
-			Files.createDirectories(target.getParent());
+			Files.createDirectories(directory);
 		} catch (IOException e) {
-			throw new AdoptionException("Could not create the Claude config directory: " + target.getParent(), e);
+			throw new AdoptionException("Could not create the Claude config directory: " + directory, e);
 		}
 	}
 
 	/** A sibling, so the move stays within one filesystem and can be atomic. */
-	private Path temporaryBeside(Path target) throws IOException {
-		return Files.createTempFile(target.getParent(), ".claude-adopt-", ".json");
+	private Path temporaryBeside() throws IOException {
+		return Files.createTempFile(configFile.getParent(), ".claude-adopt-", ".json");
 	}
 
 	/**
@@ -265,11 +269,10 @@ public class ClaudeTrustStore {
 	 * write that fails leaves the configuration directory as it found it rather than
 	 * scattering half-written documents beside the file {@code claude} reads.
 	 */
-	private boolean replaceUnlessChanged(ObjectNode root, Path temporary, Path target, String observed)
-			throws IOException {
+	private boolean replaceUnlessChanged(ObjectNode root, Path temporary, String observed) throws IOException {
 		try {
 			mapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), root);
-			return moveUnlessChanged(temporary, target, observed);
+			return moveUnlessChanged(temporary, observed);
 		} catch (IOException | RuntimeException e) {
 			Files.deleteIfExists(temporary);
 			throw e;
@@ -287,12 +290,12 @@ public class ClaudeTrustStore {
 	 *
 	 * @return whether the document was moved over the configuration
 	 */
-	private boolean moveUnlessChanged(Path temporary, Path target, String observed) throws IOException {
+	private boolean moveUnlessChanged(Path temporary, String observed) throws IOException {
 		if (!readText().equals(observed)) {
 			Files.deleteIfExists(temporary);
 			return false;
 		}
-		replace(temporary, target);
+		replace(temporary);
 		return true;
 	}
 
@@ -301,11 +304,11 @@ public class ClaudeTrustStore {
 	 * one, which still beats writing the configuration in place: the document is
 	 * complete on disk before anything of the old one is touched.
 	 */
-	private void replace(Path temporary, Path target) throws IOException {
+	private void replace(Path temporary) throws IOException {
 		try {
-			Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+			Files.move(temporary, configFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 		} catch (AtomicMoveNotSupportedException e) {
-			Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+			Files.move(temporary, configFile, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 }

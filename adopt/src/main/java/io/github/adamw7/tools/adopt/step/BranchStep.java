@@ -56,8 +56,9 @@ public class BranchStep extends AbstractCommandStep {
 		if (hasLocalBranch(context, runner) || !hasRemoteBranch(context, runner)) {
 			return Optional.empty();
 		}
-		log.info("Resuming branch {} from {}", context.branchName(), remoteBranch(context));
-		return Optional.of(remoteBranch(context));
+		String published = remoteBranch(context);
+		log.info("Resuming branch {} from {}", context.branchName(), published);
+		return Optional.of(published);
 	}
 
 	private boolean hasLocalBranch(AdoptionContext context, CommandRunner runner) {

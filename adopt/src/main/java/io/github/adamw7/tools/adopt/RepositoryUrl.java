@@ -133,8 +133,7 @@ public final class RepositoryUrl {
 		if (!Text.isPresent(repositoryUrl)) {
 			return "";
 		}
-		String withoutScheme = SCHEME.matcher(repositoryUrl.strip()).replaceFirst("");
-		String path = USER_INFO.matcher(withoutScheme).replaceFirst("").replace(':', '/');
+		String path = USER_INFO.matcher(withoutScheme(repositoryUrl.strip())).replaceFirst("").replace(':', '/');
 		return stripGitSuffix(stripTrailingSlash(path)).toLowerCase(Locale.ROOT);
 	}
 
@@ -150,9 +149,9 @@ public final class RepositoryUrl {
 	 * is never mistaken for that separator.
 	 */
 	private static String lastSegment(String url) {
-		String withoutScheme = SCHEME.matcher(url).replaceFirst("");
-		int separator = Math.max(withoutScheme.lastIndexOf('/'), withoutScheme.lastIndexOf(':'));
-		return withoutScheme.substring(separator + 1);
+		String path = withoutScheme(url);
+		int separator = Math.max(path.lastIndexOf('/'), path.lastIndexOf(':'));
+		return path.substring(separator + 1);
 	}
 
 	/**
@@ -227,12 +226,17 @@ public final class RepositoryUrl {
 	 * the two separators git accepts.
 	 */
 	private static String authorityAndPath(String url) {
-		String withoutScheme = SCHEME.matcher(url).replaceFirst("");
-		return hasScheme(url) ? PORT.matcher(withoutScheme).replaceFirst("$1") : withoutScheme;
+		String path = withoutScheme(url);
+		return path.equals(url) ? path : PORT.matcher(path).replaceFirst("$1");
 	}
 
-	private static boolean hasScheme(String url) {
-		return SCHEME.matcher(url).find();
+	/**
+	 * The URL past its {@link #SCHEME}, or the URL itself when it carries none — which
+	 * is how {@link #authorityAndPath} tells the two apart, since only a URL with a
+	 * scheme may carry a port.
+	 */
+	private static String withoutScheme(String url) {
+		return SCHEME.matcher(url).replaceFirst("");
 	}
 
 	private static boolean isHost(String segment) {

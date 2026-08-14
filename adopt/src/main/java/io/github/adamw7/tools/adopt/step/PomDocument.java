@@ -191,7 +191,7 @@ final class PomDocument {
 		int depth = parent.parents().size();
 		String fragment = fragment(addition, depth + 1);
 		String closingIndent = newlineIndent(depth);
-		if (isSelfClosing(contentStart)) {
+		if (isSelfClosing(original, parent)) {
 			return edit(parent.sourceRange().startPos(), contentStart,
 					reopened(parent) + fragment + closingIndent + endTag(parent));
 		}
@@ -208,9 +208,14 @@ final class PomDocument {
 		return element.sourceRange().endPos();
 	}
 
-	/** Whether the start tag ending at {@code contentStart} was written {@code <name/>}. */
-	private boolean isSelfClosing(int contentStart) {
-		return original.startsWith(SELF_CLOSING_END, contentStart - SELF_CLOSING_END.length());
+	/**
+	 * Whether the element's start tag was written {@code <name/>}, read from the source
+	 * rather than from the parse — which reports the same implicit end range for a
+	 * self-closing element as for an unclosed one, the distinction
+	 * {@link #requireClosedElements} turns on.
+	 */
+	private static boolean isSelfClosing(String original, Element element) {
+		return original.startsWith(SELF_CLOSING_END, contentStart(element) - SELF_CLOSING_END.length());
 	}
 
 	/**
@@ -312,8 +317,7 @@ final class PomDocument {
 	private static void requireClosedElements(Path file, String original, Element root) {
 		Optional<Element> unclosed = selfAndDescendants(root).stream()
 				.filter(element -> element.endSourceRange().isImplicit())
-				.filter(element -> !original.startsWith(SELF_CLOSING_END,
-						contentStart(element) - SELF_CLOSING_END.length()))
+				.filter(element -> !isSelfClosing(original, element))
 				.findFirst();
 		if (unclosed.isPresent()) {
 			throw new AdoptionException(

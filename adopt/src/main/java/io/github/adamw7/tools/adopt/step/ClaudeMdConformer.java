@@ -282,11 +282,9 @@ public class ClaudeMdConformer {
 			return;
 		}
 		int index = Math.max(document.headingIndex(TITLE), 0) + 1;
-		List<String> reference = new ArrayList<>(List.of("", AGENTS_REFERENCE_LINE));
-		if (!isBlankAt(lines, index)) {
-			reference.add("");
-		}
-		lines.addAll(index, reference);
+		lines.addAll(index, isBlankAt(lines, index)
+				? List.of("", AGENTS_REFERENCE_LINE)
+				: List.of("", AGENTS_REFERENCE_LINE, ""));
 	}
 
 	private static boolean isBlankAt(List<String> lines, int index) {

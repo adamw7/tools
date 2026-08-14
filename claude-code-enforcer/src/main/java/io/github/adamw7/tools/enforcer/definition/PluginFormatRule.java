@@ -50,18 +50,14 @@ public class PluginFormatRule extends JsonFileRule {
 	/** Optional whitelist of allowed manifest keys. When set, unknown keys are reported. */
 	private List<String> allowedKeys;
 
+	/** Not every repository ships a plugin, so an absent manifest is a pass. */
 	public PluginFormatRule() {
-		super("pluginFile", "plugin.json");
+		super("pluginFile", "plugin.json", OPTIONAL);
 	}
 
 	@Override
 	protected File jsonFile() {
 		return pluginFile;
-	}
-
-	/** Not every repository ships a plugin, so an absent manifest is a pass. */
-	@Override
-	protected void handleMissingFile(File file) {
 	}
 
 	@Override

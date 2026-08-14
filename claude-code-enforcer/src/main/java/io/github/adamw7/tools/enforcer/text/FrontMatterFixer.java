@@ -3,7 +3,9 @@ package io.github.adamw7.tools.enforcer.text;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * Repairs the unambiguous ways a Claude Code front matter block is commonly
@@ -121,21 +123,17 @@ public final class FrontMatterFixer {
 	}
 
 	private static int firstNonBlankIndex(List<String> lines) {
-		for (int i = 0; i < lines.size(); i++) {
-			if (!lines.get(i).isBlank()) {
-				return i;
-			}
-		}
-		return -1;
+		return indexOf(lines, 0, line -> !line.isBlank());
 	}
 
 	private static int nextDelimiterLike(List<String> lines, int from) {
-		for (int i = from; i < lines.size(); i++) {
-			if (isDelimiterLike(lines.get(i))) {
-				return i;
-			}
-		}
-		return -1;
+		return indexOf(lines, from, FrontMatterFixer::isDelimiterLike);
+	}
+
+	/** The first index at or after {@code from} whose line {@code matches}, or -1 when none does. */
+	private static int indexOf(List<String> lines, int from, Predicate<String> matches) {
+		return IntStream.range(from, lines.size()).filter(index -> matches.test(lines.get(index)))
+				.findFirst().orElse(-1);
 	}
 
 	private static boolean isDelimiterLike(String line) {

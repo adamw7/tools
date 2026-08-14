@@ -82,17 +82,9 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		if (maxBytes > 0 && file.length() > maxBytes) {
 			violations.add(file + " is " + file.length() + " bytes, over the " + maxBytes + "-byte budget");
 		}
-		if (maxLines > 0 || maxTokens > 0) {
-			collectDecodedViolations(file, violations);
+		if (maxLines <= 0 && maxTokens <= 0) {
+			return;
 		}
-	}
-
-	/**
-	 * The line and token budgets need the file's text, so a file that cannot be
-	 * decoded is reported rather than read. Only the byte budget applies to it, and
-	 * an undecodable file must not abort the build before the rest are measured.
-	 */
-	private void collectDecodedViolations(File file, List<String> violations) {
 		Optional<String> content = MarkdownText.readIfText(file);
 		if (content.isEmpty()) {
 			violations.add(file + " cannot be read as text, so its line and token budgets cannot be measured");
@@ -101,6 +93,12 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		collectContentViolations(file, content.get(), violations);
 	}
 
+	/**
+	 * The line and token budgets, which need the file's text. A file that cannot be
+	 * decoded is reported by the caller rather than read: only the byte budget
+	 * applies to it, and an undecodable file must not abort the build before the
+	 * rest are measured.
+	 */
 	private void collectContentViolations(File file, String content, List<String> violations) {
 		long lines = content.lines().count();
 		if (maxLines > 0 && lines > maxLines) {

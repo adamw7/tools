@@ -21,23 +21,34 @@ import com.fasterxml.jackson.databind.JsonNode;
  * messages at construction, and contributes the file itself, the report header,
  * and the document-specific checks against the parsed {@link JsonNode}. A
  * misconfigured rule or a missing or empty file always fails, because that is a
- * build-setup mistake; a rule whose file is optional overrides
- * {@link #handleMissingFile} to pass instead.
+ * build-setup mistake; a rule whose file is optional says so with {@link #OPTIONAL}
+ * and passes on an absent one instead.
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 
+	/** Constructor flag for a rule whose file need not be there, so an absent one is a pass. */
+	protected static final boolean OPTIONAL = true;
+
 	private final String fileParameter;
 	private final String description;
+	private final boolean optional;
+
+	/** A rule whose file must exist, the usual case. */
+	protected JsonFileRule(String fileParameter, String description) {
+		this(fileParameter, description, false);
+	}
 
 	/**
 	 * @param fileParameter the configuration parameter name, used in the "not
 	 *                      configured" message, e.g. {@code settingsFile}
 	 * @param description   human-readable file name used in messages, e.g.
 	 *                      {@code settings.json}
+	 * @param optional      {@link #OPTIONAL} when an absent file is a pass
 	 */
-	protected JsonFileRule(String fileParameter, String description) {
+	protected JsonFileRule(String fileParameter, String description, boolean optional) {
 		this.fileParameter = fileParameter;
 		this.description = description;
+		this.optional = optional;
 	}
 
 	@Override
@@ -45,9 +56,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 		File file = jsonFile();
 		requireConfigured(file, fileParameter);
 		if (!file.isFile()) {
-			handleMissingFile(file);
-			log().debug(() -> description + " is absent at " + file + ", which this rule accepts; nothing to check");
-			report(header(), List.of());
+			reportAbsentFile(file);
 			return;
 		}
 		List<String> violations = new ArrayList<>();
@@ -56,6 +65,19 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 			collectViolations(root, violations);
 		}
 		report(header(), violations);
+	}
+
+	/**
+	 * Fails on a required file and passes on an optional one. The pass still goes
+	 * through {@link #report}, so a configured HTML report reflects this run rather
+	 * than keeping a previous, failing one on disk.
+	 */
+	private void reportAbsentFile(File file) throws EnforcerRuleException {
+		if (!optional) {
+			requireExists(file, description);
+		}
+		log().debug(() -> description + " is absent at " + file + ", which this rule accepts; nothing to check");
+		report(header(), List.of());
 	}
 
 	/** The JSON file to validate. Injected from the rule configuration. */
@@ -106,16 +128,5 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 				"Open " + description + " and confirm it parses as valid JSON.",
 				"Correct every structural item listed above so it matches what the rule expects.",
 				"Re-run the build to confirm " + description + " is well formed.");
-	}
-
-	/**
-	 * How to react when the file is absent. The default fails the build, because a
-	 * missing required file is a build-setup mistake. A rule whose file is optional
-	 * overrides this to return, and the absent file is then reported as a pass — so
-	 * a configured HTML report reflects that run rather than keeping the previous
-	 * one's failure.
-	 */
-	protected void handleMissingFile(File file) throws EnforcerRuleException {
-		requireExists(file, description);
 	}
 }

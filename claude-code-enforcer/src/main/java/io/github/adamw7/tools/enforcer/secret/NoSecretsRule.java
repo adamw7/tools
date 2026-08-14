@@ -84,11 +84,8 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		List<String> lines = readTextLines(file);
 		return IntStream.range(0, lines.size())
 				.boxed()
-				.flatMap(index -> scanLine(file, lines.get(index), index + 1, patterns));
-	}
-
-	private Stream<String> scanLine(File file, String line, int lineNumber, List<CredentialPattern> patterns) {
-		return patterns.stream().flatMap(pattern -> matches(file, line, lineNumber, pattern));
+				.flatMap(index -> patterns.stream()
+						.flatMap(pattern -> matches(file, lines.get(index), index + 1, pattern)));
 	}
 
 	private Stream<String> matches(File file, String line, int lineNumber, CredentialPattern pattern) {

@@ -208,7 +208,7 @@ public final class CliArguments {
 	}
 
 	public Optional<Path> reportFile() {
-		return Optional.ofNullable(optionalText(reportFile)).map(Path::of);
+		return Optional.ofNullable(optionalPath(reportFile));
 	}
 
 	/**

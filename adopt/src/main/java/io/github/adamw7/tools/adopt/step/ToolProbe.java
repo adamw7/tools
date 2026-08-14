@@ -40,10 +40,11 @@ final class ToolProbe {
 
 	/**
 	 * @return whether the tool's {@code --version} probe runs and exits zero. The
-	 *         probe's shape lives here so {@link ToolchainStep} and
-	 *         {@link BuildToolchainStep} cannot drift apart on it.
+	 *         probe's shape lives here rather than at the callers, so a tool named by
+	 *         {@link ToolchainStep} is probed exactly as one named by
+	 *         {@link BuildToolchainStep} is.
 	 */
-	boolean isInstalled(String tool, Path directory, CommandRunner runner) {
+	private boolean isInstalled(String tool, Path directory, CommandRunner runner) {
 		boolean installed = succeeds(List.of(tool, VERSION_FLAG), directory, runner);
 		if (installed) {
 			log.info("Found required tool: {}", tool);

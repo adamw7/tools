@@ -77,11 +77,15 @@ public class WorkflowGuardInstaller {
 	 * project's own workflow.
 	 */
 	private void warnIfWorkflowIsNotOurs(Path repositoryDirectory, boolean workflowWritten) {
-		Path workflowFile = repositoryDirectory.resolve(WORKFLOW_FILE);
-		if (!workflowWritten && !(Files.isRegularFile(workflowFile)
-				&& AdoptionFiles.read(workflowFile, "workflow file").contains(MARKER))) {
+		if (!workflowWritten && !isAdoptionWorkflow(repositoryDirectory.resolve(WORKFLOW_FILE))) {
 			log.warn("{} already exists and is not the adoption's workflow; left unchanged, so CI may not run {}",
 					WORKFLOW_FILE, SCRIPT_FILE);
 		}
+	}
+
+	/** A workflow this installer wrote carries {@value #MARKER}; anything else is the project's own. */
+	private boolean isAdoptionWorkflow(Path workflowFile) {
+		return Files.isRegularFile(workflowFile)
+				&& AdoptionFiles.read(workflowFile, "workflow file").contains(MARKER);
 	}
 }

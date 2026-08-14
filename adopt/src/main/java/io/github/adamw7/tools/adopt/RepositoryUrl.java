@@ -43,8 +43,19 @@ public final class RepositoryUrl {
 	 */
 	private static final Pattern USER_INFO = Pattern.compile("^[^/]*@");
 
+	/**
+	 * The credentials of an {@code http(s)} URL: everything between the {@code ://}
+	 * and the last {@code @} before the path, the same reading {@link Redaction}
+	 * takes. Only those two schemes are matched, because {@link #withoutCredentials()}
+	 * removes what it finds rather than masking it: the {@code git@} of an
+	 * {@code ssh://git@host/owner/repo} is the account to log in as, not a secret, and
+	 * a URL stripped of it authenticates as whoever is running the adoption instead.
+	 */
+	private static final Pattern HTTP_CREDENTIALS = Pattern.compile("(?<=^https?://)[^/\\s]+@");
+
 	private final String value;
 	private final String redacted;
+	private final String withoutCredentials;
 	private final String name;
 	private final String slug;
 	private final String identity;
@@ -52,6 +63,7 @@ public final class RepositoryUrl {
 	private RepositoryUrl(String value) {
 		this.value = value;
 		this.redacted = Redaction.of(value);
+		this.withoutCredentials = HTTP_CREDENTIALS.matcher(value).replaceFirst("");
 		this.name = repositoryName(value);
 		this.slug = repositorySlug(value);
 		this.identity = identity(value);
@@ -80,6 +92,22 @@ public final class RepositoryUrl {
 	 */
 	public String redacted() {
 		return redacted;
+	}
+
+	/**
+	 * The URL with its credentials removed rather than masked, so it still clones and
+	 * fetches: {@link #redacted()} answers {@code https://***@host/owner/repo}, which
+	 * names a host called {@code ***@host} and is no use to git. This is the form the
+	 * checkout records as its {@code origin}, because a credentialled URL written
+	 * there outlives the run as plaintext in {@code .git/config} — the adoption is
+	 * handed {@code https://x-access-token:TOKEN@github.com/owner/repo.git} by CI, and
+	 * the workspace it leaves behind is not where that token should live.
+	 *
+	 * @return the URL without its user information for {@code http} and {@code https},
+	 *         and unchanged for every other form
+	 */
+	public String withoutCredentials() {
+		return withoutCredentials;
 	}
 
 	/** The repository name the checkout directory is created under. */

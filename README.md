@@ -1030,7 +1030,12 @@ The default pipeline runs these steps in order:
    perfectly well. A URL naming no owner has no repository to ask about and falls
    back to `gh api user`.
 2. **`CloneStep`** — clones the target repository into the workspace with
-   `git clone`, giving the remaining steps a working checkout.
+   `git clone`, giving the remaining steps a working checkout. A freshly cloned
+   checkout then has its `origin` rewritten to the same URL without its
+   credentials: `git clone` records the URL it was handed verbatim, so a run
+   driven by a CI token would otherwise leave that token in the workspace's
+   `.git/config` in plaintext for as long as the workspace survives. A checkout
+   the adoption is reusing is left as its owner configured it.
 3. **`BuildToolchainStep`** — probes the *adopted project's* build tool, now that
    the clone has revealed which one it is. `ToolchainStep` cannot: the checkout
    does not exist yet. Without this a machine without the project's `mvn` or
@@ -1104,8 +1109,11 @@ The default pipeline runs these steps in order:
    failing the adoption locally if the file is missing or malformed rather than
    after the pull request lands.
 13. **`PushStep`** — pushes the feature branch to origin and sets its upstream
-    (`git push -u origin <branch>`). Left out of a `--dry-run` pipeline, together
-    with the step below it.
+    (`git push -u origin <branch>`). The run's own credentials are supplied to
+    that one command as a `-c remote.origin.pushurl` override, since `CloneStep`
+    deliberately leaves none in the checkout; git applies the override to the
+    single invocation and stores it nowhere. Left out of a `--dry-run` pipeline,
+    together with the step below it.
 14. **`PullRequestStep`** — opens a pull request from the branch with
    `gh pr create`, targeting the repository's default branch as the base. The
    pull request metadata is supplied through `PullRequestOptions` — title, body,

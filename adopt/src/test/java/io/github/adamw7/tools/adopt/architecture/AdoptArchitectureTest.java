@@ -45,6 +45,7 @@ public class AdoptArchitectureTest {
 	private static final String SPRING_PACKAGE = "org.springframework..";
 
 	private static final String CLONE_STEP = ADOPT_PACKAGE + ".step.CloneStep";
+	private static final String PUSH_STEP = ADOPT_PACKAGE + ".step.PushStep";
 	private static final String PROCESS_COMMAND_RUNNER = ADOPT_PACKAGE + ".command.ProcessCommandRunner";
 
 	@ArchTest
@@ -156,11 +157,13 @@ public class AdoptArchitectureTest {
 					+ "the batch, or the command line could no longer be reordered or reused");
 
 	@ArchTest
-	static final ArchRule onlyTheCloneStepReadsTheCredentialledUrl = noClasses()
-			.that().doNotHaveFullyQualifiedName(CLONE_STEP)
+	static final ArchRule onlyTheCloneAndPushStepsReadTheCredentialledUrl = noClasses()
+			.that().doNotHaveFullyQualifiedName(CLONE_STEP).and().doNotHaveFullyQualifiedName(PUSH_STEP)
 			.should().callMethod(AdoptionContext.class, "repositoryUrl")
-			.because("repositoryUrl() answers the clone URL with its credentials intact; only the git clone "
-					+ "command may see them, and everything else reads the redacted displayUrl()");
+			.because("repositoryUrl() answers the clone URL with its credentials intact; only the two commands "
+					+ "that authenticate to the remote may see them — the clone, and the push, which supplies "
+					+ "them per invocation because the clone no longer leaves them in .git/config — and "
+					+ "everything else reads the redacted displayUrl() or the credential-free checkoutUrl()");
 
 	@ArchTest
 	static final ArchRule adoptionReachesGitHubThroughItsTools = noClasses()

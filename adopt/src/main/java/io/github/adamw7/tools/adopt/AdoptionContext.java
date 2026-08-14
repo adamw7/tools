@@ -50,6 +50,11 @@ public final class AdoptionContext {
 		return repository.redacted();
 	}
 
+	/** @see RepositoryUrl#withoutCredentials() */
+	public String checkoutUrl() {
+		return repository.withoutCredentials();
+	}
+
 	/** @see RepositoryUrl#slug() */
 	public Optional<String> repositorySlug() {
 		return repository.slug();

@@ -410,9 +410,11 @@ Per-module rules:
   a process is spawned, and a step knows only the `CommandRunner` contract, never
   `ProcessCommandRunner`; a step never reaches back to `GitHubRepoAdopter`,
   `BatchAdoption`, `CliArguments` or `Main`, and holds no mutable field, since
-  one instance adopts every repository of a batch; only `CloneStep` calls
-  `AdoptionContext.repositoryUrl()` (everything else reads the redacted
-  `displayUrl()`); the adoption speaks no network protocol of its own outside the
+  one instance adopts every repository of a batch; only `CloneStep` and
+  `PushStep` call `AdoptionContext.repositoryUrl()` — the two commands that
+  authenticate to the remote — while everything else reads the redacted
+  `displayUrl()` or the credential-free `checkoutUrl()`; the adoption speaks no
+  network protocol of its own outside the
   MCP package; `mcp` is a delivery mechanism nothing depends on and the only
   place that knows Spring; implementations are pinned to their contracts by name
   (`*Step`, `*BuildSystem`, `*CommandRunner`, `*Tool`); the only public

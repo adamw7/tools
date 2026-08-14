@@ -41,6 +41,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * <p>The checkout is then refreshed with {@code git fetch}, because every later
  * decision about the feature branch is taken against the remote-tracking refs a
  * stale checkout has out of date.
+ *
+ * <p>A freshly cloned checkout records the credential-free form of the URL as its
+ * {@code origin}, so the token an adoption is driven with does not outlive the run
+ * in {@code .git/config} — see {@link #forgetCredentials}.
  */
 public class CloneStep extends AbstractCommandStep {
 
@@ -108,6 +112,34 @@ public class CloneStep extends AbstractCommandStep {
 		List<String> command = List.of("git", "clone", context.repositoryUrl(),
 				context.repositoryDirectory().toString());
 		runOrFail(runner, context.workspace(), command);
+		forgetCredentials(context, runner);
+	}
+
+	/**
+	 * Rewrites the {@code origin} git just recorded to the credential-free form of the
+	 * same URL, because {@code git clone} writes the URL it was handed into
+	 * {@code .git/config} verbatim — so an adoption driven by CI, whose URL carries
+	 * {@code x-access-token:TOKEN}, left that token in plaintext in the workspace, for
+	 * as long as the workspace survives. Masking it in the logs and the report keeps it
+	 * out of what the run <em>says</em>; nothing but this keeps it out of what the run
+	 * <em>leaves behind</em>.
+	 *
+	 * <p>{@link PushStep} is unaffected: it supplies the credentialled URL to the one
+	 * command that needs it, rather than reading it back from the checkout.
+	 *
+	 * <p>Only the remote this step just wrote is rewritten, and only when the URL
+	 * carried credentials at all. A reused checkout's {@code origin} is left exactly as
+	 * its owner configured it — it is not the adoption's to edit, and the operator may
+	 * well push through it themselves afterwards.
+	 */
+	private void forgetCredentials(AdoptionContext context, CommandRunner runner) {
+		if (context.checkoutUrl().equals(context.repositoryUrl())) {
+			return;
+		}
+		log.info("Recording {} as the checkout's {}, so the clone credentials are not left in .git/config",
+				context.displayUrl(), AdoptionContext.REMOTE);
+		runOrFail(runner, context.repositoryDirectory(),
+				List.of("git", "remote", "set-url", AdoptionContext.REMOTE, context.checkoutUrl()));
 	}
 
 	private void reuse(AdoptionContext context, CommandRunner runner) {

@@ -246,6 +246,9 @@ final class RuleConfiguration {
 								</okfBundleFormat>
 			""";
 
+	/** What {@link #COMPLETE} addresses its files through: the project being built. */
+	private static final String PROJECT_BASEDIR = "${project.basedir}";
+
 	private final String xml;
 
 	RuleConfiguration(String xml) {
@@ -255,6 +258,25 @@ final class RuleConfiguration {
 	/** Every shipped rule, with every parameter it accepts, against the well-formed fixture. */
 	static RuleConfiguration complete() {
 		return new RuleConfiguration(COMPLETE);
+	}
+
+	/**
+	 * The same complete block, addressed at {@code baseDir} rather than at the project
+	 * whose build evaluates it. That separation is what lets
+	 * {@link ForeignRepositoryEnforcementIT} enforce a repository it did not write
+	 * without putting a {@code pom.xml} into it: the build runs in a directory of its
+	 * own, and only the rule parameters point at the checkout.
+	 * <p>
+	 * A directory a real repository has no reason to hold — {@code .claude/skills},
+	 * {@code okf} — stays configured on purpose. The claim under test is that a rule
+	 * pointed somewhere a project has nothing says so plainly, and a block that
+	 * quietly dropped those rules would be asserting the opposite.
+	 *
+	 * @param baseDir the directory to address, as a pom writes one: a literal path or
+	 *                a property expression Maven interpolates
+	 */
+	static RuleConfiguration against(String baseDir) {
+		return new RuleConfiguration(COMPLETE.replace(PROJECT_BASEDIR, baseDir));
 	}
 
 	String xml() {

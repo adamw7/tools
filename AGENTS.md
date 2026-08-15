@@ -486,8 +486,26 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `mvn -N validate -DenforceClaudeMd`, holds the shipped catalogue against the
   profile (`subAgentFormat` and `commandFormat` are the documented exemptions),
   and then breaks a *copy* — a skill losing its `SKILL.md`, the two agent
-  documents disagreeing about the Java version — to prove the wiring bites. Two
-  mechanics: the `*IT`s run at `integration-test`, *before* this module is
+  documents disagreeing about the Java version — to prove the wiring bites.
+  `ForeignRepositoryEnforcementIT` points the same complete configuration at
+  five **real** repositories shallow-cloned from GitHub — `octocat/Hello-World`,
+  `octocat/Spoon-Knife`, `github/gitignore`, `anthropics/claude-code` and
+  `anthropics/anthropic-quickstarts` — because both tests above read files
+  written to be read by these rules, and an adopter's project was not. None of
+  the five passes and none should; what is asserted is that every rule *reaches a
+  verdict* on every one of them (`EnforcerVerdicts` reads maven-enforcer's
+  per-rule `passed`/`failed with message:` lines back out of the log, since an
+  exit code cannot tell a rule that examined a project from one that never ran),
+  that no build goes red on the rules' own account — an unbindable parameter, an
+  exception escaping a rule — that every failure says why, that the four
+  optional-file rules pass where the file really is absent, and that
+  `commandFormat` reads `anthropics/claude-code`'s real `.claude/commands`
+  instead of reporting it absent. A sixth test adopts the contract into a fresh
+  clone and enforces it green, so the rules are shown satisfiable outside the
+  repository that wrote them. The build runs in a directory of its own and only
+  the rule parameters point at a checkout (`RuleConfiguration.against`), so no
+  clone is written to; the shared pom both fixtures build lives in `EnforcerPom`.
+  Two mechanics: the `*IT`s run at `integration-test`, *before* this module is
   installed, so they publish the freshly packaged jar themselves (`install-file`,
   with the flattened pom); and a forked test JVM cannot work out where Maven, the
   local repository or that jar are, so the profile passes each in as an

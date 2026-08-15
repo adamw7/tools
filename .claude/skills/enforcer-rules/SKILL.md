@@ -127,6 +127,16 @@ parameter left out fails `EnforcerRuleBuildIT`), and `RepositoryEnforcementIT`
 compares the shipped catalogue against the root pom's profile. Run them with
 `mvn -pl claude-code-enforcer -am -P integration-tests verify`.
 
+**A new rule also meets five real repositories.**
+`ForeignRepositoryEnforcementIT` points the same complete configuration at
+shallow clones of `octocat/Hello-World`, `octocat/Spoon-Knife`,
+`github/gitignore`, `anthropics/claude-code` and
+`anthropics/anthropic-quickstarts` — projects nobody prepared for these rules.
+It does not expect them to pass; it expects every rule to *reach a verdict* on
+each of them, to say why when it fails, and never to break the build on the
+rule's own account. So a new rule must survive a file it did not expect and a
+directory that is not there, and report both as violations rather than throwing.
+
 **Naming trap for a `List<String>` parameter.** Plexus infers a configured
 list's element type from the *child element name*, trying the rule's own package
 first, so a class matching the capitalised child name — `SecretPattern` for
@@ -168,4 +178,6 @@ fails a real build with "Failed to create enforcer rules with name: …". The
 - `claude-code-enforcer/.../rule/ClaudeCodeEnforcerRule.java` — the base contract
 - `claude-code-enforcer/.../architecture/EnforcerArchitectureTest.java` — layering
 - `claude-code-enforcer/.../e2e/EnforcerRuleBuildIT.java` — the pom-to-rule seam
+- `claude-code-enforcer/.../e2e/ForeignRepositoryEnforcementIT.java` — the rules
+  against five real repositories that never adopted them
 - Root `pom.xml` — the `claude-md-enforce` profile

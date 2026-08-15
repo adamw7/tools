@@ -238,60 +238,15 @@ final class FixtureProject {
 			Nothing here depends on anything.
 			""";
 
-	/**
-	 * The build itself. The rule jar is a plugin dependency rather than a project
-	 * dependency, because that is the only class path a maven-enforcer rule is loaded
-	 * from, and the whole configuration sits in one {@code validate}-phase execution
-	 * so a fixture build costs a second.
-	 */
-	private static final String POM_TEMPLATE = """
-			<project xmlns="http://maven.apache.org/POM/4.0.0">
-				<modelVersion>4.0.0</modelVersion>
-				<groupId>io.github.adamw7.enforcer.e2e</groupId>
-				<artifactId>fixture</artifactId>
-				<version>1.0</version>
-				<packaging>pom</packaging>
-				<build>
-					<plugins>
-						<plugin>
-							<groupId>org.apache.maven.plugins</groupId>
-							<artifactId>maven-enforcer-plugin</artifactId>
-							<version>%s</version>
-							<dependencies>
-								<dependency>
-									<groupId>%s</groupId>
-									<artifactId>%s</artifactId>
-									<version>%s</version>
-								</dependency>
-							</dependencies>
-							<executions>
-								<execution>
-									<id>enforce-claude-code</id>
-									<phase>validate</phase>
-									<goals>
-										<goal>enforce</goal>
-									</goals>
-									<configuration>
-										<rules>
-			%s
-										</rules>
-									</configuration>
-								</execution>
-							</executions>
-						</plugin>
-					</plugins>
-				</build>
-			</project>
-			""";
+	/** What the fixture's build calls itself, so a log says which project it came from. */
+	private static final String ARTIFACT_ID = "fixture";
 
 	private final Path root;
-	private final BuildEnvironment environment;
-	private final String enforcerPluginVersion;
+	private final EnforcerPom pom;
 
 	FixtureProject(Path root, BuildEnvironment environment, String enforcerPluginVersion) {
 		this.root = root;
-		this.environment = environment;
-		this.enforcerPluginVersion = enforcerPluginVersion;
+		this.pom = new EnforcerPom(environment, enforcerPluginVersion);
 	}
 
 	Path root() {
@@ -333,8 +288,7 @@ final class FixtureProject {
 
 	/** Writes the pom that runs {@code rulesXml}, and returns the project to build. */
 	FixtureProject enforcing(String rulesXml) {
-		write("pom.xml", POM_TEMPLATE.formatted(enforcerPluginVersion, BuildEnvironment.GROUP_ID,
-				BuildEnvironment.ARTIFACT_ID, environment.version(), rulesXml));
+		write("pom.xml", pom.enforcing(ARTIFACT_ID, rulesXml));
 		return this;
 	}
 

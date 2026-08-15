@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,60 @@ import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
  * @see ClaudeMdFormatRule#validating(java.io.File)
  */
 class ClaudeMdConformerContractTest {
+
+	/**
+	 * The lines the two readers have to agree about: the required headings and the
+	 * near-misses {@code claude init} writes instead, the two ways Markdown quotes
+	 * code and the delimiters that open each, the list item an indent is measured
+	 * from, the comment delimiters that make text inert, and the prose that has to
+	 * survive all of it. A generated document is a sequence of these.
+	 */
+	private static final List<String> FRAGMENTS = List.of(
+			"# CLAUDE.md",
+			"# my-project",
+			"## Project",
+			"## Project purpose",
+			"## Java version",
+			"## Maven",
+			"## Maven module structure",
+			"## Principles for Java Development",
+			"## Principles for Java development",
+			"## Testing",
+			"## Testing ##",
+			"##  Testing",
+			"## Dependencies",
+			"## Overview",
+			"### A sub-section",
+			"#1 rule: run mvn install",
+			"Some prose about the project.",
+			"See [AGENTS.md](AGENTS.md) for the guide.",
+			"An `AGENTS.md` is written beside it.",
+			"",
+			"```",
+			"```java",
+			"````",
+			"~~~",
+			"    ```",
+			"    ## Testing",
+			"    See [AGENTS.md](AGENTS.md) for the companion guide.",
+			"    indented prose",
+			"\t## Testing",
+			"- the headings a generated file needs are:",
+			"1. an ordered item",
+			"    ## Deployment",
+			"<!--",
+			"-->",
+			"<!-- ## Testing -->",
+			"Superseded: <!--",
+			"mvn install");
+
+	/**
+	 * How many generated documents the contract is checked over. Enough to walk the
+	 * combinations the fixtures above were each found by, and few enough to stay well
+	 * inside the per-test timeout — every one of them writes a file and runs the real
+	 * rule over it.
+	 */
+	private static final int GENERATED_DOCUMENTS = 250;
 
 	private final ClaudeMdConformer conformer = new ClaudeMdConformer();
 
@@ -731,6 +788,43 @@ class ClaudeMdConformerContractTest {
 
 		assertRuleAccepts(conforming);
 		assertRuleAccepts(conformer.conform(conforming));
+	}
+
+	/**
+	 * The same contract over documents nobody wrote by hand. Every case above is a
+	 * shape the reshape was once wrong about, and each was found on a real repository
+	 * rather than by reading the code: the two readings drift where a heading, a
+	 * fence, an indent, a list item and a comment delimiter <em>meet</em>, and which
+	 * combinations do that is not something a fixture list can be argued to cover.
+	 * Building documents out of exactly those fragments walks the combinations
+	 * instead.
+	 * <p>
+	 * The seeds are fixed, so a failure names a document that can be pasted back into
+	 * a case of its own — which is what such a failure should become. Settling is
+	 * asserted alongside acceptance because a reshape that keeps editing an accepted
+	 * document puts a fresh diff in every pull request the repository ever gets.
+	 */
+	@Test
+	void conformsGeneratedDocumentsBuiltFromTheFragmentsTheTwoReadersDisagreeOver() {
+		for (int seed = 0; seed < GENERATED_DOCUMENTS; seed++) {
+			String generated = documentFrom(seed);
+			String conformed = conformer.conform(generated);
+			assertRuleAccepts(conformed);
+			assertEquals(conformed, conformer.conform(conformed),
+					"seed " + seed + " does not settle; conformed from:\n" + generated);
+		}
+	}
+
+	/**
+	 * A document of between one and thirty {@link #FRAGMENTS}, drawn by a generator
+	 * the seed alone decides, so the same seed is the same document on every run and
+	 * on every machine.
+	 */
+	private static String documentFrom(int seed) {
+		Random random = new Random(seed);
+		return random.ints(1 + random.nextInt(30), 0, FRAGMENTS.size())
+				.mapToObj(FRAGMENTS::get)
+				.collect(Collectors.joining("\n", "", "\n"));
 	}
 
 	/**

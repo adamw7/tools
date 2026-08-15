@@ -195,13 +195,19 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	 * When ordering is enforced, the required sections that are present must appear
 	 * in the same relative order as configured. Absent sections are already
 	 * reported by the section check, so only the present ones are compared here.
+	 * <p>
+	 * A section named twice in the configuration counts once, because that is how
+	 * {@link MarkdownDocument#headingsInOrder} reports the document's side of the
+	 * comparison: the document was expected to carry the repeated heading twice and
+	 * answered with the one heading it has, so a correctly ordered document was
+	 * reported as out of order and no edit to it could settle the complaint.
 	 */
 	private void collectOrderViolations(MarkdownDocument document, List<String> violations) {
 		if (!enforceSectionOrder) {
 			return;
 		}
 		Set<String> headings = document.headings();
-		List<String> expected = requiredSections().stream().filter(headings::contains).toList();
+		List<String> expected = requiredSections().stream().distinct().filter(headings::contains).toList();
 		List<String> actual = document.headingsInOrder(requiredSections());
 		if (!actual.equals(expected)) {
 			violations.add(documentName() + " sections are out of order; expected " + expected + " but found " + actual);

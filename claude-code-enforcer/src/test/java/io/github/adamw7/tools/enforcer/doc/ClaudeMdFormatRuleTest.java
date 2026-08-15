@@ -199,6 +199,21 @@ class ClaudeMdFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A span written with a longer run of backticks quotes its content just as firmly,
+	 * and is the only way to quote content carrying a backtick. Closing the run on its
+	 * own second character handed the token back as prose, so a document that had
+	 * quoted the very token it bans was failed for carrying it — and no spelling of
+	 * the quote could have satisfied the rule.
+	 */
+	@Test
+	void ignoresAForbiddenTokenInsideALongerInlineCodeSpan() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nNever leave a ``TODO`` behind.\n");
+		rule.setForbiddenTokens(java.util.List.of("TODO"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	/** Commented-out text is inert, so a token an author retired no longer trips the ban. */
 	@Test
 	void ignoresAForbiddenTokenInsideAnHtmlComment() {
@@ -366,6 +381,23 @@ class ClaudeMdFormatRuleTest {
 	}
 
 	/**
+	 * The document's side of the comparison counts a heading once, so the
+	 * configuration's side must too. A section named twice in {@code requiredSections}
+	 * was expected twice and answered with the one heading the document carries, so a
+	 * correctly ordered document was reported as out of order — and no edit to it
+	 * could have settled the complaint, since adding the heading a second time does
+	 * not add it to the answer.
+	 */
+	@Test
+	void doesNotReportOutOfOrderWhenARequiredSectionIsConfiguredTwice() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setRequiredSections(java.util.List.of("## Project", "## Testing", "## Project"));
+		rule.setEnforceSectionOrder(true);
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
 	 * A section configured without its {@code ##} is missing whatever the document
 	 * says, so the order check must not answer it with a line of prose and report
 	 * the same document as both missing the section and misordering it.
@@ -433,6 +465,21 @@ class ClaudeMdFormatRuleTest {
 
 		// Stopping at the first closing parenthesis truncated the target and reported
 		// the half of it that naturally does not exist.
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * A link quoted with a longer run of backticks is a sample the document shows, not
+	 * a reference it makes. Reading the run as a single backtick let the link out of
+	 * the span it was quoted in, and the rule went looking on disk for a file the
+	 * document had only ever illustrated.
+	 */
+	@Test
+	void ignoresALinkInsideALongerInlineCodeSpan() {
+		writeString(tempDir.resolve("AGENTS.md"), "# AGENTS.md");
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT + "\nA link is written ``[label](example.md)``.\n");
+		rule.setValidateFileReferences(true);
+
 		assertDoesNotThrow(rule::execute);
 	}
 

@@ -122,6 +122,55 @@ class MarkdownTextTest {
 	}
 
 	@Test
+	void withoutCodeSpansReplacesASingleBacktickSpan() {
+		assertEquals("never leave a   behind", MarkdownText.withoutCodeSpans("never leave a `TODO` behind"));
+	}
+
+	/**
+	 * A run of two backticks is closed by a run of two, not by the second half of the
+	 * run that opened it. Reading the delimiter as one backtick tore the span apart at
+	 * its second character and handed {@code TODO} back as prose, so a rule forbidding
+	 * that token reported the very document that had quoted it.
+	 */
+	@Test
+	void withoutCodeSpansReplacesASpanWrittenWithALongerRun() {
+		assertEquals("never leave a   behind", MarkdownText.withoutCodeSpans("never leave a ``TODO`` behind"));
+		assertEquals("a   b", MarkdownText.withoutCodeSpans("a ```TODO``` b"));
+	}
+
+	/** The reason a longer run exists: it is the only way to quote content carrying a backtick. */
+	@Test
+	void withoutCodeSpansReplacesASpanCarryingABacktickOfItsOwn() {
+		assertEquals("a   b", MarkdownText.withoutCodeSpans("a ``x ` y`` b"));
+	}
+
+	/** A run of one does not close a run of three, so neither delimiter is read as the other's. */
+	@Test
+	void withoutCodeSpansLeavesARunNoLaterRunOfItsLengthCloses() {
+		assertEquals("a ``` x ` y", MarkdownText.withoutCodeSpans("a ``` x ` y"));
+	}
+
+	/**
+	 * The scan carries on past a run nothing closes rather than stopping at it, so an
+	 * odd backtick earlier in the line does not hide a real span further along it.
+	 */
+	@Test
+	void withoutCodeSpansReadsASpanFollowingAnUnclosedRun() {
+		assertEquals("`` a   b", MarkdownText.withoutCodeSpans("`` a `TODO` b"));
+	}
+
+	@Test
+	void withoutCodeSpansReplacesEverySpanOnTheLine() {
+		assertEquals("  and   and  ", MarkdownText.withoutCodeSpans("`a` and ``b`` and `c`"));
+	}
+
+	@Test
+	void withoutCodeSpansLeavesALineCarryingNoBacktickUnchanged() {
+		assertEquals("plain prose", MarkdownText.withoutCodeSpans("plain prose"));
+		assertEquals("", MarkdownText.withoutCodeSpans(""));
+	}
+
+	@Test
 	void readWrapsAReadFailureWithTheDescription() {
 		Path missing = tempDir.resolve("absent.md");
 

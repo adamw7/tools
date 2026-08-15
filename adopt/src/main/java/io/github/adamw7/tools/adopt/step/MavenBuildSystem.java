@@ -19,6 +19,7 @@ import java.util.Optional;
  */
 public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 
+	private static final String NAME = "maven";
 	private static final String MAVEN = "mvn";
 	private static final List<String> VERIFY_ARGUMENTS = List.of("-q", "-N", "validate");
 
@@ -44,13 +45,8 @@ public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 	}
 
 	MavenBuildSystem(PomEnforcerInstaller installer, BuildWrapper wrapper) {
-		super(MAVEN, VERIFY_ARGUMENTS, wrapper);
+		super(NAME, MAVEN, VERIFY_ARGUMENTS, wrapper);
 		this.installer = installer;
-	}
-
-	@Override
-	public String name() {
-		return "maven";
 	}
 
 	@Override

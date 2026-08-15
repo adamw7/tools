@@ -15,25 +15,36 @@ import java.util.Optional;
  */
 abstract class AbstractWrappedBuildSystem implements BuildSystem {
 
+	private final String name;
 	private final String tool;
 	private final List<String> verifyArguments;
 	private final BuildWrapper wrapper;
 
 	/**
-	 * @param tool            the program to launch when the checkout ships no wrapper,
-	 *                        and the name this build system reports
+	 * The name and the program are taken separately because they are not always the
+	 * same word: Maven builds are run with {@code mvn} but the build system is called
+	 * {@code maven}, in the log line naming what a checkout builds with and in the
+	 * advice {@link BuildSystem#toolAdvice()} gives. Declaring the program as both let
+	 * the base report a name no subclass wanted, which Maven then had to override —
+	 * so the one build system whose two differ was also the one whose name this class
+	 * did not decide.
+	 *
+	 * @param name            what this build system is called in a message
+	 * @param tool            the program to launch when the checkout ships no wrapper
 	 * @param verifyArguments the arguments that run the wired-in guard
 	 * @param wrapper         the wrapper script to prefer over {@code tool}
 	 */
-	protected AbstractWrappedBuildSystem(String tool, List<String> verifyArguments, BuildWrapper wrapper) {
+	protected AbstractWrappedBuildSystem(String name, String tool, List<String> verifyArguments,
+			BuildWrapper wrapper) {
+		this.name = name;
 		this.tool = tool;
 		this.verifyArguments = List.copyOf(verifyArguments);
 		this.wrapper = wrapper;
 	}
 
 	@Override
-	public String name() {
-		return tool;
+	public final String name() {
+		return name;
 	}
 
 	@Override

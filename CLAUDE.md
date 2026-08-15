@@ -191,10 +191,12 @@ Skill: `testing-conventions`.
   step, so it never pushes or opens a pull request), and `claude-code-enforcer`'s
   real Maven builds, which exercise the pom-to-rule seam a unit test skips. The
   profile is declared per module — `data`, `code/context`, `adopt`,
-  `claude-code-enforcer` — not in the root pom. The enforcer's `*IT`s also point
-  every shipped rule at five real repositories cloned from GitHub, to prove a
-  project nobody prepared for the rules gets an actionable verdict rather than a
-  build broken on the rules' own account.
+  `claude-code-enforcer` — not in the root pom. Both modules also meet five real
+  repositories cloned from GitHub: the enforcer points every shipped rule at
+  them, to prove a project nobody prepared for the rules gets an actionable
+  verdict rather than a build broken on the rules' own account, and `adopt`
+  adopts them, to prove the guard it wires into a build file somebody else wrote
+  is an addition to it and nothing more.
 
 ## Continuous integration and commits
 

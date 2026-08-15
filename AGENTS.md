@@ -469,6 +469,30 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `claude`, never pushes, never opens a pull request and needs no `gh` login.
   Because it clones over the network, it identifies each checkout by the
   `owner/repository` its `origin` names rather than by the URL it was given.
+- `adopt`'s `ForeignRepositoryAdoptionIT` adopts five **real** repositories in
+  one batch — `google/gson`, `square/okhttp`,
+  `anthropics/anthropic-quickstarts`, `anthropics/claude-code` and
+  `github/gitignore` — chosen for the shapes they put in front of the steps that
+  read a checkout: a multi-module Maven build, a Gradle build on the Kotlin DSL,
+  a real `CLAUDE.md`, a real `.claude` directory, and a very large flat tree with
+  no build file. Every step test drives its step over a directory this repository
+  laid out, so between them these five are the only place all three
+  `BuildSystem`s meet build files nobody wrote for them. What is asserted is that
+  the adoption's work is *its own and nothing else*: the pipeline runs to its end
+  on each, the guard that lands is the one the checkout's build files ask for
+  (the enforcer execution spliced into gson's `pom.xml`, the guard task appended
+  to okhttp's `build.gradle.kts`, the workflow and script for the rest), the
+  commit carries only paths `AdoptionAssets.WRITTEN_PATHS` names and the working
+  tree is left clean, the commit's diff *removes* nothing the build file already
+  declared, the default branch and the remote are untouched, and a second
+  adoption of the same batch commits nothing. A seventh test conforms
+  `anthropic-quickstarts`' real `CLAUDE.md` and asserts the real `claudeMdFormat`
+  rule then accepts it, the foreign document having been asserted to fail it
+  first. Like `MultiRepoAdoptionIT` it stops short of pushing; it also leaves out
+  `claude init` and the build-toolchain and verify steps, which for a checkout
+  shipping a wrapper would download that project's whole build tool. The Maven
+  guard is pinned to a released `--rule-version`, since the installer refuses to
+  wire a `-SNAPSHOT` into somebody else's POM.
 - `claude-code-enforcer`'s `e2e` package runs **real Maven builds**, because
   everything between a pom and a rule's `execute()` is what a unit test assumes:
   artifact resolution, Sisu finding the class behind a `@Named` element, and

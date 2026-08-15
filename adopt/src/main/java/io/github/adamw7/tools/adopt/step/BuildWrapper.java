@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import io.github.adamw7.tools.adopt.Platform;
 import io.github.adamw7.tools.adopt.command.CommandLine;
@@ -30,6 +31,7 @@ final class BuildWrapper {
 
 	private final String fileName;
 	private final boolean windows;
+	private final Predicate<Path> executable;
 
 	/** The wrapper for the host platform: the Windows script there, the POSIX one everywhere else. */
 	BuildWrapper(String posixName, String windowsName) {
@@ -37,8 +39,21 @@ final class BuildWrapper {
 	}
 
 	BuildWrapper(String posixName, String windowsName, boolean windows) {
+		this(posixName, windowsName, windows, Files::isExecutable);
+	}
+
+	/**
+	 * The executable bit is read through {@code executable} rather than straight off
+	 * the filesystem, because the POSIX one a test needs to describe is not a state a
+	 * file can be put into on every host: Windows has no executable bit, so
+	 * {@link Files#isExecutable} answers for a plain file there and the shelled branch
+	 * below could not be reached on the platform whose wrappers most often need it.
+	 * Faking the host with {@code windows} alone left the other half of POSIX real.
+	 */
+	BuildWrapper(String posixName, String windowsName, boolean windows, Predicate<Path> executable) {
 		this.fileName = windows ? windowsName : posixName;
 		this.windows = windows;
+		this.executable = executable;
 	}
 
 	/**
@@ -80,7 +95,7 @@ final class BuildWrapper {
 	 * ever shelled: a {@code .bat}/{@code .cmd} is not a shell script.
 	 */
 	private List<String> launch(String wrapper) {
-		return windows || Files.isExecutable(Path.of(wrapper)) ? List.of(wrapper) : List.of(SHELL, wrapper);
+		return windows || executable.test(Path.of(wrapper)) ? List.of(wrapper) : List.of(SHELL, wrapper);
 	}
 
 	/**

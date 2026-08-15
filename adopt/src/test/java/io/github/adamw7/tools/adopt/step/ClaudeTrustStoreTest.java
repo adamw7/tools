@@ -367,9 +367,17 @@ class ClaudeTrustStoreTest {
 		}
 	}
 
+	/**
+	 * Written through Jackson rather than concatenated, because the key is a path and
+	 * a Windows one carries backslashes: {@code C:\Users\...} pasted into a JSON
+	 * literal reads as the escapes {@code \U} and {@code \.}, so the document the
+	 * competing writer is supposed to have left was not parseable JSON at all there.
+	 */
 	private String trustDocument(Path directory) {
-		return "{\"projects\":{\"" + directory.toAbsolutePath().normalize()
-				+ "\":{\"hasTrustDialogAccepted\":true}}}";
+		ObjectNode root = MAPPER.createObjectNode();
+		root.putObject("projects").putObject(directory.toAbsolutePath().normalize().toString())
+				.put("hasTrustDialogAccepted", true);
+		return root.toString();
 	}
 
 	private Thread trusting(Path config, Path directory, CyclicBarrier startTogether) {

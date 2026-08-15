@@ -184,10 +184,18 @@ class BuildToolchainStepTest {
 		RecordingCommandRunner runner = new RecordingCommandRunner();
 		Path wrapper = context.repositoryDirectory().resolve("gradlew").toAbsolutePath();
 
-		new BuildToolchainStep(List.of(new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false))))
-				.execute(context, runner);
+		new BuildToolchainStep(List.of(new GradleBuildSystem(withoutTheExecutableBit()))).execute(context, runner);
 
 		assertEquals(List.of("sh", wrapper.toString(), "--version"), runner.commandAt(0));
+	}
+
+	/**
+	 * A POSIX host whose wrapper carries no executable bit. Windows has none to leave
+	 * off, so writing the file without it describes the case only on Linux and macOS
+	 * and the bit has to be answered for rather than read off the filesystem.
+	 */
+	private BuildWrapper withoutTheExecutableBit() {
+		return new BuildWrapper("gradlew", "gradlew.bat", false, wrapper -> false);
 	}
 
 	private Path executableWrapper(AdoptionContext context) throws IOException {

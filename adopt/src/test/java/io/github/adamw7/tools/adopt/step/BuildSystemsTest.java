@@ -151,7 +151,7 @@ class BuildSystemsTest {
 	@Test
 	void aWrapperWithoutItsExecutableBitIsLaunchedThroughTheShell(@TempDir Path directory) throws IOException {
 		Path wrapper = Files.writeString(directory.resolve("gradlew"), "#!/bin/sh\n");
-		GradleBuildSystem gradle = new GradleBuildSystem(new BuildWrapper("gradlew", "gradlew.bat", false));
+		GradleBuildSystem gradle = new GradleBuildSystem(withoutTheExecutableBit("gradlew", "gradlew.bat"));
 		assertEquals(List.of("sh", wrapper.toAbsolutePath().toString(), "-q", "enforceClaudeMd"),
 				gradle.verifyCommand(directory));
 	}
@@ -165,7 +165,7 @@ class BuildSystemsTest {
 	void aShelledWrapperIsProbedThroughTheShellToo(@TempDir Path directory) throws IOException {
 		Path wrapper = Files.writeString(directory.resolve("mvnw"), "#!/bin/sh\n");
 		MavenBuildSystem maven = new MavenBuildSystem(new PomEnforcerInstaller("2.6.0"),
-				new BuildWrapper("mvnw", "mvnw.cmd", false));
+				withoutTheExecutableBit("mvnw", "mvnw.cmd"));
 		assertEquals(Optional.of(List.of("sh", wrapper.toAbsolutePath().toString(), "--version")),
 				maven.toolProbe(directory));
 	}
@@ -289,5 +289,15 @@ class BuildSystemsTest {
 		Files.writeString(wrapper, "#!/bin/sh\n");
 		assertTrue(wrapper.toFile().setExecutable(true), "could not make " + wrapper + " executable");
 		return wrapper;
+	}
+
+	/**
+	 * A POSIX host whose wrapper carries no executable bit. Both halves have to be
+	 * said: writing a file without the bit describes it on Linux and macOS, but
+	 * Windows has none to leave off, so {@link java.nio.file.Files#isExecutable}
+	 * answers true there and the wrapper would be expected to launch as a program.
+	 */
+	private BuildWrapper withoutTheExecutableBit(String posixName, String windowsName) {
+		return new BuildWrapper(posixName, windowsName, false, wrapper -> false);
 	}
 }

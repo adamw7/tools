@@ -971,6 +971,52 @@ class MarkdownDocumentTest {
 		assertTrue(MarkdownDocument.headingOf("body").isEmpty());
 	}
 
+	/**
+	 * A line carrying thousands of comment delimiters is read without recursing once
+	 * per delimiter. The reader is pointed at documents it does not control — the
+	 * {@code CLAUDE.md} of any repository the adoption is handed — and a generated or
+	 * minified line is all it takes to reach this count. Following the delimiters by
+	 * recursion overflowed the stack from a few thousand pairs onward, which is no
+	 * kind of verdict: it aborts the build as an internal error rather than as a
+	 * violation, and being an {@link Error} rather than a {@link RuntimeException} it
+	 * escapes the adoption's batch loop and stops every repository behind it too.
+	 */
+	@Test
+	void readsALineOfManyCommentDelimitersWithoutExhaustingTheStack() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				%s
+
+				## Testing
+				body
+				""".formatted("<!-- sample -->".repeat(20_000)));
+
+		assertTrue(document.hasHeading("## Testing"));
+		assertTrue(document.hasBody("## Testing"));
+		assertEquals(List.of(), commentedLines(document));
+		assertTrue(document.openCommentTerminator().isEmpty());
+	}
+
+	/**
+	 * The same line left open by a final delimiter still hides what follows it, so the
+	 * loop that replaced the recursion carries the same answer out of the line.
+	 */
+	@Test
+	void aLineOfManyCommentDelimitersLeftOpenStillHidesWhatFollows() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				%s<!--
+
+				## Testing
+				body
+				""".formatted("<!-- sample -->".repeat(20_000)));
+
+		assertFalse(document.hasHeading("## Testing"));
+		assertEquals("-->", document.openCommentTerminator().orElseThrow());
+	}
+
 	private static String terminatorOf(String content) {
 		return MarkdownDocument.parse(content).openFenceTerminator().orElseThrow();
 	}

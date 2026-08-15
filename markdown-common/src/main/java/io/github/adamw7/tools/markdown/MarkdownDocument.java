@@ -514,7 +514,7 @@ public final class MarkdownDocument {
 		}
 		String read = asRead(line, open);
 		mask[index] = open || opensBlock(read);
-		return remainsOpen(read, 0, open);
+		return remainsOpen(read, open);
 	}
 
 	/**
@@ -539,18 +539,37 @@ public final class MarkdownDocument {
 
 	/** True when the line's own content starts a comment that the same line does not close. */
 	private static boolean opensBlock(String line) {
-		return line.startsWith(COMMENT_START) && remainsOpen(line, 0, false);
+		return line.startsWith(COMMENT_START) && remainsOpen(line, false);
 	}
 
 	/**
-	 * Whether a comment is open once {@code line} has been read from {@code from},
+	 * Whether a comment is open once the whole of {@code line} has been read,
 	 * following each delimiter in turn: an open comment looks for its {@code -->},
 	 * a closed one for the next {@code <!--}.
+	 * <p>
+	 * The delimiters are followed in a loop rather than by recursing on the rest of
+	 * the line, because the line is content this reader does not control: a document
+	 * carrying a few thousand delimiters on one line — a generated or minified line
+	 * is all it takes — recursed once per delimiter and overflowed the stack. A
+	 * {@link StackOverflowError} is no kind of verdict: it aborts the Maven build as
+	 * an internal error rather than as the violation a rule exists to report, and it
+	 * is not a {@code RuntimeException}, so the adoption's batch loop — which keeps
+	 * one repository's failure from stopping the rest — does not catch it either.
 	 */
-	private static boolean remainsOpen(String line, int from, boolean open) {
-		String delimiter = open ? COMMENT_END : COMMENT_START;
-		int next = line.indexOf(delimiter, from);
-		return next < 0 ? open : remainsOpen(line, next + delimiter.length(), !open);
+	private static boolean remainsOpen(String line, boolean open) {
+		boolean inside = open;
+		int next = line.indexOf(commentDelimiter(inside));
+		while (next >= 0) {
+			int after = next + commentDelimiter(inside).length();
+			inside = !inside;
+			next = line.indexOf(commentDelimiter(inside), after);
+		}
+		return inside;
+	}
+
+	/** What the scan looks for next: an open comment its end, a closed one the next start. */
+	private static String commentDelimiter(boolean open) {
+		return open ? COMMENT_END : COMMENT_START;
 	}
 
 	/**

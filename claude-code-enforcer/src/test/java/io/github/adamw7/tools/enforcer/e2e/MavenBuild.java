@@ -2,12 +2,10 @@ package io.github.adamw7.tools.enforcer.e2e;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Runs a real Maven build in a real process, which is the only way to observe an
@@ -35,6 +33,8 @@ final class MavenBuild {
 
 	private static final String INSTALL_PLUGIN = "org.apache.maven.plugins:maven-install-plugin";
 
+	private static final LoggedProcess MAVEN = new LoggedProcess("enforcer-e2e", TIMEOUT_MINUTES);
+
 	private final BuildEnvironment environment;
 
 	MavenBuild(BuildEnvironment environment) {
@@ -61,7 +61,7 @@ final class MavenBuild {
 				INSTALL_PLUGIN + ":" + installPluginVersion + ":install-file",
 				"-Dfile=" + environment.jar(),
 				"-DpomFile=" + environment.pom());
-		delete(workingDirectory);
+		LoggedProcess.delete(workingDirectory);
 		if (!outcome.succeeded()) {
 			throw new IllegalStateException("Could not publish " + environment.jar() + ": " + outcome.describe());
 		}
@@ -80,62 +80,7 @@ final class MavenBuild {
 				"--no-transfer-progress",
 				"-Dmaven.repo.local=" + environment.localRepository()));
 		command.addAll(List.of(arguments));
-		return execute(directory, command);
-	}
-
-	private BuildOutcome execute(Path directory, List<String> command) {
-		Path log = temporaryFile();
-		try {
-			Process process = new ProcessBuilder(command)
-					.directory(directory.toFile())
-					.redirectErrorStream(true)
-					.redirectOutput(log.toFile())
-					.start();
-			return new BuildOutcome(exitCodeOf(process, command), read(log));
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not run " + command, e);
-		} finally {
-			delete(log);
-		}
-	}
-
-	/**
-	 * A build that never returns would otherwise hang the whole test run until
-	 * surefire's fork timeout kills it, taking the log with it, so it is killed here
-	 * and reported as what it is.
-	 */
-	private int exitCodeOf(Process process, List<String> command) {
-		try {
-			if (!process.waitFor(TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
-				process.destroyForcibly();
-				throw new IllegalStateException(command + " did not finish within " + TIMEOUT_MINUTES + " minutes");
-			}
-			return process.exitValue();
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while waiting for " + command, e);
-		}
-	}
-
-	/**
-	 * Decoded leniently: Maven writes the platform's encoding, and a byte that does
-	 * not decode is noise in a log, never a reason to fail a test that has an
-	 * assertion of its own to make.
-	 */
-	private String read(Path log) {
-		try {
-			return new String(Files.readAllBytes(log), StandardCharsets.UTF_8);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not read the build log " + log, e);
-		}
-	}
-
-	private Path temporaryFile() {
-		try {
-			return Files.createTempFile("enforcer-e2e", ".log");
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not create a build log", e);
-		}
+		return MAVEN.run(directory, command);
 	}
 
 	/** A directory with no pom in it, so a project-free goal is not handed a project. */
@@ -144,14 +89,6 @@ final class MavenBuild {
 			return Files.createTempDirectory("enforcer-e2e");
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not create a working directory", e);
-		}
-	}
-
-	private void delete(Path path) {
-		try {
-			Files.deleteIfExists(path);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not delete " + path, e);
 		}
 	}
 }

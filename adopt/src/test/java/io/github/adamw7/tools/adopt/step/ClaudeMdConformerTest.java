@@ -4,18 +4,47 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+
+import io.github.adamw7.tools.markdown.MarkdownDocument;
 
 class ClaudeMdConformerTest {
 
 	private final ClaudeMdConformer conformer = new ClaudeMdConformer();
 
+	/**
+	 * The headings a reshaped document carries, read with {@link MarkdownDocument} —
+	 * the very reader {@link ClaudeMdConformer} rewrites through and the
+	 * {@code claudeMdFormat} rule judges the result with. So a heading inside a fence,
+	 * an indented sample or an HTML comment is code here exactly as it is there, and a
+	 * heading is the text it names rather than the line it was typed on.
+	 *
+	 * <p>These tests used to spell that reading out again in a hundred lines of
+	 * fence and comment tracking of their own, which is a third implementation of a
+	 * question two production classes already answer together — kept equal to them
+	 * only by being edited alongside them. What keeps the reshape honest against an
+	 * <em>independent</em> reader is {@link ClaudeMdConformerContractTest}, which runs
+	 * the real rule over the real output.
+	 *
+	 * <p>Duplicates are kept, unlike {@link MarkdownDocument#headings()}, because a
+	 * section written twice is exactly what some of these tests are about.
+	 */
 	private List<String> headings(String content) {
-		return content.lines().map(String::strip).filter(line -> line.startsWith("#")).toList();
+		MarkdownDocument document = MarkdownDocument.parse(content);
+		return document.structuralLines(line -> MarkdownDocument.headingOf(line).isPresent())
+				.mapToObj(document::line)
+				.map(MarkdownDocument::headingOf)
+				.flatMap(Optional::stream)
+				.toList();
+	}
+
+	/** Whether the section carries a body, as the rule counts one. */
+	private boolean hasBody(String content, String section) {
+		return MarkdownDocument.parse(content).hasBody(section);
 	}
 
 	@Test
@@ -104,17 +133,6 @@ class ClaudeMdConformerTest {
 				"every original body must survive exactly once:\n" + conformed);
 		assertFalse(conformed.contains("Content.\n\n" + ClaudeMdConformer.STUB_BODY),
 				"a section that already has a body must not be given a stub");
-	}
-
-	/**
-	 * Mirrors the enforcer rule's own check: the section must carry something other
-	 * than blank lines before the next heading at its level or shallower.
-	 */
-	private boolean hasBody(String content, String section) {
-		List<String> lines = content.lines().map(String::strip).toList();
-		int start = lines.indexOf(section);
-		return start >= 0 && lines.stream().skip(start + 1L).dropWhile(String::isEmpty).findFirst()
-				.filter(line -> !line.startsWith("## ")).isPresent();
 	}
 
 	@Test
@@ -440,14 +458,8 @@ class ClaudeMdConformerTest {
 				A repo.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(referencesAgentsMdOutsideFences(conformed),
+		assertTrue(MarkdownDocument.parse(conformed).containsInProse(ClaudeMdConformer.AGENTS_REFERENCE),
 				"a mention that only exists as a code sample does not satisfy the rule:\n" + conformed);
-	}
-
-	/** Mirrors how the rule looks for the reference: fenced lines do not count. */
-	private boolean referencesAgentsMdOutsideFences(String content) {
-		return linesOutsideFences(content).stream()
-				.anyMatch(line -> line.contains(ClaudeMdConformer.AGENTS_REFERENCE));
 	}
 
 	@Test
@@ -491,7 +503,7 @@ class ClaudeMdConformerTest {
 	@Test
 	void closesAnUnterminatedFenceSoAppendedSectionsStayDocumentStructure() {
 		String conformed = conformer.conform(UNTERMINATED_FENCE);
-		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
 				"every appended section must be a heading, not code:\n" + conformed);
 		assertTrue(conformed.contains("class Foo {}"), "the code block keeps its content:\n" + conformed);
 	}
@@ -563,11 +575,6 @@ class ClaudeMdConformerTest {
 		assertEquals(headings.stream().distinct().toList(), headings, "no heading may be written twice: " + headings);
 	}
 
-	/** Mirrors how the rule finds headings: a heading inside a fence is code, not structure. */
-	private List<String> headingsOutsideFences(String content) {
-		return linesOutsideFences(content).stream().filter(line -> line.startsWith("#")).toList();
-	}
-
 	/**
 	 * A {@code ````} wrapper holding a {@code ```} sample is one code block to the
 	 * rule, which ends a fence only on a run at least as long as the one that opened
@@ -595,9 +602,9 @@ class ClaudeMdConformerTest {
 				````
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(headingsOutsideFences(conformed).contains("## Testing"),
+		assertTrue(headings(conformed).contains("## Testing"),
 				"the sample's heading is code, so the real section must still be appended:\n" + conformed);
-		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS), conformed);
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS), conformed);
 	}
 
 	/**
@@ -626,7 +633,7 @@ class ClaudeMdConformerTest {
 				Java 25.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(headingsOutsideFences(conformed).contains("## Maven"),
+		assertTrue(headings(conformed).contains("## Maven"),
 				"the sample's heading is code, so the real section must still be appended:\n" + conformed);
 		assertTrue(conformed.contains("```java\n## Maven\n"), "the sample must survive verbatim:\n" + conformed);
 	}
@@ -648,54 +655,9 @@ class ClaudeMdConformerTest {
 				class Foo {}
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(headingsOutsideFences(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
 				"every appended section must be a heading, not code:\n" + conformed);
 		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
-	}
-
-	/**
-	 * The document's lines that sit outside a code fence, stripped. The one place
-	 * these tests read fences, so the two questions they ask of a reshaped document —
-	 * which headings it carries, and whether it references {@code AGENTS.md} — cannot
-	 * come to different answers about what is code.
-	 *
-	 * <p>Deliberately written the way the enforcer's {@code MarkdownDocument} reads
-	 * fences rather than the way {@link ClaudeMdConformer} does, so these tests judge
-	 * the reshape against the rule it has to satisfy instead of against its own
-	 * reading of the document. A fence is closed only by a run of the same character,
-	 * at least as long as the one that opened it, carrying no info string.
-	 */
-	private List<String> linesOutsideFences(String content) {
-		List<String> outside = new ArrayList<>();
-		String open = null;
-		for (String line : content.lines().map(String::strip).toList()) {
-			open = collect(outside, line, open);
-		}
-		return outside;
-	}
-
-	/**
-	 * Records the line unless it is code — the delimiters included, as the rule masks
-	 * them too — and answers with the fence run still open after it.
-	 */
-	private String collect(List<String> outside, String line, String open) {
-		String run = fenceRun(line);
-		if (open == null) {
-			addUnlessCode(outside, line, run != null);
-			return run;
-		}
-		return closes(run, line, open) ? null : open;
-	}
-
-	private void addUnlessCode(List<String> outside, String line, boolean code) {
-		if (!code) {
-			outside.add(line);
-		}
-	}
-
-	private boolean closes(String run, String line, String open) {
-		return run != null && run.charAt(0) == open.charAt(0) && run.length() >= open.length()
-				&& line.substring(run.length()).isBlank();
 	}
 
 	/**
@@ -721,7 +683,7 @@ class ClaudeMdConformerTest {
 				Intro.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
 				"every required section must be a heading the rule can see:\n" + conformed);
 		assertTrue(conformed.contains("Removed for now."), "the commented-out text keeps its content:\n" + conformed);
 		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
@@ -749,7 +711,7 @@ class ClaudeMdConformerTest {
 				""";
 		String conformed = conformer.conform(generated);
 		assertTrue(conformed.contains("## Testing strategy"), "the commented heading must be left alone:\n" + conformed);
-		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
 				"the real section must still be appended:\n" + conformed);
 	}
 
@@ -776,7 +738,7 @@ class ClaudeMdConformerTest {
 				A repo.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(hasStructuralBody(conformed, "## Testing"),
+		assertTrue(hasBody(conformed, "## Testing"),
 				"a section whose only content is commented out needs a stub:\n" + conformed);
 	}
 
@@ -797,7 +759,7 @@ class ClaudeMdConformerTest {
 				## Testing
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(structuralLines(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
+		assertTrue(headings(conformed).containsAll(ClaudeMdConformer.REQUIRED_SECTIONS),
 				"every appended section must be a heading, not commented-out text:\n" + conformed);
 		assertEquals(conformed, conformer.conform(conformed), "a second reshape must not append the sections again");
 	}
@@ -819,7 +781,7 @@ class ClaudeMdConformerTest {
 				JUnit 5.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(hasStructuralBody(conformed, "## Testing"),
+		assertTrue(hasBody(conformed, "## Testing"),
 				"the section below the fence is structure, not a comment:\n" + conformed);
 		assertFalse(conformed.contains("## Testing\n\n" + ClaudeMdConformer.STUB_BODY),
 				"the section already had a body:\n" + conformed);
@@ -893,48 +855,5 @@ class ClaudeMdConformerTest {
 				"the section already had a body and needs no stub:\n" + conformed);
 		assertTrue(conformed.contains("#1 rule: run mvn install every time."),
 				"the prose keeps its place:\n" + conformed);
-	}
-
-	/**
-	 * The document's lines that can carry structure, read the way the enforcer's
-	 * {@code MarkdownDocument} reads them: outside code fences and outside HTML
-	 * comments alike. The counterpart of {@link #linesOutsideFences} for the tests
-	 * that ask what the rule would recognise as a heading.
-	 */
-	private List<String> structuralLines(String content) {
-		List<String> structural = new ArrayList<>();
-		boolean open = false;
-		for (String line : linesOutsideFences(content)) {
-			open = collectStructural(structural, line, open);
-		}
-		return structural;
-	}
-
-	/** Records the line unless a comment covers it, and answers whether one is still open after it. */
-	private boolean collectStructural(List<String> structural, String line, boolean open) {
-		if (open) {
-			return !line.contains("-->");
-		}
-		boolean opens = line.startsWith("<!--") && !line.contains("-->");
-		addUnlessCode(structural, line, opens);
-		return opens;
-	}
-
-	/** Whether the section carries a body the rule would count: prose outside fences and comments. */
-	private boolean hasStructuralBody(String content, String section) {
-		List<String> lines = structuralLines(content);
-		int start = lines.indexOf(section);
-		return start >= 0 && lines.stream().skip(start + 1L).dropWhile(String::isEmpty).findFirst()
-				.filter(line -> !line.startsWith("## ")).isPresent();
-	}
-
-	/** The leading run of fence characters a line declares, or {@code null} when it declares none. */
-	private String fenceRun(String line) {
-		if (line.isEmpty() || (line.charAt(0) != '`' && line.charAt(0) != '~')) {
-			return null;
-		}
-		char character = line.charAt(0);
-		String run = line.substring(0, (int) line.chars().takeWhile(candidate -> candidate == character).count());
-		return run.length() < 3 ? null : run;
 	}
 }

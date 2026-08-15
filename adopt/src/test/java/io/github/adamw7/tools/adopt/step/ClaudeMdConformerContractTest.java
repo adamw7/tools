@@ -1,12 +1,10 @@
 package io.github.adamw7.tools.adopt.step;
 
+import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Random;
@@ -92,6 +90,47 @@ class ClaudeMdConformerContractTest {
 	 * rule over it.
 	 */
 	private static final int GENERATED_DOCUMENTS = 250;
+
+	/**
+	 * A document the rule accepts and the reshape therefore has to leave exactly as
+	 * it is. The cases about what the reshape leaves alone each vary one section's
+	 * body — see {@link #conformingWith} — so what such a case is about is the body
+	 * it names rather than the twenty-five conforming lines around it, which were
+	 * spelled out again per case and drifted into three near-copies of one document.
+	 */
+	private static final String CONFORMING = """
+			# CLAUDE.md
+
+			See [AGENTS.md](AGENTS.md) for the full agent guide.
+
+			## Project
+
+			A small command line utility.
+
+			## Java version
+
+			Java 25.
+
+			## Maven
+
+			Run `mvn install`.
+
+			## Principles for Java Development
+
+			SOLID.
+
+			## Testing
+
+			JUnit 5.
+
+			## Dependencies
+
+			Ask before adding a new one.
+			""";
+
+	/** The {@link #CONFORMING} bodies a case may replace, each the whole content of its section. */
+	private static final String PROJECT_BODY = "A small command line utility.";
+	private static final String MAVEN_BODY = "Run `mvn install`.";
 
 	private final ClaudeMdConformer conformer = new ClaudeMdConformer();
 
@@ -630,39 +669,12 @@ class ClaudeMdConformerContractTest {
 	 */
 	@Test
 	void leavesADocumentCarryingAnIndentedFenceSampleUnchanged() {
-		String conforming = """
-				# CLAUDE.md
-
-				See [AGENTS.md](AGENTS.md) for the full agent guide.
-
-				## Project
-
-				A small command line utility.
-
-				## Java version
-
-				Java 25.
-
-				## Maven
-
+		String conforming = conformingWith(MAVEN_BODY, """
 				A fenced block opens with a line like this:
 
 				    ```
 
-				and closes with the same run.
-
-				## Principles for Java Development
-
-				SOLID.
-
-				## Testing
-
-				JUnit 5.
-
-				## Dependencies
-
-				Ask before adding a new one.
-				""";
+				and closes with the same run.""");
 
 		assertRuleAccepts(conforming);
 		assertEquals(conforming, conformer.conform(conforming));
@@ -674,37 +686,10 @@ class ClaudeMdConformerContractTest {
 	 */
 	@Test
 	void leavesADocumentWhoseSectionBodyContinuesAListItemUnchanged() {
-		String conforming = """
-				# CLAUDE.md
-
-				See [AGENTS.md](AGENTS.md) for the full agent guide.
-
-				## Project
-
+		String conforming = conformingWith(PROJECT_BODY, """
 				- the modules are:
 
-				    `data`, `code`, and `adopt` are the reactor modules.
-
-				## Java version
-
-				Java 25.
-
-				## Maven
-
-				Run `mvn install`.
-
-				## Principles for Java Development
-
-				SOLID.
-
-				## Testing
-
-				JUnit 5.
-
-				## Dependencies
-
-				Ask before adding a new one.
-				""";
+				    `data`, `code`, and `adopt` are the reactor modules.""");
 
 		assertRuleAccepts(conforming);
 		assertEquals(conforming, conformer.conform(conforming));
@@ -718,37 +703,7 @@ class ClaudeMdConformerContractTest {
 	 */
 	@Test
 	void leavesADocumentOpeningWithAByteOrderMarkAcceptableAndTitledOnce() {
-		String conforming = """
-				# CLAUDE.md
-
-				See [AGENTS.md](AGENTS.md) for the full agent guide.
-
-				## Project
-
-				A small command line utility.
-
-				## Java version
-
-				Java 25.
-
-				## Maven
-
-				Run `mvn install`.
-
-				## Principles for Java Development
-
-				SOLID.
-
-				## Testing
-
-				JUnit 5.
-
-				## Dependencies
-
-				Ask before adding a new one.
-				""";
-
-		String conformed = conformer.conform("\uFEFF" + conforming);
+		String conformed = conformer.conform("\uFEFF" + CONFORMING);
 		assertRuleAccepts(conformed);
 		assertEquals(1, conformed.lines().filter("# CLAUDE.md"::equals).count(),
 				"the rule reads the title through the mark, so the reshape must not add another:\n" + conformed);
@@ -756,38 +711,8 @@ class ClaudeMdConformerContractTest {
 
 	@Test
 	void leavesADocumentThatAlreadySatisfiesTheRuleAcceptable() {
-		String conforming = """
-				# CLAUDE.md
-
-				See [AGENTS.md](AGENTS.md) for the full agent guide.
-
-				## Project
-
-				A small command line utility.
-
-				## Java version
-
-				Java 25.
-
-				## Maven
-
-				Run `mvn install`.
-
-				## Principles for Java Development
-
-				SOLID.
-
-				## Testing
-
-				JUnit 5.
-
-				## Dependencies
-
-				Ask before adding a new one.
-				""";
-
-		assertRuleAccepts(conforming);
-		assertRuleAccepts(conformer.conform(conforming));
+		assertRuleAccepts(CONFORMING);
+		assertRuleAccepts(conformer.conform(CONFORMING));
 	}
 
 	/**
@@ -848,12 +773,17 @@ class ClaudeMdConformerContractTest {
 	}
 
 	private ClaudeMdFormatRule ruleFor(String content) {
-		Path file = tempDir.resolve("CLAUDE.md");
-		try {
-			Files.writeString(file, content);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Could not write " + file, e);
-		}
-		return ClaudeMdFormatRule.validating(file.toFile());
+		return ClaudeMdFormatRule.validating(writeString(tempDir.resolve("CLAUDE.md"), content).toFile());
+	}
+
+	/**
+	 * {@link #CONFORMING} with one section's body replaced, so a case about how a
+	 * particular body is read shows only that body.
+	 *
+	 * @param body        the body to replace, one of the constants above
+	 * @param replacement what the section carries instead
+	 */
+	private static String conformingWith(String body, String replacement) {
+		return CONFORMING.replace(body, replacement);
 	}
 }

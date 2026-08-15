@@ -33,8 +33,9 @@ public class GradleBuildSystem extends AbstractWrappedBuildSystem {
 		this(new BuildWrapper("gradlew", "gradlew.bat"));
 	}
 
+	/** Gradle's name and its program are the one word, unlike Maven's. */
 	GradleBuildSystem(BuildWrapper wrapper) {
-		super(GRADLE, VERIFY_ARGUMENTS, wrapper);
+		super(GRADLE, GRADLE, VERIFY_ARGUMENTS, wrapper);
 	}
 
 	@Override

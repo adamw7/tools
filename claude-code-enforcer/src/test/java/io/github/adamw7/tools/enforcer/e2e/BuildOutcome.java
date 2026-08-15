@@ -1,11 +1,12 @@
 package io.github.adamw7.tools.enforcer.e2e;
 
 /**
- * What a Maven build said and whether it passed — the whole of what an end-to-end
- * test can observe, since a fixture build runs in its own process.
+ * What a process {@link LoggedProcess} ran said and whether it passed — the whole
+ * of what an end-to-end test can observe, since a fixture build, like the clone
+ * that fetches the project it is pointed at, runs in its own process.
  *
- * @param exitCode the process exit code, zero when the build succeeded
- * @param output   the merged standard output and standard error of the build
+ * @param exitCode the process exit code, zero when it succeeded
+ * @param output   the merged standard output and standard error of the process
  */
 record BuildOutcome(int exitCode, String output) {
 

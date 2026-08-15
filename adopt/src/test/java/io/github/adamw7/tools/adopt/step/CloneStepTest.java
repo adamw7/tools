@@ -36,6 +36,50 @@ class CloneStepTest {
 	}
 
 	/**
+	 * {@code git clone} writes the URL it was handed into {@code .git/config} verbatim,
+	 * so a run driven by CI — whose URL carries {@code x-access-token:TOKEN} — used to
+	 * leave that token in the workspace in plaintext, long after the adoption that
+	 * needed it had finished. The remote is rewritten to the same URL without its
+	 * credentials, which still fetches; {@link PushStep} supplies them to the one
+	 * command that authenticates.
+	 */
+	@Test
+	void rewritesTheClonedOriginSoTheCredentialsAreNotLeftInTheCheckout() {
+		AdoptionContext credentialled = new AdoptionContext(
+				"https://x-access-token:TOKEN@github.com/adamw7/tools.git", workspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		step.execute(credentialled, runner);
+		assertEquals(List.of("git", "remote", "set-url", "origin", "https://github.com/adamw7/tools.git"),
+				runner.commandAt(1));
+		assertEquals(credentialled.repositoryDirectory(), runner.invocations().get(1).workingDirectory());
+		assertFalse(runner.commandAt(1).toString().contains("TOKEN"), "the rewritten remote must carry no token");
+	}
+
+	/** A URL that carried no credentials records exactly what it was given, in one command. */
+	@Test
+	void leavesTheClonedOriginAloneWhenTheUrlCarriedNoCredentials() {
+		RecordingCommandRunner runner = new RecordingCommandRunner();
+		step.execute(context, runner);
+		assertEquals(1, runner.invocations().size(), "nothing to rewrite:\n" + runner.invocations());
+	}
+
+	/**
+	 * A checkout the adoption did not create is not the adoption's to reconfigure: its
+	 * {@code origin} is whatever its owner set up, credentials included, and they may
+	 * well push through it themselves once the adoption has finished.
+	 */
+	@Test
+	void leavesAReusedCheckoutsOriginAlone(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = new AdoptionContext(
+				"https://x-access-token:TOKEN@github.com/adamw7/tools.git", existingWorkspace);
+		Files.createDirectories(existing.repositoryDirectory().resolve(".git"));
+		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
+		step.execute(existing, runner);
+		assertFalse(runner.invocations().stream().anyMatch(invocation -> invocation.command().contains("set-url")),
+				"a reused checkout's remote must be left as its owner configured it:\n" + runner.invocations());
+	}
+
+	/**
 	 * The checkout is the run's one output that never reaches GitHub, so a caller that
 	 * named no workspace — and a dry run, which publishes nothing at all — has nothing
 	 * else to be pointed at.

@@ -91,6 +91,14 @@ class AdoptionContextTest {
 		assertEquals("https://***@github.com/owner/repo.git", context.displayUrl());
 	}
 
+	/** What the checkout is left recording: a usable URL that carries no secret. */
+	@Test
+	void answersACredentialFreeUrlForTheCheckoutToKeep() {
+		AdoptionContext context = new AdoptionContext("https://x-access-token:secret@github.com/owner/repo.git",
+				Path.of("/tmp/workspace"));
+		assertEquals("https://github.com/owner/repo.git", context.checkoutUrl());
+	}
+
 	/**
 	 * A step deciding whether a checkout it found is the repository under adoption
 	 * asks the context, so the credentialled clone URL stays where only the clone

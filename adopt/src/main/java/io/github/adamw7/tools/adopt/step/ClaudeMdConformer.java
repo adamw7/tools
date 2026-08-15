@@ -71,7 +71,18 @@ public class ClaudeMdConformer {
 
 	static final String AGENTS_REFERENCE_LINE = "See [AGENTS.md](AGENTS.md) for the companion agent guide.";
 
-	private static final String STUB_BODY = "See [AGENTS.md](AGENTS.md).";
+	/**
+	 * What a required section the project has nothing to say under is given, since the
+	 * rule fails an empty section as firmly as a missing one. It used to read "See
+	 * [AGENTS.md](AGENTS.md)." — which pointed at the companion file
+	 * {@link AdoptionAssets} installs beside it, and that file points back here and
+	 * calls {@code CLAUDE.md} the source of truth. Every adopted repository's pull
+	 * request therefore opened with six sections whose whole content was a reference to
+	 * a document that referred the reader straight back, and a maintainer reading it
+	 * had no way to tell an unanswered section from an answered one. Saying plainly
+	 * that nothing is recorded yet is both true and actionable.
+	 */
+	static final String STUB_BODY = "_Not documented yet — replace this line with the project's own guidance._";
 
 	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
 	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
@@ -86,9 +97,9 @@ public class ClaudeMdConformer {
 	/**
 	 * Conforms only as far as the guard being wired in actually demands. Stamping the
 	 * {@code claudeMdFormat} sections onto every adopted repository put Java and Maven
-	 * headings, each stubbed with a pointer to {@code AGENTS.md}, into projects that
-	 * are neither — where nothing then checked them, the Gradle and GitHub Actions
-	 * guards asking only that the file exist and carry something.
+	 * headings, each carrying nothing but {@link #STUB_BODY}, into projects that are
+	 * neither — where nothing then checked them, the Gradle and GitHub Actions guards
+	 * asking only that the file exist and carry something.
 	 *
 	 * @param requiredSections the headings to canonicalize, append and give a body to,
 	 *                         empty for a guard that demands no particular section. A

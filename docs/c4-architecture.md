@@ -627,7 +627,7 @@ sequenceDiagram
     loop each repository URL
         B->>A: adopt(context, report)
         A->>R: toolchain — git / claude / gh present, gh logged in
-        A->>R: clone (credentialled URL, masked in logs)
+        A->>R: clone (credentialled URL, masked in logs, dropped from origin)
         R->>G: git clone
         G-->>W: checkout
         A->>W: build-toolchain — detect Maven / Gradle / fallback

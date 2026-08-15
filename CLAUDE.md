@@ -40,7 +40,8 @@ run `mvn install` from the repository root.
   project's own build tool, branch, trust the checkout, `claude init` and conform
   the generated `CLAUDE.md`, wire a build-tool-aware guard in, verify it, push,
   and open a pull request. The default branch is never written to, clone-URL
-  credentials are masked everywhere, `--dry-run` leaves out the push and the pull
+  credentials are masked in everything the run reports and are never left in the
+  checkout's `.git/config`, `--dry-run` leaves out the push and the pull
   request entirely, and one run adopts a list of repositories without letting a
   failure stop the rest. Skill: `adopt-pipeline`.
 - **Markdown reading** (`markdown-common`) — the dependency-free reader both the

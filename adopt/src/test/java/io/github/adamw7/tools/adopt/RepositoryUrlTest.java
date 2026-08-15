@@ -226,6 +226,45 @@ class RepositoryUrlTest {
 	void aUrlWithoutCredentialsReadsTheSameEitherWay() {
 		RepositoryUrl url = RepositoryUrl.of("https://github.com/owner/repo.git");
 		assertEquals(url.value(), url.redacted());
+		assertEquals(url.value(), url.withoutCredentials());
+	}
+
+	/**
+	 * What the checkout records as its {@code origin}: the credentials are removed
+	 * rather than masked, because the masked form names a host called {@code ***@…}
+	 * that git cannot fetch from.
+	 */
+	@Test
+	void dropsTheCredentialsForTheUrlTheCheckoutKeeps() {
+		RepositoryUrl url = RepositoryUrl.of("https://x-access-token:secret@github.com/owner/repo.git");
+		assertEquals("https://github.com/owner/repo.git", url.withoutCredentials());
+		assertEquals("https://github.com/owner/repo.git",
+				RepositoryUrl.of("https://token@github.com/owner/repo.git").withoutCredentials());
+	}
+
+	/**
+	 * A password may carry an unencoded {@code @}, which makes the credentials run to
+	 * the <em>last</em> one before the path — the same reading {@link Redaction} takes.
+	 * Stopping at the first would leave the tail of the password in the URL written to
+	 * {@code .git/config}, which is the one place this exists to keep it out of.
+	 */
+	@Test
+	void dropsAPasswordCarryingAnAtSign() {
+		assertEquals("https://github.com/owner/repo.git",
+				RepositoryUrl.of("https://user:p@ss@github.com/owner/repo.git").withoutCredentials());
+	}
+
+	/**
+	 * An SSH URL's user is the account to log in as, not a secret, so it is kept: a
+	 * {@code git@} dropped from one would authenticate as whoever is running the
+	 * adoption and be refused by the host.
+	 */
+	@Test
+	void keepsTheUserOfAnSshUrl() {
+		assertEquals("git@github.com:owner/repo.git",
+				RepositoryUrl.of("git@github.com:owner/repo.git").withoutCredentials());
+		assertEquals("ssh://git@github.com/owner/repo.git",
+				RepositoryUrl.of("ssh://git@github.com/owner/repo.git").withoutCredentials());
 	}
 
 	/** A URL refused on its input is quoted back, so it must be masked there too. */

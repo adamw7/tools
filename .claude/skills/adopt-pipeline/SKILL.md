@@ -17,8 +17,9 @@ module's rules are unusually strict because it shells out to `git`, `gh` and
    is logged in). Fails before any expensive work. A dry run is checked with
    `ToolchainStep.forDryRun()` — `git` and `claude` only, since `gh` is used by
    the pull request the run leaves out.
-2. `CloneStep` — clones into the workspace. **The only step allowed to read the
-   credentialled URL.**
+2. `CloneStep` — clones into the workspace, then rewrites the checkout's `origin`
+   to `checkoutUrl()`, the same URL without its credentials, so the token git
+   wrote into `.git/config` does not outlive the run.
 3. `BuildToolchainStep` — the *cloned project's* build tool, checked as soon as
    the clone reveals which one it is.
 4. `BranchStep` — feature branch (`claude/adopt-claude-code` by default). The
@@ -62,9 +63,12 @@ pull request's URL.
 - Fields are **immutable** (step state is final).
 - A step must not depend on `GitHubRepoAdopter` — the pipeline knows its steps,
   not the other way round.
-- Only `CloneStep` may touch `AdoptionContext#repositoryUrl()`; everything else
-  logs `displayUrl()`. `Redaction` masks credentials in every log, message and
-  report — keep it that way.
+- Only `CloneStep` and `PushStep` may touch `AdoptionContext#repositoryUrl()` —
+  the two commands that authenticate to the remote. Everything else logs
+  `displayUrl()` or, where a working URL is needed, `checkoutUrl()`. `PushStep`
+  passes the credentials as a `-c remote.origin.pushurl` override, which git
+  applies to that one invocation and writes nowhere. `Redaction` masks
+  credentials in every log, message and report — keep it that way.
 - Register the step in `GitHubRepoAdopter.defaultSteps` (or the optional list it
   belongs to), and unit-test it with a fake `CommandRunner`.
 

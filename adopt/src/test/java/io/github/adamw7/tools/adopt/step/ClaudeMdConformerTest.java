@@ -73,10 +73,27 @@ class ClaudeMdConformerTest {
 				Run `mvn install`.
 				""";
 		String conformed = conformer.conform(generated);
-		assertTrue(conformed.contains("## Project\n\nSee [AGENTS.md](AGENTS.md)."),
+		assertTrue(conformed.contains("## Project\n\n" + ClaudeMdConformer.STUB_BODY),
 				"the emptied section must be given a body:\n" + conformed);
 		ClaudeMdConformer.REQUIRED_SECTIONS.forEach(section -> assertTrue(hasBody(conformed, section),
 				section + " must have a body:\n" + conformed));
+	}
+
+	/**
+	 * The stub used to read "See [AGENTS.md](AGENTS.md).", while the {@code AGENTS.md}
+	 * installed beside it refers the reader back to {@code CLAUDE.md} and calls it the
+	 * source of truth. Every adopted repository's pull request therefore arrived with
+	 * six sections that said nothing and pointed in a circle, and a maintainer could
+	 * not tell a section nobody had answered from one that had been.
+	 */
+	@Test
+	void stubsSayNothingIsRecordedRatherThanPointingAtTheCompanionFile() {
+		String conformed = conformer.conform("# CLAUDE.md\n");
+		assertFalse(conformed.contains("## Project\n\nSee [AGENTS.md](AGENTS.md)."),
+				"a stub must not send the reader to the file that sends them back:\n" + conformed);
+		assertTrue(conformed.contains(ClaudeMdConformer.STUB_BODY), "the stub must still be there:\n" + conformed);
+		assertEquals(1, conformed.lines().filter(line -> line.contains("AGENTS.md")).count(),
+				"AGENTS.md is named once, by the reference line the rule demands:\n" + conformed);
 	}
 
 	@Test
@@ -85,7 +102,7 @@ class ClaudeMdConformerTest {
 		String conformed = conformer.conform(generated);
 		assertEquals(ClaudeMdConformer.REQUIRED_SECTIONS.size(), conformed.split("Content\\.", -1).length - 1,
 				"every original body must survive exactly once:\n" + conformed);
-		assertFalse(conformed.contains("Content.\n\nSee [AGENTS.md](AGENTS.md)."),
+		assertFalse(conformed.contains("Content.\n\n" + ClaudeMdConformer.STUB_BODY),
 				"a section that already has a body must not be given a stub");
 	}
 
@@ -317,7 +334,7 @@ class ClaudeMdConformerTest {
 				Java 25.
 				""";
 		String conformed = conformer.conform(generated);
-		assertFalse(conformed.contains("## Project\n\nSee [AGENTS.md](AGENTS.md)."),
+		assertFalse(conformed.contains("## Project\n\n" + ClaudeMdConformer.STUB_BODY),
 				"a section whose body is a code block must not be given a stub:\n" + conformed);
 	}
 
@@ -335,7 +352,7 @@ class ClaudeMdConformerTest {
 				JUnit 5.
 				""";
 		String conformed = conformer.conform(generated);
-		assertFalse(conformed.contains("## Testing\n\nSee [AGENTS.md](AGENTS.md)."),
+		assertFalse(conformed.contains("## Testing\n\n" + ClaudeMdConformer.STUB_BODY),
 				"a section carrying a sub-heading must not be given a stub:\n" + conformed);
 	}
 
@@ -804,7 +821,7 @@ class ClaudeMdConformerTest {
 		String conformed = conformer.conform(generated);
 		assertTrue(hasStructuralBody(conformed, "## Testing"),
 				"the section below the fence is structure, not a comment:\n" + conformed);
-		assertFalse(conformed.contains("## Testing\n\n" + "See [AGENTS.md](AGENTS.md)."),
+		assertFalse(conformed.contains("## Testing\n\n" + ClaudeMdConformer.STUB_BODY),
 				"the section already had a body:\n" + conformed);
 	}
 
@@ -872,7 +889,7 @@ class ClaudeMdConformerTest {
 				A repo.
 				""";
 		String conformed = conformer.conform(generated);
-		assertFalse(conformed.contains("## Testing\n\n" + "See [AGENTS.md](AGENTS.md)."),
+		assertFalse(conformed.contains("## Testing\n\n" + ClaudeMdConformer.STUB_BODY),
 				"the section already had a body and needs no stub:\n" + conformed);
 		assertTrue(conformed.contains("#1 rule: run mvn install every time."),
 				"the prose keeps its place:\n" + conformed);

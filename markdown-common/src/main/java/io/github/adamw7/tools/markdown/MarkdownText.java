@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -17,7 +19,13 @@ import java.util.stream.Stream;
 public final class MarkdownText {
 
 	private static final char BYTE_ORDER_MARK = (char) 0xFEFF;
-	private static final Pattern CODE_SPAN = Pattern.compile("`[^`]*`");
+	private static final char BACKTICK = '`';
+
+	/** What a code span is replaced by, so the words either side of it stay separate. */
+	private static final String SPAN_REPLACEMENT = " ";
+
+	/** No run of backticks closes this one. */
+	private static final int UNCLOSED = -1;
 
 	private MarkdownText() {
 	}
@@ -101,9 +109,82 @@ public final class MarkdownText {
 	 * writes a sample link or import inside backticks precisely because it is an
 	 * example, and a rule that followed it would report the sample's target as a
 	 * missing file.
+	 * <p>
+	 * A span is delimited as Markdown delimits one: a run of backticks is closed by
+	 * the next run of <em>exactly</em> the same length. Both halves of that matter,
+	 * because a span whose own content carries a backtick has to be written with a
+	 * longer run — {@code ``a ` b``} is the only way to quote {@code a ` b} at all.
+	 * Reading the delimiter as a single backtick instead tore such a span in half at
+	 * its second character and handed the content back as prose: a document that
+	 * wrote {@code ``TODO``} was reported as carrying the very token it had quoted,
+	 * a sample import written {@code ``@docs/setup.md``} was followed to a file
+	 * nobody meant to name, and a {@code ``<!--``} shown as an example opened a
+	 * comment nothing closed — masking every line below it, the document's own
+	 * headings included.
+	 * <p>
+	 * A run that no later run of its length closes is ordinary text, and the scan
+	 * carries on from the run after it, so an odd backtick neither swallows the rest
+	 * of the line nor hides a span written further along it.
 	 */
 	public static String withoutCodeSpans(String line) {
-		return CODE_SPAN.matcher(line).replaceAll(" ");
+		List<Backticks> runs = backtickRuns(line);
+		StringBuilder text = new StringBuilder();
+		int copied = 0;
+		int index = 0;
+		while (index < runs.size()) {
+			int closing = closingRun(runs, index);
+			if (closing == UNCLOSED) {
+				index++;
+			} else {
+				text.append(line, copied, runs.get(index).start()).append(SPAN_REPLACEMENT);
+				copied = runs.get(closing).end();
+				index = closing + 1;
+			}
+		}
+		return text.append(line, copied, line.length()).toString();
+	}
+
+	/** One maximal run of backticks: where it starts, and how many it runs. */
+	private record Backticks(int start, int length) {
+
+		int end() {
+			return start + length;
+		}
+	}
+
+	/**
+	 * The line's runs of backticks, in order. They are maximal, so two of them are
+	 * always separated by at least one other character — which is what lets a run be
+	 * compared with the next one by length alone.
+	 */
+	private static List<Backticks> backtickRuns(String line) {
+		List<Backticks> runs = new ArrayList<>();
+		int index = 0;
+		while (index < line.length()) {
+			int length = runLengthAt(line, index);
+			if (length > 0) {
+				runs.add(new Backticks(index, length));
+			}
+			index += Math.max(length, 1);
+		}
+		return runs;
+	}
+
+	private static int runLengthAt(String line, int start) {
+		int end = start;
+		while (end < line.length() && line.charAt(end) == BACKTICK) {
+			end++;
+		}
+		return end - start;
+	}
+
+	/** The first later run of the same length, or {@link #UNCLOSED} when none closes this one. */
+	private static int closingRun(List<Backticks> runs, int opening) {
+		int length = runs.get(opening).length();
+		return IntStream.range(opening + 1, runs.size())
+				.filter(index -> runs.get(index).length() == length)
+				.findFirst()
+				.orElse(UNCLOSED);
 	}
 
 	/**

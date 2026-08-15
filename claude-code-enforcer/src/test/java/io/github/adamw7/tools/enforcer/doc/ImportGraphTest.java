@@ -148,6 +148,19 @@ class ImportGraphTest {
 		assertEquals(List.of(), graphFrom(root).importsOf(root));
 	}
 
+	/**
+	 * A span written with a longer run of backticks quotes its content just as firmly.
+	 * Closing the run on its own second character let the path out of the span it was
+	 * shown in, so a sample import was followed to a file nobody meant to name and the
+	 * rule demanded it exist.
+	 */
+	@Test
+	void ignoresImportsInsideLongerInlineCodeSpans() {
+		File root = write("CLAUDE.md", "An import is written ``@docs/setup.md``.\n");
+
+		assertEquals(List.of(), graphFrom(root).importsOf(root));
+	}
+
 	@Test
 	void ignoresAHomeRelativeImport() {
 		File root = write("CLAUDE.md", "Also @~/personal/prefs.md is loaded.\n");

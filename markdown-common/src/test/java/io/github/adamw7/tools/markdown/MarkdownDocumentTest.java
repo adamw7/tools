@@ -771,6 +771,45 @@ class MarkdownDocumentTest {
 		assertTrue(document.containsInProse("TODO"));
 	}
 
+	/**
+	 * A span written with two backticks is quoted just as firmly as one written with
+	 * one. Closing the run on its own second character handed the content back as
+	 * prose, so a document that quoted the token it forbids was reported as carrying
+	 * it — with no spelling of the quote that could have satisfied the rule.
+	 */
+	@Test
+	void doesNotReadATokenInsideALongerInlineCodeSpanAsUnquoted() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				Never leave a ``TODO`` behind.
+				""");
+
+		assertFalse(document.containsUnquoted("TODO"));
+		assertTrue(document.containsInProse("TODO"));
+	}
+
+	/**
+	 * The same reading decides what opens an HTML comment, so a delimiter quoted with
+	 * a longer run is illustrated rather than written. Reading it as a real one opened
+	 * a block nothing closed and masked the document's remaining headings as inert.
+	 */
+	@Test
+	void doesNotOpenACommentOnADelimiterInsideALongerInlineCodeSpan() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				An HTML comment opens with ``<!--``.
+
+				## Testing
+				Body.
+				""");
+
+		assertEquals(List.of(), commentedLines(document));
+		assertEquals(Set.of("# Title", "## Testing"), document.headings());
+		assertTrue(document.hasBody("## Testing"));
+	}
+
 	@Test
 	void readsATokenOutsideACodeSpanOnTheSameLineAsUnquoted() {
 		MarkdownDocument document = MarkdownDocument.parse("""

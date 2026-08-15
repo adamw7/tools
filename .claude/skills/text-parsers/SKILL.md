@@ -80,6 +80,15 @@ job now, and `FrontMatterTest` still pins every one of them.
   the remaining definitions' violations with it.
 - `withoutCodeSpans` before matching any markup. Documentation about Markdown
   writes its sample link or import in backticks precisely because it is a sample.
+- A span's delimiter is a **run** of backticks, closed by the next run of
+  *exactly* that length — not by a single backtick. A span whose content carries
+  a backtick can only be written with a longer run (``` ``a ` b`` ```), and
+  closing on the opening run's own second character tore it in half and handed
+  the content back as prose: ``` ``TODO`` ``` tripped the ban it was quoting,
+  ``` ``@docs/setup.md`` ``` was followed to a file nobody named, and a
+  ``` ``<!--`` ``` sample opened a comment nothing closed. A run nothing closes
+  is ordinary text and the scan carries on past it, so an odd backtick neither
+  swallows the line nor hides a real span later on it.
 - `write` refuses a symbolic link, so an auto-fix cannot be redirected through a
   planted link.
 - Strip the byte-order mark on read, once, centrally.

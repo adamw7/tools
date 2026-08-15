@@ -399,6 +399,145 @@ class ClaudeMdConformerContractTest {
 	}
 
 	/**
+	 * An indented line directly below a paragraph is a lazy continuation of it rather
+	 * than code, so the {@code ## Testing} written there is a heading both readers
+	 * count — until a blank line appears above it, at which point it is an indented
+	 * code block and neither counts it. Adding the {@code AGENTS.md} reference puts
+	 * exactly that blank line there, so a reshape that settled its sections before
+	 * adding the reference read the section as present, appended nothing, and then
+	 * buried the heading it had been relying on. The adoption committed and pushed a
+	 * {@code CLAUDE.md} its own {@link VerifyStep} reports as missing {@code ##
+	 * Testing}.
+	 */
+	@Test
+	void appendsASectionTheAgentsReferenceIsAboutToBury() {
+		String generated = """
+				# CLAUDE.md
+				    ## Testing
+
+				Some prose about the project.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Dependencies
+
+				Existing only.
+				""";
+
+		String conformed = conformer.conform(generated);
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformed);
+		assertSettled(conformed);
+	}
+
+	/**
+	 * A fence delimiter indented inside a list item is a delimiter, because the four
+	 * columns that quote code are counted from the item's content rather than from the
+	 * margin. Giving a bare section its stub puts a line at the margin, which ends the
+	 * list and so lowers that column — and the delimiter stops being one. The
+	 * terminator the reshape had already appended for the block it opened was then a
+	 * delimiter <em>opening</em> a block, and the sections appended after it landed
+	 * inside code, so the document came back still missing them.
+	 */
+	@Test
+	void appendsASectionOutsideAFenceItsOwnStubClosed() {
+		String generated = """
+				# CLAUDE.md
+
+				See [AGENTS.md](AGENTS.md) for the guide.
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				- the headings a generated file needs are:
+				    ## Testing
+				    ## Deployment
+				    ```
+				""";
+
+		String conformed = conformer.conform(generated);
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformed);
+		assertSettled(conformed);
+	}
+
+	/**
+	 * The same reclassification, against the reference rather than a section: the only
+	 * {@code AGENTS.md} mention sits inside a list item, where it is prose, and the
+	 * stub that gives {@code ## Testing} a body ends that list and turns the mention
+	 * into indented code. Whichever order the reshape settles the two in, one of them
+	 * can be undone by the other, which is why it repeats until the document stops
+	 * changing.
+	 */
+	@Test
+	void addsTheReferenceItsOwnStubTurnedIntoCode() {
+		String generated = """
+				# CLAUDE.md
+
+				## Project
+
+				A small command line utility.
+
+				## Java version
+
+				Java 25.
+
+				## Maven
+
+				Run `mvn install`.
+
+				## Principles for Java Development
+
+				SOLID.
+
+				## Dependencies
+
+				Existing only.
+
+				- the headings a generated file needs are:
+				    ## Testing
+				    ## Deployment
+
+				    See [AGENTS.md](AGENTS.md) for the companion guide.
+				""";
+
+		String conformed = conformer.conform(generated);
+
+		assertRuleRejects(generated);
+		assertRuleAccepts(conformed);
+		assertSettled(conformed);
+	}
+
+	/**
 	 * A lone fence delimiter shown four columns in is how a document explains what a
 	 * fence looks like, and the rule reads it as the indented code it is. A conformer
 	 * that marked fences before indents opened a block on it that nothing closed, read
@@ -592,6 +731,17 @@ class ClaudeMdConformerContractTest {
 
 		assertRuleAccepts(conforming);
 		assertRuleAccepts(conformer.conform(conforming));
+	}
+
+	/**
+	 * The reshape's own output has to be a document it then leaves alone. A re-adoption
+	 * runs the reshape over the file the last one committed, so an output the reshape
+	 * would edit again is a diff in every pull request that repository ever gets — and
+	 * the pass that changes nothing is precisely the pass whose result the rule accepts.
+	 */
+	private void assertSettled(String conformed) {
+		assertEquals(conformed, conformer.conform(conformed),
+				"conforming an already conformed document must change nothing:\n" + conformed);
 	}
 
 	private void assertRuleAccepts(String content) {

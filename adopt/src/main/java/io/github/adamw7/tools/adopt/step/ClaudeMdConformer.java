@@ -24,7 +24,10 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * is appended, and a required section left empty gets a stub body because the rule
  * fails an empty section just as it fails a missing one. Code — fenced or indented
  * — and commented-out text are left alone, mirroring how the rule matches, and
- * reshaping an already-conforming document is a no-op.
+ * reshaping an already-conforming document is a no-op. It is also repeated until the
+ * document stops changing, because an edit changes how the lines below it are read
+ * and so can undo a question the same pass had already answered — see
+ * {@link #conform}.
  *
  * <p>Which sections it demands is the caller's to choose, because the guard being
  * wired in differs by build system — see
@@ -87,6 +90,17 @@ public class ClaudeMdConformer {
 	/** The blank lines the reshape may leave at the end, dropped so the document keeps a single one. */
 	private static final Pattern TRAILING_BLANK_LINES = Pattern.compile("\\n\\s*+\\z");
 
+	/**
+	 * How many times {@link #conform} may run the pass before it stops waiting for the
+	 * document to settle. Two is the ordinary cost — one pass that reshapes and one
+	 * that confirms the reshape left nothing behind — and a third is spent only where
+	 * a pass's own edit reclassified a line an earlier part of that same pass had read.
+	 * The bound is what stops a document nothing settles from looping; such a document
+	 * comes back as the last pass left it, and {@link VerifyStep} refuses it before
+	 * anything is pushed.
+	 */
+	private static final int MAX_PASSES = 4;
+
 	private final List<String> requiredSections;
 
 	/** Conforms to the full {@code claudeMdFormat} contract. */
@@ -112,16 +126,58 @@ public class ClaudeMdConformer {
 	}
 
 	/**
+	 * Reshapes until the document stops changing, which is the only way one pass can
+	 * be trusted: an edit made part-way through a pass changes how the lines below it
+	 * are read, so a question the pass had already answered can stop being true before
+	 * the pass ends. Every edit here is one of those. Inserting the {@code AGENTS.md}
+	 * reference puts a blank line above what followed the title, and a blank line is
+	 * what lets the line below it open an indented code block, so a {@code ## Testing}
+	 * that had been a lazy continuation of a paragraph became code. Inserting a stub
+	 * puts a line at the margin, which ends an open list and lowers the column at
+	 * which the lines below quote code, so a fence delimiter indented inside that list
+	 * stopped being one — and the terminator already appended for it then
+	 * <em>opened</em> a block that swallowed everything after it. Renaming a near-miss
+	 * heading moves it to the margin and ends a list the same way. Each of those left
+	 * the reshape reporting work it had done on a document that no longer existed, and
+	 * {@link VerifyStep} failing on the file the adoption had just committed.
+	 *
+	 * <p>What makes repeating the pass an answer rather than a retry is that a pass
+	 * which changes nothing is exactly a document the rule accepts: the pass leaves a
+	 * title alone only where the rule finds one, leaves the reference alone only where
+	 * {@code containsInProse} finds one, and leaves a section alone only where the
+	 * rule's own lookup finds it carrying a body. So the loop ends on the very
+	 * condition the guard checks, and a document that already conforms settles on the
+	 * first pass — which is what keeps the reshape a no-op on re-adoption.
+	 *
 	 * @return {@code content} reshaped so the {@code claudeMdFormat} rule passes,
 	 *         with a single trailing newline
 	 */
 	public String conform(String content) {
+		String conformed = reshape(content);
+		for (int pass = 1; pass < MAX_PASSES; pass++) {
+			String settled = reshape(conformed);
+			if (settled.equals(conformed)) {
+				return conformed;
+			}
+			conformed = settled;
+		}
+		return conformed;
+	}
+
+	/**
+	 * One pass, with the two insertions that go above the document's body — the title
+	 * and the reference — made before a section is looked for. The loop above is what
+	 * makes the result sound whatever this order is, but settling those first is what
+	 * lets the ordinary generated document reshape in one pass rather than two, and a
+	 * pass that finds work left over appends it at the end of the file.
+	 */
+	private String reshape(String content) {
 		List<String> lines = splitLines(content);
 		closeUnterminatedBlocks(lines);
 		ensureTitle(lines);
+		ensureAgentsReference(lines);
 		canonicalizeHeadings(lines);
 		ensureRequiredSections(lines);
-		ensureAgentsReference(lines);
 		return join(lines);
 	}
 
@@ -250,28 +306,51 @@ public class ClaudeMdConformer {
 	}
 
 	/**
-	 * Gives every required section both a heading and a body: an absent section is
-	 * appended with a stub, and a heading the document left bare — typically a
-	 * near-miss renamed in place above — has one inserted beneath it. The rule fails
-	 * an empty section just as it fails a missing one, so both are settled here.
+	 * Gives every required section both a heading and a body: a heading the document
+	 * left bare — typically a near-miss renamed in place above — has a stub inserted
+	 * beneath it, and a section the document does not carry at all is appended with
+	 * one. The rule fails an empty section just as it fails a missing one, so both
+	 * are settled here.
+	 *
+	 * <p>The two are separate passes, with the document's blocks closed again between
+	 * them, because inserting a stub is a mid-document edit and a mid-document edit
+	 * can change what the lines below it are. A stub sits at the margin, which ends an
+	 * open list — and that lowers the column at which the lines below quote code, so a
+	 * fence delimiter indented inside that list stops being one. The terminator
+	 * {@link #closeUnterminatedBlocks} had already appended for it then <em>opened</em>
+	 * a block instead of closing one, and every section appended afterwards landed
+	 * inside it, where the rule reads it as code: the reshape handed
+	 * {@link VerifyStep} a document still missing the sections it had just written.
+	 * Interleaving the two passes has the same flaw one step further on, since a stub
+	 * inserted after a section was appended can bury that section the same way.
+	 * Appending, by contrast, only ever adds below every line that has been read, so
+	 * it can invalidate nothing.
 	 */
 	private void ensureRequiredSections(List<String> lines) {
-		requiredSections.forEach(required -> ensureSection(lines, required));
+		requiredSections.forEach(required -> stubBareSection(lines, required));
+		closeUnterminatedBlocks(lines);
+		requiredSections.forEach(required -> appendAbsentSection(lines, required));
 	}
 
 	/**
-	 * The document is read afresh per section because appending a section or
-	 * inserting a stub shifts the lines the next one is found at, and the sections
-	 * are few enough for that to stay cheap. Missing and empty are two answers to the
-	 * one heading lookup, so it is made once.
+	 * The document is read afresh per section because inserting a stub shifts the
+	 * lines the next one is found at, and the sections are few enough for that to stay
+	 * cheap. Missing and empty are two answers to the one heading lookup, so it is
+	 * made once: a section the document does not declare is left to
+	 * {@link #appendAbsentSection}.
 	 */
-	private void ensureSection(List<String> lines, String required) {
+	private void stubBareSection(List<String> lines, String required) {
 		MarkdownDocument document = MarkdownDocument.of(lines);
 		int index = document.headingIndex(required);
-		if (index < 0) {
-			lines.addAll(List.of("", required, "", STUB_BODY));
-		} else if (!document.hasBodyAt(index)) {
+		if (index >= 0 && !document.hasBodyAt(index)) {
 			lines.addAll(index + 1, List.of("", STUB_BODY));
+		}
+	}
+
+	/** Appends the section and its stub when the document declares the heading nowhere. */
+	private void appendAbsentSection(List<String> lines, String required) {
+		if (MarkdownDocument.of(lines).headingIndex(required) < 0) {
+			lines.addAll(List.of("", required, "", STUB_BODY));
 		}
 	}
 

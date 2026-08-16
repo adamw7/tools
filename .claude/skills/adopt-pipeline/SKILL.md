@@ -134,9 +134,12 @@ clone URL's credentials come back in the tool's own error text.
   `anthropics/claude-code` (a real `.claude`) and `github/gitignore` (a very
   large flat tree). A step that reads or writes the checkout has to survive them:
   the guard is only ever an *addition* to a build file somebody else wrote, the
-  commit carries only `AdoptionAssets.WRITTEN_PATHS`, the working tree is left
+  commits carry only `AdoptionAssets.WRITTEN_PATHS`, the working tree is left
   clean, the default branch and the remote are untouched, and a second adoption
-  changes nothing. Its Maven guard is pinned to a released `--rule-version`,
+  changes nothing. It installs the starter assets too, so `AssetInstaller`'s
+  "the project's own version wins" is checked against a file somebody else wrote
+  — `claude-code`'s own `.github/workflows/claude.yml`, which no fixture can
+  imitate. Its Maven guard is pinned to a released `--rule-version`,
   because the installer refuses to wire a `-SNAPSHOT` into another project's POM.
 - Run them with `mvn -P integration-tests verify` (the profile is declared in
   `adopt`'s own pom).

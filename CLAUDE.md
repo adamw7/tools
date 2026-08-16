@@ -198,7 +198,8 @@ Skill: `testing-conventions`.
   them, to prove a project nobody prepared for the rules gets an actionable
   verdict rather than a build broken on the rules' own account, and `adopt`
   adopts them, to prove the guard it wires into a build file somebody else wrote
-  is an addition to it and nothing more.
+  is an addition to it and nothing more, and that a file the project already
+  keeps where a starter asset goes is left exactly as it was cloned.
 
 ## Continuous integration and commits
 

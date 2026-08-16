@@ -504,14 +504,21 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   the adoption's work is *its own and nothing else*: the pipeline runs to its end
   on each, the guard that lands is the one the checkout's build files ask for
   (the enforcer execution spliced into gson's `pom.xml`, the guard task appended
-  to okhttp's `build.gradle.kts`, the workflow and script for the rest), the
-  commit carries only paths `AdoptionAssets.WRITTEN_PATHS` names and the working
-  tree is left clean, the commit's diff *removes* nothing the build file already
-  declared, the default branch and the remote are untouched, and a second
-  adoption of the same batch commits nothing. A seventh test conforms
-  `anthropic-quickstarts`' real `CLAUDE.md` and asserts the real `claudeMdFormat`
-  rule then accepts it, the foreign document having been asserted to fail it
-  first. Like `MultiRepoAdoptionIT` it stops short of pushing; it also leaves out
+  to okhttp's `build.gradle.kts`, the workflow and script for the rest), the two
+  commits carry only paths `AdoptionAssets.WRITTEN_PATHS` names and the working
+  tree is left clean, the guard commit's diff *removes* nothing the build file
+  already declared, the default branch and the remote are untouched, and a second
+  adoption of the same batch commits nothing. The run installs the starter assets
+  too, because `AssetInstaller`'s promise that the project's own version always
+  wins is about a file somebody else keeps at one of their paths, and only a real
+  repository brings one: `claude-code` ships a `claude.yml` workflow of its own,
+  so the batch asserts each repository was given exactly the assets it lacked and
+  that workflow came through byte-identical to the blob that was cloned. A last
+  test reads the one document the pipeline reshapes rather than adds beside:
+  `anthropic-quickstarts`' real `CLAUDE.md` is conformed and the real
+  `claudeMdFormat` rule then accepts it, the foreign document having been
+  asserted to fail it first.
+  Like `MultiRepoAdoptionIT` it stops short of pushing; it also leaves out
   `claude init` and the build-toolchain and verify steps, which for a checkout
   shipping a wrapper would download that project's whole build tool. The Maven
   guard is pinned to a released `--rule-version`, since the installer refuses to

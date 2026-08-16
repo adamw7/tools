@@ -71,6 +71,9 @@ public final class CliArguments {
 	private static final String RETRIES_FLAG = "--retries";
 	private static final String REPOS_FLAG = "--repos";
 
+	/** {@link AdoptionOptions#MAX_TIMEOUT} in the units this flag is written in. */
+	private static final long MAX_TIMEOUT_MINUTES = AdoptionOptions.MAX_TIMEOUT.toMinutes();
+
 	@Option(names = "--title", paramLabel = "<title>")
 	private String title;
 
@@ -277,11 +280,15 @@ public final class CliArguments {
 	 * The timeout is read as whole minutes rather than as an ISO-8601 duration,
 	 * because it is set in the units the operator is reasoning about — how long a
 	 * {@code claude init} over their largest repository takes. It is refused while
-	 * they are still reading the command line rather than after a clone.
+	 * they are still reading the command line rather than after a clone, and bounded
+	 * by {@link AdoptionOptions#MAX_TIMEOUT} because a batch left running overnight
+	 * cannot reclaim a command whose budget outlasts it either.
 	 */
 	@Option(names = TIMEOUT_FLAG, paramLabel = "<minutes>")
 	private void timeout(String value) {
-		commandTimeout = Text.isPresent(value) ? Duration.ofMinutes(minutes(value.strip())) : null;
+		commandTimeout = Text.isPresent(value)
+				? Duration.ofMinutes(bounded(TIMEOUT_FLAG, value.strip(), 1, MAX_TIMEOUT_MINUTES, "minutes"))
+				: null;
 	}
 
 	/**
@@ -291,7 +298,9 @@ public final class CliArguments {
 	 */
 	@Option(names = RETRIES_FLAG, paramLabel = "<count>")
 	private void retries(String value) {
-		retries = Text.isPresent(value) ? count(value.strip()) : AdoptionOptions.DEFAULT_RETRIES;
+		retries = Text.isPresent(value)
+				? (int) bounded(RETRIES_FLAG, value.strip(), 0, AdoptionOptions.MAX_RETRIES, "attempts")
+				: AdoptionOptions.DEFAULT_RETRIES;
 	}
 
 	private void addFlaggedRepository(String url) {
@@ -315,39 +324,32 @@ public final class CliArguments {
 		return Text.orDefault(value, null);
 	}
 
-	private static long minutes(String value) {
-		long parsed = parseMinutes(value);
-		if (parsed <= 0) {
-			throw new IllegalArgumentException(
-					TIMEOUT_FLAG + " must be a positive number of minutes, but was " + value + ". " + USAGE);
-		}
-		return parsed;
-	}
-
-	private static long parseMinutes(String value) {
-		try {
-			return Long.parseLong(value);
-		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException(
-					TIMEOUT_FLAG + " must be a whole number of minutes, but was " + value + ". " + USAGE, e);
-		}
-	}
-
-	private static int count(String value) {
-		int parsed = parseCount(value);
-		if (parsed < 0 || parsed > AdoptionOptions.MAX_RETRIES) {
-			throw new IllegalArgumentException(RETRIES_FLAG + " must be between 0 and " + AdoptionOptions.MAX_RETRIES
+	/**
+	 * The whole number a counting flag names, refused unless it falls within the
+	 * bounds that flag allows. Both flags that take one are read here rather than each
+	 * spelling out its own parse and its own range check, so a value neither of them
+	 * accepts is refused in the one wording — naming the flag, what it counts, and the
+	 * range — and followed by the usage line, as every other refusal this parser
+	 * raises is.
+	 *
+	 * @param unit what the number counts, so the refusal reads as the operator's own
+	 *             question rather than as a type error
+	 */
+	private static long bounded(String flag, String value, long minimum, long maximum, String unit) {
+		long parsed = wholeNumber(flag, value, unit);
+		if (parsed < minimum || parsed > maximum) {
+			throw new IllegalArgumentException(flag + " must be between " + minimum + " and " + maximum + " " + unit
 					+ ", but was " + value + ". " + USAGE);
 		}
 		return parsed;
 	}
 
-	private static int parseCount(String value) {
+	private static long wholeNumber(String flag, String value, String unit) {
 		try {
-			return Integer.parseInt(value);
+			return Long.parseLong(value);
 		} catch (NumberFormatException e) {
 			throw new IllegalArgumentException(
-					RETRIES_FLAG + " must be a whole number of attempts, but was " + value + ". " + USAGE, e);
+					flag + " must be a whole number of " + unit + ", but was " + value + ". " + USAGE, e);
 		}
 	}
 

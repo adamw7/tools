@@ -179,14 +179,9 @@ public class CloneStep extends AbstractCommandStep {
 	 * before they are compared.
 	 */
 	private List<String> unrelatedChanges(AdoptionContext context, CommandRunner runner) {
-		CommandResult result = runner.run(context.repositoryDirectory(),
-				List.of("git", "status", "--porcelain", UNTRACKED_FILES_ALL));
-		if (!result.succeeded()) {
-			throw new AdoptionException(context.repositoryDirectory() + " is a checkout whose status could not be"
-					+ " read, so it cannot be shown to be free of uncommitted work: "
-					+ result.redactedOutput().strip());
-		}
-		return result.output().lines()
+		String transcript = askGit(context, runner, List.of("git", "status", "--porcelain", UNTRACKED_FILES_ALL),
+				"is a checkout whose status could not be read, so it cannot be shown to be free of uncommitted work");
+		return transcript.lines()
 				.filter(line -> STATUS_ENTRY.matcher(line).matches())
 				.flatMap(this::changedPaths)
 				.filter(path -> !AdoptionAssets.WRITTEN_PATHS.contains(path))
@@ -257,12 +252,32 @@ public class CloneStep extends AbstractCommandStep {
 	 * asked to adopt.
 	 */
 	private String originTranscript(AdoptionContext context, CommandRunner runner) {
-		CommandResult result = runner.run(context.repositoryDirectory(),
-				List.of("git", "config", "--get-all", "remote." + AdoptionContext.REMOTE + ".url"));
+		return askGit(context, runner,
+				List.of("git", "config", "--get-all", "remote." + AdoptionContext.REMOTE + ".url"),
+				"is a checkout with no '" + AdoptionContext.REMOTE + "' remote, so it can be neither confirmed to be "
+						+ context.displayUrl() + " nor pushed to it");
+	}
+
+	/**
+	 * Puts a question to git about the checkout being reused, answering with the
+	 * transcript. A query that could not be <em>run</em> leaves a checkout this step
+	 * cannot vouch for rather than an adoption that may go on, so it stops the run —
+	 * and stops it saying what {@link #runOrFail} does not: which directory, what
+	 * could not be established about it, and only then git's own words.
+	 *
+	 * <p>Both questions are asked through here because both have the same failure to
+	 * avoid. Each reads its answer out of the transcript, and a transcript that is
+	 * empty because the command never ran is indistinguishable from one that is empty
+	 * because the answer was "nothing" — a checkout with no {@code origin} read as one
+	 * whose {@code origin} matched, and an unreadable status as a clean working tree.
+	 *
+	 * @param unanswered what a failed query leaves unknown, reported after the
+	 *                   checkout directory and before the redacted transcript
+	 */
+	private String askGit(AdoptionContext context, CommandRunner runner, List<String> command, String unanswered) {
+		CommandResult result = runner.run(context.repositoryDirectory(), command);
 		if (!result.succeeded()) {
-			throw new AdoptionException(context.repositoryDirectory() + " is a checkout with no '"
-					+ AdoptionContext.REMOTE
-					+ "' remote, so it can be neither confirmed to be " + context.displayUrl() + " nor pushed to it: "
+			throw new AdoptionException(context.repositoryDirectory() + " " + unanswered + ": "
 					+ result.redactedOutput().strip());
 		}
 		return result.output();

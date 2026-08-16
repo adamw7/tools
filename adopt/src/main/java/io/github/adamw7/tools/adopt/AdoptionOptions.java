@@ -34,7 +34,8 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  *                        pull request
  * @param commandTimeout  how long any one external command may run before it is
  *                        destroyed, defaulting to
- *                        {@link ProcessCommandRunner#DEFAULT_TIMEOUT}
+ *                        {@link ProcessCommandRunner#DEFAULT_TIMEOUT} and bounded
+ *                        by {@link #MAX_TIMEOUT}
  * @param retries         how many further attempts a {@code git} or {@code gh}
  *                        command the network refused earns, defaulting to
  *                        {@link #DEFAULT_RETRIES} and bounded by
@@ -61,10 +62,24 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	 */
 	public static final int MAX_RETRIES = 10;
 
+	/**
+	 * The longest a single command may be given. A day, past which a command that has
+	 * not returned is a stuck one rather than a slow adoption, and waiting out the
+	 * rest of a budget it is never going to use reports nothing the operator can act
+	 * on.
+	 *
+	 * <p>Stated here rather than at each entry point because it is the same answer for
+	 * both: the MCP tool serves its calls inside a long-lived server and the command
+	 * line runs an unattended batch, and neither reclaims a command whose budget
+	 * outlasts the run that set it.
+	 */
+	public static final Duration MAX_TIMEOUT = Duration.ofDays(1);
+
 	public AdoptionOptions {
 		pullRequest = pullRequest == null ? PullRequestOptions.defaults() : pullRequest;
 		ruleVersion = Text.orDefault(ruleVersion, null);
-		commandTimeout = commandTimeout == null ? ProcessCommandRunner.DEFAULT_TIMEOUT : requirePositive(commandTimeout);
+		commandTimeout = commandTimeout == null ? ProcessCommandRunner.DEFAULT_TIMEOUT
+				: requireWithinBounds(commandTimeout);
 		retries = requireWithinBounds(retries);
 	}
 
@@ -89,11 +104,14 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	/**
 	 * A run is rejected here rather than at the first command it would have killed,
 	 * so {@code --timeout 0} fails while the operator is still reading the command
-	 * line instead of after a clone.
+	 * line instead of after a clone — and a timeout past {@link #MAX_TIMEOUT} fails
+	 * there too, rather than being honoured by a runner that would then be holding a
+	 * command the run cannot outlast.
 	 */
-	private static Duration requirePositive(Duration commandTimeout) {
-		if (commandTimeout.isNegative() || commandTimeout.isZero()) {
-			throw new IllegalArgumentException("commandTimeout must be positive but was " + commandTimeout);
+	private static Duration requireWithinBounds(Duration commandTimeout) {
+		if (commandTimeout.isNegative() || commandTimeout.isZero() || commandTimeout.compareTo(MAX_TIMEOUT) > 0) {
+			throw new IllegalArgumentException(
+					"commandTimeout must be positive and at most " + MAX_TIMEOUT + " but was " + commandTimeout);
 		}
 		return commandTimeout;
 	}

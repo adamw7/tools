@@ -21,9 +21,8 @@ import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
 import io.github.adamw7.tools.adopt.Workspaces;
-import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.adopt.command.CommandRunners;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
-import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.mcp.McpTool;
 import io.github.adamw7.tools.mcp.ToolArguments;
@@ -64,8 +63,8 @@ public class AdoptTool implements McpTool {
 
 	private static final int DEFAULT_TIMEOUT_MINUTES = (int) ProcessCommandRunner.DEFAULT_TIMEOUT.toMinutes();
 
-	/** A day, past which a stuck command is a stuck server rather than a slow adoption. */
-	private static final int MAX_TIMEOUT_MINUTES = 24 * 60;
+	/** {@link AdoptionOptions#MAX_TIMEOUT} in the units this argument is written in. */
+	private static final int MAX_TIMEOUT_MINUTES = (int) AdoptionOptions.MAX_TIMEOUT.toMinutes();
 
 	private final Pipeline pipeline;
 	private final AdoptionReportWriter reportWriter = new AdoptionReportWriter();
@@ -125,14 +124,12 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * One runner adopts every repository of the call, bounding each command by the
-	 * call's timeout and retrying the ones the network refused, exactly as the command
-	 * line assembles it.
+	 * One runner adopts every repository of the call, assembled by the same
+	 * {@link CommandRunners} the command line uses so the two cannot answer a
+	 * {@code timeout_minutes} or a {@code retries} differently.
 	 */
 	private static BatchAdoption.Adoption runDefaultPipeline(AdoptionOptions options) {
-		CommandRunner runner = new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()),
-				options.retries());
-		return GitHubRepoAdopter.withDefaultPipeline(runner, options)::adopt;
+		return GitHubRepoAdopter.withDefaultPipeline(CommandRunners.forRun(options), options)::adopt;
 	}
 
 	@Override
@@ -255,9 +252,10 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * The timeout is bounded rather than merely positive: this tool runs inside a
-	 * long-lived server, where a client asking for a week-long timeout would hand it
-	 * a command it can never reclaim.
+	 * Bounded by {@link AdoptionOptions#MAX_TIMEOUT} here as well as there, so a
+	 * client asking for a week-long timeout — which this long-lived server would hand
+	 * a command it can never reclaim — is refused with the argument's name rather than
+	 * with the record's complaint about a field it never sent.
 	 */
 	private Duration commandTimeout(Map<String, Object> arguments) {
 		return Duration.ofMinutes(ToolArguments.optionalBoundedInt(arguments, "timeout_minutes",

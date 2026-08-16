@@ -510,13 +510,27 @@ class CliArgumentsTest {
 	/**
 	 * A timeout that is not a positive number of minutes is refused while the
 	 * operator is still reading the command line, rather than at the first command
-	 * it would have killed — or, for a zero, never having run one at all.
+	 * it would have killed — or, for a zero, never having run one at all. One past
+	 * {@link AdoptionOptions#MAX_TIMEOUT} is refused there too: a batch left running
+	 * overnight cannot reclaim a command whose budget outlasts it, and a number wide
+	 * enough to overflow the duration it names is refused rather than thrown on.
 	 */
 	@Test
-	void refusesATimeoutThatIsNotAPositiveNumberOfMinutes() {
+	void refusesATimeoutThatIsNotAPositiveNumberOfMinutesWithinTheBound() {
 		assertUsageFailure(new String[] { REPO_URL, "--timeout", "0" });
 		assertUsageFailure(new String[] { REPO_URL, "--timeout", "-5" });
 		assertUsageFailure(new String[] { REPO_URL, "--timeout", "soon" });
+		assertUsageFailure(new String[] { REPO_URL, "--timeout",
+				String.valueOf(AdoptionOptions.MAX_TIMEOUT.toMinutes() + 1) });
+		assertUsageFailure(new String[] { REPO_URL, "--timeout", String.valueOf(Long.MAX_VALUE) });
+	}
+
+	/** The largest budget a run may ask for is one it may actually have. */
+	@Test
+	void acceptsATimeoutAtTheBound() {
+		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--timeout",
+				String.valueOf(AdoptionOptions.MAX_TIMEOUT.toMinutes()) });
+		assertEquals(AdoptionOptions.MAX_TIMEOUT, cli.adoptionOptions().commandTimeout());
 	}
 
 	@Test

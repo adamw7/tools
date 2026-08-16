@@ -78,8 +78,17 @@ final class EnforcerRuleVersion {
 	 * adopted POM as if it were a version. Both delimiters are rejected — the
 	 * resource is written with {@code @...@}, which is what this build filters, and
 	 * {@code ${...}} is what it would carry had that configuration changed.
+	 *
+	 * <p>Package-visible because the stream is the only seam these refusals have.
+	 * {@link #fromBuildMetadata()} reads one resource off this class's own
+	 * classpath, and that resource is correct in every build that runs these tests —
+	 * so a test driving the version through it can only ever take the path that
+	 * succeeds, leaving the three failures this method words for nobody to reach.
+	 * They are the failures worth reaching: each one is what stands between a broken
+	 * build of {@code tools} and a literal {@code @enforcer.rule.version@} wired
+	 * into a stranger's {@code pom.xml} by a pull request the adoption opened.
 	 */
-	private static String read(InputStream stream) throws IOException {
+	static String read(InputStream stream) throws IOException {
 		if (stream == null) {
 			throw new AdoptionException("Build metadata not on the classpath: " + BUILD_PROPERTIES
 					+ " (build the module so its resources are filtered)");

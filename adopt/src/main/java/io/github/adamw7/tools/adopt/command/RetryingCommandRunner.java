@@ -87,6 +87,29 @@ public class RetryingCommandRunner implements CommandRunner {
 		return retries;
 	}
 
+	/**
+	 * How many further attempts a refused command earns here. Package-visible so
+	 * {@link CommandRunners} can be asserted to have carried the run's own
+	 * {@code --retries} into the decorator that serves them: a run wired with fewer
+	 * than were asked for behaves exactly like one whose network faltered a little
+	 * more, and neither this runner nor the step above it reports the difference.
+	 */
+	int retries() {
+		return retries;
+	}
+
+	/**
+	 * The runner this one decorates. Package-visible so the toolchain
+	 * {@link CommandRunners} assembles can be asserted to still have both halves.
+	 * Losing the decorated half is the failure that shows least: an undecorated
+	 * runner answers every command exactly as this one answers a command the network
+	 * did not refuse, so a run only differs on the transport failure this class
+	 * exists to absorb — by which point the batch has already failed the repository.
+	 */
+	CommandRunner delegate() {
+		return delegate;
+	}
+
 	@Override
 	public CommandResult run(Path workingDirectory, List<String> command) {
 		CommandResult result = delegate.run(workingDirectory, command);

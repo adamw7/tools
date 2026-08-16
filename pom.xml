@@ -709,10 +709,47 @@
 										<skillFilesExist>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</skillFilesExist>
+										<!-- A configured definition directory must exist, so
+										     these two could only be wired once .claude/agents
+										     and .claude/commands did — which is why the
+										     directories and this wiring arrived together. -->
+										<subAgentFormat>
+											<agentsDir>${project.basedir}/.claude/agents</agentsDir>
+											<allowedModels>
+												<allowedModel>opus</allowedModel>
+												<allowedModel>sonnet</allowedModel>
+												<allowedModel>haiku</allowedModel>
+												<allowedModel>inherit</allowedModel>
+											</allowedModels>
+										</subAgentFormat>
+										<commandFormat>
+											<commandsDir>${project.basedir}/.claude/commands</commandsDir>
+											<allowedFrontMatterKeys>
+												<allowedFrontMatterKey>description</allowedFrontMatterKey>
+												<allowedFrontMatterKey>argument-hint</allowedFrontMatterKey>
+												<allowedFrontMatterKey>allowed-tools</allowedFrontMatterKey>
+												<allowedFrontMatterKey>model</allowedFrontMatterKey>
+												<allowedFrontMatterKey>disable-model-invocation</allowedFrontMatterKey>
+											</allowedFrontMatterKeys>
+											<allowedModels>
+												<allowedModel>opus</allowedModel>
+												<allowedModel>sonnet</allowedModel>
+												<allowedModel>haiku</allowedModel>
+												<allowedModel>inherit</allowedModel>
+											</allowedModels>
+										</commandFormat>
+										<!-- Both uniqueness rules see all three kinds at once:
+										     a command sharing a name or a description with a
+										     skill shadows it, and neither directory alone would
+										     show that. -->
 										<uniqueNames>
+											<commandsDir>${project.basedir}/.claude/commands</commandsDir>
+											<agentsDir>${project.basedir}/.claude/agents</agentsDir>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</uniqueNames>
 										<uniqueDescriptions>
+											<commandsDir>${project.basedir}/.claude/commands</commandsDir>
+											<agentsDir>${project.basedir}/.claude/agents</agentsDir>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 										</uniqueDescriptions>
 										<settingsJsonValid>
@@ -768,6 +805,8 @@
 											</files>
 											<directories>
 												<directory>${project.basedir}/.claude/hooks</directory>
+												<directory>${project.basedir}/.claude/agents</directory>
+												<directory>${project.basedir}/.claude/commands</directory>
 											</directories>
 										</noSecrets>
 										<contextBudget>

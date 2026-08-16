@@ -107,9 +107,9 @@ What is worth knowing before changing any of it:
   repository with `--repo` rather than letting `gh` infer it from the remote.
 - **Configuration is one object.** `AdoptionOptions` (wrapping
   `PullRequestOptions`) carries the pull-request metadata, the starter assets,
-  the rule version, the dry-run flag and the per-command timeout, and both entry
-  points hand it to the same pipeline factory, so the CLI and the MCP tool cannot
-  drift. `CliArguments` declares the command line to **picocli**, binding the
+  the rule version, the dry-run flag, the per-command timeout and the retry
+  count, and both entry points hand it to the same pipeline factory, so the CLI
+  and the MCP tool cannot drift. `CliArguments` declares the command line to **picocli**, binding the
   repository, workspace and branch options to methods — the first so a batch
   mixing `--repo` and `--repos` keeps the order it was written in, the other two
   because each shares a field with its positional and the last one named has to
@@ -144,6 +144,20 @@ What is worth knowing before changing any of it:
   without spawning processes; `ProcessCommandRunner` bounds every command with a
   timeout, ten minutes by default and overridable with `--timeout <minutes>`
   (`timeout_minutes`, bounded to a day since the MCP server is long-lived).
+- **A command the network refused is tried again**, because an unattended batch
+  otherwise lost a repository — after paying for its `claude init` — to one
+  connection reset. `RetryingCommandRunner` decorates the process runner at both
+  entry points, waiting 2s, 4s, 8s (capped at 30s) before further attempts:
+  `--retries <count>` (`retries`), two by default, zero for none, bounded by
+  `AdoptionOptions.MAX_RETRIES`. What it retries is narrow, and stated once in
+  `TransientFailures`: the program must be `git` or `gh` — both re-runnable, while
+  `claude` and a build tool are expensive and print prose that may merely *discuss*
+  a reset — and the transcript must report a transport-level refusal in the tools'
+  own words. A 403, a 404, a rejected non-fast-forward, a rate limit that wants
+  minutes, and the git queries that answer through a non-zero exit all fail on the
+  first attempt as before; a command that *throws* — an unstartable program, a
+  timeout — is never retried. A retried attempt is logged with its redacted
+  transcript, since a step only reports the command that stopped it.
 - **`--help` answers with the usage line and adopts nothing**, rather than being
   refused as an unknown option. It goes to the log, whose console appender writes
   to standard error, because the same jar is the MCP server and its stdio

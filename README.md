@@ -909,6 +909,19 @@ overridable with `--timeout <minutes>`, for a repository whose `claude init` or
 whose first Maven build against a cold `~/.m2` needs longer, or for a batch that
 should fail fast instead.
 
+A `git` or `gh` command the **network** refused is run again rather than failing
+the repository: twice by default, after 2 seconds and 4 seconds, with
+`--retries <count>` asking for more (up to 10) or `--retries 0` for none. An
+unattended batch otherwise lost a whole repository — `claude init` included, which
+is the expensive part — to a single connection reset, and had to be started again
+by an operator who first had to notice. Only a transport-level refusal is retried,
+in the tools' own words: a host that would not resolve, a connection refused, reset
+or timed out, a remote that hung up, a 5xx from GitHub. An authentication failure,
+a 404, a rejected non-fast-forward push and a rate limit that wants minutes are all
+reported the moment they happen, as is anything `claude` or the project's own build
+tool says — re-running either costs the run minutes and their output is prose that
+may merely mention a network error.
+
 One run can adopt **a list of repositories** rather than a single one: repeat
 `--repo <url>` for each, or point `--repos <file>` at a file naming one
 repository per line (blank lines are skipped and a `#` line is a comment, so a
@@ -984,14 +997,15 @@ derived checkout directory, and the feature-branch name):
 
 ```java
 AdoptionOptions options = AdoptionOptions.defaults();
-CommandRunner runner = new ProcessCommandRunner(options.commandTimeout());
+CommandRunner runner = new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()),
+        options.retries());
 GitHubRepoAdopter.withDefaultPipeline(runner, options)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace), new AdoptionReport());
 ```
 
 `AdoptionOptions` is how a run is configured — the pull request's metadata, the
-starter assets, the rule version to pin, whether it is a dry run, and how long
-one command may take. Both entry points build one, so the command line and the
+starter assets, the rule version to pin, whether it is a dry run, how long one
+command may take, and how many further attempts one the network refused earns. Both entry points build one, so the command line and the
 MCP tool cannot drift apart on what an omitted option means, and the pipeline
 factory does not grow a parameter per switch.
 

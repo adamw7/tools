@@ -26,6 +26,7 @@ import org.junit.jupiter.api.io.TempDir;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionAssets;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
@@ -152,8 +153,13 @@ class ForeignRepositoryAdoptionIT {
 	 * Generous next to the second or two a clone of these repositories costs, and short
 	 * enough that a stalled network fails the class in minutes. The pipeline's own
 	 * default is sized for a {@code claude init}, which is not among the steps here.
+	 *
+	 * <p>Wrapped as a real run wraps it, so a GitHub that refused one of the five
+	 * clones does not report this class's subject — the guard the adoption writes into
+	 * somebody else's build file — as broken.
 	 */
-	private static final CommandRunner RUNNER = new ProcessCommandRunner(Duration.ofMinutes(5));
+	private static final CommandRunner RUNNER = new RetryingCommandRunner(
+			new ProcessCommandRunner(Duration.ofMinutes(5)), AdoptionOptions.DEFAULT_RETRIES);
 
 	/**
 	 * Class-scoped, because the five clones are what this class costs and every test

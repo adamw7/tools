@@ -42,8 +42,10 @@ run `mvn install` from the repository root.
   and open a pull request. The default branch is never written to, clone-URL
   credentials are masked in everything the run reports and are never left in the
   checkout's `.git/config`, `--dry-run` leaves out the push and the pull
-  request entirely, and one run adopts a list of repositories without letting a
-  failure stop the rest. Skill: `adopt-pipeline`.
+  request entirely, a `git` or `gh` the network refused is tried again with a
+  backoff (`--retries`) while every other failure is reported at once, and one
+  run adopts a list of repositories without letting a failure stop the rest.
+  Skill: `adopt-pipeline`.
 - **Markdown reading** (`markdown-common`) — the dependency-free reader both the
   `claudeMdFormat` rule and `adopt`'s conformer parse a document with, so the
   checker and the rewriter cannot disagree about what is code, what is

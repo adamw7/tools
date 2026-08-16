@@ -21,7 +21,9 @@ import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.Redaction;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
 import io.github.adamw7.tools.adopt.Workspaces;
+import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.mcp.McpTool;
 import io.github.adamw7.tools.mcp.ToolArguments;
@@ -107,7 +109,11 @@ public class AdoptTool implements McpTool {
 											+ "workspace, but push nothing and open no pull request")),
 							Map.entry("timeout_minutes", Map.of("type", "integer",
 									"description", "how long any one git/claude/gh/build command may run before it "
-											+ "is killed; defaults to " + DEFAULT_TIMEOUT_MINUTES))),
+											+ "is killed; defaults to " + DEFAULT_TIMEOUT_MINUTES)),
+							Map.entry("retries", Map.of("type", "integer",
+									"description", "how many further attempts a git or gh command the network "
+											+ "refused earns, waiting longer before each; defaults to "
+											+ AdoptionOptions.DEFAULT_RETRIES + ", and 0 reports the first failure"))),
 					"required", List.of()));
 
 	public AdoptTool() {
@@ -118,9 +124,15 @@ public class AdoptTool implements McpTool {
 		this.pipeline = pipeline;
 	}
 
+	/**
+	 * One runner adopts every repository of the call, bounding each command by the
+	 * call's timeout and retrying the ones the network refused, exactly as the command
+	 * line assembles it.
+	 */
 	private static BatchAdoption.Adoption runDefaultPipeline(AdoptionOptions options) {
-		return GitHubRepoAdopter.withDefaultPipeline(new ProcessCommandRunner(options.commandTimeout()),
-				options)::adopt;
+		CommandRunner runner = new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()),
+				options.retries());
+		return GitHubRepoAdopter.withDefaultPipeline(runner, options)::adopt;
 	}
 
 	@Override
@@ -228,7 +240,18 @@ public class AdoptTool implements McpTool {
 	private AdoptionOptions adoptionOptionsFrom(Map<String, Object> arguments) {
 		return new AdoptionOptions(pullRequestOptionsFrom(arguments),
 				ToolArguments.optionalBoolean(arguments, "assets", false), text(arguments, "rule_version"),
-				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments));
+				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments),
+				retries(arguments));
+	}
+
+	/**
+	 * Bounded by {@link AdoptionOptions#MAX_RETRIES} here as well as there, so a client
+	 * asking for a hundred attempts is refused with the argument's name rather than
+	 * with the record's complaint about a field it never sent.
+	 */
+	private int retries(Map<String, Object> arguments) {
+		return ToolArguments.optionalBoundedInt(arguments, "retries", AdoptionOptions.DEFAULT_RETRIES, 0,
+				AdoptionOptions.MAX_RETRIES);
 	}
 
 	/**

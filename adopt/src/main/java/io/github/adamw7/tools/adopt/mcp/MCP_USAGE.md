@@ -84,6 +84,11 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 - `timeout_minutes` (integer, optional): how long any one `git`/`claude`/`gh`/build
   command may run before it is killed. Defaults to 10, and is bounded to a day —
   this server is long-lived, so a command it could never reclaim is refused
+- `retries` (integer, optional): how many further attempts a `git` or `gh`
+  command the network refused earns, waiting 2s, 4s, 8s (capped at 30s) before
+  each. Defaults to 2, bounded to 10, and 0 reports the first failure. Only a
+  transport-level refusal is retried — an authentication failure, a 404, a
+  rejected push and a rate limit are answered as they happen
 
 **Returns** a JSON report. Each commit the adoption makes is named for what it
 commits (`commit:claude-md`, `commit:guard`, `commit:assets`), so a run that

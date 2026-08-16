@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.mcp;
 
+import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -244,6 +245,38 @@ class AdoptToolTest {
 		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("dry_run")
 				&& declared.containsKey("timeout_minutes"),
 				"a rehearsal and a longer command budget must be askable for: " + properties);
+	}
+
+	@Test
+	void passesTheRetryCountOnToThePipeline() {
+		tool.apply(Map.of("repository_url", REPO_URL, "retries", 5));
+		assertEquals(5, pipeline.adoptionOptions.retries());
+	}
+
+	@Test
+	void fallsBackToTheDefaultRetryCountWhenNoneIsAskedFor() {
+		tool.apply(Map.of("repository_url", REPO_URL));
+		assertEquals(AdoptionOptions.DEFAULT_RETRIES, pipeline.adoptionOptions.retries());
+	}
+
+	/**
+	 * Refused with the argument's own name rather than with the record's complaint
+	 * about a field the client never sent.
+	 */
+	@Test
+	void refusesARetryCountOutsideTheAllowedRange() {
+		assertFailure(IllegalArgumentException.class,
+				() -> tool.apply(Map.of("repository_url", REPO_URL, "retries", -1)), "retries");
+		assertFailure(IllegalArgumentException.class,
+				() -> tool.apply(Map.of("repository_url", REPO_URL, "retries", AdoptionOptions.MAX_RETRIES + 1)),
+				"retries");
+	}
+
+	@Test
+	void declaresTheRetriesArgument() {
+		Object properties = tool.getToolDefinition().inputSchema().get("properties");
+		assertTrue(properties instanceof Map<?, ?> declared && declared.containsKey("retries"),
+				"a run over a flaky network must be able to ask for more attempts: " + properties);
 	}
 
 	@Test

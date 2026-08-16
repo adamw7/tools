@@ -21,6 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
 import io.github.adamw7.tools.adopt.step.CloneStep;
@@ -69,7 +70,8 @@ class MultiRepoAdoptionIT {
 	 * {@code claude init} rather than for cloning a sample repository, so a stalled
 	 * network fails the test in minutes instead of hanging the build.
 	 */
-	private final CommandRunner runner = new ProcessCommandRunner(Duration.ofMinutes(2));
+	private final CommandRunner runner = new RetryingCommandRunner(
+			new ProcessCommandRunner(Duration.ofMinutes(2)), AdoptionOptions.DEFAULT_RETRIES);
 
 	private final ObjectMapper mapper = new ObjectMapper();
 

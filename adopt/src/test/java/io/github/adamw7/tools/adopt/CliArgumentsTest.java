@@ -520,6 +520,33 @@ class CliArgumentsTest {
 	}
 
 	@Test
+	void readsHowManyFurtherAttemptsARefusedCommandEarns() {
+		assertEquals(5, CliArguments.parse(new String[] { REPO_URL, "--retries", "5" }).adoptionOptions().retries());
+		assertEquals(0, CliArguments.parse(new String[] { REPO_URL, "--retries", "0" }).adoptionOptions().retries());
+	}
+
+	@Test
+	void fallsBackToTheDefaultRetryCountWhenNoneIsNamed() {
+		assertEquals(AdoptionOptions.DEFAULT_RETRIES,
+				CliArguments.parse(new String[] { REPO_URL }).adoptionOptions().retries());
+		assertEquals(AdoptionOptions.DEFAULT_RETRIES,
+				CliArguments.parse(new String[] { REPO_URL, "--retries", "  " }).adoptionOptions().retries());
+	}
+
+	/**
+	 * An unattended run waits out a backoff before each further attempt, so a retry
+	 * count beyond the bound is refused while the operator is still reading the
+	 * command line rather than turning a network that is down into a batch that looks
+	 * like it is working.
+	 */
+	@Test
+	void refusesARetryCountThatIsNotAWholeNumberWithinTheBounds() {
+		assertUsageFailure(new String[] { REPO_URL, "--retries", "-1" });
+		assertUsageFailure(new String[] { REPO_URL, "--retries", "often" });
+		assertUsageFailure(new String[] { REPO_URL, "--retries", String.valueOf(AdoptionOptions.MAX_RETRIES + 1) });
+	}
+
+	@Test
 	void carriesThePullRequestMetadataAndTheAssetsFlagIntoTheAdoptionOptions() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--title", "My title", "--assets",
 				"--rule-version", " 2.6.0 " });

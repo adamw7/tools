@@ -28,11 +28,17 @@ import java.util.stream.IntStream;
  * with, so repairing two delimiter lines does not rewrite every other line of a
  * CRLF file.
  * <p>
- * A repair that changes nothing is no repair, and is reported as none. Not every
- * block {@link FrontMatter} declines to read is one this fixer can mend — a block
- * whose delimiters are already canonical and whose <em>YAML</em> is malformed is
- * beyond it — and returning that document unchanged would have the caller write the
- * file it already had, and log a fix, on every build.
+ * A mend is reported only once the mended document has been read back and found to
+ * parse, because delimiters are the only thing this fixer knows how to write and a
+ * block can be unreadable for reasons that have nothing to do with them. Its
+ * <em>YAML</em> may be malformed too — a value such as {@code "a" and "b"} whose
+ * quotes do not wrap it, an entry indented with a tab — and canonical delimiters
+ * around such a block leave it exactly as unreadable as it was. Reporting that as a
+ * repair rewrote the author's file and logged {@code Auto-fixed malformed front
+ * matter}, and the same run then failed on the same file for having no parseable
+ * front matter: a fix that was announced, written, and worth nothing. Reading the
+ * result back covers the block nothing was changed in for the same reason, since a
+ * document that did not parse on the way in does not parse on the way out either.
  */
 public final class FrontMatterFixer {
 
@@ -70,7 +76,7 @@ public final class FrontMatterFixer {
 			return Optional.empty();
 		}
 		return repairDelimiters(lines, open).map(fixed -> render(withoutLeadingBlanks(fixed), content))
-				.filter(repaired -> !repaired.equals(content));
+				.filter(repaired -> FrontMatter.parse(repaired).isPresent());
 	}
 
 	/** The lines with any blank lines before the opening delimiter removed, so the block starts on line one. */

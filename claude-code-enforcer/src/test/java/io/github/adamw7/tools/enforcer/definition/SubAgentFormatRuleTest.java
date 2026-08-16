@@ -6,6 +6,7 @@ import static io.github.adamw7.tools.test.TestFiles.writeBytes;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -144,6 +145,35 @@ class SubAgentFormatRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(readString(file).contains("---\n# Reviewer"), readString(file));
+	}
+
+	/**
+	 * Auto-fix writes the author's file, so it may only write one it has made
+	 * readable. This block's delimiters are mendable and its value — quotes that do
+	 * not wrap it — is not, and mending the delimiters alone left the rule failing on
+	 * the file it had just rewritten, under a log line saying the front matter had
+	 * been auto-fixed. The build has to say the same thing it says with auto-fix off,
+	 * over the file the author still has.
+	 */
+	@Test
+	void autoFixLeavesADefinitionItCannotMakeReadableAlone() {
+		Path file = tempDir.resolve("reviewer.md");
+		String original = """
+				----
+				name: reviewer
+				description: "a" and "b"
+				----
+				# Reviewer
+				""";
+		writeString(file, original);
+		SubAgentFormatRule rule = ruleFor(tempDir);
+		CapturingLogger log = new CapturingLogger();
+		rule.setAutoFix(true);
+		rule.setLog(log);
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "front matter");
+		assertEquals(original, readString(file), "the file must be left as its author wrote it");
+		assertTrue(log.infos().isEmpty(), () -> "nothing was fixed, so nothing may be logged as fixed: " + log.infos());
 	}
 
 	@Test

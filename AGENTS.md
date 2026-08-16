@@ -143,11 +143,14 @@ What is worth knowing before changing any of it:
 - **Everything shells out through a `CommandRunner`**, so steps are unit-tested
   without spawning processes; `ProcessCommandRunner` bounds every command with a
   timeout, ten minutes by default and overridable with `--timeout <minutes>`
-  (`timeout_minutes`, bounded to a day since the MCP server is long-lived).
+  (`timeout_minutes`). Both are bounded by `AdoptionOptions.MAX_TIMEOUT` — a day,
+  past which neither a long-lived MCP server nor an unattended batch reclaims the
+  command — and the record enforces it, so a caller assembling the pipeline for
+  itself is held to it too.
 - **A command the network refused is tried again**, because an unattended batch
   otherwise lost a repository — after paying for its `claude init` — to one
-  connection reset. `RetryingCommandRunner` decorates the process runner at both
-  entry points, waiting 2s, 4s, 8s (capped at 30s) before further attempts:
+  connection reset. `RetryingCommandRunner` decorates the process runner, waiting
+  2s, 4s, 8s (capped at 30s) before further attempts:
   `--retries <count>` (`retries`), two by default, zero for none, bounded by
   `AdoptionOptions.MAX_RETRIES`. What it retries is narrow, and stated once in
   `TransientFailures`: the program must be `git` or `gh` — both re-runnable, while
@@ -158,6 +161,12 @@ What is worth knowing before changing any of it:
   first attempt as before; a command that *throws* — an unstartable program, a
   timeout — is never retried. A retried attempt is logged with its redacted
   transcript, since a step only reports the command that stopped it.
+- **One place assembles the toolchain.** `CommandRunners.forRun(options)` builds
+  the bounded process runner and its retry decorator, and both entry points call
+  it; an ArchUnit rule confines those two constructors to the `command` package,
+  so the command line and the MCP tool cannot answer a `--timeout` or a
+  `--retries` on terms of their own. A run configured with no retries is wrapped
+  all the same, the decorator being a pass-through then.
 - **`--help` answers with the usage line and adopts nothing**, rather than being
   refused as an unknown option. It goes to the log, whose console appender writes
   to standard error, because the same jar is the MCP server and its stdio

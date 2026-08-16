@@ -85,6 +85,19 @@ class AdoptionOptionsTest {
 	@Test
 	void keepsATimeoutTheCallerNamed() {
 		assertEquals(Duration.ofMinutes(30), timingOut(Duration.ofMinutes(30)).commandTimeout());
+		assertEquals(AdoptionOptions.MAX_TIMEOUT, timingOut(AdoptionOptions.MAX_TIMEOUT).commandTimeout());
+	}
+
+	/**
+	 * The bound lives here rather than at each entry point, so a caller assembling the
+	 * pipeline for itself is held to it too — a command budget outlasting the run that
+	 * set it is a command nothing reclaims, whether the run is a long-lived MCP server
+	 * or an unattended batch.
+	 */
+	@Test
+	void refusesATimeoutBeyondTheBound() {
+		assertThrows(IllegalArgumentException.class,
+				() -> timingOut(AdoptionOptions.MAX_TIMEOUT.plusMinutes(1)));
 	}
 
 	/** The pull request is copied defensively by its own record, so the options carry that too. */

@@ -8,6 +8,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -18,6 +19,8 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.BuildSystem;
 import io.github.adamw7.tools.mcp.McpTool;
@@ -47,6 +50,7 @@ public class AdoptArchitectureTest {
 	private static final String CLONE_STEP = ADOPT_PACKAGE + ".step.CloneStep";
 	private static final String PUSH_STEP = ADOPT_PACKAGE + ".step.PushStep";
 	private static final String PROCESS_COMMAND_RUNNER = ADOPT_PACKAGE + ".command.ProcessCommandRunner";
+	private static final String COMMAND_RUNNERS = ADOPT_PACKAGE + ".command.CommandRunners";
 
 	@ArchTest
 	static final ArchTests commonCodingConventions = ArchTests.in(CommonCodingConventions.class);
@@ -192,6 +196,23 @@ public class AdoptArchitectureTest {
 			.should().declareThrowableOfType(IOException.class)
 			.because("the pipeline reports failure with the unchecked AdoptionException, so a caller "
 					+ "assembling steps is never made to translate an IOException step by step");
+
+	/**
+	 * The counterpart of {@link #onlyTheAdopterAssemblesThePipeline}, one layer down:
+	 * the adopter is handed a runner, and the runner a real run is driven through is
+	 * assembled in one place too — {@value #COMMAND_RUNNERS}. Both entry points want
+	 * the same two decorated halves, and one that assembled its own would be a
+	 * {@code --timeout} or a {@code --retries} the other silently answers
+	 * differently: a drift nothing downstream reports, since a run that lost the
+	 * retry decorator simply stops retrying.
+	 */
+	@ArchTest
+	static final ArchRule onlyTheCommandPackageAssemblesTheToolchain = noClasses()
+			.that().resideOutsideOfPackage(COMMAND_PACKAGE)
+			.should().callConstructor(ProcessCommandRunner.class, Duration.class)
+			.orShould().callConstructor(RetryingCommandRunner.class, CommandRunner.class, int.class)
+			.because("the command line and the MCP tool must drive a run through one toolchain, assembled by "
+					+ COMMAND_RUNNERS + ", so neither can bound a command or retry a refused one on terms of its own");
 
 	@ArchTest
 	static final ArchRule onlyTheAdopterAssemblesThePipeline = noClasses()

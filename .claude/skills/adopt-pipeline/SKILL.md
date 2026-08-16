@@ -87,7 +87,8 @@ included. Preserve that when changing `BatchAdoption` or `Failures`.
 both entry points — `Main` and the MCP `AdoptTool` — hand to the pipeline factory.
 
 ## Retrying what the network refused
-Both entry points wrap `ProcessCommandRunner` in a `RetryingCommandRunner`, so a
+Both entry points assemble their toolchain with `CommandRunners.forRun(options)`,
+which wraps `ProcessCommandRunner` in a `RetryingCommandRunner`, so a
 `git` or `gh` the network refused is run again — twice by default, after 2s and
 4s (doubling, capped at 30s), and `--retries 0` turns it off. An unattended batch
 otherwise lost a whole repository, `claude init` included, to one connection

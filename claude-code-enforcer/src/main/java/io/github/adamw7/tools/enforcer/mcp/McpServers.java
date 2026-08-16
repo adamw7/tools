@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.mcp;
 
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +16,15 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * rather than once in each.
  */
 final class McpServers {
+
+	/*
+	 * The keys of a server entry both rules read: one validates the transport those
+	 * two declare, the other the fields around them, so the two must name them
+	 * identically or one would check a key the other never sees.
+	 */
+	static final String SECTION_KEY = "mcpServers";
+	static final String COMMAND_KEY = "command";
+	static final String URL_KEY = "url";
 
 	private McpServers() {
 	}
@@ -32,8 +42,8 @@ final class McpServers {
 		}
 	}
 
-	/** Every violation names the server whose entry is malformed. */
-	static String problem(String name, String problem) {
-		return "mcp.json server '" + name + "' " + problem;
+	/** Collects one violation, named after the server whose entry is malformed. */
+	static void add(String name, String problem, List<String> violations) {
+		violations.add("mcp.json server '" + name + "' " + problem);
 	}
 }

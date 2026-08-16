@@ -31,10 +31,12 @@ import io.github.adamw7.tools.enforcer.rule.Violations;
 @Named("mcpServersValid")
 public class McpServersValidRule extends JsonFileRule {
 
-	private static final String MCP_SERVERS_KEY = "mcpServers";
+	/** The keys shared with {@link McpConfigFormatRule}, named once in {@link McpServers}. */
+	private static final String MCP_SERVERS_KEY = McpServers.SECTION_KEY;
+	private static final String COMMAND_KEY = McpServers.COMMAND_KEY;
+	private static final String URL_KEY = McpServers.URL_KEY;
+
 	private static final String TYPE_KEY = "type";
-	private static final String COMMAND_KEY = "command";
-	private static final String URL_KEY = "url";
 	private static final String STDIO_TYPE = "stdio";
 	private static final String SSE_TYPE = "sse";
 	private static final String HTTP_TYPE = "http";
@@ -83,14 +85,14 @@ public class McpServersValidRule extends JsonFileRule {
 	 */
 	private void collectServerViolations(String name, JsonNode server, List<String> violations) {
 		if (server == null) {
-			add(name, "must be a JSON object", violations);
+			McpServers.add(name, "must be a JSON object", violations);
 			return;
 		}
 		String type = JsonNodes.textAt(server, TYPE_KEY, "").strip();
 		if (type.isBlank()) {
 			collectInferredTransportViolations(name, server, violations);
 		} else if (!Objects.requireNonNullElse(allowedTypes, DEFAULT_ALLOWED_TYPES).contains(type)) {
-			add(name, "has an unsupported type: " + type, violations);
+			McpServers.add(name, "has an unsupported type: " + type, violations);
 		} else if (type.equals(STDIO_TYPE)) {
 			collectCommandViolation(name, server, violations);
 		} else {
@@ -102,24 +104,20 @@ public class McpServersValidRule extends JsonFileRule {
 		if (server.has(COMMAND_KEY)) {
 			collectCommandViolation(name, server, violations);
 		} else {
-			add(name, "must declare a 'command' (stdio) or a 'type' with a 'url' (sse/http)", violations);
+			McpServers.add(name, "must declare a 'command' (stdio) or a 'type' with a 'url' (sse/http)", violations);
 		}
 	}
 
 	private void collectCommandViolation(String name, JsonNode server, List<String> violations) {
 		if (JsonNodes.textAt(server, COMMAND_KEY, "").isBlank()) {
-			add(name, "(stdio) is missing a 'command'", violations);
+			McpServers.add(name, "(stdio) is missing a 'command'", violations);
 		}
 	}
 
 	private void collectUrlViolation(String name, String type, JsonNode server, List<String> violations) {
 		if (JsonNodes.textAt(server, URL_KEY, "").isBlank()) {
-			add(name, "(" + type + ") is missing a 'url'", violations);
+			McpServers.add(name, "(" + type + ") is missing a 'url'", violations);
 		}
-	}
-
-	private void add(String name, String problem, List<String> violations) {
-		violations.add(McpServers.problem(name, problem));
 	}
 
 	void setMcpFile(File mcpFile) {

@@ -40,12 +40,14 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 @Named("mcpConfigFormat")
 public class McpConfigFormatRule extends JsonFileRule {
 
-	private static final String MCP_SERVERS_KEY = "mcpServers";
-	private static final String COMMAND_KEY = "command";
+	/** The keys shared with {@link McpServersValidRule}, named once in {@link McpServers}. */
+	private static final String MCP_SERVERS_KEY = McpServers.SECTION_KEY;
+	private static final String COMMAND_KEY = McpServers.COMMAND_KEY;
+	private static final String URL_KEY = McpServers.URL_KEY;
+
 	private static final String ARGS_KEY = "args";
 	private static final String ENV_KEY = "env";
 	private static final String HEADERS_KEY = "headers";
-	private static final String URL_KEY = "url";
 	private static final String HTTP_SCHEME = "http";
 	private static final String HTTPS_SCHEME = "https";
 
@@ -85,7 +87,7 @@ public class McpConfigFormatRule extends JsonFileRule {
 			return;
 		}
 		if (server.has(COMMAND_KEY) && server.has(URL_KEY)) {
-			add(name, "declares both a 'command' and a 'url'", violations);
+			McpServers.add(name, "declares both a 'command' and a 'url'", violations);
 		}
 		collectArgsViolations(name, server, violations);
 		collectStringMapViolations(name, server, ENV_KEY, violations);
@@ -99,12 +101,12 @@ public class McpConfigFormatRule extends JsonFileRule {
 			return;
 		}
 		if (!args.isArray()) {
-			add(name, "has an 'args' that is not an array", violations);
+			McpServers.add(name, "has an 'args' that is not an array", violations);
 			return;
 		}
 		for (int i = 0; i < args.size(); i++) {
 			if (!args.get(i).isTextual()) {
-				add(name, "has a non-string entry in 'args'", violations);
+				McpServers.add(name, "has a non-string entry in 'args'", violations);
 			}
 		}
 	}
@@ -115,12 +117,12 @@ public class McpConfigFormatRule extends JsonFileRule {
 			return;
 		}
 		if (!map.isObject()) {
-			add(name, "has a '" + key + "' that is not an object", violations);
+			McpServers.add(name, "has a '" + key + "' that is not an object", violations);
 			return;
 		}
 		for (String field : JsonNodes.fieldNames(map)) {
 			if (!map.get(field).isTextual()) {
-				add(name, "has a non-string value for '" + key + "." + field + "'", violations);
+				McpServers.add(name, "has a non-string value for '" + key + "." + field + "'", violations);
 			}
 		}
 	}
@@ -132,9 +134,9 @@ public class McpConfigFormatRule extends JsonFileRule {
 		}
 		String scheme = schemeOf(url.asText());
 		if (scheme == null) {
-			add(name, "has a malformed 'url': " + url.asText(), violations);
+			McpServers.add(name, "has a malformed 'url': " + url.asText(), violations);
 		} else if (requireHttps && !scheme.equals(HTTPS_SCHEME)) {
-			add(name, "must use an https 'url': " + url.asText(), violations);
+			McpServers.add(name, "must use an https 'url': " + url.asText(), violations);
 		}
 	}
 
@@ -148,10 +150,6 @@ public class McpConfigFormatRule extends JsonFileRule {
 	 */
 	private boolean isExpanded(String url) {
 		return EXPANSION.matcher(url).find();
-	}
-
-	private void add(String name, String problem, List<String> violations) {
-		violations.add(McpServers.problem(name, problem));
 	}
 
 	/**

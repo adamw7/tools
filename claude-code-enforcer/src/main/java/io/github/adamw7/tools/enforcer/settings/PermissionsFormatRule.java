@@ -5,7 +5,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.inject.Named;
 
@@ -39,10 +38,11 @@ import io.github.adamw7.tools.enforcer.rule.Patterns;
 @Named("permissionsFormat")
 public class PermissionsFormatRule extends JsonFileRule {
 
-	private static final String PERMISSIONS_KEY = "permissions";
-	private static final String ALLOW_KEY = "allow";
-	private static final String DENY_KEY = "deny";
-	private static final List<String> LIST_KEYS = List.of(ALLOW_KEY, DENY_KEY, "ask");
+	/** The keys of the permissions section, named once in {@link Permissions} and read the same way here. */
+	private static final String PERMISSIONS_KEY = Permissions.SECTION_KEY;
+	private static final String ALLOW_KEY = Permissions.ALLOW_KEY;
+	private static final String DENY_KEY = Permissions.DENY_KEY;
+	private static final List<String> LIST_KEYS = List.of(ALLOW_KEY, DENY_KEY, Permissions.ASK_KEY);
 
 	/**
 	 * A built-in tool name, or an {@code mcp__server__tool} name whose server and
@@ -140,8 +140,8 @@ public class PermissionsFormatRule extends JsonFileRule {
 	}
 
 	private void collectContradictions(JsonNode permissions, List<String> violations) {
-		Set<String> denied = textEntries(permissions, DENY_KEY);
-		for (String entry : textEntries(permissions, ALLOW_KEY)) {
+		Set<String> denied = Permissions.entriesIn(permissions, DENY_KEY);
+		for (String entry : Permissions.entriesIn(permissions, ALLOW_KEY)) {
 			if (denied.contains(entry)) {
 				violations.add("settings.json permission '" + entry + "' appears in both 'allow' and 'deny'");
 			}
@@ -153,7 +153,7 @@ public class PermissionsFormatRule extends JsonFileRule {
 			return;
 		}
 		List<Pattern> patterns = Patterns.compileAll(forbiddenEntryPatterns, FORBIDDEN_PATTERN_PARAMETER);
-		for (String entry : textEntries(permissions, ALLOW_KEY)) {
+		for (String entry : Permissions.entriesIn(permissions, ALLOW_KEY)) {
 			addForbiddenEntryViolations(entry, patterns, violations);
 		}
 	}
@@ -164,16 +164,6 @@ public class PermissionsFormatRule extends JsonFileRule {
 				add(ALLOW_KEY, "entry '" + entry + "' matches forbidden pattern '" + pattern + "'", violations);
 			}
 		}
-	}
-
-	/** The textual entries of one permission list, in document order, de-duplicated. */
-	private Set<String> textEntries(JsonNode permissions, String key) {
-		JsonNode list = JsonNodes.arrayAt(permissions, key);
-		if (list == null) {
-			return Set.of();
-		}
-		return list.valueStream().filter(JsonNode::isTextual).map(JsonNode::asText)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
 	/** Every violation names the permission list the entry sits in. */

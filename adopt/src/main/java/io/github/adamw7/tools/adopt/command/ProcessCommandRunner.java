@@ -64,6 +64,18 @@ public class ProcessCommandRunner implements CommandRunner {
 		return timeout;
 	}
 
+	/**
+	 * The bound every command started here is given. Package-visible so
+	 * {@link CommandRunners} can be asserted to have carried the run's own
+	 * {@code --timeout} down to the runner that enforces it: the only other way this
+	 * value shows is a command being destroyed on it, so a run bounded by the default
+	 * when the operator asked for something else reads exactly like one that was
+	 * configured correctly, until a command outlives what was actually set.
+	 */
+	Duration timeout() {
+		return timeout;
+	}
+
 	@Override
 	public CommandResult run(Path workingDirectory, List<String> command) {
 		log.debug("Running in {}: {}", workingDirectory, CommandResult.describe(command));

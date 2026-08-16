@@ -230,6 +230,12 @@ scopes — keep changes focused, and add or update tests alongside the code.
   `adopt-pipeline`, `mcp-server`, `enforcer-rules`; across the repo:
   `doc-contract`, `git-commit`, `java-code-review`, `maven-conventions`,
   `solid-principles`, `testing-conventions`, `text-parsers`.
+- `.claude/agents/` holds two sub-agents for the jobs that read far more than
+  they answer: `build-verifier` (runs the right Maven command and reports the
+  verdict plus only the failing output) and `doc-drift-auditor` (reports what the
+  documents disagree on that no rule pins).
+- `.claude/commands/` holds three slash commands for the procedures whose omitted
+  step fails late: `/doc-check`, `/module-build`, `/new-enforcer-rule`.
 - `.claude/settings.json` allows the `mvn` and archive-inspection Bash commands
   and wires the `SessionStart` hook; `.claude/hooks/session-start.sh` provisions
   the JDK and warms the Maven cache in web/remote sessions.
@@ -256,14 +262,15 @@ inconsistent. Skills: `doc-contract` (editing the docs), `enforcer-rules`
   shared with AGENTS.md (the Java version) and `readmeConsistency` pins the
   README against AGENTS.md (the protobuf major version).
 - The remaining rules — `agentsMdFormat`, `memoryImports`, `noSecrets`,
-  `skillFilesExist`, `uniqueNames`, `uniqueDescriptions`, `settingsJsonValid`,
-  `permissionsFormat`, `hookCommandsValid`, `hooksFormat`,
-  `localSettingsIgnored`, `mcpServersValid`, `mcpConfigFormat`, `pluginFormat`,
-  `okfBundleFormat` — cover AGENTS.md and the agent configuration. The last four
-  target files this repository does not ship: they pass on the absent file and
-  start enforcing the moment one is added. `subAgentFormat` and `commandFormat`
-  ship but stay unwired, because a *configured* definition directory must exist —
-  add the directory and the rule together.
+  `skillFilesExist`, `subAgentFormat`, `commandFormat`, `uniqueNames`,
+  `uniqueDescriptions`, `settingsJsonValid`, `permissionsFormat`,
+  `hookCommandsValid`, `hooksFormat`, `localSettingsIgnored`, `mcpServersValid`,
+  `mcpConfigFormat`, `pluginFormat`, `okfBundleFormat` — cover AGENTS.md and the
+  agent configuration. The last four target files this repository does not ship:
+  they pass on the absent file and start enforcing the moment one is added. The
+  three definition rules are the opposite — a *configured* directory must exist,
+  so `.claude/skills`, `.claude/agents` and `.claude/commands` were each added
+  together with the rule reading them.
 - Every rule offers `severity` (`error` by default, or `warn` to log without
   failing), an optional `reportFile` for an HTML report, and an optional
   `baselineFile` that suppresses already-accepted violations.

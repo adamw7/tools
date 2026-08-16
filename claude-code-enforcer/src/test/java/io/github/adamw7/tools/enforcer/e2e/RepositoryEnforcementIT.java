@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
+
 /**
  * Enforces this repository's own documentation contract the way
  * {@code .github/workflows/maven.yml} does — {@code mvn -N validate
@@ -50,12 +52,14 @@ class RepositoryEnforcementIT {
 			"pom.xml", "CLAUDE.md", "AGENTS.md", "README.md", ".gitignore", ".claude");
 
 	/**
-	 * The rules that ship unwired on purpose. Both take a definition directory that
-	 * must exist when configured, so wiring one before the repository has the
-	 * directory would fail the build as a setup mistake; they are wired the day the
-	 * directory is added.
+	 * The rules that ship unwired on purpose — none today. The two that were
+	 * exempted, {@code subAgentFormat} and {@code commandFormat}, take a definition
+	 * directory that must exist when configured, so they were wired the day
+	 * {@code .claude/agents} and {@code .claude/commands} were added. A rule may be
+	 * listed here again only with a reason of that kind; the assertion below is what
+	 * stops the list growing quietly.
 	 */
-	private static final Set<String> DELIBERATELY_UNWIRED = Set.of("subAgentFormat", "commandFormat");
+	private static final Set<String> DELIBERATELY_UNWIRED = Set.of();
 
 	private static BuildEnvironment environment;
 	private static MavenBuild maven;
@@ -89,10 +93,9 @@ class RepositoryEnforcementIT {
 	}
 
 	/**
-	 * A rule nobody wires guards nothing, and the two that ship unwired do so for a
-	 * documented reason. Comparing the shipped catalogue against the profile turns
-	 * "someone forgot to wire it" into a failure, and equally stops the exemption
-	 * list from quietly growing.
+	 * A rule nobody wires guards nothing. Comparing the shipped catalogue against the
+	 * profile turns "someone forgot to wire it" into a failure, and equally stops the
+	 * exemption list from quietly growing back.
 	 */
 	@Test
 	void everyShippedRuleIsWiredIntoTheBuildOrDeliberatelyLeftOut() {
@@ -123,6 +126,46 @@ class RepositoryEnforcementIT {
 		assertTrue(outcome.mentions("(skillFilesExist) failed"), outcome::describe);
 		assertTrue(outcome.mentions("Missing SKILL.md in skill directory: "), outcome::describe);
 		assertTrue(outcome.mentions(skill.getFileName().toString()), outcome::describe);
+	}
+
+	/**
+	 * {@code subAgentFormat} is wired at {@code ${project.basedir}/.claude/agents}.
+	 * That the rule passed proves only that the directory exists, since a configured
+	 * one that does not is a build-setup failure — it does not prove the sub-agents
+	 * are the files being read. Renaming one in its own front matter is the mistake
+	 * the rule exists for, and only a rule reading that file reports it.
+	 */
+	@Test
+	void theWiredConfigurationCatchesASubAgentRenamedInItsFrontMatterAlone() {
+		Path repository = copyOfRepository();
+		Path agent = firstMarkdownIn(repository.resolve(".claude/agents"));
+		String fileName = ProjectFiles.markdownBaseName(agent.toFile());
+		write(agent, read(agent).replace("name: " + fileName, "name: renamed-elsewhere"));
+
+		BuildOutcome outcome = enforce(repository);
+
+		assertFalse(outcome.succeeded(), outcome::describe);
+		assertTrue(outcome.mentions("(subAgentFormat) failed"), outcome::describe);
+		assertTrue(outcome.mentions("must match '" + fileName + "'"), outcome::describe);
+	}
+
+	/**
+	 * The same claim for {@code commandsDir}, made through the one thing a command
+	 * cannot get wrong quietly: a slash command answers to its file name, so a name
+	 * outside the convention is a command nobody can invoke. Renaming the file leaves
+	 * its content untouched, so this stays true however the commands are rewritten.
+	 */
+	@Test
+	void theWiredConfigurationCatchesACommandFileNamedOutsideTheConvention() {
+		Path repository = copyOfRepository();
+		Path command = firstMarkdownIn(repository.resolve(".claude/commands"));
+		rename(command, "Not_Kebab_Case.md");
+
+		BuildOutcome outcome = enforce(repository);
+
+		assertFalse(outcome.succeeded(), outcome::describe);
+		assertTrue(outcome.mentions("(commandFormat) failed"), outcome::describe);
+		assertTrue(outcome.mentions("name 'Not_Kebab_Case' must be lower-case kebab-case"), outcome::describe);
 	}
 
 	/**
@@ -171,6 +214,21 @@ class RepositoryEnforcementIT {
 	}
 
 	/**
+	 * The definition a directory of commands or sub-agents lists first, chosen the
+	 * same way and for the same reason as {@link #firstSkillIn}: by order rather than
+	 * by name, so renaming one does not rename it here too.
+	 */
+	private Path firstMarkdownIn(Path directory) {
+		try (Stream<Path> files = Files.list(directory)) {
+			return files.filter(file -> file.getFileName().toString().endsWith(".md"))
+					.min(Comparator.comparing(Path::getFileName))
+					.orElseThrow(() -> new IllegalStateException("There are no definitions under " + directory));
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not list " + directory, e);
+		}
+	}
+
+	/**
 	 * Copied with the file attributes, because one of the things the wired rules
 	 * check is that a hook script is executable — a copy that dropped the mode bits
 	 * would fail for a reason the repository is not guilty of.
@@ -215,6 +273,14 @@ class RepositoryEnforcementIT {
 			Files.delete(file);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not delete " + file, e);
+		}
+	}
+
+	private void rename(Path file, String newName) {
+		try {
+			Files.move(file, file.resolveSibling(newName));
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not rename " + file, e);
 		}
 	}
 

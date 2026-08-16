@@ -679,7 +679,43 @@ A new skill needs no wiring: `skillFilesExist`, `uniqueNames` and
 `uniqueDescriptions` already point at `.claude/skills`, so it is validated the
 moment it lands. Its `description` must not duplicate another's — Claude routes
 by matching intent against these descriptions, so one duplicate shadows the
-other.
+other, and the two uniqueness rules compare skills, sub-agents and commands
+together rather than each directory on its own.
+
+### Sub-agents
+
+`.claude/agents/` holds **two** sub-agents, each a `*.md` file whose front matter
+declares a `name` matching the file name and a `description`. Both exist for the
+same reason: the job reads far more than it answers, so the reading belongs in a
+context that is thrown away.
+
+| Sub-agent | Does |
+| --- | --- |
+| `build-verifier` | runs the right Maven command for a change — the two-phase doc check, `-pl` paired with `-am`, the single-test forms — and reports the verdict plus only the output that explains a failure |
+| `doc-drift-auditor` | reads `CLAUDE.md`, `AGENTS.md`, `README.md` and the poms together and reports the facts that drifted but that no rule pins: counts, catalogue tables, quoted commands |
+
+Neither fixes anything; both report. A `model` may be declared, and
+`subAgentFormat` is wired with the aliases Claude Code accepts (`opus`,
+`sonnet`, `haiku`, `inherit`), so a typo such as `claud-opus` fails the build
+rather than silently falling back.
+
+### Commands
+
+`.claude/commands/` holds **three** slash commands. A command answers to its file
+name, so that name — not a front matter `name` — must be lower-case kebab-case;
+front matter itself is optional.
+
+| Command | Runs |
+| --- | --- |
+| `/doc-check` | the two-phase enforcement check, with what each common failure actually means |
+| `/module-build` | one module at a chosen phase, with the `-pl`/`-am` pairing and the single-test forms |
+| `/new-enforcer-rule` | the end-to-end checklist for adding a rule: class, Sisu index, tests, IT fixture, pom wiring, docs |
+
+Each covers a procedure whose steps are easy to leave out and whose omission
+fails late — a rule missing from the Sisu index unit-tests green, and a doc check
+run in one phase validates the *previous* rule. `commandFormat` is wired with
+`allowedFrontMatterKeys`, so a mistyped `argument-hnt` is reported rather than
+ignored.
 
 ### Settings and hooks
 
@@ -705,12 +741,15 @@ Personal overrides belong in `.claude/settings.local.json`, which is gitignored;
 
 ### What this repository does not ship
 
-Four agent-configuration files are absent by choice: `.mcp.json` (the three
+Two agent-configuration files are absent by choice: `.mcp.json` (the three
 servers here are *published* for other projects to configure, not consumed by
-this one), `.claude-plugin/plugin.json`, `.claude/agents` and `.claude/commands`.
-The first two rules are wired and pass on the absent file, so they start
-enforcing the day one is added; `subAgentFormat` and `commandFormat` cannot be
-wired until their directory exists — add the directory and the rule together.
+this one) and `.claude-plugin/plugin.json`. Both rules are wired and pass on the
+absent file, so they start enforcing the day one is added.
+
+`.claude/agents` and `.claude/commands` were absent for the same reason until the
+definitions above were written, and their rules could not be wired before that:
+a *configured* definition directory must exist. Add the directory and the rule
+together, as that change did.
 
 ## CLAUDE.md enforcement
 
@@ -749,8 +788,10 @@ Skill: `enforcer-rules`.
 Rules whose target is optional (`mcpServersValid`, `mcpConfigFormat`,
 `okfBundleFormat`, `pluginFormat`, `noSecrets`, `hooksFormat`) pass on the absent
 file and start enforcing the moment one appears. A *configured* definition
-directory, by contrast, must exist — which is why `subAgentFormat` and
-`commandFormat` stay unwired here.
+directory, by contrast, must exist, so `skillFilesExist`, `subAgentFormat` and
+`commandFormat` can only be wired once `.claude/skills`, `.claude/agents` and
+`.claude/commands` are there — every rule this module ships is wired here today,
+and `RepositoryEnforcementIT` fails if one stops being.
 
 ### What every rule shares
 

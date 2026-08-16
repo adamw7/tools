@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.settings;
 
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Named;
 
@@ -26,9 +27,6 @@ import io.github.adamw7.tools.enforcer.rule.Violations;
 @Named("settingsJsonValid")
 public class SettingsJsonValidRule extends JsonFileRule {
 
-	private static final String PERMISSIONS_KEY = "permissions";
-	private static final String ALLOW_KEY = "allow";
-
 	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
 	private File settingsFile;
 
@@ -52,17 +50,17 @@ public class SettingsJsonValidRule extends JsonFileRule {
 		if (requiredPermissions == null && forbiddenPermissions == null) {
 			return;
 		}
-		List<String> allow = allowList(settings);
+		Set<String> allow = allowList(settings);
 		Violations.each(requiredPermissions, permission -> !allow.contains(permission),
 				permission -> "settings.json is missing required permission: " + permission, violations);
 		Violations.each(forbiddenPermissions, allow::contains,
 				permission -> "settings.json contains forbidden permission: " + permission, violations);
 	}
 
-	private List<String> allowList(JsonNode settings) {
-		JsonNode permissions = JsonNodes.objectAt(settings, PERMISSIONS_KEY);
-		JsonNode allow = permissions != null ? JsonNodes.arrayAt(permissions, ALLOW_KEY) : null;
-		return allow != null ? allow.valueStream().map(JsonNode::asText).toList() : List.of();
+	/** The granted permissions, read exactly as {@code permissionsFormat} reads the same list. */
+	private Set<String> allowList(JsonNode settings) {
+		JsonNode permissions = JsonNodes.objectAt(settings, Permissions.SECTION_KEY);
+		return permissions != null ? Permissions.entriesIn(permissions, Permissions.ALLOW_KEY) : Set.of();
 	}
 
 	void setSettingsFile(File settingsFile) {

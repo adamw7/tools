@@ -77,6 +77,26 @@ class SettingsJsonValidRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A permission is a string, and a list element of any other type grants nothing —
+	 * so it must not answer for a required permission either. Reading it as its text
+	 * let a JSON number satisfy a policy no settings file can actually satisfy, and
+	 * it is what {@code permissionsFormat} reports as not being a string at all.
+	 */
+	@Test
+	void doesNotLetANonStringEntrySatisfyARequiredPermission() {
+		SettingsJsonValidRule rule = ruleFor("""
+				{
+				  "permissions": {
+				    "allow": [ 123 ]
+				  }
+				}
+				""");
+		rule.setRequiredPermissions(List.of("123"));
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "missing required permission: 123");
+	}
+
 	private SettingsJsonValidRule ruleFor(String content) {
 		Path file = tempDir.resolve("settings.json");
 		writeString(file, content);

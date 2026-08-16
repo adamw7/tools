@@ -172,7 +172,8 @@ class GitHubRepoAdopterTest {
 
 	@Test
 	void aDryRunPipelineStillInstallsTheAssetsWhenAskedFor() {
-		AdoptionOptions options = new AdoptionOptions(PullRequestOptions.defaults(), true, null, true, null);
+		AdoptionOptions options = new AdoptionOptions(PullRequestOptions.defaults(), true, null, true, null,
+				AdoptionOptions.DEFAULT_RETRIES);
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
 				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify"),
 				stepNames(options));
@@ -221,10 +222,12 @@ class GitHubRepoAdopterTest {
 	}
 
 	private AdoptionOptions withAssets() {
-		return new AdoptionOptions(PullRequestOptions.defaults(), true, null, false, null);
+		return new AdoptionOptions(PullRequestOptions.defaults(), true, null, false, null,
+				AdoptionOptions.DEFAULT_RETRIES);
 	}
 
 	private AdoptionOptions dryRun() {
-		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, true, null);
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, true, null,
+				AdoptionOptions.DEFAULT_RETRIES);
 	}
 }

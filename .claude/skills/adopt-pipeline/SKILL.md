@@ -82,9 +82,27 @@ included. Preserve that when changing `BatchAdoption` or `Failures`.
 ## CLI flags
 `--repo`, `--repos`, `--workspace`, `--branch`, `--title`, `--body`,
 `--reviewer`, `--label`, `--assignee`, `--draft`, `--assets`, `--dry-run`,
-`--rule-version`, `--timeout <minutes>`, `--report <file>`, `--help`. They build
-an `AdoptionOptions` (wrapping `PullRequestOptions`) that both entry points —
-`Main` and the MCP `AdoptTool` — hand to the pipeline factory.
+`--rule-version`, `--timeout <minutes>`, `--retries <count>`, `--report <file>`,
+`--help`. They build an `AdoptionOptions` (wrapping `PullRequestOptions`) that
+both entry points — `Main` and the MCP `AdoptTool` — hand to the pipeline factory.
+
+## Retrying what the network refused
+Both entry points wrap `ProcessCommandRunner` in a `RetryingCommandRunner`, so a
+`git` or `gh` the network refused is run again — twice by default, after 2s and
+4s (doubling, capped at 30s), and `--retries 0` turns it off. An unattended batch
+otherwise lost a whole repository, `claude init` included, to one connection
+reset.
+
+`TransientFailures` is the single place that decides, and it is deliberately
+narrow on two axes: the program must be `git` or `gh` — re-runnable, and unlike
+`claude` or a build tool not liable to *discuss* a connection reset in a
+transcript — and the wording must be a transport-level refusal. Everything else
+still fails on the first attempt: a 403 or 404, a rejected non-fast-forward, a
+rate limit that wants minutes rather than seconds, and the git queries whose
+answer *is* a non-zero exit (`rev-parse --verify`, `diff --cached --quiet`).
+Nothing that throws is retried — an unstartable program and a timeout both buy
+only another wait. Add a wording to that list rather than teaching a step to
+retry for itself.
 
 ## Debugging a run: where the logging goes
 Two channels, from `adopt/src/main/resources/log4j2.properties`. The **console**

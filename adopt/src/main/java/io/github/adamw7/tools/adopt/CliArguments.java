@@ -25,9 +25,10 @@ import picocli.CommandLine.ParameterException;
  * naming one per line), the workspace and branch under their own names, the
  * {@link PullRequestOptions} metadata, the starter-assets step, the
  * {@code claude-code-enforcer} version to wire in, a rehearsal that publishes
- * nothing, how long any one external command may take, and a JSON report of the
- * outcome. A blank value counts as not supplied for every optional input; an
- * unknown flag, or one missing its value, fails with the usage line.
+ * nothing, how long any one external command may take, how many further attempts a
+ * command the network refused earns, and a JSON report of the outcome. A blank
+ * value counts as not supplied for every optional input; an unknown flag, or one
+ * missing its value, fails with the usage line.
  *
  * <p>The arguments are matched by picocli rather than by a loop of this module's
  * own, so what the parser accepts is declared in one place instead of being
@@ -61,12 +62,13 @@ public final class CliArguments {
 			+ " [--workspace <directory>] [--branch <name>]"
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
-			+ " [--dry-run] [--timeout <minutes>] [--report <file>] [--help]";
+			+ " [--dry-run] [--timeout <minutes>] [--retries <count>] [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
 	static final String HELP_SHORTHAND = "-h";
 
 	private static final String TIMEOUT_FLAG = "--timeout";
+	private static final String RETRIES_FLAG = "--retries";
 	private static final String REPOS_FLAG = "--repos";
 
 	@Option(names = "--title", paramLabel = "<title>")
@@ -106,6 +108,7 @@ public final class CliArguments {
 	private Path workspace;
 	private String branchName;
 	private Duration commandTimeout;
+	private int retries = AdoptionOptions.DEFAULT_RETRIES;
 	private String positionalUrl;
 	private boolean flagsNamedARepository;
 
@@ -204,7 +207,7 @@ public final class CliArguments {
 
 	/** How this run is configured, as the pipeline and the command runner read it. */
 	public AdoptionOptions adoptionOptions() {
-		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout);
+		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries);
 	}
 
 	public Optional<Path> reportFile() {
@@ -281,6 +284,16 @@ public final class CliArguments {
 		commandTimeout = Text.isPresent(value) ? Duration.ofMinutes(minutes(value.strip())) : null;
 	}
 
+	/**
+	 * Zero is a meaningful answer here rather than a missing one — an operator who
+	 * wants every failure reported the moment it happens says so with
+	 * {@code --retries 0} — so only a blank value falls back to the default.
+	 */
+	@Option(names = RETRIES_FLAG, paramLabel = "<count>")
+	private void retries(String value) {
+		retries = Text.isPresent(value) ? count(value.strip()) : AdoptionOptions.DEFAULT_RETRIES;
+	}
+
 	private void addFlaggedRepository(String url) {
 		flagsNamedARepository = flagsNamedARepository || Text.isPresent(url);
 		addRepository(url);
@@ -317,6 +330,24 @@ public final class CliArguments {
 		} catch (NumberFormatException e) {
 			throw new IllegalArgumentException(
 					TIMEOUT_FLAG + " must be a whole number of minutes, but was " + value + ". " + USAGE, e);
+		}
+	}
+
+	private static int count(String value) {
+		int parsed = parseCount(value);
+		if (parsed < 0 || parsed > AdoptionOptions.MAX_RETRIES) {
+			throw new IllegalArgumentException(RETRIES_FLAG + " must be between 0 and " + AdoptionOptions.MAX_RETRIES
+					+ ", but was " + value + ". " + USAGE);
+		}
+		return parsed;
+	}
+
+	private static int parseCount(String value) {
+		try {
+			return Integer.parseInt(value);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException(
+					RETRIES_FLAG + " must be a whole number of attempts, but was " + value + ". " + USAGE, e);
 		}
 	}
 

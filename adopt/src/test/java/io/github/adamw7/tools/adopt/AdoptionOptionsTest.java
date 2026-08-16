@@ -24,6 +24,25 @@ class AdoptionOptionsTest {
 		assertFalse(options.dryRun());
 		assertEquals(Optional.empty(), options.pinnedRuleVersion());
 		assertEquals(ProcessCommandRunner.DEFAULT_TIMEOUT, options.commandTimeout());
+		assertEquals(AdoptionOptions.DEFAULT_RETRIES, options.retries());
+	}
+
+	/**
+	 * A retry count is refused where the options are built, so a caller assembling the
+	 * pipeline for itself hears about it before the run rather than through the runner
+	 * mid-adoption.
+	 */
+	@Test
+	void refusesARetryCountOutsideTheBounds() {
+		assertThrows(IllegalArgumentException.class, () -> retrying(-1));
+		assertThrows(IllegalArgumentException.class, () -> retrying(AdoptionOptions.MAX_RETRIES + 1));
+	}
+
+	/** Zero is an answer, not an absence: every failure is reported the moment it happens. */
+	@Test
+	void keepsARetryCountTheCallerNamed() {
+		assertEquals(0, retrying(0).retries());
+		assertEquals(AdoptionOptions.MAX_RETRIES, retrying(AdoptionOptions.MAX_RETRIES).retries());
 	}
 
 	/**
@@ -32,7 +51,7 @@ class AdoptionOptionsTest {
 	 */
 	@Test
 	void fillsInWhatWasNotSupplied() {
-		AdoptionOptions options = new AdoptionOptions(null, false, null, false, null);
+		AdoptionOptions options = new AdoptionOptions(null, false, null, false, null, AdoptionOptions.DEFAULT_RETRIES);
 		assertEquals(PullRequestOptions.defaults(), options.pullRequest());
 		assertEquals(ProcessCommandRunner.DEFAULT_TIMEOUT, options.commandTimeout());
 	}
@@ -73,17 +92,23 @@ class AdoptionOptionsTest {
 	void carriesThePullRequestMetadataItWasGiven() {
 		PullRequestOptions pullRequest = new PullRequestOptions("Title", "Body", List.of("octocat"), List.of(),
 				List.of(), true);
-		AdoptionOptions options = new AdoptionOptions(pullRequest, true, "2.6.0", true, Duration.ofMinutes(1));
+		AdoptionOptions options = new AdoptionOptions(pullRequest, true, "2.6.0", true, Duration.ofMinutes(1), 1);
 		assertEquals(pullRequest, options.pullRequest());
 		assertTrue(options.includeAssets());
 		assertTrue(options.dryRun());
 	}
 
 	private AdoptionOptions optionsPinning(String ruleVersion) {
-		return new AdoptionOptions(PullRequestOptions.defaults(), false, ruleVersion, false, null);
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, ruleVersion, false, null,
+				AdoptionOptions.DEFAULT_RETRIES);
+	}
+
+	private AdoptionOptions retrying(int retries) {
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null, retries);
 	}
 
 	private AdoptionOptions timingOut(Duration commandTimeout) {
-		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, commandTimeout);
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, commandTimeout,
+				AdoptionOptions.DEFAULT_RETRIES);
 	}
 }

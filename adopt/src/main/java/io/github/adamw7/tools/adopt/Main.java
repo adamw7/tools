@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 
 /**
  * Command-line entry point: parses the arguments with {@link CliArguments} and
@@ -41,8 +42,19 @@ public class Main {
 			return;
 		}
 		AdoptionOptions options = cli.adoptionOptions();
-		CommandRunner runner = new ProcessCommandRunner(options.commandTimeout());
-		runAndReport(cli, checkouts(cli), GitHubRepoAdopter.withDefaultPipeline(runner, options));
+		runAndReport(cli, checkouts(cli), GitHubRepoAdopter.withDefaultPipeline(runner(options), options));
+	}
+
+	/**
+	 * The toolchain every repository of the run is adopted through: one runner,
+	 * assembled once, bounding each command by the run's timeout and giving a
+	 * {@code git} or {@code gh} the network refused the further attempts the run
+	 * allows. A run configured with {@code --retries 0} is wrapped all the same,
+	 * because the decorator is then a pass-through and the alternative is two ways of
+	 * building the same toolchain.
+	 */
+	private static CommandRunner runner(AdoptionOptions options) {
+		return new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()), options.retries());
 	}
 
 	/**

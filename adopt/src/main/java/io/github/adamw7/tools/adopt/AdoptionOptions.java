@@ -35,19 +35,45 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * @param commandTimeout  how long any one external command may run before it is
  *                        destroyed, defaulting to
  *                        {@link ProcessCommandRunner#DEFAULT_TIMEOUT}
+ * @param retries         how many further attempts a {@code git} or {@code gh}
+ *                        command the network refused earns, defaulting to
+ *                        {@link #DEFAULT_RETRIES} and bounded by
+ *                        {@link #MAX_RETRIES}; zero adopts exactly as an
+ *                        undecorated run does
  */
 public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
-		boolean dryRun, Duration commandTimeout) {
+		boolean dryRun, Duration commandTimeout, int retries) {
+
+	/**
+	 * Two further attempts, which is what a transport-level hiccup takes: the failure
+	 * being waited out is a connection that was refused or reset, and one that has
+	 * survived four and twelve seconds of waiting is an outage the operator has to be
+	 * told about rather than one more attempt can absorb.
+	 */
+	public static final int DEFAULT_RETRIES = 2;
+
+	/**
+	 * The most an operator may ask for. Bounded rather than merely non-negative
+	 * because a run is unattended: every attempt beyond this one waits out
+	 * {@link io.github.adamw7.tools.adopt.command.RetryingCommandRunner#MAX_BACKOFF}
+	 * before it, so a generous number turns a network that is simply down into a batch
+	 * that looks like it is working.
+	 */
+	public static final int MAX_RETRIES = 10;
 
 	public AdoptionOptions {
 		pullRequest = pullRequest == null ? PullRequestOptions.defaults() : pullRequest;
 		ruleVersion = Text.orDefault(ruleVersion, null);
 		commandTimeout = commandTimeout == null ? ProcessCommandRunner.DEFAULT_TIMEOUT : requirePositive(commandTimeout);
+		retries = requireWithinBounds(retries);
 	}
 
-	/** The adoption's own pull request, no assets, published for real, at the default timeout. */
+	/**
+	 * The adoption's own pull request, no assets, published for real, at the default
+	 * timeout and retry count.
+	 */
 	public static AdoptionOptions defaults() {
-		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null);
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null, DEFAULT_RETRIES);
 	}
 
 	/**
@@ -70,5 +96,19 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 			throw new IllegalArgumentException("commandTimeout must be positive but was " + commandTimeout);
 		}
 		return commandTimeout;
+	}
+
+	/**
+	 * Rejected here as well as at each entry point, because this record is what a
+	 * caller assembling the pipeline for itself builds — and a retry count read from
+	 * somewhere neither the command line nor the MCP tool validated would otherwise
+	 * only be noticed by the runner, mid-run.
+	 */
+	private static int requireWithinBounds(int retries) {
+		if (retries < 0 || retries > MAX_RETRIES) {
+			throw new IllegalArgumentException(
+					"retries must be between 0 and " + MAX_RETRIES + " but was " + retries);
+		}
+		return retries;
 	}
 }

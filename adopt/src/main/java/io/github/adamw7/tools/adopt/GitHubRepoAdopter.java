@@ -56,6 +56,14 @@ public class GitHubRepoAdopter {
 	 */
 	static final String GUARD_COMMIT_MESSAGE = "Adopt Claude Code: add the CLAUDE.md guard";
 
+	/**
+	 * What the starter-assets commit says it did. It is named beside the guard's rather
+	 * than spelled out where the step is assembled, because a run leaves two commits in
+	 * somebody else's history and a test asking what each of them carried has to name
+	 * the one it means.
+	 */
+	static final String ASSETS_COMMIT_MESSAGE = "Add Claude Code configuration assets";
+
 	private static final Logger log = LogManager.getLogger(GitHubRepoAdopter.class);
 
 	private final CommandRunner runner;
@@ -113,7 +121,7 @@ public class GitHubRepoAdopter {
 		if (!options.includeAssets()) {
 			return List.of();
 		}
-		return List.of(new AssetsStep(), new CommitStep("Add Claude Code configuration assets", "assets"));
+		return List.of(new AssetsStep(), new CommitStep(ASSETS_COMMIT_MESSAGE, "assets"));
 	}
 
 	/**

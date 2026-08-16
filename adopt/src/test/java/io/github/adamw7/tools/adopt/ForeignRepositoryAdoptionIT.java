@@ -29,6 +29,8 @@ import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.command.RetryingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionAssets;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
+import io.github.adamw7.tools.adopt.step.AssetInstaller;
+import io.github.adamw7.tools.adopt.step.AssetsStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
 import io.github.adamw7.tools.adopt.step.BuildSystem;
 import io.github.adamw7.tools.adopt.step.BuildSystems;
@@ -59,10 +61,16 @@ import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
  *
  * <p>What is asserted is that the adoption's work on each of them is <em>its own and
  * nothing else</em>: the guard that lands is the one the checkout's build files ask
- * for, the commit carries only paths {@link AdoptionAssets#WRITTEN_PATHS} names,
- * nothing the project already declared is removed to make room for it, the default
- * branch and the remote are left exactly as they were cloned, and adopting the same
+ * for, the commits carry only paths {@link AdoptionAssets#WRITTEN_PATHS} names,
+ * nothing the project already declared is removed to make room for it, the starter
+ * assets installed are the ones the repository was missing and a file it already
+ * keeps at one of their paths is left exactly as it was cloned, the default branch
+ * and the remote are left exactly as they were cloned, and adopting the same
  * repository a second time changes nothing.
+ *
+ * <p>The starter assets are installed here — {@code --include-assets} adds them to a
+ * real run — because the promise {@link AssetInstaller} makes is about a file the
+ * project already keeps at one of their paths, and only a real repository brings one.
  *
  * <p>The pipeline is cut short of {@link io.github.adamw7.tools.adopt.step.PushStep}
  * and the pull request, as {@link MultiRepoAdoptionIT}'s is, so the run stays
@@ -128,6 +136,12 @@ class ForeignRepositoryAdoptionIT {
 	/** The repository whose {@code CLAUDE.md} somebody else wrote. */
 	private static final RealRepository WITH_CLAUDE_MD = named("anthropic-quickstarts");
 
+	/** The repository already shipping a file at one of {@link #ASSET_PATHS}. */
+	private static final RealRepository WITH_OWN_ASSET = named("claude-code");
+
+	/** The path {@link #WITH_OWN_ASSET} carries a version of that is not the adoption's. */
+	private static final String CLAUDE_WORKFLOW = ".github/workflows/claude.yml";
+
 	private static final String CLAUDE_MD = "CLAUDE.md";
 
 	private static final String BRANCH = "claude/adopt-it";
@@ -147,7 +161,14 @@ class ForeignRepositoryAdoptionIT {
 	private static final List<BuildSystem> BUILD_SYSTEMS = BuildSystems.defaults(Optional.of(RULE_VERSION));
 
 	/** The steps this run is given, in order, as each reports itself to the report. */
-	private static final List<String> PIPELINE = List.of("toolchain", "clone", "branch", "enforcer", "commit:guard");
+	private static final List<String> PIPELINE = List.of(
+			"toolchain", "clone", "branch", "enforcer", "commit:guard", "assets", "commit:assets");
+
+	/** The checkout-relative paths {@link AssetsStep} installs, sorted as git reports them. */
+	private static final List<String> ASSET_PATHS = AdoptionAssets.DEFAULTS.stream()
+			.map(AssetInstaller::relativePath)
+			.sorted()
+			.toList();
 
 	/**
 	 * Generous next to the second or two a clone of these repositories costs, and short
@@ -209,7 +230,7 @@ class ForeignRepositoryAdoptionIT {
 			BuildSystem detected = BuildSystems.detect(BUILD_SYSTEMS, checkoutOf(repository))
 					.orElseThrow(() -> new AssertionError("No build system matched " + repository));
 			assertEquals(repository.buildSystem(), detected.name(), () -> "adopting " + repository);
-			assertEquals(repository.guardPaths(), committedPaths(repository),
+			assertEquals(repository.guardPaths(), pathsIn(repository, GitHubRepoAdopter.GUARD_COMMIT_MESSAGE),
 					() -> "the guard commit in " + repository + " is not the one " + detected.name() + " installs");
 		}
 	}
@@ -225,14 +246,18 @@ class ForeignRepositoryAdoptionIT {
 	 * the adoption wrote and did not commit would be left behind in the contributor's
 	 * checkout, and one of the project's own files quietly modified would show up here
 	 * rather than in a diff nobody reads.
+	 *
+	 * <p>Both of the run's commits are read, rather than only the branch tip, since each
+	 * stages the whole checkout: a stray file written by either would be committed by
+	 * whichever ran next and would go unnoticed if only one of them were asked.
 	 */
 	@Test
 	void theAdoptionCommitsOnlyTheFilesItOwnsAndLeavesNothingBehind() {
 		for (RealRepository repository : REPOSITORIES) {
 			Path checkout = checkoutOf(repository);
-			assertEquals(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE, git(checkout, "log", "-1", "--format=%s"),
-					() -> "the tip of " + BRANCH + " in " + repository + " is not the adoption's guard commit");
-			for (String path : committedPaths(repository)) {
+			assertEquals(GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE, git(checkout, "log", "-1", "--format=%s"),
+					() -> "the tip of " + BRANCH + " in " + repository + " is not the adoption's last commit");
+			for (String path : adoptedPaths(repository)) {
 				assertTrue(AdoptionAssets.WRITTEN_PATHS.contains(path),
 						() -> "adopting " + repository + " committed " + path + ", which is not a path the adoption"
 								+ " writes: " + AdoptionAssets.WRITTEN_PATHS);
@@ -253,7 +278,8 @@ class ForeignRepositoryAdoptionIT {
 	@Test
 	void theGuardIsAddedWithoutRemovingWhatTheBuildFileAlreadyDeclared() {
 		for (RealRepository repository : REPOSITORIES) {
-			List<String> removals = git(checkoutOf(repository), "show", "--unified=0", "--pretty=format:", "HEAD")
+			List<String> removals = git(checkoutOf(repository), "show", "--unified=0", "--pretty=format:",
+					commitOf(repository, GitHubRepoAdopter.GUARD_COMMIT_MESSAGE))
 					.lines()
 					.filter(line -> line.startsWith("-") && !line.startsWith("--- "))
 					.toList();
@@ -282,6 +308,45 @@ class ForeignRepositoryAdoptionIT {
 			assertFalse(RUNNER.run(checkout, published).succeeded(),
 					() -> "adopting " + repository + " published " + BRANCH + " to the remote");
 		}
+	}
+
+	/**
+	 * The starter assets arrive in a repository that already has files of its own, and
+	 * {@link AssetsStep} installs exactly the ones it is missing. Asserting the commit's
+	 * paths against the difference — rather than against a list written out here — is
+	 * what makes the claim hold for whatever these five repositories ship next: an
+	 * installer that started overwriting would commit a path the project already
+	 * tracked, and one that stopped installing would leave a missing path out.
+	 */
+	@Test
+	void theStarterAssetsInstalledAreTheOnesTheRepositoryDidNotAlreadyHave() {
+		for (RealRepository repository : REPOSITORIES) {
+			List<String> alreadyThere = assetsAlreadyIn(repository);
+			List<String> missing = ASSET_PATHS.stream().filter(path -> !alreadyThere.contains(path)).toList();
+			assertEquals(missing, pathsIn(repository, GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE),
+					() -> "adopting " + repository + " did not install exactly the assets it was missing;"
+							+ " it already had " + alreadyThere);
+		}
+	}
+
+	/**
+	 * The one repository here that already ships a file at an asset's path — a
+	 * {@code claude.yml} workflow of its own, doing a different job from the adoption's
+	 * starter one. {@link AssetInstaller} promises the project's version always wins,
+	 * and every fixture that promise is checked against holds a file this repository
+	 * wrote to be overwritten. Comparing against the blob on the cloned default branch
+	 * is what makes it somebody else's file: nothing here says what it should contain.
+	 */
+	@Test
+	void theProjectsOwnFileAtAnAssetsPathIsLeftExactlyAsItWasCloned() {
+		Path checkout = checkoutOf(WITH_OWN_ASSET);
+		assertTrue(Files.isRegularFile(checkout.resolve(CLAUDE_WORKFLOW)),
+				() -> WITH_OWN_ASSET + " no longer ships " + CLAUDE_WORKFLOW + ", so this test needs a repository"
+						+ " that carries a file at one of " + ASSET_PATHS);
+		assertTrue(assetsAlreadyIn(WITH_OWN_ASSET).contains(CLAUDE_WORKFLOW),
+				() -> CLAUDE_WORKFLOW + " must be the project's own, or overwriting it would prove nothing");
+		assertEquals("", git(checkout, "diff", defaultBranchOf(checkout), "HEAD", "--", CLAUDE_WORKFLOW),
+				() -> "adopting " + WITH_OWN_ASSET + " changed the project's own " + CLAUDE_WORKFLOW);
 	}
 
 	/**
@@ -339,7 +404,9 @@ class ForeignRepositoryAdoptionIT {
 				new CloneStep(),
 				new BranchStep(),
 				new EnforcerStep(BUILD_SYSTEMS),
-				new CommitStep(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE, "guard"));
+				new CommitStep(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE, "guard"),
+				new AssetsStep(),
+				new CommitStep(GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE, "assets"));
 		return new GitHubRepoAdopter(RUNNER, steps);
 	}
 
@@ -394,10 +461,56 @@ class ForeignRepositoryAdoptionIT {
 		return heads;
 	}
 
-	/** The paths the guard commit carries, sorted so the expectation reads as a set. */
-	private static List<String> committedPaths(RealRepository repository) {
-		return git(checkoutOf(repository), "show", "--name-only", "--pretty=format:", "HEAD").lines()
+	/**
+	 * The commit the adoption made under that message, named rather than counted back
+	 * from the branch tip: the run leaves two commits and reordering the pipeline would
+	 * otherwise quietly point a test at the other one. The search is bounded to the
+	 * commits the branch added, so a message that happens to appear in the project's own
+	 * history cannot answer for the adoption's.
+	 */
+	private static String commitOf(RealRepository repository, String message) {
+		Path checkout = checkoutOf(repository);
+		String commit = git(checkout, "log", "--format=%H", "--fixed-strings", "--grep=" + message,
+				defaultBranchOf(checkout) + ".." + BRANCH);
+		assertFalse(commit.isBlank(), () -> "adopting " + repository + " left no commit saying " + message);
+		return commit;
+	}
+
+	/** The paths that commit carries, sorted so the expectation reads as a set. */
+	private static List<String> pathsIn(RealRepository repository, String message) {
+		return git(checkoutOf(repository), "show", "--name-only", "--pretty=format:",
+				commitOf(repository, message)).lines()
 				.filter(line -> !line.isBlank())
+				.sorted()
+				.toList();
+	}
+
+	/**
+	 * Every path the adoption's commits carry, read commit by commit rather than as the
+	 * range's net diff: a file one commit added and the next removed nets out to nothing,
+	 * and it is exactly the file the adoption could not account for.
+	 */
+	private static List<String> adoptedPaths(RealRepository repository) {
+		Path checkout = checkoutOf(repository);
+		return git(checkout, "log", "--format=", "--name-only", defaultBranchOf(checkout) + ".." + BRANCH).lines()
+				.filter(line -> !line.isBlank())
+				.distinct()
+				.sorted()
+				.toList();
+	}
+
+	/**
+	 * The asset paths the repository was cloned already carrying, read from the default
+	 * branch rather than from the working tree, which by now holds the adoption's files
+	 * beside the project's own.
+	 */
+	private static List<String> assetsAlreadyIn(RealRepository repository) {
+		Path checkout = checkoutOf(repository);
+		String[] arguments = Stream.concat(
+				Stream.of("ls-tree", "-r", "--name-only", defaultBranchOf(checkout), "--"),
+				ASSET_PATHS.stream()).toArray(String[]::new);
+		return git(checkout, arguments).lines()
+				.filter(ASSET_PATHS::contains)
 				.sorted()
 				.toList();
 	}

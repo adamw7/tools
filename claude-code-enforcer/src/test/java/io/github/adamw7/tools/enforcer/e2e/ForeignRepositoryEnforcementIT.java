@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.e2e;
 
+import static io.github.adamw7.tools.test.TestFiles.readString;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,7 +83,11 @@ class ForeignRepositoryEnforcementIT {
 	 */
 	private static final String REPOSITORY_PROPERTY = "claude.repository";
 
+	/** The property the baseline harness is handed its baseline file through. */
+	private static final String BASELINE_PROPERTY = "claude.baseline";
+
 	private static final String HARNESS_ARTIFACT_ID = "foreign-repository-harness";
+	private static final String BASELINE_HARNESS_ARTIFACT_ID = "foreign-repository-baseline-harness";
 
 	/**
 	 * The rules whose file is optional, which must pass when a project does not ship
@@ -118,6 +123,46 @@ class ForeignRepositoryEnforcementIT {
 	private static final String COMMANDS_DIRECTORY = ".claude/commands";
 	private static final String ABSENT_COMMANDS = "Commands directory does not exist";
 
+	/**
+	 * One rule, pointed at a checkout and recording what it finds there. It is one
+	 * rule rather than the complete block because a baseline suppresses collected
+	 * violations and nothing else: a rule pointed at a file a repository has not got
+	 * fails on the build-setup check before it collects anything, and no baseline can
+	 * — or should — accept that. {@code commandFormat} is the rule that has something
+	 * to collect on a foreign checkout and names the file it collected it from, which
+	 * is what makes the recorded signatures worth carrying between clones at all.
+	 *
+	 * <p>{@code baseDir} is the checkout rather than {@code ${project.basedir}}: the
+	 * project this build builds is the harness beside the repository, so the directory
+	 * the {@code ${basedir}} token has to stand for is the one the rule was pointed at,
+	 * not the one Maven was run in.
+	 */
+	private static final String BASELINED_COMMAND_RULE = """
+								<commandFormat>
+									<commandsDir>${claude.repository}/.claude/commands</commandsDir>
+									<allowedFrontMatterKeys>
+										<allowedFrontMatterKey>description</allowedFrontMatterKey>
+										<allowedFrontMatterKey>model</allowedFrontMatterKey>
+									</allowedFrontMatterKeys>
+									<baselineFile>${claude.baseline}</baselineFile>
+									<baseDir>${claude.repository}</baseDir>
+								</commandFormat>
+			""";
+
+	private static final String WRITE_BASELINE = "-Dclaude.enforcer.writeBaseline=true";
+	private static final String SUPPRESSED_BY_BASELINE = "violation(s) suppressed by the baseline";
+
+	/** What a recorded signature carries in place of the checkout it was recorded against. */
+	private static final String BASE_DIR_TOKEN = "${basedir}";
+
+	private static final String BASELINE_COMMENT = "#";
+
+	/** A command whose name breaks the convention, which no foreign backlog can already hold. */
+	private static final String NEW_COMMAND = "Not-A-Command";
+	private static final String NEW_COMMAND_BODY = """
+			Added by a test, to be the one violation the baseline has never seen.
+			""";
+
 	/** The repository whose {@code .claude} directory somebody else wrote. */
 	private static final RealRepository WITH_AGENT_CONFIGURATION = named("claude-code");
 
@@ -134,14 +179,18 @@ class ForeignRepositoryEnforcementIT {
 
 	/**
 	 * Class-scoped, because the clones and the five builds over them are what this
-	 * class costs and every test below reads the same results. The one test that
-	 * changes a checkout takes a fresh clone of its own into {@link #adoption}.
+	 * class costs and every test below reads the same results. The two tests that
+	 * change a checkout take a fresh clone of their own, into {@link #adoption} and
+	 * {@link #replay}.
 	 */
 	@TempDir
 	static Path workspace;
 
 	@TempDir
 	Path adoption;
+
+	@TempDir
+	Path replay;
 
 	/** One repository, its checkout, and what the enforcing build over it said. */
 	private record Enforcement(RealRepository repository, Path checkout, BuildOutcome outcome,
@@ -302,6 +351,64 @@ class ForeignRepositoryEnforcementIT {
 						+ outcome.describe());
 	}
 
+	/**
+	 * The step an adopter takes when a rule has more to say about their project than
+	 * they can fix today: record the backlog, gate what is added to it. A baseline is
+	 * a file the project commits, so it is recorded on one clone and read on every
+	 * other — a developer's and CI's — and a signature naming the absolute path it was
+	 * recorded under would match nothing anywhere else, leaving a build that was
+	 * supposed to be green failing on the whole backlog it had just accepted.
+	 *
+	 * <p>The fixture cannot show this. Its three baseline builds run in one directory,
+	 * so a signature that never left it round-trips whether it was normalised or not.
+	 * Here the backlog is a real one nobody wrote for these rules — the commands in
+	 * {@code claude-code} declare an {@code allowed-tools} key the configuration does
+	 * not allow — and it is recorded against the checkout the other tests share and
+	 * replayed against a second clone of the same repository, at a path the recording
+	 * never saw.
+	 *
+	 * <p>All three steps are builds, and only the third may be red: the recording
+	 * passes, the replay passes with the backlog suppressed, and a command added to
+	 * the second clone alone fails it — reported on its own, with everything the
+	 * baseline accepted still unmentioned, which is the difference between a gate and
+	 * a rule switched off.
+	 */
+	@Test
+	void aBaselineRecordedOnOneCloneSuppressesTheSameBacklogInAnother() {
+		Path harness = baselineHarness();
+		Path baseline = workspace.resolve("baseline/command-format.txt");
+		Path recordedAgainst = enforcementOf(WITH_AGENT_CONFIGURATION).checkout();
+		Path replayedAgainst = GitClone.into(replay, WITH_AGENT_CONFIGURATION.url());
+
+		BuildOutcome recording = enforceWithBaseline(harness, recordedAgainst, baseline, WRITE_BASELINE);
+		assertTrue(recording.succeeded(), recording::describe);
+		List<String> accepted = acceptedBy(baseline);
+		assertFalse(accepted.isEmpty(),
+				() -> COMMAND_FORMAT + " found nothing to record in " + WITH_AGENT_CONFIGURATION
+						+ ", so this test needs a repository whose commands it has something to say about: "
+						+ recording.describe());
+		assertFalse(readString(baseline).contains(recordedAgainst.toString()),
+				() -> "a baseline naming the clone it was recorded against travels to no other: "
+						+ readString(baseline));
+
+		BuildOutcome replayed = enforceWithBaseline(harness, replayedAgainst, baseline);
+		assertTrue(replayed.succeeded(),
+				() -> "the backlog recorded in " + recordedAgainst + " suppressed nothing in " + replayedAgainst
+						+ ": " + replayed.describe());
+		assertTrue(replayed.mentions(SUPPRESSED_BY_BASELINE), replayed::describe);
+
+		writeString(replayedAgainst.resolve(COMMANDS_DIRECTORY).resolve(NEW_COMMAND + ".md"), NEW_COMMAND_BODY);
+		BuildOutcome regressed = enforceWithBaseline(harness, replayedAgainst, baseline);
+		assertFalse(regressed.succeeded(),
+				() -> "a violation no baseline accepted must still fail the build: " + regressed.describe());
+		assertTrue(regressed.mentions(NEW_COMMAND),
+				() -> "the failure must name the command that was added: " + regressed.describe());
+		for (String entry : accepted) {
+			assertFalse(regressed.mentions(entry.replace(BASE_DIR_TOKEN, replayedAgainst.toString())),
+					() -> "a violation the baseline accepted was reported again: " + regressed.describe());
+		}
+	}
+
 	private void assertOptionalRulePasses(Enforcement enforcement, String rule, String target) {
 		Path file = enforcement.checkout().resolve(target);
 		if (!Files.exists(file)) {
@@ -342,6 +449,35 @@ class ForeignRepositoryEnforcementIT {
 		writeString(directory.resolve("pom.xml"),
 				new EnforcerPom(environment, enforcerPluginVersion).enforcing(HARNESS_ARTIFACT_ID, rules));
 		return directory;
+	}
+
+	/**
+	 * The build that records and replays a baseline, written beside the checkouts for
+	 * the same reason the harness is: a repository is never given a {@code pom.xml},
+	 * and neither is it given the baseline file, which belongs to the project that
+	 * commits one rather than to the one being read.
+	 */
+	private Path baselineHarness() {
+		Path directory = workspace.resolve("baseline-harness");
+		writeString(directory.resolve("pom.xml"), new EnforcerPom(environment, enforcerPluginVersion)
+				.enforcing(BASELINE_HARNESS_ARTIFACT_ID, BASELINED_COMMAND_RULE));
+		return directory;
+	}
+
+	private BuildOutcome enforceWithBaseline(Path harness, Path checkout, Path baseline, String... arguments) {
+		List<String> command = new ArrayList<>(List.of("-N", "validate",
+				"-D" + REPOSITORY_PROPERTY + "=" + checkout,
+				"-D" + BASELINE_PROPERTY + "=" + baseline));
+		command.addAll(List.of(arguments));
+		return maven.run(harness, command.toArray(String[]::new));
+	}
+
+	/** The violations a recorded baseline accepts: its lines, less the header comments. */
+	private List<String> acceptedBy(Path baseline) {
+		return readString(baseline).lines()
+				.map(String::strip)
+				.filter(line -> !line.isEmpty() && !line.startsWith(BASELINE_COMMENT))
+				.toList();
 	}
 
 	private static List<Path> checkouts() {

@@ -556,9 +556,19 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `commandFormat` reads `anthropics/claude-code`'s real `.claude/commands`
   instead of reporting it absent. A sixth test adopts the contract into a fresh
   clone and enforces it green, so the rules are shown satisfiable outside the
-  repository that wrote them. The build runs in a directory of its own and only
-  the rule parameters point at a checkout (`RuleConfiguration.against`), so no
-  clone is written to; the shared pom both fixtures build lives in `EnforcerPom`.
+  repository that wrote them. A seventh takes the adopter's other route — record
+  the backlog, gate what is added to it — and pins the half a fixture cannot
+  reach: `commandFormat`'s real backlog in `anthropics/claude-code` (the
+  `allowed-tools` key its commands declare, which the configuration does not
+  allow) is recorded against the shared checkout and replayed against a *second*
+  clone of it, at a path the recording never saw. A baseline is a file a project
+  commits, so a signature naming the clone it was recorded under would suppress
+  nothing anywhere else — the fixture's three baseline builds share one directory
+  and cannot show it. Only a command added to the second clone fails that build,
+  and everything the baseline accepted stays unreported. The build runs in a
+  directory of its own and only the rule parameters point at a checkout
+  (`RuleConfiguration.against`), so no shared clone is written to; the shared pom
+  both fixtures build lives in `EnforcerPom`.
   Two mechanics: the `*IT`s run at `integration-test`, *before* this module is
   installed, so they publish the freshly packaged jar themselves (`install-file`,
   with the flattened pom); and a forked test JVM cannot work out where Maven, the

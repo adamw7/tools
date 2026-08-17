@@ -261,34 +261,6 @@ public final class MarkdownDocument {
 	}
 
 	/**
-	 * True when {@code heading} appears as a real heading outside code fences.
-	 * <p>
-	 * Answered by the same lookup {@link #hasBody} and {@link #headingIndex} use.
-	 * It used to ask {@link #headings()} instead, which is a second implementation
-	 * of one question: two readings of what counts as a heading, kept equal only by
-	 * being edited together, and a whole document walked to answer a question the
-	 * first match settles.
-	 */
-	public boolean hasHeading(String heading) {
-		return headingIndex(heading) >= 0;
-	}
-
-	/**
-	 * True when {@code heading} is present and is followed, before the next heading
-	 * at its own level or shallower, by any prose, a code block, or a deeper
-	 * sub-heading. A deeper heading is content that belongs to the section; a
-	 * sibling or parent heading ends it.
-	 * <p>
-	 * A caller that has to tell a missing section from an empty one asks
-	 * {@link #headingIndex} and then {@link #hasBodyAt}, so the document is walked
-	 * once for the pair rather than once for each.
-	 */
-	public boolean hasBody(String heading) {
-		int index = headingIndex(heading);
-		return index >= 0 && hasBodyAt(index);
-	}
-
-	/**
 	 * The headings from {@code wanted} that are present, in the order they first
 	 * appear in the document, each listed once. A required heading that appears
 	 * more than once is reported by its first occurrence, so the order comparison
@@ -337,8 +309,9 @@ public final class MarkdownDocument {
 	/**
 	 * True when the heading at {@code headingIndex} is followed, before the next
 	 * heading at its own level or shallower, by any prose, a code block, or a deeper
-	 * sub-heading. The index form is for a caller that has already located the
-	 * heading — see {@link #hasBody}.
+	 * sub-heading. A caller locates the heading with {@link #headingIndex} first, so
+	 * a missing section and an empty one are told apart by one walk of the document
+	 * rather than by one walk each.
 	 * <p>
 	 * The first line that settles the question decides it; a section nothing settles
 	 * has no body.
@@ -525,7 +498,7 @@ public final class MarkdownDocument {
 	 * being matched on whole lines. Documentation about Markdown writes
 	 * {@code `<!--`} in prose precisely because it is an example, and taking it for a
 	 * real delimiter opened a comment nothing closed: every line below it was masked
-	 * as inert, so {@link #hasHeading} reported sections the document plainly carries
+	 * as inert, so {@link #headingIndex} reported sections the document plainly carries
 	 * as missing and every check that reads the document's own text stopped seeing
 	 * it — the same silent reclassification a mis-read fence produces.
 	 * <p>
@@ -619,7 +592,7 @@ public final class MarkdownDocument {
 		 * in below a paragraph opens nothing. Falling through to {@link #atDelimiter}
 		 * read one as a fence the document opened and never closed, and every line
 		 * below it — the document's remaining headings included — was masked as code:
-		 * {@link #hasHeading} then reported sections the document plainly carries as
+		 * {@link #headingIndex} then reported sections the document plainly carries as
 		 * missing, and every check that reads the document's own text stopped seeing it.
 		 * The blank-line case was already answered here; only a paragraph directly
 		 * above the indent reached the delimiter reading.

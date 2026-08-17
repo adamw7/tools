@@ -88,7 +88,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(0, 1, 2), codeLines(document));
-		assertTrue(document.hasHeading("## Section"));
+		assertTrue(hasHeading(document, "## Section"));
 	}
 
 	@Test
@@ -102,7 +102,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(0, 1, 2), codeLines(document));
-		assertTrue(document.hasHeading("# After"));
+		assertTrue(hasHeading(document, "# After"));
 	}
 
 	@Test
@@ -111,7 +111,7 @@ class MarkdownDocumentTest {
 		MarkdownDocument document = MarkdownDocument.parse("```\nint x;\n```   \n\n## Section\n");
 
 		assertEquals(List.of(0, 1, 2), codeLines(document));
-		assertTrue(document.hasHeading("## Section"));
+		assertTrue(hasHeading(document, "## Section"));
 	}
 
 	@Test
@@ -125,7 +125,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(2, 3, 4), codeLines(document));
-		assertFalse(document.hasHeading("## Section"));
+		assertFalse(hasHeading(document, "## Section"));
 	}
 
 	@Test
@@ -349,7 +349,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(List.of(), codeLines(document));
-		assertTrue(document.hasHeading("## Testing"));
+		assertTrue(hasHeading(document, "## Testing"));
 	}
 
 	/**
@@ -374,7 +374,7 @@ class MarkdownDocumentTest {
 
 		assertEquals(List.of(4), codeLines(document));
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/**
@@ -399,7 +399,7 @@ class MarkdownDocumentTest {
 
 		assertEquals(List.of(), codeLines(document));
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/** A balanced pair shown that way is the sample's too, so nothing below it changes. */
@@ -436,7 +436,7 @@ class MarkdownDocumentTest {
 				Body.
 				""");
 
-		assertTrue(document.hasBody("## Maven"));
+		assertTrue(hasBody(document, "## Maven"));
 	}
 
 	@Test
@@ -456,7 +456,7 @@ class MarkdownDocumentTest {
 		// "#1 rule:" is prose, not an ATX heading. Counting it as one would end the
 		// Maven section at its first line and report the section as empty.
 		assertEquals(Set.of("# Title", "## Maven", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Maven"));
+		assertTrue(hasBody(document, "## Maven"));
 	}
 
 	@Test
@@ -551,8 +551,8 @@ class MarkdownDocumentTest {
 				Body.
 				""");
 
-		assertFalse(document.hasBody("## Maven"));
-		assertTrue(document.hasBody("## Testing"));
+		assertFalse(hasBody(document, "## Maven"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/**
@@ -629,7 +629,7 @@ class MarkdownDocumentTest {
 
 		assertEquals(List.of(), commentedLines(document));
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/**
@@ -684,7 +684,7 @@ class MarkdownDocumentTest {
 				""");
 
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/** Only whitespace makes a trailing run a closing one, so a hash inside the text stays in it. */
@@ -718,7 +718,7 @@ class MarkdownDocumentTest {
 		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n##\tTesting\nBody.\n");
 
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	/**
@@ -807,7 +807,7 @@ class MarkdownDocumentTest {
 
 		assertEquals(List.of(), commentedLines(document));
 		assertEquals(Set.of("# Title", "## Testing"), document.headings());
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 	}
 
 	@Test
@@ -992,8 +992,8 @@ class MarkdownDocumentTest {
 				body
 				""".formatted("<!-- sample -->".repeat(20_000)));
 
-		assertTrue(document.hasHeading("## Testing"));
-		assertTrue(document.hasBody("## Testing"));
+		assertTrue(hasHeading(document, "## Testing"));
+		assertTrue(hasBody(document, "## Testing"));
 		assertEquals(List.of(), commentedLines(document));
 		assertTrue(document.openCommentTerminator().isEmpty());
 	}
@@ -1013,12 +1013,27 @@ class MarkdownDocumentTest {
 				body
 				""".formatted("<!-- sample -->".repeat(20_000)));
 
-		assertFalse(document.hasHeading("## Testing"));
+		assertFalse(hasHeading(document, "## Testing"));
 		assertEquals("-->", document.openCommentTerminator().orElseThrow());
 	}
 
 	private static String terminatorOf(String content) {
 		return MarkdownDocument.parse(content).openFenceTerminator().orElseThrow();
+	}
+
+	/**
+	 * Whether the document declares {@code heading}, and whether that heading carries
+	 * a body, asked the way the rules and the conformer ask them: locate the heading
+	 * once, then question the index it found. Both used to be methods on the document
+	 * itself, which walked it a second time for the pair.
+	 */
+	private static boolean hasHeading(MarkdownDocument document, String heading) {
+		return document.headingIndex(heading) >= 0;
+	}
+
+	private static boolean hasBody(MarkdownDocument document, String heading) {
+		int index = document.headingIndex(heading);
+		return index >= 0 && document.hasBodyAt(index);
 	}
 
 	/** The indices of the structural lines whose text is exactly {@code heading}. */

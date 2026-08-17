@@ -341,8 +341,9 @@ is why the per-test timeout is 5 s rather than tighter. The workflows also pass
 `-ntp` explicitly, so quiet CI logs do not depend on `.mvn/maven.config` being
 picked up.
 
-**Shellcheck.** The root pom lints `scripts/**/*.sh` with
-`dev.dimlight:shellcheck-maven-plugin`, configured with
+**Shellcheck.** The root pom lints `scripts/**/*.sh` and
+`.claude/hooks/**/*.sh` with `dev.dimlight:shellcheck-maven-plugin`, configured
+with
 `<binaryResolutionMethod>embedded</binaryResolutionMethod>`: the `shellcheck`
 binary rides in as an ordinary Maven Central artifact inside the plugin jar, so
 nothing is fetched from GitHub and no `shellcheck` needs to be installed — the
@@ -351,6 +352,17 @@ Code web/remote sessions). The plugin's default method downloads the binary from
 GitHub releases; where that host is blocked the build fails on the root pom with
 `Input is not in the XZ format` before any Java module is reached. Skip the lint
 with `-Dskip.shellcheck=true`.
+
+`<failBuildIfWarnings>true</failBuildIfWarnings>` is what makes the lint a gate.
+The plugin defaults it to `false`, which prints shellcheck's findings as Maven
+warnings and then passes: a probe script carrying an unquoted expansion and an
+unassigned variable was reported line by line and the build still succeeded, so
+the lint had been running for a log nobody reads. Both source directories are
+clean, so the flag costs nothing today and fails the build on the next finding.
+The hooks directory is linted because a mistake there breaks a *session* rather
+than a build, and is found by whoever opened that session: `hooksFormat` checks
+the shebang and the executable bit, and only shellcheck reads what the script
+actually does.
 
 **The pull-request build.** `.github/workflows/maven.yml` installs the enforcer
 rule (`mvn -B -pl claude-code-enforcer -am install -DskipTests`, tests skipped
@@ -699,6 +711,13 @@ by matching intent against these descriptions, so one duplicate shadows the
 other, and the two uniqueness rules compare skills, sub-agents and commands
 together rather than each directory on its own.
 
+`skillFilesExist` is wired with `allowedFrontMatterKeys`, as `commandFormat` is:
+`name`, `description`, `allowed-tools`, `model` and `license` — the keys Claude
+Code accepts, not the two used here, so a skill may grow an `allowed-tools`
+without touching the pom. Without the list a mistyped `descripton:` is simply an
+unread key, and a skill whose description never loads is a skill that never
+loads.
+
 ### Sub-agents
 
 `.claude/agents/` holds **two** sub-agents, each a `*.md` file whose front matter
@@ -752,6 +771,22 @@ then installs `openjdk-25-jdk` when no JDK 25 is present, exports `JAVA_HOME` an
 repository with `mvn dependency:go-offline`. Keep it `set -euo pipefail`,
 executable, and opening with a `#!` shebang — `hooksFormat` requires the shebang
 and the executable bit, and the root pom lints it with shellcheck.
+
+Keep it **idempotent**, too. `SessionStart` fires on resume as well as startup,
+and a resumed session can land in a re-provisioned container with no JDK, so the
+hook cannot be a run-once script — it re-runs and must not accumulate. The
+exports are appended only when the env file does not already carry them, and the
+dependency warm is guarded by a marker inside the local repository it fills, so
+it is skipped on a resume into the same container and repeated when the container
+is new; a warm that fails leaves no marker and is retried rather than recorded as
+done. The exports are written *before* the warm, so a hook killed by its timeout
+still leaves a JDK on the `PATH`.
+
+`hooksFormat` is wired with `reportUnreferencedScripts`, which catches the silent
+direction of the wiring: a script that no hook names never runs, and nothing
+about it looks wrong — it has its shebang, its executable bit and its shellcheck
+pass. The other direction, a hook naming a script that is not there, is checked
+by default.
 
 Personal overrides belong in `.claude/settings.local.json`, which is gitignored;
 `localSettingsIgnored` fails the build if that entry disappears.

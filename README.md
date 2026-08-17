@@ -22,6 +22,10 @@ Library of tooling for various purposes.
   - [Network kill-switch](#network-kill-switch)
 - [Claude Code adoption](#claude-code-adoption)
 - [Architecture tests (ArchUnit)](#architecture-tests-archunit)
+- [Integration tests](#integration-tests)
+  - [MCP servers over a real transport](#mcp-servers-over-a-real-transport)
+  - [The enforcer rules in a real Maven build](#the-enforcer-rules-in-a-real-maven-build)
+  - [The adoption against real repositories](#the-adoption-against-real-repositories)
 - [Building](#building)
 - [Releasing](#releasing)
 - [License](#license)
@@ -1248,6 +1252,108 @@ mvn -pl data -am test
 (`-am` is required — a bare `mvn -pl data test` fails the root pom's
 `ReactorModuleConvergence` enforcer rule.)
 or across the whole repository as part of `mvn install`.
+
+## Integration tests
+
+The unit tests run offline, without spawning a process and against directories
+this repository laid out, so they are fast and say nothing about the seams where
+the code meets something real. Those seams are covered by **`*IT` classes gated
+behind the `integration-tests` profile**, declared per module in `data`,
+`code/context`, `adopt` and `claude-code-enforcer` — a new module's `*IT`s stay
+unrun until it gets its own copy of the profile:
+
+```
+mvn -P integration-tests verify
+```
+
+They are run daily by `.github/workflows/integration-tests.yml` rather than on a
+pull request, because they clone from GitHub and run nested Maven builds. A green
+PR build is therefore not proof that this suite passes.
+
+### MCP servers over a real transport
+
+`data` and `code/context` start their MCP servers as Spring Boot applications on a
+random port and talk to them through a real MCP client, so the tool listing, the
+argument schemas and the results are exercised as a client meets them rather than
+through a direct method call. Both cover **streamable HTTP and stateless HTTP**;
+only the transport differs between the subclasses, so the fixture and the helpers
+live in an abstract parent and each subclass supplies the transport and the calls
+it is there to assert. `code/context` adds an **HTTPS** run against a throwaway
+self-signed keystore, which is where
+[`McpStreamableHttpsIT`](code/context/src/test/java/io/github/adamw7/context/mcp/McpStreamableHttpsIT.java)
+asserts the server's TLS hardening end to end: a tool call succeeds over the secure channel,
+the negotiated protocol is TLS 1.3, a client offering only TLS 1.2 is refused,
+and the pinned key-exchange groups really govern the handshake.
+
+### The enforcer rules in a real Maven build
+
+Everything between a `pom.xml` and a rule's `execute()` is what a unit test
+assumes: that Maven resolves the rule jar, that Sisu finds the class behind a
+`@Named` element, and that Plexus binds each configuration element to the field
+of that name. A rule can be **correct and still never run** — a misspelled
+parameter fails the build outright, a misspelled *rule* name never runs at all —
+and none of that is visible from inside the rule. So
+[`claude-code-enforcer`'s `e2e` package](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/e2e)
+runs real Maven builds:
+
+- **[`EnforcerRuleBuildIT`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/e2e/EnforcerRuleBuildIT.java)**
+  builds a throwaway project and enforces a configuration that addresses *every*
+  shipped rule with *every* parameter it accepts — held against the compiled
+  classes by reflection, so a new rule or parameter no fixture addresses is named
+  rather than silently unexercised — and pins the shared behaviours across the
+  Maven boundary: collect-then-report, `severity=warn` going green while still
+  logging, the HTML report landing on disk, and a baseline suppressing recorded
+  violations.
+- **[`RepositoryEnforcementIT`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/e2e/RepositoryEnforcementIT.java)**
+  runs this repository's own `mvn -N validate -DenforceClaudeMd`, the check the
+  pull-request workflow runs, and confirms every wired rule reported a *pass* — a
+  rule that never ran would otherwise leave the test green while guarding
+  nothing. It also holds the shipped catalogue against the profile, so a rule
+  cannot ship unwired unnoticed, and then breaks a **copy** of the checkout to
+  prove the wiring bites.
+- **[`ForeignRepositoryEnforcementIT`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/e2e/ForeignRepositoryEnforcementIT.java)**
+  points that complete configuration at five **real** repositories shallow-cloned
+  from GitHub, none of which has ever heard of this enforcer. None of them passes
+  and none should; what is asserted is that every rule **reaches a verdict** on
+  every one of them — a pass, or a failure naming what is wrong — rather than
+  going red on the rules' own account with an unbindable parameter or an
+  exception escaping a file it did not expect. Only the log tells those apart, so
+  the per-rule `passed` / `failed with message:` lines are read back out of it.
+
+### The adoption against real repositories
+
+The adoption's steps are unit-tested through the `CommandRunner` abstraction,
+without spawning a process. What that cannot show is what the pipeline does to a
+project **nobody prepared for it** — which is every project it will ever be
+pointed at. Two `*IT`s in [`adopt`](adopt/src/test/java/io/github/adamw7/tools/adopt)
+clone from GitHub with the real `git` and answer that:
+
+- **[`MultiRepoAdoptionIT`](adopt/src/test/java/io/github/adamw7/tools/adopt/MultiRepoAdoptionIT.java)**
+  adopts several repositories in one run through the command line an operator
+  uses, proving a batch gives each repository its **own checkout**, that an
+  uncloneable repository costs only itself, and that two URLs for one repository
+  — or a checkout holding a *different* repository — are refused. A recording
+  stub and synthetic URLs prove the wiring; only a `git clone` that really ran
+  twice into one workspace proves the checkouts.
+- **[`ForeignRepositoryAdoptionIT`](adopt/src/test/java/io/github/adamw7/tools/adopt/ForeignRepositoryAdoptionIT.java)**
+  adopts five real repositories — `google/gson`, `square/okhttp`,
+  `anthropics/anthropic-quickstarts`, `anthropics/claude-code` and
+  `github/gitignore` — chosen for the shapes they put in front of the steps that
+  read a checkout: a multi-module Maven build, a Gradle build on the Kotlin DSL,
+  a real `CLAUDE.md`, a real `.claude` directory, and a very large flat tree with
+  no build file at all. Between them they are the only place all three build
+  systems meet build files this repository did not write. What is asserted is
+  that the adoption's work is **its own and nothing else**: the guard that lands
+  is the one the checkout's build files ask for, the commits carry only the paths
+  the pipeline claims to write, the guard commit removes nothing the build file
+  already declared, a starter asset the project already keeps at that path comes
+  through byte-identical to the blob that was cloned, the default branch and the
+  remote are left as cloned, and adopting the same batch a second time commits
+  nothing.
+
+Both adoption `*IT`s stop short of the push and the pull request, so the runs stay
+**read-only towards GitHub**, need no logged-in `gh`, and may be repeated as often
+as the suite likes.
 
 ## Building
 ```

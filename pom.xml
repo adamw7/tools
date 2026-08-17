@@ -541,7 +541,8 @@
 		</pluginManagement>
 		<plugins>
 			<plugin>
-				<!-- Lint scripts/**/*.sh with shellcheck. binaryResolutionMethod
+				<!-- Lint scripts/**/*.sh and .claude/hooks/**/*.sh with shellcheck.
+				     binaryResolutionMethod
 				     "embedded" runs the shellcheck binary bundled inside the plugin
 				     jar (pulled from Maven Central like any other artifact), so the
 				     build needs no shellcheck on the PATH and downloads nothing at
@@ -561,9 +562,29 @@
 						</goals>
 						<configuration>
 							<binaryResolutionMethod>embedded</binaryResolutionMethod>
+							<!-- The plugin defaults to reporting shellcheck's findings as
+							     build warnings and passing anyway, so the lint ran for a
+							     log nobody reads: a probe script with an unquoted
+							     expansion and an unassigned variable was reported in full
+							     and the build still succeeded. Both source directories are
+							     clean today, so the lint gates from here on. -->
+							<failBuildIfWarnings>true</failBuildIfWarnings>
 							<sourceDirs>
 								<sourceDir>
 									<directory>${project.basedir}/scripts</directory>
+									<includes>
+										<include>**/*.sh</include>
+									</includes>
+								</sourceDir>
+								<!-- The session-start hook is a shell script the runtime
+								     executes before any tool call, so a mistake in it fails
+								     a session rather than a build and is found by whoever
+								     opened that session. hooksFormat checks the shebang and
+								     the executable bit; only shellcheck reads what the
+								     script does, which is why the hook is linted with the
+								     same binary as scripts/ rather than trusted. -->
+								<sourceDir>
+									<directory>${project.basedir}/.claude/hooks</directory>
 									<includes>
 										<include>**/*.sh</include>
 									</includes>
@@ -706,8 +727,22 @@
 										<agentsMdFormat>
 											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
 										</agentsMdFormat>
+										<!-- allowedFrontMatterKeys lists the keys Claude Code
+										     accepts in a SKILL.md, not the two this repository
+										     currently uses, so a skill may grow an
+										     `allowed-tools` without touching this pom while a
+										     mistyped `descripton` is still reported. Skills
+										     route by description, so a key that silently does
+										     nothing costs a skill its loading. -->
 										<skillFilesExist>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
+											<allowedFrontMatterKeys>
+												<allowedFrontMatterKey>name</allowedFrontMatterKey>
+												<allowedFrontMatterKey>description</allowedFrontMatterKey>
+												<allowedFrontMatterKey>allowed-tools</allowedFrontMatterKey>
+												<allowedFrontMatterKey>model</allowedFrontMatterKey>
+												<allowedFrontMatterKey>license</allowedFrontMatterKey>
+											</allowedFrontMatterKeys>
 										</skillFilesExist>
 										<!-- A configured definition directory must exist, so
 										     these two could only be wired once .claude/agents
@@ -759,10 +794,18 @@
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 											<projectDir>${project.basedir}</projectDir>
 										</hookCommandsValid>
+										<!-- reportUnreferencedScripts is the half of the
+										     wiring cross-check that catches the silent
+										     direction: a script no hook names never runs, and
+										     nothing about it looks wrong — it has its shebang,
+										     its executable bit and its shellcheck pass. The
+										     other direction (a hook naming a missing script)
+										     is on by default. -->
 										<hooksFormat>
 											<hooksDir>${project.basedir}/.claude/hooks</hooksDir>
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 											<projectDir>${project.basedir}</projectDir>
+											<reportUnreferencedScripts>true</reportUnreferencedScripts>
 										</hooksFormat>
 										<mcpServersValid>
 											<mcpFile>${project.basedir}/.mcp.json</mcpFile>

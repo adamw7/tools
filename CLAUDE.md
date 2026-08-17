@@ -141,11 +141,13 @@ Other things worth knowing:
 - `.mvn/maven.config` passes `--no-transfer-progress` and `-T1C`, so every build
   from the repo root is quiet and runs one thread per core; use `-T1` for a
   serial build.
-- The root pom lints `scripts/**/*.sh` with `shellcheck-maven-plugin` using the
-  binary embedded in the plugin jar, so the lint needs no installed `shellcheck`
-  and works offline. Skip it with `-Dskip.shellcheck=true`. Those scripts are
-  developer-environment helpers outside the build, kept as parallel
-  `scripts/linux` and `scripts/windows` variants.
+- The root pom lints `scripts/**/*.sh` and `.claude/hooks/**/*.sh` with
+  `shellcheck-maven-plugin` using the binary embedded in the plugin jar, so the
+  lint needs no installed `shellcheck` and works offline, and a finding **fails
+  the build** (`failBuildIfWarnings`) rather than passing as a warning. Skip it
+  with `-Dskip.shellcheck=true`. The `scripts` ones are developer-environment
+  helpers outside the build, kept as parallel `scripts/linux` and
+  `scripts/windows` variants.
 
 ## Principles for Java Development
 

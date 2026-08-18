@@ -84,15 +84,15 @@ abstract class MultiDefinitionRule extends ClaudeCodeEnforcerRule {
 		}
 	}
 
-	void setCommandsDir(File commandsDir) {
+	public void setCommandsDir(File commandsDir) {
 		this.commandsDir = commandsDir;
 	}
 
-	void setAgentsDir(File agentsDir) {
+	public void setAgentsDir(File agentsDir) {
 		this.agentsDir = agentsDir;
 	}
 
-	void setSkillsDir(File skillsDir) {
+	public void setSkillsDir(File skillsDir) {
 		this.skillsDir = skillsDir;
 	}
 }

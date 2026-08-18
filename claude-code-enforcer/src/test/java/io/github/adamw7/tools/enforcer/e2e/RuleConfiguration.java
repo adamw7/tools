@@ -252,6 +252,28 @@ final class RuleConfiguration {
 									</requiredKeys>
 									<requireIndex>true</requireIndex>
 								</okfBundleFormat>
+								<!-- The composite checks the same project from its directory
+								     alone. It is configured beside the rules it is made of so
+								     that a build proves both routes bind: the twenty elements
+								     a project may write out, and the one it may write
+								     instead. Its parts run twice here, which costs a
+								     fixture's build nothing and is not how a project would
+								     wire it. -->
+								<claudeCodeProject>
+									<projectDir>${project.basedir}</projectDir>
+									<!-- Both parts are configured above with something this
+									     rule cannot default: an OKF version, and the list of
+									     imports the fixture's CLAUDE.md deliberately names
+									     without providing. Unconfigured they are right to
+									     report what they find, which is not what this fixture
+									     is here to prove. -->
+									<skippedRules>
+										<skippedRule>okfBundleFormat</skippedRule>
+										<skippedRule>memoryImports</skippedRule>
+									</skippedRules>
+									<claudeMdBudgetBytes>32768</claudeMdBudgetBytes>
+									<autoFix>false</autoFix>
+								</claudeCodeProject>
 			""";
 
 	/** What {@link #COMPLETE} addresses its files through: the project being built. */

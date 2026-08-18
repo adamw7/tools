@@ -20,3 +20,4 @@ io.github.adamw7.tools.enforcer.settings.LocalSettingsIgnoredRule
 io.github.adamw7.tools.enforcer.doc.ModuleMapConsistencyRule
 io.github.adamw7.tools.enforcer.definition.PluginFormatRule
 io.github.adamw7.tools.enforcer.okf.OkfBundleFormatRule
+io.github.adamw7.tools.enforcer.project.ClaudeCodeProjectRule

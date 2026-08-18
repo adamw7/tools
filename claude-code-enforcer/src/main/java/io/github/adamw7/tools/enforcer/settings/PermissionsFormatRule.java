@@ -183,7 +183,7 @@ public class PermissionsFormatRule extends JsonFileRule {
 		return open < 0 ? value : value.substring(0, open);
 	}
 
-	void setSettingsFile(File settingsFile) {
+	public void setSettingsFile(File settingsFile) {
 		this.settingsFile = settingsFile;
 	}
 

@@ -102,6 +102,34 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	private File baseDir;
 
 	/**
+	 * Set when a composite rule runs this one as one of its parts, in which case the
+	 * violations are handed over instead of decided on here: the composite reports
+	 * every part's findings together, under its own severity, baseline and report.
+	 * Null for a rule a pom configured directly, which is every rule by default.
+	 */
+	private ViolationSink sink;
+
+	/**
+	 * Where a rule run as part of a composite sends what it found. It is given the
+	 * rule's name as well as its violations, because a composite's report has to say
+	 * which of its parts each violation came from — that name is what a reader takes
+	 * back to the catalogue, and what they would configure to switch the part off.
+	 */
+	@FunctionalInterface
+	public interface ViolationSink {
+		void accept(String ruleName, List<String> violations);
+	}
+
+	/**
+	 * Runs this rule as part of {@code sink}'s composite rather than on its own
+	 * account. A rule collects its violations the same way either way; what changes
+	 * is only who decides what they mean.
+	 */
+	public final void reportTo(ViolationSink sink) {
+		this.sink = sink;
+	}
+
+	/**
 	 * Reports the violations as a single grouped message. In write-baseline mode it
 	 * records every violation to {@link #baselineFile} and passes, writing the HTML
 	 * report as the pass it is — the report always shows the un-suppressed
@@ -112,6 +140,10 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	 * does nothing when no new violation remains.
 	 */
 	protected final void report(String header, List<String> violations) throws EnforcerRuleException {
+		if (sink != null) {
+			sink.accept(ruleName(), violations);
+			return;
+		}
 		Severity configured = severity();
 		File baseline = baselineFile();
 		if (isWriteBaselineRequested(baseline)) {

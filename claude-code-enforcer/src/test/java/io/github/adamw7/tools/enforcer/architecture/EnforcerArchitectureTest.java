@@ -72,6 +72,7 @@ public class EnforcerArchitectureTest {
 			.layer("Okf").definedBy("..enforcer.okf..")
 			.layer("Secret").definedBy("..enforcer.secret..")
 			.layer("Settings").definedBy("..enforcer.settings..")
+			.layer("Project").definedBy("..enforcer.project..")
 			.whereLayer("Text").mayNotAccessAnyLayer()
 			.whereLayer("Rule").mayOnlyAccessLayers("Text")
 			.whereLayer("Definition").mayOnlyAccessLayers("Rule", "Text")
@@ -80,8 +81,12 @@ public class EnforcerArchitectureTest {
 			.whereLayer("Okf").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Secret").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Settings").mayOnlyAccessLayers("Rule", "Text")
-			.as("text is the foundation, rule builds on it, and the feature packages "
-					+ "build on rule without depending on each other");
+			.whereLayer("Project").mayOnlyAccessLayers("Definition", "Doc", "Mcp", "Okf", "Secret", "Settings",
+					"Rule", "Text")
+			.as("text is the foundation, rule builds on it, the feature packages build on rule without "
+					+ "depending on each other, and project sits above them all: the composite rule is the "
+					+ "one place that may know every feature package, which is what stops any of them "
+					+ "reaching sideways to reach another");
 
 	@ArchTest
 	static final ArchRule packagesAreFreeOfCycles = slices()

@@ -99,7 +99,7 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 		return requiredReference == null ? DEFAULT_REQUIRED_REFERENCE : requiredReference.strip();
 	}
 
-	void setClaudeMdFile(File claudeMdFile) {
+	public void setClaudeMdFile(File claudeMdFile) {
 		this.claudeMdFile = claudeMdFile;
 	}
 

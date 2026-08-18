@@ -127,7 +127,7 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 		return Objects.requireNonNullElse(importExtensions, DEFAULT_IMPORT_EXTENSIONS);
 	}
 
-	void setClaudeMdFile(File claudeMdFile) {
+	public void setClaudeMdFile(File claudeMdFile) {
 		this.claudeMdFile = claudeMdFile;
 	}
 

@@ -80,7 +80,7 @@ public class SkillFilesExistRule extends DefinitionFormatRule {
 		checks.checkDescription(maxDescriptionLength);
 	}
 
-	void setSkillsDir(File skillsDir) {
+	public void setSkillsDir(File skillsDir) {
 		this.skillsDir = skillsDir;
 	}
 

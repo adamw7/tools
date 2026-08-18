@@ -160,15 +160,15 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 				.collectViolations(scripts, violations);
 	}
 
-	void setHooksDir(File hooksDir) {
+	public void setHooksDir(File hooksDir) {
 		this.hooksDir = hooksDir;
 	}
 
-	void setSettingsFile(File settingsFile) {
+	public void setSettingsFile(File settingsFile) {
 		this.settingsFile = settingsFile;
 	}
 
-	void setProjectDir(File projectDir) {
+	public void setProjectDir(File projectDir) {
 		this.projectDir = projectDir;
 	}
 

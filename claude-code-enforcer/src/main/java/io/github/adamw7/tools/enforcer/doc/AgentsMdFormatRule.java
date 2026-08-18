@@ -38,7 +38,7 @@ public class AgentsMdFormatRule extends MarkdownFormatRule {
 		return agentsMdFile;
 	}
 
-	void setAgentsMdFile(File agentsMdFile) {
+	public void setAgentsMdFile(File agentsMdFile) {
 		this.agentsMdFile = agentsMdFile;
 	}
 }

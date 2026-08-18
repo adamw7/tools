@@ -1,13 +1,17 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.StringJoiner;
+
+import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
 import org.apache.maven.enforcer.rule.api.EnforcerLogger;
@@ -23,15 +27,24 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * The default severity is {@code error}. Setting
  * {@code <severity>warn</severity>} downgrades the same violations to a logged
  * warning, so a team can adopt a rule gradually before it is allowed to break the
- * build. Severity only governs collected structural violations; a misconfigured
- * rule (missing file or directory parameter) always fails, because that is a
- * build-setup mistake rather than a document-quality problem.
+ * build. Anything that is not one of those two is refused rather than read as the
+ * default; see {@link Severity}. Severity only governs collected structural
+ * violations; a misconfigured rule (missing file or directory parameter, an
+ * unreadable severity) always fails, because that is a build-setup mistake rather
+ * than a document-quality problem.
  * <p>
  * When {@code <reportFile>} is configured the same outcome is also written as a
  * self-contained HTML report — a single table pairing what failed and why with the
  * {@link #howToFix()} steps — so a build can surface the violations in a browser
  * or CI artifact. It is written whether the check passes or fails, so it always
  * reflects the latest run.
+ * <p>
+ * All three of those parameters are usually the same answer for every rule a
+ * project wires, so each also has a build-wide default — {@code
+ * -Dclaude.enforcer.severity}, {@code -Dclaude.enforcer.reportDir}, {@code
+ * -Dclaude.enforcer.baselineDir}. See {@link RuleDefaults}. A directory names each
+ * rule's file after the rule, and the reports written into one gain an
+ * {@link ReportIndex index page} linking them.
  * <p>
  * When {@code <baselineFile>} is configured, a violation already recorded in that
  * file is suppressed and only a <em>new</em> one drives the outcome. Record the
@@ -52,16 +65,27 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
-	private static final String WARN = "warn";
 	private static final String WRITE_BASELINE_PROPERTY = "claude.enforcer.writeBaseline";
 
-	/** Optional override: {@code error} (default) fails the build, {@code warn} only logs. */
+	/**
+	 * Optional override: {@code error} (default) fails the build, {@code warn} only
+	 * logs. Anything else is refused; see {@link Severity}. When unset the build's
+	 * {@link RuleDefaults#SEVERITY_PROPERTY} decides.
+	 */
 	private String severity;
 
-	/** Optional path for an HTML report of the outcome. When null, no report is written. */
+	/**
+	 * Optional path for an HTML report of the outcome. When unset the build's
+	 * {@link RuleDefaults#REPORT_DIR_PROPERTY} decides; when neither names one, no
+	 * report is written.
+	 */
 	private File reportFile;
 
-	/** Optional path of recorded violations to suppress. When null, nothing is suppressed. */
+	/**
+	 * Optional path of recorded violations to suppress. When unset the build's
+	 * {@link RuleDefaults#BASELINE_DIR_PROPERTY} decides; when neither names one,
+	 * nothing is suppressed.
+	 */
 	private File baselineFile;
 
 	/** When true (or the {@code claude.enforcer.writeBaseline} property is set), records the current violations. */
@@ -86,26 +110,76 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	 * does nothing when no new violation remains.
 	 */
 	protected final void report(String header, List<String> violations) throws EnforcerRuleException {
-		if (isWriteBaselineRequested()) {
-			recordBaseline(violations);
+		Severity configured = severity();
+		File baseline = baselineFile();
+		if (isWriteBaselineRequested(baseline)) {
+			recordBaseline(baseline, violations);
 			writeReport(header, List.of());
 			return;
 		}
-		Baseline baseline = Baseline.read(baselineFile, baseDir);
-		List<String> newViolations = baseline.newViolations(violations);
+		Baseline accepted = Baseline.read(baseline, baseDir);
+		List<String> newViolations = accepted.newViolations(violations);
 		writeReport(header, newViolations);
-		logSuppressed(violations.size() - newViolations.size());
-		logStaleEntries(baseline.staleEntries(violations));
+		logSuppressed(baseline, violations.size() - newViolations.size());
+		logStaleEntries(baseline, accepted.staleEntries(violations));
 		logOutcome(newViolations);
 		if (newViolations.isEmpty()) {
 			return;
 		}
 		String message = format(header, newViolations);
-		if (isWarn()) {
+		if (configured == Severity.WARN) {
 			log().warn(message + System.lineSeparator() + downgradeNotice());
 		} else {
 			throw new EnforcerRuleException(message);
 		}
+	}
+
+	/**
+	 * The severity this rule reports at: the one it was configured with, the one
+	 * {@link RuleDefaults#SEVERITY_PROPERTY} sets for the whole build, or
+	 * {@link Severity#DEFAULT}. It is read at the top of {@link #report} rather than
+	 * where the outcome is decided, so a value that is not a severity is refused
+	 * before the rule writes a report or a baseline off the back of it.
+	 */
+	private Severity severity() throws EnforcerRuleException {
+		Optional<Severity> onTheRule = Severity.parse(severity, toString());
+		if (onTheRule.isPresent()) {
+			return onTheRule.get();
+		}
+		return Severity.parse(RuleDefaults.severity(), RuleDefaults.SEVERITY_PROPERTY).orElse(Severity.DEFAULT);
+	}
+
+	/**
+	 * @return the baseline this rule reads and records, which is the one it was
+	 *         configured with or the one {@link RuleDefaults} derives from the
+	 *         build's baseline directory, and null when neither names one
+	 */
+	private File baselineFile() {
+		return baselineFile != null ? baselineFile : RuleDefaults.baselineFile(ruleName()).orElse(null);
+	}
+
+	/**
+	 * @return the report this rule writes, which is the one it was configured with or
+	 *         the one {@link RuleDefaults} derives from the build's report directory,
+	 *         and null when neither names one
+	 */
+	private File reportFile() {
+		return reportFile != null ? reportFile : RuleDefaults.reportFile(ruleName()).orElse(null);
+	}
+
+	/**
+	 * The name the pom configures this rule under, taken from the {@link Named}
+	 * annotation maven-enforcer already resolves it by, so a report and a baseline
+	 * derived from a directory are named the same thing the build's configuration
+	 * calls the rule. A rule without the annotation — only the test doubles here —
+	 * falls back to its class name, which is unique for the same reason.
+	 */
+	final String ruleName() {
+		Named named = getClass().getAnnotation(Named.class);
+		if (named == null || named.value().isBlank()) {
+			return getClass().getSimpleName();
+		}
+		return named.value();
 	}
 
 	/**
@@ -138,37 +212,80 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	 * reader to guess whether the build tolerated it deliberately.
 	 */
 	private String downgradeNotice() {
-		return "  (" + this + " has severity 'warn', so the build was not failed)";
+		return "  (" + this + " has severity '" + Severity.WARN.configuredName()
+				+ "', so the build was not failed)";
 	}
 
-	private boolean isWriteBaselineRequested() {
-		return baselineFile != null && (writeBaseline || Boolean.getBoolean(WRITE_BASELINE_PROPERTY));
+	/**
+	 * Whether this run is recording a baseline rather than checking against one.
+	 *
+	 * <p>Asking for one without a baseline to write it to is refused rather than
+	 * ignored. It used to be read as "no baseline, so check normally", which is the
+	 * answer to a question nobody asked: the operator who passed
+	 * {@code -Dclaude.enforcer.writeBaseline=true} was told the build failed on the
+	 * very violations they had just asked to accept, with nothing to say the request
+	 * had gone nowhere. Like every other build-setup mistake this fails whatever the
+	 * severity.
+	 */
+	private boolean isWriteBaselineRequested(File baseline) throws EnforcerRuleException {
+		boolean requested = writeBaseline || Boolean.getBoolean(WRITE_BASELINE_PROPERTY);
+		if (requested && baseline == null) {
+			throw new EnforcerRuleException("Recording a baseline was requested for " + this
+					+ ", which has no baselineFile to record it to. Configure <baselineFile> on the rule or set -D"
+					+ RuleDefaults.BASELINE_DIR_PROPERTY + " for the build, then re-run.");
+		}
+		return requested;
 	}
 
-	private void recordBaseline(List<String> violations) throws EnforcerRuleException {
-		Baseline.write(baselineFile, violations, baseDir);
-		log().info("Recorded " + violations.size() + " violation(s) to the baseline " + baselineFile);
+	private void recordBaseline(File baseline, List<String> violations) throws EnforcerRuleException {
+		Baseline.write(baseline, violations, baseDir);
+		log().info("Recorded " + violations.size() + " violation(s) to the baseline " + baseline);
 	}
 
-	private void logSuppressed(int suppressed) {
+	private void logSuppressed(File baseline, int suppressed) {
 		if (suppressed > 0) {
-			log().info(suppressed + " violation(s) suppressed by the baseline " + baselineFile);
+			log().info(suppressed + " violation(s) suppressed by the baseline " + baseline);
 		}
 	}
 
-	private void logStaleEntries(List<String> staleEntries) {
+	private void logStaleEntries(File baseline, List<String> staleEntries) {
 		if (!staleEntries.isEmpty()) {
 			log().info(staleEntries.size() + " baseline entry/entries no longer match and can be removed from "
-					+ baselineFile);
+					+ baseline);
 		}
 	}
 
 	private void writeReport(String header, List<String> violations) throws EnforcerRuleException {
-		if (reportFile == null) {
+		File report = reportFile();
+		if (report == null) {
 			return;
 		}
-		new HtmlReport(header, violations, howToFix()).writeTo(reportFile);
-		log().debug(() -> this + " wrote its report to " + reportFile);
+		new HtmlReport(header, violations, howToFix()).writeTo(report);
+		log().debug(() -> this + " wrote its report to " + report);
+		indexReport(violations.size());
+	}
+
+	/**
+	 * Adds this rule's outcome to the index beside the other rules' reports, when the
+	 * build collects them into one directory. A rule that was pointed at its own
+	 * {@code reportFile} is not indexed: nothing says that file sits with anyone
+	 * else's, and writing an index into a directory the build only asked for one
+	 * report in would be inventing an artifact.
+	 *
+	 * <p>A failure here is logged rather than thrown. The verdict is already decided
+	 * and the rule's own report already written; a build must not go red because the
+	 * page linking the reports could not be refreshed.
+	 */
+	private void indexReport(int violations) {
+		RuleDefaults.reportDirectory().ifPresent(directory -> index(directory, violations));
+	}
+
+	private void index(File directory, int violations) {
+		try {
+			ReportIndex.record(directory, ruleName(), violations);
+		} catch (IOException | RuntimeException e) {
+			log().warn("Could not update the report index in " + directory + ": " + e.getMessage());
+		}
 	}
 
 	/**
@@ -185,10 +302,6 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	private String format(String header, List<String> violations) {
 		String separator = System.lineSeparator() + "  - ";
 		return header + separator + String.join(separator, violations);
-	}
-
-	private boolean isWarn() {
-		return WARN.equalsIgnoreCase(severity);
 	}
 
 	/**

@@ -35,8 +35,10 @@ public class PomEnforcerInstaller {
 	 * {@value #CLAUDE_MD_RULE} is looked up by the component name it is published
 	 * under, which the plugin only does from this version; an older one fails the
 	 * build complaining it cannot find a rule the POM plainly declares. A declaration
-	 * this installer writes itself pins {@value #ENFORCER_VERSION}, so only a plugin
-	 * the project pinned can be too old — see {@link #requireRunnableEnforcer}.
+	 * this installer writes itself pins {@value #ENFORCER_VERSION}, so only a version
+	 * the project pinned — in its {@code build} or in the {@code pluginManagement}
+	 * that declaration resolves through — can be too old; see
+	 * {@link #requireRunnableEnforcer}.
 	 */
 	static final String MINIMUM_ENFORCER_VERSION = "3.1.0";
 	private static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
@@ -54,6 +56,18 @@ public class PomEnforcerInstaller {
 
 	/** The one place a plugin both runs from and is added to; see {@link #enforcerPluginOfTheBuild}. */
 	private static final List<String> BUILD_PLUGINS = List.of("build", "plugins");
+
+	/**
+	 * Where a POM pins the version of a plugin its {@code build} declares without one
+	 * — the idiomatic Maven arrangement, and so the version
+	 * {@link #requireRunnableEnforcer} has to read when the declaration itself names
+	 * none.
+	 */
+	private static final List<String> MANAGED_PLUGINS = List.of("build", "pluginManagement", "plugins");
+
+	/** Where the refused version was read from, named so the operator knows which declaration to raise. */
+	private static final String IN_BUILD = "build/plugins";
+	private static final String IN_PLUGIN_MANAGEMENT = "build/pluginManagement";
 
 	/**
 	 * The execution that runs the rule, bound to {@code validate} and not inherited
@@ -202,7 +216,7 @@ public class PomEnforcerInstaller {
 	 * leave the plugin's classpath deciding between two versions of it.
 	 */
 	private void augment(PomDocument pom, Element plugin) {
-		requireRunnableEnforcer(plugin);
+		requireRunnableEnforcer(pom, plugin);
 		if (!declaresRuleDependency(plugin)) {
 			pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
 		}
@@ -218,16 +232,54 @@ public class PomEnforcerInstaller {
 	 * already runs behave, the same reason {@link CommitStep} refuses an ignored path
 	 * rather than forcing the file in.
 	 *
-	 * <p>Only a version literal is judged. One the POM leaves to a
-	 * {@code pluginManagement} entry, a parent, or a property cannot be read from
-	 * here, and refusing on that would turn the ordinary POM into an unadoptable one;
-	 * see {@link PluginVersion}.
+	 * <p>A declaration that names no version of its own is judged by the one the POM's
+	 * own {@code pluginManagement} pins for it, because that is the version the build
+	 * resolves — and pinning there while declaring the plugin bare in {@code build}
+	 * is how Maven projects are ordinarily written, so reading only the declaration
+	 * left this refusal blind to the common shape of the very thing it refuses. The
+	 * execution was spliced in, committed, and left to {@link VerifyStep} to fail on,
+	 * naming a rule Maven could not find rather than the declaration to raise.
+	 *
+	 * <p>Only a version literal is judged either way. One the POM leaves to a parent
+	 * or to a property cannot be read from here, and refusing on that would turn the
+	 * ordinary POM into an unadoptable one; see {@link PluginVersion}. A declaration
+	 * this installer writes itself always pins {@value #ENFORCER_VERSION}, which no
+	 * {@code pluginManagement} entry overrides, so only a plugin the project already
+	 * had reaches this at all.
 	 */
-	private void requireRunnableEnforcer(Element plugin) {
-		String version = PomDocument.childText(plugin, "version").orElse("");
+	private void requireRunnableEnforcer(PomDocument pom, Element plugin) {
+		versionOf(plugin).ifPresentOrElse(
+				version -> requireRunnable(version, IN_BUILD),
+				() -> managedEnforcerVersion(pom).ifPresent(version -> requireRunnable(version, IN_PLUGIN_MANAGEMENT)));
+	}
+
+	/**
+	 * The version the POM's own {@code pluginManagement} pins for the
+	 * {@value #ENFORCER_ARTIFACT_ID}, which is what a declaration naming none resolves
+	 * to.
+	 */
+	private Optional<String> managedEnforcerVersion(PomDocument pom) {
+		return pom.at(MANAGED_PLUGINS).stream()
+				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream())
+				.filter(managed -> PomDocument.hasArtifactId(managed, ENFORCER_ARTIFACT_ID))
+				.findFirst()
+				.flatMap(PomEnforcerInstaller::versionOf);
+	}
+
+	/** @return the version literal the element names, or empty when it names none at all */
+	private static Optional<String> versionOf(Element element) {
+		return PomDocument.childText(element, "version").filter(version -> !version.isBlank());
+	}
+
+	/**
+	 * @param version the version the build resolves the plugin at
+	 * @param where   the declaration it was read from, so the refusal names the one to raise
+	 */
+	private void requireRunnable(String version, String where) {
 		if (PluginVersion.isBelow(version, MINIMUM_ENFORCER_VERSION)) {
 			throw new AdoptionException("Cannot wire the " + CLAUDE_MD_RULE + " rule into the "
-					+ ENFORCER_ARTIFACT_ID + " this project pins to " + version + ": the rule is looked up by name,"
+					+ ENFORCER_ARTIFACT_ID + " this project pins to " + version + " in " + where
+					+ ": the rule is looked up by name,"
 					+ " which the plugin only does from " + MINIMUM_ENFORCER_VERSION + ", so the guard would fail"
 					+ " every build that runs it. Raise " + ENFORCER_ARTIFACT_ID + " to "
 					+ MINIMUM_ENFORCER_VERSION + " or later, then adopt the repository again.");

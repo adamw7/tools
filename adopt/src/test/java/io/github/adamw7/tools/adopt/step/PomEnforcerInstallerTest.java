@@ -548,10 +548,10 @@ class PomEnforcerInstallerTest {
 	}
 
 	/**
-	 * A version left to a property, a {@code pluginManagement} entry, or a parent
-	 * cannot be read from the POM in hand. Refusing on what cannot be read would turn
-	 * an ordinary project into an unadoptable one, and {@link VerifyStep} still runs
-	 * the guard before the branch is pushed.
+	 * A version left to a property or to a parent cannot be read from the POM in hand.
+	 * Refusing on what cannot be read would turn an ordinary project into an
+	 * unadoptable one, and {@link VerifyStep} still runs the guard before the branch is
+	 * pushed.
 	 */
 	@Test
 	void augmentsAnEnforcerWhoseVersionCannotBeReadFromThePom(@TempDir Path dir) throws IOException {
@@ -559,6 +559,75 @@ class PomEnforcerInstallerTest {
 				"a version given as a property must not be read as an old one");
 		assertTrue(install(dir, POM_WITH_ENFORCER).contains("claudeMdFormat"),
 				"a plugin declaring no version at all must not be read as an old one");
+	}
+
+	/**
+	 * Pinning the version in {@code pluginManagement} and declaring the plugin bare in
+	 * {@code build} is how Maven projects are ordinarily written — this repository's
+	 * own poms included — so a refusal that read only the declaration was blind to the
+	 * common shape of the very thing it refuses. The execution was spliced into a
+	 * plugin the build resolves at 3.0.0-M2, committed, and left to {@link VerifyStep}
+	 * to fail on, naming a rule Maven could not find rather than the declaration to
+	 * raise.
+	 */
+	@Test
+	void refusesToWireTheRuleIntoAnEnforcerTheProjectManagesTooFarBack(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, pomManagingEnforcerAt("3.0.0-M2"));
+		AdoptionException failure = assertThrows(AdoptionException.class, () -> installer.install(pom));
+		assertTrue(failure.getMessage().contains("build/pluginManagement"),
+				"the failure must name the declaration to raise: " + failure.getMessage());
+		assertFalse(Files.readString(pom).contains("claudeMdFormat"), "nothing may be written to a refused POM");
+	}
+
+	/** The same shape managed at a version that runs the rule is augmented, not refused. */
+	@Test
+	void augmentsAnEnforcerTheProjectManagesAtARunnableVersion(@TempDir Path dir) throws IOException {
+		assertTrue(install(dir, pomManagingEnforcerAt("3.5.0")).contains("claudeMdFormat"),
+				"a managed version new enough to run the rule must be wired into");
+	}
+
+	/**
+	 * The declaration's own version is what the build resolves, so it answers whether
+	 * or not {@code pluginManagement} pins another — the direction that matters, since
+	 * reading the managed one instead would refuse a project whose build runs a
+	 * perfectly current plugin.
+	 */
+	@Test
+	void readsTheDeclaredVersionRatherThanTheManagedOne(@TempDir Path dir) throws IOException {
+		String declaredNewer = pomManagingEnforcerAt("3.0.0-M2")
+				.replace("<artifactId>maven-enforcer-plugin</artifactId>\n      </plugin>",
+						"<artifactId>maven-enforcer-plugin</artifactId>\n        <version>3.5.0</version>\n      </plugin>");
+		assertTrue(install(dir, declaredNewer).contains("claudeMdFormat"),
+				"the version the build declares must win over the one it merely manages");
+	}
+
+	/**
+	 * A POM whose {@code build} declares the enforcer without a version and whose
+	 * {@code pluginManagement} pins one — the arrangement Maven documents, and the
+	 * version such a declaration actually resolves at.
+	 */
+	private String pomManagingEnforcerAt(String version) {
+		return """
+				<project xmlns="http://maven.apache.org/POM/4.0.0">
+				  <artifactId>demo</artifactId>
+				  <build>
+				    <pluginManagement>
+				      <plugins>
+				        <plugin>
+				          <groupId>org.apache.maven.plugins</groupId>
+				          <artifactId>maven-enforcer-plugin</artifactId>
+				          <version>%s</version>
+				        </plugin>
+				      </plugins>
+				    </pluginManagement>
+				    <plugins>
+				      <plugin>
+				        <artifactId>maven-enforcer-plugin</artifactId>
+				      </plugin>
+				    </plugins>
+				  </build>
+				</project>
+				""".formatted(version);
 	}
 
 	/**

@@ -85,7 +85,9 @@ What is worth knowing before changing any of it:
   credentials, `.git` suffix, trailing slash and case are set aside; anything
   else, including a checkout with no `origin`, is refused. The checkout is then
   refreshed with `git fetch`, since `BranchStep` starts the feature branch from
-  the remote-tracking refs.
+  the remote-tracking refs — through the credentials the run was given, because
+  the `origin` an earlier run left behind deliberately has none and a plain fetch
+  reaches a private repository as an anonymous caller.
 - **One run adopts a list of repositories** — repeatable `--repo <url>`, `--repos
   <file>` (one URL per line, `#` comments and blank lines skipped), or
   `repository_urls` on the MCP tool (a JSON array or a comma-separated string).
@@ -103,8 +105,17 @@ What is worth knowing before changing any of it:
   report field goes through `Redaction`, which masks the user information of a
   URL carrying a scheme, so a CI runner's
   `https://x-access-token:TOKEN@github.com/...` never reaches disk or an MCP
-  client. `git` is still handed the URL as given. Both `gh` invocations name the
-  repository with `--repo` rather than letting `gh` infer it from the remote.
+  client. `git` is still handed the URL as given, but only per invocation: the
+  clone rewrites the `origin` it just recorded to the credential-free form, and
+  the two commands that still have to authenticate supply the URL themselves —
+  `PushStep` as a `-c remote.origin.pushurl` override, and the resuming fetch as
+  a `-c url.<credentialled>.insteadOf=<origin>` rewrite plus
+  `--no-write-fetch-head`. Both forms are transient. Neither
+  `-c remote.origin.url` nor a positional URL would do: git reads the first as
+  *another* value of a multi-valued key and resolves the configured one instead,
+  and records the second in the reflog of every ref the fetch updates. Both `gh`
+  invocations name the repository with `--repo` rather than letting `gh` infer it
+  from the remote.
 - **Configuration is one object.** `AdoptionOptions` (wrapping
   `PullRequestOptions`) carries the pull-request metadata, the starter assets,
   the rule version, the dry-run flag, the per-command timeout and the retry
@@ -126,7 +137,11 @@ What is worth knowing before changing any of it:
 - **Detection reads the pom's own `build/plugins`** — the one place a rule runs on
   every build, and the very place the installer would add one. A rule declared only
   in `pluginManagement`, a profile, or `reporting` runs on no ordinary build, so the
-  project gets an always-on declaration of its own and keeps the one it had.
+  project gets an always-on declaration of its own and keeps the one it had. The
+  plugin's *version* is the opposite question and reads the opposite way: an
+  enforcer the build declares without one resolves through `pluginManagement`, so
+  that is where the refusal to wire the rule into a plugin older than 3.1.0 —
+  which cannot look a rule up by name — looks when the declaration names none.
 - **A pom is edited as text, never re-serialised** (`PomDocument`): the addition
   is spliced into the bytes the file already held, at the source offsets
   **jsoup**'s XML parser reports for every start and end tag, so the adoption

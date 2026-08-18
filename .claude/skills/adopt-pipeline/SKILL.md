@@ -64,11 +64,17 @@ pull request's URL.
 - A step must not depend on `GitHubRepoAdopter` — the pipeline knows its steps,
   not the other way round.
 - Only `CloneStep` and `PushStep` may touch `AdoptionContext#repositoryUrl()` —
-  the two commands that authenticate to the remote. Everything else logs
-  `displayUrl()` or, where a working URL is needed, `checkoutUrl()`. `PushStep`
-  passes the credentials as a `-c remote.origin.pushurl` override, which git
-  applies to that one invocation and writes nowhere. `Redaction` masks
-  credentials in every log, message and report — keep it that way.
+  the classes holding the commands that authenticate to the remote. Everything
+  else logs `displayUrl()` or, where a working URL is needed, `checkoutUrl()`.
+  The two commands that still authenticate after the clone strips the token pass
+  it per invocation and write it nowhere: `PushStep` as a
+  `-c remote.origin.pushurl` override, and `CloneStep`'s resuming fetch as a
+  `-c url.<credentialled>.insteadOf=<origin>` rewrite with
+  `--no-write-fetch-head`. Do not reach for `-c remote.origin.url` or a
+  positional URL — git treats the first as another value of a multi-valued key
+  and resolves the configured one instead, and writes the second into the reflog
+  of every ref the fetch updates. `Redaction` masks credentials in every log,
+  message and report — keep it that way.
 - Register the step in `GitHubRepoAdopter.defaultSteps` (or the optional list it
   belongs to), and unit-test it with a fake `CommandRunner`.
 

@@ -383,9 +383,14 @@ class HookCommandsValidRuleTest {
 	}
 
 	private String hooksReferencing(String command) {
+		return hooksWithEntry("{ \"type\": \"command\", \"command\": \"%s\" }".formatted(command));
+	}
+
+	/** One SessionStart hook, written exactly as {@code entry} spells it. */
+	private String hooksWithEntry(String entry) {
 		return """
-				{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "%s" } ] } ] } }
-				""".formatted(command);
+				{ "hooks": { "SessionStart": [ { "hooks": [ %s ] } ] } }
+				""".formatted(entry);
 	}
 
 	/** Every line of a multi-line hook runs a script, so a missing one on any line is reported. */
@@ -458,6 +463,22 @@ class HookCommandsValidRuleTest {
 		rule.setProjectDir(tempDir.toFile());
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
+	}
+
+	@Test
+	void failsWhenAHookTypeIsNotAString() {
+		// Read as its text, a JSON 123 was neither blank nor "command", so the hook
+		// skipped every command check without a word.
+		assertFailure(EnforcerRuleException.class,
+				ruleFor(hooksWithEntry("{ \"type\": 123, \"command\": \"echo hi\" }"))::execute,
+				"whose 'type' is not a string");
+	}
+
+	@Test
+	void failsWhenAHookCommandIsNotAString() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor(hooksWithEntry("{ \"type\": \"command\", \"command\": 12345 }"))::execute,
+				"whose 'command' is not a string");
 	}
 
 	private HookCommandsValidRule ruleFor(String content) {

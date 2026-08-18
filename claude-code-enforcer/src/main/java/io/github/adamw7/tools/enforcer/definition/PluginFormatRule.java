@@ -25,9 +25,9 @@ import io.github.adamw7.tools.enforcer.text.NameConvention;
  * {@code name} is held to the Claude Code naming convention (lower-case
  * kebab-case, at most {@value NameConvention#MAX_LENGTH} characters), a
  * {@code version} must be a dotted number with optional pre-release and
- * build-metadata suffixes, and a {@code description} must be non-empty; a key
- * outside a configured {@code allowedKeys} is reported, which catches typos such
- * as {@code descripton}. Not every repository ships a plugin, so an absent
+ * build-metadata suffixes, and a {@code description} must be non-empty; each of the
+ * three must be declared as a JSON string, and a key outside a configured
+ * {@code allowedKeys} is reported, which catches typos such as {@code descripton}. Not every repository ships a plugin, so an absent
  * manifest is a pass.
  */
 @Named("pluginFormat")
@@ -75,8 +75,20 @@ public class PluginFormatRule extends JsonFileRule {
 		return "plugin.json " + problem + " in: " + pluginFile;
 	}
 
-	/** A plugin name answers to no directory, so the convention check compares it only to itself. */
+	/**
+	 * A plugin name answers to no directory, so the convention check compares it only
+	 * to itself.
+	 * <p>
+	 * A value declared as anything but a string is reported as that, and not put
+	 * through the convention check: a {@code "name": 123} read as its text satisfied
+	 * kebab-case and shipped a manifest no marketplace can list, while a
+	 * {@code "name": ["a"]} read as the empty string was reported as an empty name
+	 * the author had plainly written something for.
+	 */
 	private void collectNameViolations(JsonNode manifest, List<String> violations) {
+		if (collectNonTextViolation(manifest, NAME_KEY, violations)) {
+			return;
+		}
 		String name = JsonNodes.textAt(manifest, NAME_KEY, null);
 		if (name != null) {
 			NameConvention.collect(name, name, pluginFile.toString(), violations);
@@ -84,6 +96,9 @@ public class PluginFormatRule extends JsonFileRule {
 	}
 
 	private void collectVersionViolation(JsonNode manifest, List<String> violations) {
+		if (collectNonTextViolation(manifest, VERSION_KEY, violations)) {
+			return;
+		}
 		String version = JsonNodes.textAt(manifest, VERSION_KEY, null);
 		if (version != null && !VERSION.matcher(version).matches()) {
 			violations.add("plugin.json version '" + version + "' is not a dotted version number in: " + pluginFile);
@@ -91,10 +106,22 @@ public class PluginFormatRule extends JsonFileRule {
 	}
 
 	private void collectDescriptionViolation(JsonNode manifest, List<String> violations) {
+		if (collectNonTextViolation(manifest, DESCRIPTION_KEY, violations)) {
+			return;
+		}
 		String description = JsonNodes.textAt(manifest, DESCRIPTION_KEY, null);
 		if (description != null && description.isBlank()) {
 			violations.add("plugin.json description must not be empty in: " + pluginFile);
 		}
+	}
+
+	/** Reports a key declared as anything but a string, and says whether it did. */
+	private boolean collectNonTextViolation(JsonNode manifest, String key, List<String> violations) {
+		if (!JsonNodes.declaresNonText(manifest, key)) {
+			return false;
+		}
+		violations.add(keyProblem("'" + key + "' must be a string"));
+		return true;
 	}
 
 	void setPluginFile(File pluginFile) {

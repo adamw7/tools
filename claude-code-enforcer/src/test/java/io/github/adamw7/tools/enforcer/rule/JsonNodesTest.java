@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -168,6 +169,33 @@ class JsonNodesTest {
 		assertNull(root);
 		assertEquals(1, violations.size());
 		assertTrue(violations.get(0).contains("Duplicate field 'a'"), violations.toString());
+	}
+
+	@Test
+	void readsNoTextFromAValueThatIsNotAString() {
+		JsonNode node = parse("{ \"number\": 123, \"flag\": true, \"list\": [\"a\"], \"object\": {} }");
+
+		// asText() coerced every one of these, so a JSON 123 answered for text
+		// nobody wrote and the malformed configuration passed unreported.
+		assertEquals("fallback", JsonNodes.textAt(node, "number", "fallback"));
+		assertEquals("fallback", JsonNodes.textAt(node, "flag", "fallback"));
+		assertEquals("fallback", JsonNodes.textAt(node, "list", "fallback"));
+		assertEquals("fallback", JsonNodes.textAt(node, "object", "fallback"));
+	}
+
+	@Test
+	void readsTheTextOfAStringValue() {
+		assertEquals("npx", JsonNodes.textAt(parse("{ \"command\": \"npx\" }"), "command", "fallback"));
+	}
+
+	@Test
+	void tellsADeclaredNonStringFromAnAbsentKey() {
+		JsonNode node = parse("{ \"number\": 123, \"text\": \"x\", \"nothing\": null }");
+
+		assertTrue(JsonNodes.declaresNonText(node, "number"));
+		assertFalse(JsonNodes.declaresNonText(node, "text"));
+		assertFalse(JsonNodes.declaresNonText(node, "nothing"));
+		assertFalse(JsonNodes.declaresNonText(node, "absent"));
 	}
 
 	private static JsonNode parse(String json) {

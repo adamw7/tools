@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.doc;
 
+import static io.github.adamw7.tools.test.TestFiles.writeBytes;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -566,6 +567,50 @@ class ClaudeMdFormatRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("title heading")), logger.warnings().toString());
+	}
+
+	@Test
+	void acceptsATitleBalancedWithAClosingHashRun() {
+		// The section checks read a heading by the text it carries, and the title
+		// check compared the raw line: the same document was both carrying the title
+		// and reported as not starting with it.
+		assertDoesNotThrow(ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "# CLAUDE.md ##\n"))::execute);
+	}
+
+	@Test
+	void acceptsATitleSeparatedByExtraWhitespace() {
+		assertDoesNotThrow(ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "#\tCLAUDE.md\n"))::execute);
+		assertDoesNotThrow(ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "#  CLAUDE.md\n"))::execute);
+	}
+
+	@Test
+	void stillRejectsATitleThatIsADifferentHeading() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "# CLAUDE.md-extended\n"))::execute,
+				"title heading");
+	}
+
+	@Test
+	void stillRejectsATitleAtTheWrongLevel() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "## CLAUDE.md\n"))::execute,
+				"title heading");
+	}
+
+	@Test
+	void comparesAConfiguredTitleThatIsNoHeadingVerbatim() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("# CLAUDE.md\n", "CLAUDE\n"));
+		rule.setTitleHeading("CLAUDE");
+
+		assertDoesNotThrow(rule::execute);
+	}
+
+	@Test
+	void failsWithAVerdictWhenTheDocumentIsNotUtf8Text() {
+		Path file = writeBytes(tempDir.resolve("CLAUDE.md"), new byte[] { '#', (byte) 0xE9, '\n' });
+		ClaudeMdFormatRule rule = ClaudeMdFormatRule.validating(file.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "cannot be read as UTF-8 text");
 	}
 
 	private ClaudeMdFormatRule ruleFor(String content) {

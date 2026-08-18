@@ -87,8 +87,16 @@ final class DocumentConsistency {
 		}
 	}
 
-	private Document read(File file) {
-		return new Document(file.getName(), MarkdownText.read(file, file.getName()));
+	/**
+	 * A file that cannot be decoded as UTF-8 fails as a rule verdict naming it. It
+	 * used to be read through {@link MarkdownText#read}, whose
+	 * {@link java.io.UncheckedIOException} escaped the rule and aborted the build as
+	 * an internal error instead.
+	 */
+	private Document read(File file) throws EnforcerRuleException {
+		return new Document(file.getName(), MarkdownText.readIfText(file)
+				.orElseThrow(() -> new EnforcerRuleException(
+						file.getName() + " cannot be read as UTF-8 text: " + file)));
 	}
 
 	private void collect(Pattern pattern, Document first, Document second, List<String> violations) {

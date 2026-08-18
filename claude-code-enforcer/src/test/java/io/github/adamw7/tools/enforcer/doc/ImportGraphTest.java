@@ -27,6 +27,7 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 class ImportGraphTest {
 
 	private static final Predicate<String> NOTHING_IGNORED = imported -> false;
+	private static final List<String> EXTENSIONS = List.of("md", "markdown", "txt");
 
 	@TempDir
 	private Path tempDir;
@@ -126,7 +127,7 @@ class ImportGraphTest {
 	void leavesOutAnIgnoredImport() {
 		File target = write("docs.md", "# Docs\n");
 		File root = write("CLAUDE.md", "See @docs.md\n");
-		ImportGraph graph = ImportGraph.from(root, "docs.md"::equals, unreadable::add);
+		ImportGraph graph = ImportGraph.from(root, EXTENSIONS, "docs.md"::equals, unreadable::add);
 
 		// An ignored import is not an edge at all, so it neither shows up as a
 		// reference nor drags its target into the graph.
@@ -279,8 +280,51 @@ class ImportGraphTest {
 		assertEquals(List.of("AGENTS.md"), textOf(graphFrom(root).importsOf(root)));
 	}
 
+	@Test
+	void readsNoImportFromAScopedPackageName() {
+		File root = write("CLAUDE.md", "Install @anthropic-ai/claude-code with npm.\n");
+
+		// A separator alone made this a path, and the rule then failed the build over
+		// a directory the author was never naming.
+		assertEquals(List.of(), graphFrom(root).importsOf(root));
+	}
+
+	@Test
+	void readsNoImportFromProseCarryingADotButNoKnownExtension() {
+		File root = write("CLAUDE.md",
+				"Annotate with @Named.class, route with @app.route, ship @v1.2, mail @adam.example.com\n");
+
+		assertEquals(List.of(), graphFrom(root).importsOf(root));
+	}
+
+	@Test
+	void readsAnExtensionlessImportWrittenWithAPathPrefix() {
+		write("docs/setup", "# Setup\n");
+		File root = write("CLAUDE.md", "See @./docs/setup for the rest.\n");
+
+		// The prefix is what tells a path from a package name, since nothing about
+		// the token itself does.
+		assertEquals(List.of("./docs/setup"), textOf(graphFrom(root).importsOf(root)));
+	}
+
+	@Test
+	void readsAnImportNamedByAConfiguredExtension() {
+		File root = write("CLAUDE.md", "See @notes.rst\n");
+
+		assertEquals(List.of(), textOf(graphFrom(root).importsOf(root)));
+		assertEquals(List.of("notes.rst"),
+				textOf(ImportGraph.from(root, List.of("rst"), NOTHING_IGNORED, unreadable::add).importsOf(root)));
+	}
+
+	@Test
+	void comparesAnExtensionWithoutRegardToCase() {
+		File root = write("CLAUDE.md", "See @AGENTS.MD\n");
+
+		assertEquals(List.of("AGENTS.MD"), textOf(graphFrom(root).importsOf(root)));
+	}
+
 	private ImportGraph graphFrom(File root) {
-		return ImportGraph.from(root, NOTHING_IGNORED, unreadable::add);
+		return ImportGraph.from(root, EXTENSIONS, NOTHING_IGNORED, unreadable::add);
 	}
 
 	private List<String> textOf(List<Reference> references) {

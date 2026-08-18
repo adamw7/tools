@@ -44,27 +44,26 @@ class ProjectFilesTest {
 	}
 
 	@Test
-	void filesInReturnsOnlyRegularFiles() {
-		writeString(tempDir.resolve("session-start.sh"), "#!/bin/sh");
-		createDirectory(tempDir.resolve("nested"));
-
-		assertEquals(List.of("session-start.sh"), names(ProjectFiles.filesIn(tempDir.toFile())));
+	void requireDirectoryOrAbsentAcceptsAnAbsentDirectory() {
+		assertDoesNotThrow(
+				() -> ProjectFiles.requireDirectoryOrAbsent(tempDir.resolve("hooks").toFile(), "Hooks"));
 	}
 
 	@Test
-	void filesInReturnsResultsSortedByName() {
-		writeString(tempDir.resolve("stop.sh"), "#!/bin/sh");
-		writeString(tempDir.resolve("audit.sh"), "#!/bin/sh");
-		writeString(tempDir.resolve("notify.sh"), "#!/bin/sh");
+	void requireDirectoryOrAbsentAcceptsADirectoryThatIsThere() {
+		File directory = createDirectory(tempDir.resolve("hooks")).toFile();
 
-		assertEquals(List.of("audit.sh", "notify.sh", "stop.sh"), names(ProjectFiles.filesIn(tempDir.toFile())));
+		assertDoesNotThrow(() -> ProjectFiles.requireDirectoryOrAbsent(directory, "Hooks"));
 	}
 
 	@Test
-	void filesInReturnsEmptyListWhenPathIsNotAListableDirectory() {
-		File file = writeString(tempDir.resolve("review.md"), "body").toFile();
+	void requireDirectoryOrAbsentRejectsAPathThatIsAFile() {
+		// Such a path lists nothing, so the rule reading it scanned nothing and
+		// reported nothing — which reads exactly like a project with no hooks.
+		File file = writeString(tempDir.resolve("hooks"), "#!/bin/sh").toFile();
 
-		assertEquals(List.of(), ProjectFiles.filesIn(file));
+		assertFailure(EnforcerRuleException.class,
+				() -> ProjectFiles.requireDirectoryOrAbsent(file, "Hooks"), "is not a directory");
 	}
 
 	@Test

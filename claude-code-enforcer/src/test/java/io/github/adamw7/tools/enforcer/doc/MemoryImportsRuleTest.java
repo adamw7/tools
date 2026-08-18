@@ -217,6 +217,40 @@ class MemoryImportsRuleTest {
 		assertTrue(rule.toString().contains("CLAUDE.md"), rule.toString());
 	}
 
+	@Test
+	void readsNoImportFromAScopedPackageName() {
+		// A separator alone made this a path, so the rule failed the build over a
+		// directory the author was never naming.
+		assertDoesNotThrow(ruleFor("Install @anthropic-ai/claude-code with npm.\n")::execute);
+	}
+
+	@Test
+	void readsNoImportFromProseCarryingADotButNoKnownExtension() {
+		assertDoesNotThrow(ruleFor("Annotate with @Named.class, ship @v1.2, mail @adam.example.com\n")::execute);
+	}
+
+	@Test
+	void readsAnExtensionlessImportWrittenWithAPathPrefix() {
+		assertFailure(EnforcerRuleException.class, ruleFor("See @./docs/setup\n")::execute,
+				"imports a missing file: @./docs/setup");
+	}
+
+	@Test
+	void readsAnImportNamedByAConfiguredExtension() {
+		MemoryImportsRule rule = ruleFor("See @notes.rst\n");
+		rule.setImportExtensions(List.of("rst"));
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "imports a missing file: @notes.rst");
+	}
+
+	@Test
+	void passesWhenAConfiguredExtensionExcludesTheImport() {
+		MemoryImportsRule rule = ruleFor("See @docs/setup.md\n");
+		rule.setImportExtensions(List.of("rst"));
+
+		assertDoesNotThrow(rule::execute);
+	}
+
 	private MemoryImportsRule ruleFor(String content) {
 		Path file = tempDir.resolve("CLAUDE.md");
 		writeString(file, content);

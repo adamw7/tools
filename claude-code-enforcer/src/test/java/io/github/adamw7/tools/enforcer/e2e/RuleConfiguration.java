@@ -81,6 +81,11 @@ final class RuleConfiguration {
 									<ignoredImports>
 										<ignoredImport>ignored/never-loaded.md</ignoredImport>
 									</ignoredImports>
+									<importExtensions>
+										<importExtension>md</importExtension>
+										<importExtension>markdown</importExtension>
+										<importExtension>txt</importExtension>
+									</importExtensions>
 								</memoryImports>
 								<moduleMapConsistency>
 									<pomFile>${project.basedir}/reactor-pom.xml</pomFile>

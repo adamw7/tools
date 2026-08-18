@@ -15,9 +15,9 @@ import java.util.stream.Stream;
  * this to find the script paths inside a command, so the splitting lives here
  * rather than in each of them.
  * <p>
- * Splitting is on whitespace and on the shell separators {@code ;}, {@code &},
- * {@code |}, a newline, and the {@code (}/{@code )} of a subshell, all
- * <em>outside</em> quotes. Whitespace alone is not enough: a command
+ * Splitting is on whitespace, on the redirections {@code <} and {@code >}, and on
+ * the shell separators {@code ;}, {@code &}, {@code |}, a newline, and the
+ * {@code (}/{@code )} of a subshell, all <em>outside</em> quotes. Whitespace alone is not enough: a command
  * chaining two hooks as {@code hook-a.sh; hook-b.sh} leaves the semicolon glued to
  * the first path, and the rules would then report a script that is really there as
  * missing. Quoting is honoured because a hook script path containing a space is
@@ -66,6 +66,21 @@ final class CommandTokens {
 	 * named {@code (script.sh)} that no file can match.
 	 */
 	private static final String OPERATORS = ";&|\n\r()";
+
+	/**
+	 * The redirection characters, which end a token without ending a command. A hook
+	 * written {@code .claude/hooks/build.sh> build.log} glues the {@code >} to the
+	 * path, and reading that as the program invented a script named
+	 * {@code build.sh>} that no file can match — reported, of course, as missing.
+	 * <p>
+	 * They are token separators and not operators on purpose. Ending the command at
+	 * a redirection would make the file after it the program of a fresh segment, so
+	 * the {@code logs/build.log} of {@code build.sh > logs/build.log} would become a
+	 * script this rule requires to exist — failing the build over the very file the
+	 * hook is about to write, which is the mistake {@link #scriptCandidatesOf} exists
+	 * to avoid.
+	 */
+	private static final String REDIRECTIONS = "<>";
 
 	/**
 	 * A {@code VAR=value} prefix, which sets a variable for the command that follows
@@ -306,7 +321,11 @@ final class CommandTokens {
 	}
 
 	private static boolean isTokenSeparator(int character) {
-		return Character.isWhitespace(character) || isOperator(character);
+		return Character.isWhitespace(character) || isOperator(character) || isRedirection(character);
+	}
+
+	private static boolean isRedirection(int character) {
+		return REDIRECTIONS.indexOf(character) >= 0;
 	}
 
 	private static boolean isOperator(int character) {

@@ -98,6 +98,36 @@ class PluginFormatRuleTest {
 		assertFailure(EnforcerRuleException.class, rule::execute, "missing required key 'description'");
 	}
 
+	@Test
+	void failsWhenTheNameIsNotAString() {
+		// Read as its text, a JSON 123 satisfied kebab-case and shipped a manifest
+		// no marketplace can list.
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"name\": 123 }")::execute,
+				"'name' must be a string");
+	}
+
+	@Test
+	void failsWhenTheNameIsAnArray() {
+		assertFailure(EnforcerRuleException.class, ruleFor("{ \"name\": [\"a\"] }")::execute,
+				"'name' must be a string");
+	}
+
+	@Test
+	void failsWhenTheVersionIsNotAString() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"name\": \"demo\", \"version\": 1.0 }")::execute,
+				"'version' must be a string");
+	}
+
+	@Test
+	void failsWhenTheDescriptionIsNotAString() {
+		// An object read as the empty string was reported as a description the
+		// author had left out, which is not the line they need to look at.
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"name\": \"demo\", \"description\": {} }")::execute,
+				"'description' must be a string");
+	}
+
 	private PluginFormatRule ruleFor(String content) {
 		Path file = tempDir.resolve("plugin.json");
 		writeString(file, content);

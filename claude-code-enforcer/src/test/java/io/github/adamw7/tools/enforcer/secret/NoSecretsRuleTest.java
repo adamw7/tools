@@ -117,6 +117,17 @@ class NoSecretsRuleTest {
 		assertEquals(1, occurrences(exception.getMessage(), "script.sh"), exception.getMessage());
 	}
 
+	@Test
+	void failsWhenAScannedDirectoryIsAFile() {
+		// A <directory> pointed at a file scanned nothing and reported nothing, which
+		// reads exactly like a clean scan.
+		Path file = writeString(tempDir.resolve("hooks"), "#!/bin/sh\n");
+		NoSecretsRule rule = new NoSecretsRule();
+		rule.setDirectories(List.of(file.toFile()));
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "is not a directory");
+	}
+
 	private NoSecretsRule ruleForFile(String content) {
 		Path file = tempDir.resolve("settings.json");
 		writeString(file, content);

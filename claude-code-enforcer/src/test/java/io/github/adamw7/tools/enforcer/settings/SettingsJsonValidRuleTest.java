@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.enforcer.settings;
 
+import static io.github.adamw7.tools.test.TestFiles.writeBytes;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -95,6 +96,17 @@ class SettingsJsonValidRuleTest {
 		rule.setRequiredPermissions(List.of("123"));
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "missing required permission: 123");
+	}
+
+	@Test
+	void failsWithAVerdictWhenTheFileIsNotUtf8Text() {
+		// It used to throw an UncheckedIOException out of the rule, which aborts the
+		// build as an internal error rather than as the verdict the rule owes.
+		Path file = writeBytes(tempDir.resolve("settings.json"), new byte[] { '{', (byte) 0xE9, '}' });
+		SettingsJsonValidRule rule = new SettingsJsonValidRule();
+		rule.setSettingsFile(file.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "cannot be read as UTF-8 text");
 	}
 
 	private SettingsJsonValidRule ruleFor(String content) {

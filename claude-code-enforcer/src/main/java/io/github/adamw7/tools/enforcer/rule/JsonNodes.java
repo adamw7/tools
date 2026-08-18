@@ -74,10 +74,32 @@ public final class JsonNodes {
 		return node != null && expected.test(node) ? node : null;
 	}
 
-	/** The text at {@code key}, or {@code defaultValue} when it is absent or null. */
+	/**
+	 * The text at {@code key}, or {@code defaultValue} when it is absent, null, or
+	 * declared as something other than a JSON string.
+	 * <p>
+	 * A value is a string and only a string. Reading it as {@code asText()} besides
+	 * let a JSON number, boolean or object answer for text nobody wrote: an
+	 * {@code .mcp.json} declaring {@code "command": 123} passed as a well-formed
+	 * stdio server, a {@code plugin.json} declaring {@code "name": 123} satisfied the
+	 * kebab-case convention, and a hook declaring {@code "type": 123} skipped the
+	 * command checks entirely — every one of them a file Claude Code will not load.
+	 * A caller that must tell "absent" from "declared, but not a string" asks
+	 * {@link #declaresNonText}.
+	 */
 	public static String textAt(JsonNode node, String key, String defaultValue) {
 		JsonNode child = node.get(key);
-		return child != null && !child.isNull() ? child.asText() : defaultValue;
+		return child != null && child.isTextual() ? child.asText() : defaultValue;
+	}
+
+	/**
+	 * True when {@code key} is declared as something other than a JSON string. An
+	 * absent key and an explicit {@code null} are not declarations, so both answer
+	 * false and are left to whatever required-key check the rule already makes.
+	 */
+	public static boolean declaresNonText(JsonNode node, String key) {
+		JsonNode child = node.get(key);
+		return child != null && !child.isNull() && !child.isTextual();
 	}
 
 	/** The field names of an object node, preserving document order. */

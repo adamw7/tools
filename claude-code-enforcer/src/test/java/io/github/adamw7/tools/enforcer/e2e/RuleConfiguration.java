@@ -25,6 +25,7 @@ final class RuleConfiguration {
 								<claudeMdFormat>
 									<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
 									<titleHeading># CLAUDE.md</titleHeading>
+									<requiredReference>AGENTS.md</requiredReference>
 									<requiredSections>
 										<requiredSection>## Project</requiredSection>
 										<requiredSection>## Java version</requiredSection>

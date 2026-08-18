@@ -348,10 +348,14 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	 * as an internal error, which is the one outcome a rule must not have: a
 	 * {@code .gitignore} carrying a single Latin-1 byte took the build down with a
 	 * stack trace instead of the verdict the rule exists to give.
+	 * <p>
+	 * The read goes through {@link DocumentCache}, so the four rules that each check
+	 * a section of {@code settings.json} read it once between them.
 	 */
 	protected final String requireText(File file, String description) throws EnforcerRuleException {
-		return MarkdownText.readIfText(file).orElseThrow(() -> new EnforcerRuleException(
-				description + " cannot be read as UTF-8 text: " + file));
+		return DocumentCache.text(file, () -> MarkdownText.readIfText(file))
+				.orElseThrow(() -> new EnforcerRuleException(
+						description + " cannot be read as UTF-8 text: " + file));
 	}
 
 	/**

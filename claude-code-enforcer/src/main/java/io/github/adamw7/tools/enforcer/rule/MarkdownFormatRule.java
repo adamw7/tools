@@ -163,10 +163,16 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		this.referenceBaseDir = referenceBaseDir;
 	}
 
+	/**
+	 * Reading and parsing both go through {@link DocumentCache}, so the five rules
+	 * that each check something about {@code CLAUDE.md} parse it once between them.
+	 * They stay independent either way: what is shared is the document, not any
+	 * rule's reading of it.
+	 */
 	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
 		requireDocument(file, documentName());
-		return MarkdownDocument.parse(requireContent(file, documentName()));
+		return DocumentCache.markdown(file, requireContent(file, documentName()));
 	}
 
 	/**

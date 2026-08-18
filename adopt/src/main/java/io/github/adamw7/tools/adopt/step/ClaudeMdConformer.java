@@ -218,17 +218,40 @@ public class ClaudeMdConformer {
 	 * headings — which the rule accepts, so nothing downstream would report the
 	 * duplicate, and the reshape being idempotent means a re-adoption never clears it.
 	 *
+	 * <p>A document that already opens with the title is not left alone either: it
+	 * needs no title <em>added</em>, but a second one lower down is the same duplicate
+	 * by another route, and returning on the first line alone left it there for good —
+	 * the rule never looks past that line, so nothing downstream reported it, and the
+	 * reshape being idempotent meant no re-adoption cleared it.
+	 *
 	 * <p>The titles are removed latest first, so removing one cannot shift the index
 	 * of the next. Only structural lines are offered: a {@code # CLAUDE.md} inside a
 	 * code sample is the sample's, not the document's.
 	 */
 	private void ensureTitle(List<String> lines) {
 		MarkdownDocument document = MarkdownDocument.of(lines);
+		List<Integer> titles = document.headingIndices(TITLE).boxed().toList();
 		if (TITLE.equals(document.firstNonBlankLine())) {
+			removeHeadings(lines, allButTheFirst(titles));
 			return;
 		}
-		document.headingIndices(TITLE).boxed().toList().reversed().forEach(index -> removeHeading(lines, index));
+		removeHeadings(lines, titles);
 		lines.addAll(0, List.of(TITLE, ""));
+	}
+
+	/**
+	 * The titles a document opening with one has to lose: every one but the title it
+	 * opens with, which is the one the rule reads. An empty list is the document whose
+	 * opening title is not a structural line at all — one indented into a code block,
+	 * which the rule accepts on the same reading and which is the sample's to keep.
+	 */
+	private static List<Integer> allButTheFirst(List<Integer> titles) {
+		return titles.isEmpty() ? titles : titles.subList(1, titles.size());
+	}
+
+	/** Removes the headings latest first, so removing one cannot shift the index of the next. */
+	private static void removeHeadings(List<String> lines, List<Integer> indices) {
+		indices.reversed().forEach(index -> removeHeading(lines, index));
 	}
 
 	/**

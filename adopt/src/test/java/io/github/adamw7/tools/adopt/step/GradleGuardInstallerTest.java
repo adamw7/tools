@@ -120,6 +120,36 @@ class GradleGuardInstallerTest {
 	}
 
 	/**
+	 * A line comment does not have to start the line. Dropping whole lines left a
+	 * registration written after real code plainly in the text, so the script read as
+	 * already declaring the task, the guard was never appended, and
+	 * {@link GradleBuildSystem#verifyCommand(Path)} then ran a task the build has not.
+	 */
+	@Test
+	void installsTheGuardWhenTheMentionTrailsRealCode(@TempDir Path directory) throws IOException {
+		Path buildFile = write(directory, "build.gradle",
+				"plugins { id 'java' } // tasks.register('enforceClaudeMd') one day\n");
+		assertTrue(installer.install(buildFile));
+		assertTrue(Files.readString(buildFile).contains("tasks.register('enforceClaudeMd')"));
+	}
+
+	/**
+	 * A {@code //} inside a string literal opens no comment. A Gradle script writes
+	 * {@code url 'https://…'} more readily than it writes anything else, so cutting
+	 * there would drop the rest of a line that may carry the declaration — and the
+	 * guard would be appended to a script that already has one.
+	 */
+	@Test
+	void readsADeclarationSharingALineWithAUrl(@TempDir Path directory) throws IOException {
+		Path buildFile = directory.resolve("build.gradle");
+		String own = "repositories { maven { url 'https://example.com/m2' } }; "
+				+ "tasks.register('enforceClaudeMd') { }\n";
+		Files.writeString(buildFile, own);
+		assertFalse(installer.install(buildFile));
+		assertEquals(own, Files.readString(buildFile));
+	}
+
+	/**
 	 * The block comment is the form a whole declaration is commented out with, since it
 	 * takes the registration's braces and its body in one go. Reading only the line form
 	 * left the task name plainly in the text, so the script was taken to declare the

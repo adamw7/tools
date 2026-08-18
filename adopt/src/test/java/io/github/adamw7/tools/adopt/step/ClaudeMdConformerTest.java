@@ -208,6 +208,25 @@ class ClaudeMdConformerTest {
 	}
 
 	/**
+	 * The same duplicate by the other route. A document that already opens with the
+	 * title needs none added, but a second one lower down is still two
+	 * {@code # CLAUDE.md} headings in a file the adoption is about to commit —
+	 * and returning on the first line alone left it there, since the rule never looks
+	 * past that line and the reshape is idempotent.
+	 */
+	@Test
+	void dropsASecondTitleFromADocumentThatAlreadyStartsWithOne() {
+		String generated = "# CLAUDE.md\n\nA preamble.\n\n# CLAUDE.md\n\nBody here.\n";
+		String conformed = conformer.conform(generated);
+		assertEquals(ClaudeMdConformer.TITLE, conformed.lines().findFirst().orElseThrow());
+		assertEquals(1, conformed.lines().filter(ClaudeMdConformer.TITLE::equals).count(),
+				"the duplicate must be removed, not kept:\n" + conformed);
+		assertTrue(conformed.contains("A preamble."), "the preamble survives");
+		assertTrue(conformed.contains("Body here."), "the body survives");
+		assertEquals(conformed, conformer.conform(conformed), "the removal must be idempotent");
+	}
+
+	/**
 	 * Only the document's own title moves. One inside a code sample belongs to the
 	 * sample — the rule reads it as code — so removing it would rewrite the sample.
 	 */

@@ -134,13 +134,21 @@
 			<artifactId>junit-jupiter-engine</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!--
+			This module's src/main carries only .proto: the sole Java that logs is the
+			GreeterClient/GreeterServer pair under src/test, so both artifacts are test
+			scope. At compile scope they were published as dependencies of a jar that
+			cannot use them.
+		-->
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-api</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

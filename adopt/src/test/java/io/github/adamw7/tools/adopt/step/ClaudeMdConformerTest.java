@@ -42,9 +42,11 @@ class ClaudeMdConformerTest {
 				.toList();
 	}
 
-	/** Whether the section carries a body, as the rule counts one. */
+	/** Whether the section carries a body, asked exactly as the rule asks it. */
 	private boolean hasBody(String content, String section) {
-		return MarkdownDocument.parse(content).hasBody(section);
+		MarkdownDocument document = MarkdownDocument.parse(content);
+		int index = document.headingIndex(section);
+		return index >= 0 && document.hasBodyAt(index);
 	}
 
 	@Test

@@ -26,7 +26,8 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * {@code # CLAUDE.md-extended} does not satisfy {@code # CLAUDE.md}. They are
  * matched by the text they carry rather than by the line they were typed on, so a
  * heading balanced with a closing {@code #} run satisfies the requirement its plain
- * spelling does. All structural problems are collected and reported together.
+ * spelling does — the title included. All structural problems are collected and
+ * reported together.
  * <p>
  * Several optional checks, each disabled by default, can be switched on from the
  * rule configuration: {@code forbiddenTokens} that must not appear outside code,
@@ -168,10 +169,29 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		return MarkdownDocument.parse(requireContent(file, documentName()));
 	}
 
+	/**
+	 * The title is matched the way every other heading here is: by the text it
+	 * carries rather than by the line it was typed on. Comparing the raw first line
+	 * instead made the rule contradict itself — a {@code # CLAUDE.md ##} balanced
+	 * with a closing run, or one separated by two spaces or a tab, satisfies every
+	 * required-section lookup in this class and was still reported as a document that
+	 * "must start with the '# CLAUDE.md' title heading", which is exactly what it
+	 * does start with.
+	 * <p>
+	 * A configured title that is not a heading at all is compared verbatim, since
+	 * there is no canonical form to read it into.
+	 */
 	private void collectTitleViolation(MarkdownDocument document, List<String> violations) {
-		if (!document.firstNonBlankLine().equals(titleHeading())) {
+		if (!declaresTitle(document.firstNonBlankLine())) {
 			violations.add(documentName() + " must start with the '" + titleHeading() + "' title heading");
 		}
+	}
+
+	private boolean declaresTitle(String firstLine) {
+		String expected = titleHeading();
+		return MarkdownDocument.headingOf(expected)
+				.map(canonical -> MarkdownDocument.headingOf(firstLine).filter(canonical::equals).isPresent())
+				.orElseGet(() -> firstLine.equals(expected));
 	}
 
 	/**

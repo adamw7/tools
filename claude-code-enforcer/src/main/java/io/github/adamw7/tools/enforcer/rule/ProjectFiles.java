@@ -35,9 +35,17 @@ public final class ProjectFiles {
 		}
 	}
 
-	/** The regular files directly in {@code directory}, sorted; empty when it cannot be listed. */
-	public static List<File> filesIn(File directory) {
-		return listed(directory, File::isFile);
+	/**
+	 * Fails when a configured directory is there but is not a directory, for a rule
+	 * whose directory is optional. An absent one is a pass — most Claude Code
+	 * configuration directories are — but a path that is a file lists nothing, so
+	 * such a rule scanned nothing and reported nothing, and a mistyped parameter was
+	 * indistinguishable from a project that simply has no hooks.
+	 */
+	public static void requireDirectoryOrAbsent(File directory, String label) throws EnforcerRuleException {
+		if (directory.exists() && !directory.isDirectory()) {
+			throw new EnforcerRuleException(label + " directory is not a directory: " + directory);
+		}
 	}
 
 	/** The {@code *.md} files directly in {@code directory}, sorted; empty when it cannot be listed. */

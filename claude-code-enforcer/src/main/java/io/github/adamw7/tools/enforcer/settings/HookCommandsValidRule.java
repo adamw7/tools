@@ -14,8 +14,9 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * Enforcer rule that fails the build when the {@code hooks} section of
  * {@code .claude/settings.json} is malformed. When a {@code hooks} object is
  * present, every event must map to an array of groups, every group must carry a
- * {@code hooks} array, and every hook in it must declare a non-blank {@code type};
- * a {@code command} hook must also declare a non-blank {@code command}.
+ * {@code hooks} array, and every hook in it must declare a non-blank {@code type}
+ * as a JSON string; a {@code command} hook must also declare a non-blank
+ * {@code command}, likewise as a string.
  * <p>
  * A command that points at a project-local script — through the
  * {@code $CLAUDE_PROJECT_DIR} variable, or as the plain repository-relative path
@@ -106,9 +107,19 @@ public class HookCommandsValidRule extends JsonFileRule {
 		}
 	}
 
+	/**
+	 * A {@code type} that is not a string is reported as the type error it is rather
+	 * than read as its text: a hook declaring {@code "type": 123} is not the
+	 * {@code command} hook it may well have meant to be, so reading it as
+	 * {@code "123"} matched nothing and skipped every command check in silence.
+	 */
 	private void collectEntryViolations(String event, JsonNode entry, List<String> violations) {
 		if (entry == null) {
 			add(event, "has a hook that is not a JSON object", violations);
+			return;
+		}
+		if (JsonNodes.declaresNonText(entry, TYPE_KEY)) {
+			add(event, "has a hook whose 'type' is not a string", violations);
 			return;
 		}
 		String type = JsonNodes.textAt(entry, TYPE_KEY, "").strip();
@@ -120,6 +131,10 @@ public class HookCommandsValidRule extends JsonFileRule {
 	}
 
 	private void collectCommandViolations(String event, JsonNode entry, List<String> violations) {
+		if (JsonNodes.declaresNonText(entry, COMMAND_KEY)) {
+			add(event, "has a command hook whose 'command' is not a string", violations);
+			return;
+		}
 		String command = JsonNodes.textAt(entry, COMMAND_KEY, "").strip();
 		if (command.isBlank()) {
 			add(event, "has a command hook with an empty 'command'", violations);

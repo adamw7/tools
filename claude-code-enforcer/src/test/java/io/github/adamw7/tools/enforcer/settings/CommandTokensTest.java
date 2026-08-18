@@ -317,4 +317,38 @@ class CommandTokensTest {
 	void yieldsNoProgramForAWrapperAlone() {
 		assertEquals(List.of(), CommandTokens.scriptCandidatesOf("exec; nohup"));
 	}
+
+	@Test
+	void endsATokenAtAGluedRedirection() {
+		// Reading the > as part of the path invented a script named "build.sh>" that
+		// no file can match, and the rules reported it as missing.
+		assertEquals(List.of(".claude/hooks/build.sh", "build.log"),
+				CommandTokens.of(".claude/hooks/build.sh> build.log"));
+	}
+
+	@Test
+	void readsOnlyTheProgramAsAScriptAcrossARedirection() {
+		// A redirection ends a token but not the command, so the file after it stays
+		// an argument: making it an operator would have turned logs/build.log into a
+		// program this rule requires to exist.
+		assertEquals(List.of(".claude/hooks/build.sh"),
+				CommandTokens.scriptCandidatesOf(".claude/hooks/build.sh > logs/build.log"));
+		assertEquals(List.of(".claude/hooks/build.sh"),
+				CommandTokens.scriptCandidatesOf(".claude/hooks/build.sh>logs/build.log"));
+	}
+
+	@Test
+	void readsTheScriptAnInterpreterIsHandedAcrossARedirection() {
+		assertEquals(List.of("bash", ".claude/hooks/build.sh"),
+				CommandTokens.scriptCandidatesOf("bash .claude/hooks/build.sh >out.log"));
+	}
+
+	@Test
+	void namesTheDescriptorOfACopiedRedirectionAsAProgramThatResolvesToNothing() {
+		// The & of 2>&1 ends the command, so the 1 after it is read as a program of
+		// its own. It names no path, so ClaudeProjectDir resolves it to nothing —
+		// which is why the candidate list may carry a word no file can match.
+		assertEquals(List.of(".claude/hooks/build.sh", "1"),
+				CommandTokens.scriptCandidatesOf(".claude/hooks/build.sh >out.log 2>&1"));
+	}
 }

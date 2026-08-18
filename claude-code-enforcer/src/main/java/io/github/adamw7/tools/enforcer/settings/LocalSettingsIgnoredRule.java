@@ -10,7 +10,6 @@ import javax.inject.Named;
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when {@code .gitignore} does not cover the
@@ -41,7 +40,7 @@ public class LocalSettingsIgnoredRule extends ClaudeCodeEnforcerRule {
 	public void execute() throws EnforcerRuleException {
 		requireConfigured(gitignoreFile, "gitignoreFile");
 		requireExists(gitignoreFile, ".gitignore");
-		Gitignore gitignore = Gitignore.parse(MarkdownText.read(gitignoreFile, ".gitignore"));
+		Gitignore gitignore = Gitignore.parse(requireText(gitignoreFile, ".gitignore"));
 		List<String> violations = new ArrayList<>();
 		for (String path : Objects.requireNonNullElse(ignoredPaths, DEFAULT_IGNORED_PATHS)) {
 			collectUncoveredPath(gitignore, path, violations);

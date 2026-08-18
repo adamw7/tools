@@ -225,14 +225,31 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	}
 
 	/**
+	 * Reads a required input file and fails when it cannot be decoded as UTF-8 text.
+	 * Returns the content with any leading byte-order mark stripped.
+	 * <p>
+	 * Decoding is a build-setup mistake rather than a content problem, so it always
+	 * fails regardless of {@link #severity} — but it fails as a <em>rule verdict</em>
+	 * naming the file. Reading through {@link MarkdownText#read} instead let an
+	 * {@link java.io.UncheckedIOException} escape the rule and abort the whole build
+	 * as an internal error, which is the one outcome a rule must not have: a
+	 * {@code .gitignore} carrying a single Latin-1 byte took the build down with a
+	 * stack trace instead of the verdict the rule exists to give.
+	 */
+	protected final String requireText(File file, String description) throws EnforcerRuleException {
+		return MarkdownText.readIfText(file).orElseThrow(() -> new EnforcerRuleException(
+				description + " cannot be read as UTF-8 text: " + file));
+	}
+
+	/**
 	 * Reads a required input file and fails when it is blank. An empty file is a
 	 * build-setup mistake, so this always fails regardless of {@link #severity}.
 	 * Returns the file content (with any leading byte-order mark stripped) so the
 	 * caller can validate it further. The {@code description} names the file in
-	 * the message.
+	 * the message. A file that cannot be decoded fails through {@link #requireText}.
 	 */
 	protected final String requireContent(File file, String description) throws EnforcerRuleException {
-		String content = MarkdownText.read(file, description);
+		String content = requireText(file, description);
 		if (content.isBlank()) {
 			throw new EnforcerRuleException(description + " is empty: " + file);
 		}

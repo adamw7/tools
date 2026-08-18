@@ -506,6 +506,27 @@ class HooksFormatRuleTest {
 		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
+	@Test
+	void failsWhenTheHooksDirectoryIsAFile() {
+		// A path that is not a directory lists nothing, so the rule used to pass
+		// having checked nothing — indistinguishable from a project with no hooks.
+		Path file = writeString(tempDir.resolve("hooks"), "not a directory\n");
+		HooksFormatRule rule = new HooksFormatRule();
+		rule.setHooksDir(file.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "is not a directory");
+	}
+
+	@Test
+	void checksAScriptNestedBelowTheHooksDirectory() {
+		writeScript("session-start.sh", "#!/bin/sh\necho hi\n", true);
+		writeScript("setup/install.sh", "echo hi\n", true);
+
+		// HookWiring already resolves a nested script as one inside the directory, so
+		// leaving it out of the format checks let it be committed without a shebang.
+		assertFailure(EnforcerRuleException.class, ruleFor()::execute, "install.sh");
+	}
+
 	private HooksFormatRule ruleFor() {
 		HooksFormatRule rule = new HooksFormatRule();
 		rule.setHooksDir(hooksDir().toFile());

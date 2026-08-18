@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.inject.Named;
@@ -33,12 +34,19 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
  * violation depending on the order the imports happen to be written in.
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
- * by start-of-line or whitespace and followed by a path — one carrying a directory
- * separator, an extension, or both — outside code, HTML comments and inline code
- * spans alike, so neither {@code `@claude`} nor a bare {@code @claude} in prose is
- * an import, an import shown as a sample (fenced or indented) is one the document
- * illustrates rather than makes, and one an author commented out is one it no
- * longer makes. A
+ * by start-of-line or whitespace and followed by a path, outside code, HTML
+ * comments and inline code spans alike, so neither {@code `@claude`} nor a bare
+ * {@code @claude} in prose is an import, an import shown as a sample (fenced or
+ * indented) is one the document illustrates rather than makes, and one an author
+ * commented out is one it no longer makes.
+ * <p>
+ * A token counts as a path when it is written with an explicit path prefix
+ * ({@code ./}, {@code ../}, {@code /}, {@code ~/}) or ends in one of
+ * {@code importExtensions} — {@code md}, {@code markdown} and {@code txt} by
+ * default. Anything carrying a separator or a dot used to qualify, which read the
+ * {@code @anthropic-ai/claude-code} of an install line, the {@code @Named.class} of
+ * a Java note and the {@code @adam.example.com} of an address as imports and failed
+ * the build over files nobody meant to name. A
  * home-relative import ({@code @~/...}) points at machine-specific state a build
  * cannot see and is skipped, as is any import listed in {@code ignoredImports};
  * only a leading {@code ~} makes an import home-relative, so a path carrying a
@@ -49,6 +57,7 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	private static final int DEFAULT_MAX_DEPTH = 5;
+	private static final List<String> DEFAULT_IMPORT_EXTENSIONS = List.of("md", "markdown", "txt");
 
 	/** The {@code CLAUDE.md} file whose imports are validated. Injected from the rule configuration. */
 	private File claudeMdFile;
@@ -58,6 +67,9 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	/** Optional import paths to skip verbatim, e.g. a path only present on developer machines. */
 	private List<String> ignoredImports;
+
+	/** Optional override for the file extensions an import may name, without their dot. */
+	private List<String> importExtensions;
 
 	/**
 	 * One walk of the import graph: the chain currently being followed, which is
@@ -76,7 +88,8 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 		requireConfigured(claudeMdFile, "claudeMdFile");
 		requireExists(claudeMdFile, "CLAUDE.md");
 		File root = claudeMdFile.getAbsoluteFile();
-		Traversal traversal = Traversal.of(ImportGraph.from(root, this::isIgnored, message -> log().debug(message)));
+		Traversal traversal = Traversal.of(ImportGraph.from(root, extensions(), this::isIgnored,
+				message -> log().debug(message)));
 		scan(root, traversal);
 		report("Memory imports are not well formed:", traversal.violations());
 	}
@@ -110,6 +123,10 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 		return ignoredImports != null && ignoredImports.contains(imported);
 	}
 
+	private List<String> extensions() {
+		return Objects.requireNonNullElse(importExtensions, DEFAULT_IMPORT_EXTENSIONS);
+	}
+
 	void setClaudeMdFile(File claudeMdFile) {
 		this.claudeMdFile = claudeMdFile;
 	}
@@ -120,5 +137,9 @@ public class MemoryImportsRule extends ClaudeCodeEnforcerRule {
 
 	void setIgnoredImports(List<String> ignoredImports) {
 		this.ignoredImports = ignoredImports;
+	}
+
+	void setImportExtensions(List<String> importExtensions) {
+		this.importExtensions = importExtensions;
 	}
 }

@@ -3,6 +3,7 @@ package io.github.adamw7.tools.enforcer.mcp;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -134,6 +135,48 @@ class McpServersValidRuleTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(logger.warnings().stream().anyMatch(w -> w.contains("mystery")), logger.warnings().toString());
+	}
+
+	@Test
+	void failsWhenMcpServersIsPresentButNotAnObject() {
+		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": [] }")::execute, "must be a JSON object");
+
+		// Reading absent and mistyped through one null lookup reported a section the
+		// file plainly declares as missing, and sent its author looking for a key
+		// they had already typed.
+		assertFalse(exception.getMessage().contains("is missing the 'mcpServers' object"),
+				exception.getMessage());
+	}
+
+	@Test
+	void failsWhenATypeIsNotAString() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"type\": 123, \"command\": \"npx\" } } }")::execute,
+				"has a 'type' that is not a string");
+	}
+
+	@Test
+	void failsWhenACommandIsNotAString() {
+		// Read as its text, a JSON 123 answered for a command no shell can run, and
+		// the server passed as a well-formed stdio transport.
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": 123 } } }")::execute,
+				"has a 'command' that is not a string");
+	}
+
+	@Test
+	void failsWhenACommandIsABoolean() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"fs\": { \"command\": true } } }")::execute,
+				"has a 'command' that is not a string");
+	}
+
+	@Test
+	void failsWhenAUrlIsNotAString() {
+		assertFailure(EnforcerRuleException.class,
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"http\", \"url\": 8080 } } }")::execute,
+				"has a 'url' that is not a string");
 	}
 
 	private McpServersValidRule ruleFor(String content) {

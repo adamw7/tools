@@ -108,7 +108,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 	 * passed — and this is the ordinary state of the rule, wired before a repository
 	 * emits a bundle so it starts enforcing the day one is committed.
 	 */
-	private List<String> violations() {
+	private List<String> violations() throws EnforcerRuleException {
 		if (!bundleDir.isDirectory()) {
 			return List.of();
 		}
@@ -131,7 +131,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 				"Re-run the build to confirm the bundle is conformant.");
 	}
 
-	private List<File> markdownFiles() {
+	private List<File> markdownFiles() throws EnforcerRuleException {
 		return new ScanTargets(List.of(), List.of(bundleDir))
 				.filesInDirectories(ProjectFiles::isMarkdown);
 	}

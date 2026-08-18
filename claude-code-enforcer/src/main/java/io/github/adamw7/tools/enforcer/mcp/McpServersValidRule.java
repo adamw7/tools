@@ -64,13 +64,26 @@ public class McpServersValidRule extends JsonFileRule {
 		return mcpFile;
 	}
 
+	/**
+	 * A {@code mcpServers} the file does not declare and one it declares as something
+	 * other than an object are two different mistakes, so they are told apart:
+	 * reading both through a null lookup reported a section that is plainly there,
+	 * written as an array, as missing, and sent its author looking for the key they
+	 * had already typed. Absence is this rule's own message because the section is
+	 * required here; a mistyped one is reported by {@link #section} in the wording
+	 * every other section shares.
+	 */
 	@Override
 	protected void collectViolations(JsonNode mcp, List<String> violations) {
-		JsonNode servers = JsonNodes.objectAt(mcp, MCP_SERVERS_KEY);
-		if (servers == null) {
+		if (!mcp.has(MCP_SERVERS_KEY)) {
 			violations.add("mcp.json is missing the 'mcpServers' object");
 			return;
 		}
+		section(mcp, MCP_SERVERS_KEY, violations)
+				.ifPresent(servers -> collectServersViolations(servers, violations));
+	}
+
+	private void collectServersViolations(JsonNode servers, List<String> violations) {
 		McpServers.forEach(servers, (name, server) -> collectServerViolations(name, server, violations));
 		Violations.each(requiredServers, name -> !servers.has(name),
 				name -> "mcp.json is missing required server: " + name, violations);
@@ -86,6 +99,10 @@ public class McpServersValidRule extends JsonFileRule {
 	private void collectServerViolations(String name, JsonNode server, List<String> violations) {
 		if (server == null) {
 			McpServers.add(name, "must be a JSON object", violations);
+			return;
+		}
+		if (JsonNodes.declaresNonText(server, TYPE_KEY)) {
+			McpServers.add(name, "has a 'type' that is not a string", violations);
 			return;
 		}
 		String type = JsonNodes.textAt(server, TYPE_KEY, "").strip();
@@ -108,14 +125,24 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
+	/**
+	 * A {@code command} that is not a string is named as the type error it is, not as
+	 * the missing command it is not: a server declaring {@code "command": 123} has a
+	 * command written down, and telling its author it is missing sends them to the
+	 * wrong line.
+	 */
 	private void collectCommandViolation(String name, JsonNode server, List<String> violations) {
-		if (JsonNodes.textAt(server, COMMAND_KEY, "").isBlank()) {
+		if (JsonNodes.declaresNonText(server, COMMAND_KEY)) {
+			McpServers.add(name, "has a 'command' that is not a string", violations);
+		} else if (JsonNodes.textAt(server, COMMAND_KEY, "").isBlank()) {
 			McpServers.add(name, "(stdio) is missing a 'command'", violations);
 		}
 	}
 
 	private void collectUrlViolation(String name, String type, JsonNode server, List<String> violations) {
-		if (JsonNodes.textAt(server, URL_KEY, "").isBlank()) {
+		if (JsonNodes.declaresNonText(server, URL_KEY)) {
+			McpServers.add(name, "has a 'url' that is not a string", violations);
+		} else if (JsonNodes.textAt(server, URL_KEY, "").isBlank()) {
 			McpServers.add(name, "(" + type + ") is missing a 'url'", violations);
 		}
 	}

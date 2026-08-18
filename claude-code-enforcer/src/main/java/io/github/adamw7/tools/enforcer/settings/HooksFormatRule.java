@@ -11,6 +11,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
+import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
@@ -21,9 +22,9 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * <p>
  * Where {@link HookCommandsValidRule} validates the JSON shape of the
  * {@code hooks} section, this rule validates the scripts themselves: every regular
- * file directly under {@code hooksDir} must be non-empty, start with a {@code #!}
- * shebang line, and carry the executable bit, so a hook Claude Code would try to
- * run cannot be committed broken. Each script check can be switched off
+ * file under {@code hooksDir}, at any depth, must be non-empty, start with a
+ * {@code #!} shebang line, and carry the executable bit, so a hook Claude Code
+ * would try to run cannot be committed broken. Each script check can be switched off
  * ({@code requireShebang}, {@code requireExecutable}), and an optional
  * {@code allowedExtensions} whitelist rejects a stray file such as a {@code .txt}
  * note left in the directory.
@@ -35,9 +36,10 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * renamed on disk but not in settings;
  * {@code reportUnreferencedScripts} also reports a script no hook references. The
  * {@code hooksDir} parameter must be configured, but an absent directory is a pass
- * because hooks are optional; a {@code settingsFile} that is configured and absent
- * fails outright, because that is a build-setup mistake. All problems found are
- * reported together.
+ * because hooks are optional; one that is there and is not a directory fails, since
+ * a rule that silently scanned nothing cannot be told from a project with no hooks.
+ * A {@code settingsFile} that is configured and absent fails outright, because that
+ * is a build-setup mistake. All problems found are reported together.
  */
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {
@@ -68,13 +70,28 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	@Override
 	public void execute() throws EnforcerRuleException {
 		requireConfigured(hooksDir, "hooksDir");
+		ProjectFiles.requireDirectoryOrAbsent(hooksDir, "Hooks");
+		List<File> scripts = scripts();
+		log().debug(() -> "Hooks: checking " + scripts.size() + " script(s) under " + hooksDir);
 		List<String> violations = new ArrayList<>();
-		List<File> scripts = ProjectFiles.filesIn(hooksDir);
 		for (File script : scripts) {
 			collectScriptViolations(script, violations);
 		}
 		collectWiringViolations(scripts, violations);
 		report("Hook scripts are not well formed:", violations);
+	}
+
+	/**
+	 * Every regular file under the hooks directory, however deep. The scan used to
+	 * stop at the top level, which left the two halves of this rule disagreeing about
+	 * what the hooks directory is: {@link HookWiring} resolves a hook naming
+	 * {@code .claude/hooks/setup/install.sh} as a script <em>inside</em> the directory
+	 * and requires it to exist, while the format checks never saw it — so that script
+	 * could be committed with no shebang and no executable bit, and
+	 * {@code reportUnreferencedScripts} could not report it either.
+	 */
+	private List<File> scripts() throws EnforcerRuleException {
+		return new ScanTargets(List.of(), List.of(hooksDir)).filesInDirectories(path -> true);
 	}
 
 	/**

@@ -41,6 +41,7 @@ final class RuleConfiguration {
 									<maxLineLength>100</maxLineLength>
 									<validateFileReferences>true</validateFileReferences>
 									<referenceBaseDir>${project.basedir}</referenceBaseDir>
+									<autoFix>false</autoFix>
 								</claudeMdFormat>
 								<agentsMdFormat>
 									<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
@@ -61,6 +62,7 @@ final class RuleConfiguration {
 									<maxLineLength>100</maxLineLength>
 									<validateFileReferences>true</validateFileReferences>
 									<referenceBaseDir>${project.basedir}</referenceBaseDir>
+									<autoFix>false</autoFix>
 								</agentsMdFormat>
 								<crossDocConsistency>
 									<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>

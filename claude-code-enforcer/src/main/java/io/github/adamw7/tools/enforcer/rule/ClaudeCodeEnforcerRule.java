@@ -7,11 +7,10 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
-
-import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.AbstractEnforcerRule;
 import org.apache.maven.enforcer.rule.api.EnforcerLogger;
@@ -66,6 +65,9 @@ import io.github.adamw7.tools.markdown.MarkdownText;
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 
 	private static final String WRITE_BASELINE_PROPERTY = "claude.enforcer.writeBaseline";
+
+	/** Stripped from a class name to derive the name a pom configures the rule under. */
+	private static final String RULE_SUFFIX = "Rule";
 
 	/**
 	 * Optional override: {@code error} (default) fails the build, {@code warn} only
@@ -168,18 +170,29 @@ public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 	}
 
 	/**
-	 * The name the pom configures this rule under, taken from the {@link Named}
-	 * annotation maven-enforcer already resolves it by, so a report and a baseline
-	 * derived from a directory are named the same thing the build's configuration
-	 * calls the rule. A rule without the annotation — only the test doubles here —
-	 * falls back to its class name, which is unique for the same reason.
+	 * The name the pom configures this rule under, so a report and a baseline derived
+	 * from a directory are named the same thing the build's configuration calls the
+	 * rule.
+	 *
+	 * <p>It is derived from the class name — the simple name without its {@code Rule}
+	 * suffix, decapitalised — rather than read back from the {@code @Named} annotation
+	 * that carries it. The two cannot disagree: {@code ruleNamesFollowTheClassName} in
+	 * the architecture tests is what holds every rule's annotation to this derivation,
+	 * for the separate reason that a pom, CLAUDE.md and AGENTS.md all name a rule and
+	 * a reader has to be able to predict it.
+	 *
+	 * <p>Deriving it also keeps {@code javax.inject} off the path a rule takes to
+	 * report. Reading the annotation put it there, and the adopt module — which runs
+	 * the real claudeMdFormat rule over its conformer's output, with no injection
+	 * framework anywhere — failed on a class it never uses.
 	 */
 	final String ruleName() {
-		Named named = getClass().getAnnotation(Named.class);
-		if (named == null || named.value().isBlank()) {
-			return getClass().getSimpleName();
-		}
-		return named.value();
+		String simpleName = getClass().getSimpleName();
+		String withoutSuffix = simpleName.endsWith(RULE_SUFFIX)
+				? simpleName.substring(0, simpleName.length() - RULE_SUFFIX.length())
+				: simpleName;
+		return withoutSuffix.isEmpty() ? simpleName
+				: withoutSuffix.substring(0, 1).toLowerCase(Locale.ROOT) + withoutSuffix.substring(1);
 	}
 
 	/**

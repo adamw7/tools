@@ -11,8 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import io.github.adamw7.tools.markdown.MarkdownDocument;
 
 /**
@@ -50,9 +48,15 @@ final class DocumentCache {
 	 */
 	private static final int MAX_ENTRIES = 512;
 
-	private static final Map<Key, String> TEXT = new ConcurrentHashMap<>();
-	private static final Map<Key, MarkdownDocument> MARKDOWN = new ConcurrentHashMap<>();
-	private static final Map<Key, JsonNode> JSON = new ConcurrentHashMap<>();
+	/**
+	 * One map for every kind of entry, keyed by the file and what was made of it.
+	 * Values are held as {@link Object} and cast back on the way out, so that nothing
+	 * here names the type of any particular parse — a cache that mentioned Jackson
+	 * dragged it onto the classpath of every caller that loads a rule, and the adopt
+	 * module's contract test, which runs the real claudeMdFormat rule with no JSON
+	 * parser anywhere, failed to load a class it never uses.
+	 */
+	private static final Map<Entry, Object> CACHE = new ConcurrentHashMap<>();
 
 	private DocumentCache() {
 	}
@@ -63,50 +67,59 @@ final class DocumentCache {
 	 * @param reader reads the file, answering empty when it is not readable as text
 	 */
 	static Optional<String> text(File file, Supplier<Optional<String>> reader) {
-		return cached(TEXT, file, reader);
+		return cached(Kind.TEXT, file, reader);
 	}
 
 	/** The file's parsed Markdown, parsed from {@code content} on a miss. */
 	static MarkdownDocument markdown(File file, String content) {
-		return cached(MARKDOWN, file, () -> Optional.of(MarkdownDocument.parse(content)))
+		return DocumentCache.<MarkdownDocument>cached(Kind.MARKDOWN, file,
+				() -> Optional.of(MarkdownDocument.parse(content)))
 				.orElseGet(() -> MarkdownDocument.parse(content));
 	}
 
 	/**
-	 * The file's parsed JSON, parsed through {@code parser} on a miss. A parse that
+	 * The file's parsed form, parsed through {@code parser} on a miss. A parse that
 	 * failed answers empty and is not kept, so the violation it collected is
 	 * collected again for the next rule that asks.
 	 */
-	static Optional<JsonNode> json(File file, Supplier<Optional<JsonNode>> parser) {
-		return cached(JSON, file, parser);
+	static <T> Optional<T> parsed(File file, Supplier<Optional<T>> parser) {
+		return cached(Kind.PARSED, file, parser);
 	}
 
-	private static <T> Optional<T> cached(Map<Key, T> cache, File file, Supplier<Optional<T>> load) {
+	@SuppressWarnings("unchecked")
+	private static <T> Optional<T> cached(Kind kind, File file, Supplier<Optional<T>> load) {
 		Optional<Key> key = Key.of(file);
 		if (key.isEmpty()) {
 			return load.get();
 		}
-		T hit = cache.get(key.get());
+		Entry entry = new Entry(key.get(), kind);
+		Object hit = CACHE.get(entry);
 		if (hit != null) {
-			return Optional.of(hit);
+			return Optional.of((T) hit);
 		}
 		Optional<T> loaded = load.get();
-		loaded.ifPresent(value -> store(cache, key.get(), value));
+		loaded.ifPresent(value -> store(entry, value));
 		return loaded;
 	}
 
-	private static <T> void store(Map<Key, T> cache, Key key, T value) {
-		if (cache.size() >= MAX_ENTRIES) {
-			cache.clear();
+	private static void store(Entry entry, Object value) {
+		if (CACHE.size() >= MAX_ENTRIES) {
+			CACHE.clear();
 		}
-		cache.put(key, value);
+		CACHE.put(entry, value);
 	}
 
 	/** Drops everything held, so a test can prove a read happened rather than a hit. */
 	static void clear() {
-		TEXT.clear();
-		MARKDOWN.clear();
-		JSON.clear();
+		CACHE.clear();
+	}
+
+	/** What was made of a file, so one file's text and its parse are two entries. */
+	private enum Kind {
+		TEXT, MARKDOWN, PARSED
+	}
+
+	private record Entry(Key key, Kind kind) {
 	}
 
 	/**

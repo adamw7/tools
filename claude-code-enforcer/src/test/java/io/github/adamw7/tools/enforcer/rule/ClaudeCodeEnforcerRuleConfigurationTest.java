@@ -13,8 +13,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Named;
-
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -134,7 +132,7 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 
 		assertThrows(EnforcerRuleException.class, rule::execute);
 
-		Path report = tempDir.resolve("configurableTestRule.html");
+		Path report = tempDir.resolve("configurableTest.html");
 		assertTrue(Files.exists(report), "no report named after the rule");
 		assertTrue(Files.readString(report, StandardCharsets.UTF_8).contains("something is wrong"));
 	}
@@ -149,8 +147,8 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 		assertDoesNotThrow(new OtherTestRule()::execute);
 
 		String index = Files.readString(tempDir.resolve(ReportIndex.INDEX_FILE), StandardCharsets.UTF_8);
-		assertTrue(index.contains("configurableTestRule.html"), index);
-		assertTrue(index.contains("otherTestRule.html"), index);
+		assertTrue(index.contains("configurableTest.html"), index);
+		assertTrue(index.contains("otherTest.html"), index);
 		assertTrue(index.contains("1 of 2 rule(s) passed"), index);
 	}
 
@@ -163,7 +161,7 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 
 		assertDoesNotThrow(rule::execute);
 		assertTrue(Files.exists(chosen));
-		assertFalse(Files.exists(tempDir.resolve("configurableTestRule.html")));
+		assertFalse(Files.exists(tempDir.resolve("configurableTest.html")));
 	}
 
 	/**
@@ -178,7 +176,7 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 		recording.setWriteBaseline(true);
 		assertDoesNotThrow(recording::execute);
 
-		assertTrue(Files.exists(tempDir.resolve("configurableTestRule.txt")));
+		assertTrue(Files.exists(tempDir.resolve("configurableTest.txt")));
 
 		ConfigurableTestRule rerun = new ConfigurableTestRule();
 		rerun.addViolation("known problem");
@@ -189,13 +187,15 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 		assertThrows(EnforcerRuleException.class, otherRule::execute);
 	}
 
-	/** The name a report and a baseline are filed under is the one the pom configures. */
+	/**
+	 * The name a report and a baseline are filed under is the one a pom configures the
+	 * rule by, which the architecture tests hold every rule's @Named value to.
+	 */
 	@Test
-	void ruleNameIsTheNamedAnnotationTheBuildConfiguresItBy() {
-		assertEquals("configurableTestRule", new ConfigurableTestRule().ruleName());
+	void ruleNameIsTheOneAPomConfiguresItBy() {
+		assertEquals("configurableTest", new ConfigurableTestRule().ruleName());
 	}
 
-	@Named("configurableTestRule")
 	private static class ConfigurableTestRule extends ClaudeCodeEnforcerRule {
 
 		private final List<String> violations = new ArrayList<>();
@@ -210,7 +210,6 @@ class ClaudeCodeEnforcerRuleConfigurationTest {
 		}
 	}
 
-	@Named("otherTestRule")
 	private static final class OtherTestRule extends ConfigurableTestRule {
 	}
 }

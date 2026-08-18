@@ -88,7 +88,7 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	 */
 	private Optional<JsonNode> parse(File file, List<String> violations) throws EnforcerRuleException {
 		String content = requireContent(file, description);
-		return DocumentCache.json(file,
+		return DocumentCache.parsed(file,
 				() -> Optional.ofNullable(JsonNodes.parseObject(content, description, violations)));
 	}
 

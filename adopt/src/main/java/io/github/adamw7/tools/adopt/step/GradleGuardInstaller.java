@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.github.adamw7.tools.adopt.AdoptionFiles;
+import io.github.adamw7.tools.markdown.LineTerminators;
 
 /**
  * Appends a {@code CLAUDE.md} guard task to a Gradle build script, so the adopted

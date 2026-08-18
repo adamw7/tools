@@ -8,7 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.Test;
@@ -96,6 +101,99 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void defaultsToRequiringAgentsMd() {
 		assertEquals("AGENTS.md", new ClaudeMdFormatRule().requiredReference());
+	}
+
+	/**
+	 * A missing title, a near-miss heading, an empty section and a missing companion
+	 * reference are mechanical edits with one correct answer, so autoFix makes them
+	 * rather than leaving each project to type them out.
+	 */
+	@Test
+	void autoFixRepairsTheStructureItWouldOtherwiseReport() {
+		ClaudeMdFormatRule rule = ruleFor("""
+				## Project purpose
+				A project.
+				""");
+		rule.setAutoFix(true);
+
+		assertDoesNotThrow(rule::execute);
+
+		String repaired = readClaudeMd();
+		assertTrue(repaired.startsWith("# CLAUDE.md"), repaired);
+		assertTrue(repaired.contains("## Project\n"), repaired);
+		assertTrue(repaired.contains("A project."), repaired);
+		assertTrue(repaired.contains("AGENTS.md"), repaired);
+		assertTrue(repaired.contains("## Dependencies"), repaired);
+	}
+
+	/** The repair has to satisfy the very checks that follow it, or it has repaired nothing. */
+	@Test
+	void autoFixLeavesADocumentTheRuleThenAccepts() {
+		ClaudeMdFormatRule rule = ruleFor("nothing structural at all\n");
+		rule.setAutoFix(true);
+		assertDoesNotThrow(rule::execute);
+
+		assertDoesNotThrow(ruleFor(readClaudeMd())::execute);
+	}
+
+	/** A conforming document is not rewritten, so a build that repairs nothing touches no file. */
+	@Test
+	void autoFixWritesNothingWhenTheDocumentAlreadyConforms() throws Exception {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
+		rule.setAutoFix(true);
+		Path file = tempDir.resolve("CLAUDE.md");
+		FileTime before = Files.getLastModifiedTime(file);
+
+		assertDoesNotThrow(rule::execute);
+
+		assertEquals(before, Files.getLastModifiedTime(file));
+		assertEquals(VALID_CONTENT, readClaudeMd());
+	}
+
+	/** Off by default: a check that rewrote the project without being asked is not a check. */
+	@Test
+	void repairsNothingUnlessAutoFixIsOn() {
+		String malformed = "## Project purpose\nA project.\n";
+		ClaudeMdFormatRule rule = ruleFor(malformed);
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "CLAUDE.md");
+		assertEquals(malformed, readClaudeMd());
+	}
+
+	/** The repair reshapes to the configured contract, not to this repository's. */
+	@Test
+	void autoFixRepairsToTheConfiguredSectionsAndReference() {
+		ClaudeMdFormatRule rule = ruleFor("Some prose.\n");
+		rule.setRequiredSections(List.of("## Overview"));
+		rule.setRequiredReference("HANDBOOK.md");
+		rule.setAutoFix(true);
+
+		assertDoesNotThrow(rule::execute);
+
+		String repaired = readClaudeMd();
+		assertTrue(repaired.contains("## Overview"), repaired);
+		assertTrue(repaired.contains("HANDBOOK.md"), repaired);
+		assertFalse(repaired.contains("## Maven"), repaired);
+	}
+
+	/** Repairing a CRLF document must not rewrite every line of it as a side effect. */
+	@Test
+	void autoFixKeepsTheLineTerminatorsTheDocumentUsed() {
+		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT.replace("\n", "\r\n"));
+		rule.setAutoFix(true);
+
+		assertDoesNotThrow(rule::execute);
+
+		String repaired = readClaudeMd();
+		assertFalse(repaired.replace("\r\n", "").contains("\n"), "an LF crept into a CRLF document");
+	}
+
+	private String readClaudeMd() {
+		try {
+			return Files.readString(tempDir.resolve("CLAUDE.md"));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	@Test
@@ -439,7 +537,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void doesNotReportOutOfOrderWhenARequiredSectionIsConfiguredTwice() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
-		rule.setRequiredSections(java.util.List.of("## Project", "## Testing", "## Project"));
+		rule.setRequiredSections(List.of("## Project", "## Testing", "## Project"));
 		rule.setEnforceSectionOrder(true);
 
 		assertDoesNotThrow(rule::execute);
@@ -453,7 +551,7 @@ class ClaudeMdFormatRuleTest {
 	@Test
 	void reportsOnlyTheMissingSectionWhenARequiredEntryIsNotAHeading() {
 		ClaudeMdFormatRule rule = ruleFor(VALID_CONTENT);
-		rule.setRequiredSections(java.util.List.of("Testing"));
+		rule.setRequiredSections(List.of("Testing"));
 		rule.setEnforceSectionOrder(true);
 
 		EnforcerRuleException exception = assertFailure(EnforcerRuleException.class, rule::execute,

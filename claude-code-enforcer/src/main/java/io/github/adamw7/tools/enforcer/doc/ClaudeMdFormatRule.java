@@ -89,8 +89,13 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 		}
 	}
 
-	/** @return the companion document to require, empty when the project keeps none */
-	final String requiredReference() {
+	/**
+	 * @return the companion document to require, empty when the project keeps none.
+	 *         The base class reads this too, so a repair inserts the reference this
+	 *         rule goes on to check for.
+	 */
+	@Override
+	protected String requiredReference() {
 		return requiredReference == null ? DEFAULT_REQUIRED_REFERENCE : requiredReference.strip();
 	}
 

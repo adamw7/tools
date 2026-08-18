@@ -1,17 +1,20 @@
-package io.github.adamw7.tools.adopt.step;
+package io.github.adamw7.tools.markdown;
 
 /**
- * Keeps text the adoption writes into an existing file on the line terminator
- * that file already uses. Every place that edits a file in the checkout — the POM
- * rewrite in {@link PomEnforcerInstaller}, the block
- * {@link GradleGuardInstaller} appends, and the {@code CLAUDE.md}
- * {@link ClaudeMdConformanceStep} reshapes — produces LF text, so writing it into
- * a CRLF file would leave the new region with terminators mixed into an otherwise
- * CRLF file, or (for the POM and the {@code CLAUDE.md}, whose terminators the
- * reading has already normalised) flip every line of it to LF and reformat the
- * whole file.
+ * Keeps text written into an existing file on the line terminator that file
+ * already uses.
+ *
+ * <p>Text assembled in code is LF, so writing it into a CRLF file leaves the new
+ * region with terminators mixed into an otherwise CRLF file — or, where the
+ * reading normalised the file first, flips every line of it to LF and reformats
+ * the whole thing. Both show up as a diff nobody wrote.
+ *
+ * <p>It lives here rather than beside any one caller because the two that need it
+ * are on either side of this module: {@link MarkdownConformer} reshapes a
+ * document line by line and has to put the terminators back, and the adoption
+ * pipeline edits build files the same way.
  */
-final class LineTerminators {
+public final class LineTerminators {
 
 	private static final String CRLF = "\r\n";
 	private static final String LF = "\n";
@@ -26,7 +29,7 @@ final class LineTerminators {
 	 * to LF first, so one that already mixes terminators — assembled from a
 	 * converted body and a part carried over verbatim — is not double-converted.
 	 */
-	static String matching(String text, String sample) {
+	public static String matching(String text, String sample) {
 		String normalized = normalized(text);
 		return sample.contains(CRLF) ? normalized.replace(LF, CRLF) : normalized;
 	}
@@ -36,7 +39,7 @@ final class LineTerminators {
 	 * or read from a CRLF file and then reshaped line by line — is worked on in one
 	 * shape and converted back only when it is written.
 	 */
-	static String normalized(String text) {
+	public static String normalized(String text) {
 		return text.replace(CRLF, LF).replace(CR, LF);
 	}
 }

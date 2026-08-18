@@ -64,6 +64,44 @@ class CloneStepTest {
 	}
 
 	/**
+	 * The {@code origin} an earlier run left behind carries no credentials, by design,
+	 * so a plain {@code git fetch origin} reaches a private repository as an anonymous
+	 * caller and is refused — the resume failed for exactly the repositories a
+	 * credentialled URL is handed for. The credentials are supplied to this one
+	 * invocation the way {@link PushStep} supplies them to its own, as a rewrite of the
+	 * remote rather than as a positional URL, which git would record in the reflog of
+	 * every ref the fetch updated.
+	 */
+	@Test
+	void fetchesAReusedCheckoutThroughTheCredentialsTheRunWasGiven(@TempDir Path existingWorkspace)
+			throws IOException {
+		AdoptionContext credentialled = new AdoptionContext(
+				"https://x-access-token:TOKEN@github.com/adamw7/tools.git", existingWorkspace);
+		Files.createDirectories(credentialled.repositoryDirectory().resolve(".git"));
+		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
+
+		step.execute(credentialled, runner);
+
+		assertEquals(List.of("git", "-c",
+				"url.https://x-access-token:TOKEN@github.com/adamw7/tools.git"
+						+ ".insteadOf=https://github.com/adamw7/tools.git",
+				"fetch", "--no-write-fetch-head", "origin"), runner.commandAt(2));
+	}
+
+	/**
+	 * The rewrite exists only to put credentials back; a run given none fetches exactly
+	 * as it always did, so the option a newer git added is asked for only on the path
+	 * that needs it.
+	 */
+	@Test
+	void fetchesPlainlyWhenTheRunWasGivenNoCredentials(@TempDir Path existingWorkspace) throws IOException {
+		AdoptionContext existing = checkedOut(existingWorkspace);
+		RecordingCommandRunner runner = origin("https://github.com/adamw7/tools.git");
+		step.execute(existing, runner);
+		assertEquals(List.of("git", "fetch", "origin"), runner.commandAt(2));
+	}
+
+	/**
 	 * A checkout the adoption did not create is not the adoption's to reconfigure: its
 	 * {@code origin} is whatever its owner set up, credentials included, and they may
 	 * well push through it themselves once the adoption has finished.

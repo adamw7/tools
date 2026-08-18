@@ -164,10 +164,11 @@ public class AdoptArchitectureTest {
 	static final ArchRule onlyTheCloneAndPushStepsReadTheCredentialledUrl = noClasses()
 			.that().doNotHaveFullyQualifiedName(CLONE_STEP).and().doNotHaveFullyQualifiedName(PUSH_STEP)
 			.should().callMethod(AdoptionContext.class, "repositoryUrl")
-			.because("repositoryUrl() answers the clone URL with its credentials intact; only the two commands "
-					+ "that authenticate to the remote may see them — the clone, and the push, which supplies "
-					+ "them per invocation because the clone no longer leaves them in .git/config — and "
-					+ "everything else reads the redacted displayUrl() or the credential-free checkoutUrl()");
+			.because("repositoryUrl() answers the clone URL with its credentials intact; only the commands "
+					+ "that authenticate to the remote may see them — the clone, the fetch that resumes a "
+					+ "checkout, and the push, the last two supplying them per invocation because the clone no "
+					+ "longer leaves them in .git/config — and everything else reads the redacted displayUrl() "
+					+ "or the credential-free checkoutUrl()");
 
 	@ArchTest
 	static final ArchRule adoptionReachesGitHubThroughItsTools = noClasses()

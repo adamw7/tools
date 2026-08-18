@@ -40,7 +40,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>The checkout is then refreshed with {@code git fetch}, because every later
  * decision about the feature branch is taken against the remote-tracking refs a
- * stale checkout has out of date.
+ * stale checkout has out of date. That fetch carries the credentials the run was
+ * given rather than the credential-free {@code origin} left behind for it — see
+ * {@link #fetchCommand}.
  *
  * <p>A freshly cloned checkout records the credential-free form of the URL as its
  * {@code origin}, so the token an adoption is driven with does not outlive the run
@@ -65,6 +67,17 @@ public class CloneStep extends AbstractCommandStep {
 
 	/** What {@code git status --porcelain} puts between a rename's old and new path. */
 	private static final String RENAME_ARROW = " -> ";
+
+	/**
+	 * Keeps a fetch from recording the URL it fetched through in
+	 * {@code .git/FETCH_HEAD}, which is where a credentialled one would outlive the
+	 * run — the same leak {@link #forgetCredentials} closes in {@code .git/config}.
+	 * Nothing here reads that file: the fetch is made for the remote-tracking refs
+	 * {@link BranchStep} resolves. Only the credentialled fetch asks for it, so a git
+	 * too old to know the option is unaffected unless the run is driven by a URL
+	 * carrying credentials.
+	 */
+	private static final String NO_FETCH_HEAD = "--no-write-fetch-head";
 
 	/**
 	 * One entry of {@code git status --porcelain}: the index and work-tree status
@@ -124,8 +137,10 @@ public class CloneStep extends AbstractCommandStep {
 	 * out of what the run <em>says</em>; nothing but this keeps it out of what the run
 	 * <em>leaves behind</em>.
 	 *
-	 * <p>{@link PushStep} is unaffected: it supplies the credentialled URL to the one
-	 * command that needs it, rather than reading it back from the checkout.
+	 * <p>The two commands that still have to authenticate are unaffected, because
+	 * neither reads the URL back from the checkout: {@link PushStep} supplies it as a
+	 * push-URL override, and {@link #fetchCommand} as a rewrite of the remote it
+	 * fetches from — each for that one invocation, and each written nowhere.
 	 *
 	 * <p>Only the remote this step just wrote is rewritten, and only when the URL
 	 * carried credentials at all. A reused checkout's {@code origin} is left exactly as
@@ -292,7 +307,44 @@ public class CloneStep extends AbstractCommandStep {
 	 */
 	private void refresh(AdoptionContext context, CommandRunner runner) {
 		log.info("Fetching {} in {}", AdoptionContext.REMOTE, context.repositoryDirectory());
-		runOrFail(runner, context.repositoryDirectory(), List.of("git", "fetch", AdoptionContext.REMOTE));
+		runOrFail(runner, context.repositoryDirectory(), fetchCommand(context));
+	}
+
+	/**
+	 * Fetches through the credentials the run was given, because the {@code origin}
+	 * a reused checkout carries has none: {@link #forgetCredentials} took them out of
+	 * {@code .git/config} the moment the clone put them there. A plain
+	 * {@code git fetch origin} therefore reaches a private repository as an anonymous
+	 * caller and is refused — so an adoption driven by CI into a workspace it keeps
+	 * between runs failed on the very step that exists to resume it, and failed for
+	 * exactly the repositories a credentialled URL is handed for.
+	 *
+	 * <p>The credentials are supplied the way {@link PushStep} supplies them: to this
+	 * one invocation, written nowhere. They cannot go through
+	 * {@code -c remote.origin.url}, which git reads as <em>another</em> of that key's
+	 * values rather than as a replacement and resolves the configured one first, nor
+	 * through a URL named positionally, which git records verbatim in the reflog of
+	 * every ref it updates. A transient {@code insteadOf} rewrite leaves the fetch
+	 * naming the remote, so the reflog records only {@code fetch origin} — and
+	 * {@link #NO_FETCH_HEAD} keeps the rewritten URL out of {@code .git/FETCH_HEAD},
+	 * the one other place the fetch would have written it down.
+	 *
+	 * <p>The rewrite is keyed on {@link AdoptionContext#checkoutUrl()}, which is the
+	 * {@code origin} of every checkout this step cloned. A checkout somebody else set
+	 * up may name the same repository by another form, which the rewrite does not
+	 * match and so leaves the fetch exactly as it was before — their {@code origin},
+	 * with whatever credentials they configured for it.
+	 */
+	private List<String> fetchCommand(AdoptionContext context) {
+		if (context.checkoutUrl().equals(context.repositoryUrl())) {
+			return List.of("git", "fetch", AdoptionContext.REMOTE);
+		}
+		return List.of("git", "-c", credentialledRewrite(context), "fetch", NO_FETCH_HEAD, AdoptionContext.REMOTE);
+	}
+
+	/** Rewrites the credential-free {@code origin} back to the URL the run was given. */
+	private String credentialledRewrite(AdoptionContext context) {
+		return "url." + context.repositoryUrl() + ".insteadOf=" + context.checkoutUrl();
 	}
 
 	/**

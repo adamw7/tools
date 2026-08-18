@@ -267,6 +267,24 @@ class RepositoryUrlTest {
 				RepositoryUrl.of("ssh://git@github.com/owner/repo.git").withoutCredentials());
 	}
 
+	/**
+	 * A scheme is case-insensitive and git clones {@code HTTPS://…} as readily as the
+	 * lower-case form, so the credentials behind one have to be dropped just the same.
+	 * Reading only the lower-case scheme answered the URL unchanged, which
+	 * {@code CloneStep} takes as "there was nothing to rewrite" — so the token stayed
+	 * in the checkout's {@code .git/config}, while {@link Redaction} masked it in
+	 * every line the run printed and left nothing to notice it by.
+	 */
+	@Test
+	void dropsTheCredentialsOfAnUpperCaseScheme() {
+		assertEquals("HTTPS://github.com/owner/repo.git",
+				RepositoryUrl.of("HTTPS://x-access-token:secret@github.com/owner/repo.git").withoutCredentials());
+		assertEquals("Https://github.com/owner/repo.git",
+				RepositoryUrl.of("Https://token@github.com/owner/repo.git").withoutCredentials());
+		assertEquals("HTTP://github.com/owner/repo.git",
+				RepositoryUrl.of("HTTP://user:pass@github.com/owner/repo.git").withoutCredentials());
+	}
+
 	/** A URL refused on its input is quoted back, so it must be masked there too. */
 	@Test
 	void masksTheCredentialsOfARejectedUrl() {

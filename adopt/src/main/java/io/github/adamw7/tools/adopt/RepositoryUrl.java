@@ -50,8 +50,18 @@ public final class RepositoryUrl {
 	 * removes what it finds rather than masking it: the {@code git@} of an
 	 * {@code ssh://git@host/owner/repo} is the account to log in as, not a secret, and
 	 * a URL stripped of it authenticates as whoever is running the adoption instead.
+	 *
+	 * <p>The scheme is matched without regard to case, as {@link #SCHEME} and
+	 * {@link #stripGitSuffix} already read a URL: a scheme is case-insensitive and git
+	 * clones {@code HTTPS://token@host/owner/repo} as readily as the lower-case form.
+	 * Reading only the lower-case one left {@link #withoutCredentials()} answering the
+	 * URL unchanged, so {@code CloneStep} saw nothing to rewrite and the token stayed
+	 * in the checkout's {@code .git/config} — while {@link Redaction}, which matches
+	 * any scheme, masked it everywhere the run <em>reported</em> the URL, leaving
+	 * nothing to notice it by.
 	 */
-	private static final Pattern HTTP_CREDENTIALS = Pattern.compile("(?<=^https?://)[^/\\s]+@");
+	private static final Pattern HTTP_CREDENTIALS = Pattern.compile("(?<=^https?://)[^/\\s]+@",
+			Pattern.CASE_INSENSITIVE);
 
 	private final String value;
 	private final String redacted;

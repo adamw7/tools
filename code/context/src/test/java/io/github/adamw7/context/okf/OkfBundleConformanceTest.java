@@ -199,6 +199,10 @@ public class OkfBundleConformanceTest {
 		root.addChild(pkg);
 		root.addChild(new ProjectTreeNode("pom.xml", ProjectTreeNode.Type.FILE));
 		root.addChild(new ProjectTreeNode(INDEX, ProjectTreeNode.Type.FILE));
+		// Files whose own names are what the reserved document names are built from,
+		// which is where a concept last took a path a directory listing already had.
+		root.addChild(new ProjectTreeNode("index", ProjectTreeNode.Type.FILE));
+		root.addChild(new ProjectTreeNode("log", ProjectTreeNode.Type.FILE));
 		return root;
 	}
 }

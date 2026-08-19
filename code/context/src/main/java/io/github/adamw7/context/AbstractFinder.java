@@ -106,7 +106,31 @@ public abstract class AbstractFinder implements Context {
 		dependencies.add(container);
 	}
 
+	/**
+	 * Blanks out every comment and string or character literal, leaving the code's
+	 * line structure intact: each stripped character becomes a space and each line
+	 * terminator stays where it was. Replacing a whole match with a single space
+	 * instead pulled what followed a multi-line comment onto the comment's first
+	 * line, and a {@code package} or {@code import} declaration that landed there was
+	 * no longer at the start of a line for {@link PackageAwareFinder} to read.
+	 */
 	protected String stripCommentsAndLiterals(String code) {
-		return COMMENTS_AND_LITERALS.matcher(code).replaceAll(" ");
+		return COMMENTS_AND_LITERALS.matcher(code).replaceAll(match -> blankOut(match.group()));
+	}
+
+	private String blankOut(String stripped) {
+		StringBuilder blanked = new StringBuilder(stripped.length());
+		for (int index = 0; index < stripped.length(); index++) {
+			blanked.append(blank(stripped.charAt(index)));
+		}
+		return blanked.toString();
+	}
+
+	private char blank(char character) {
+		return isLineTerminator(character) ? character : ' ';
+	}
+
+	private boolean isLineTerminator(char character) {
+		return character == '\n' || character == '\r';
 	}
 }

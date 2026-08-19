@@ -21,6 +21,9 @@ public class OkfBundle {
 	/** The reserved name of a directory listing, which carries no concept of its own. */
 	public static final String INDEX = "index.md";
 
+	/** The reserved name of a bundle's change log, which is likewise no concept of its own. */
+	public static final String LOG = "log.md";
+
 	private final List<OkfDocument> documents;
 
 	public OkfBundle(List<OkfDocument> documents) {

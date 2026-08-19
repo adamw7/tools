@@ -35,6 +35,8 @@ public class OkfBundler {
 
 	private static final String SEPARATOR = "/";
 	private static final String DOCUMENT_SUFFIX = ".md";
+	private static final String CONCEPT_SUFFIX = ".concept";
+	private static final Set<String> RESERVED_NAMES = Set.of(OkfBundle.INDEX, OkfBundle.LOG);
 	private static final String DELIMITER = "---";
 	private static final String BULLET = "* ";
 	private static final String DIRECTORIES_HEADING = "# Directories";
@@ -232,7 +234,28 @@ public class OkfBundler {
 		return name.charAt(0) + name.substring(1).toLowerCase(Locale.ROOT);
 	}
 
+	/**
+	 * The bundle document a file's concept is written to. A file's own name plus
+	 * {@value #DOCUMENT_SUFFIX} would let a file called {@code index} or {@code log}
+	 * claim one of the names the specification reserves for a directory's listing and
+	 * a bundle's log — two documents at one path, of which only the last written
+	 * survives. Such a name is escaped instead, and so is a name that already carries
+	 * the escape, which keeps the mapping one-to-one: no two files can be given the
+	 * same concept document.
+	 */
 	private String conceptName(ProjectTreeNode node) {
-		return node.name() + DOCUMENT_SUFFIX;
+		return escapeReserved(node.name()) + DOCUMENT_SUFFIX;
+	}
+
+	private String escapeReserved(String fileName) {
+		return claimsAReservedName(fileName) ? fileName + CONCEPT_SUFFIX : fileName;
+	}
+
+	/** True for a reserved name and for anything the escaping above maps onto one. */
+	private boolean claimsAReservedName(String fileName) {
+		if (fileName.endsWith(CONCEPT_SUFFIX)) {
+			return claimsAReservedName(fileName.substring(0, fileName.length() - CONCEPT_SUFFIX.length()));
+		}
+		return RESERVED_NAMES.contains(fileName + DOCUMENT_SUFFIX);
 	}
 }

@@ -230,6 +230,41 @@ public class PackageAwareFinderTest {
 		assertEquals(List.of("Mid.java", "Leaf.java"), order);
 	}
 
+	@Test
+	void readsAnImportThatFollowsAMultiLineBlockCommentOnTheSameLine() {
+		// Stripping the comment must not pull the import onto the comment's first line:
+		// the import is what tells the two Foo apart, so losing it loses the dependency.
+		ClassContainer user = new ClassContainer("User.java",
+				"package x; /* a comment\n*/ import a.Foo;\npublic class User { Foo foo; }");
+
+		Set<ClassContainer> dependencies = new PackageAwareFinder(containers(fooInA, fooInB, user)).find(user, 1);
+
+		assertEquals(Set.of(fooInA), dependencies);
+	}
+
+	@Test
+	void readsAPackageDeclarationThatFollowsAMultiLineBlockCommentOnTheSameLine() {
+		ClassContainer user = new ClassContainer("User.java",
+				"/* a licence\n   header */ package a;\npublic class User { Foo foo; }");
+
+		Set<ClassContainer> dependencies = new PackageAwareFinder(containers(fooInA, fooInB, user)).find(user, 1);
+
+		assertEquals(Set.of(fooInA), dependencies);
+	}
+
+	@Test
+	void aStrippedCommentStillSeparatesTheNamesAroundIt() {
+		// Blanking a comment must leave something between its neighbours, or the two
+		// names on either side would read as the single name of a class that is there.
+		ClassContainer fooBar = new ClassContainer("FooBar.java", "package a;\npublic class FooBar {}");
+		ClassContainer user = new ClassContainer("User.java",
+				"package a;\npublic class User { Foo/* not a join */Bar bar; }");
+
+		Set<ClassContainer> dependencies = new PackageAwareFinder(containers(fooInA, fooBar, user)).find(user, 1);
+
+		assertEquals(Set.of(fooInA), dependencies);
+	}
+
 	private Set<ClassContainer> containers(ClassContainer... containers) {
 		return new HashSet<>(Set.of(containers));
 	}

@@ -68,6 +68,19 @@ abstract class AbstractContextToolTest {
 		assertThrows(IllegalArgumentException.class, () -> tool().apply(arguments));
 	}
 
+	@Test
+	void zeroDepthIsRejectedWithTheAcceptedRange() {
+		// A depth of zero resolves nothing and every finder refuses it, so it is
+		// refused here, where the message can name the range the tools do take.
+		Map<String, Object> arguments = pathArgument(projectRoot);
+		arguments.put("depth", 0);
+
+		IllegalArgumentException rejected =
+				assertThrows(IllegalArgumentException.class, () -> tool().apply(arguments));
+
+		assertTrue(rejected.getMessage().contains("between 1 and 10"), rejected.getMessage());
+	}
+
 	/** The arguments naming a root, as the map a test then adds its own entries to. */
 	protected Map<String, Object> pathArgument(Path root) {
 		Map<String, Object> arguments = new HashMap<>();

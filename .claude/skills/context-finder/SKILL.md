@@ -66,7 +66,9 @@ new OkfBundleWriter().write(bundle, Path.of("target/okf"));
 ```
 
 - Every directory → the reserved `index.md` (no frontmatter; only a bundle-root
-  index may carry `okf_version`). Every file → a concept document.
+  index may carry `okf_version`). Every file → a concept document at its name plus
+  `.md`; a file whose name would claim a reserved document (`index`, `log`) gets
+  `.concept.md` instead, so no two documents share a path.
 - `type` is the **one** mandatory frontmatter field; `title`, `description`,
   `resource`, `tags` are recommended; v0.2 records production as
   `generated: { by, at }` using the `<producer>/<version>` actor convention.
@@ -89,9 +91,12 @@ green:
 
 ## MCP tools
 `project_tree`, `find_context`, `estimate_tokens` and `okf_bundle` are the
-adapter over the above, in `…context.mcp`. `PathPolicy` confines them to allowed
-directories, and the server is **read-only** — `okf_bundle` returns the bundle as
-JSON rather than writing it, so keep writing on the caller's side.
+adapter over the above, in `…context.mcp`. All four resolve with
+`PackageAwareFinder` — the whole-project tools pass it to `ProjectTreeBuilder` as a
+`ContextFactory` rather than taking the builder's name-based default, so one server
+answers one question one way. `depth` runs from 1 to 10. `PathPolicy` confines them
+to allowed directories, and the server is **read-only** — `okf_bundle` returns the
+bundle as JSON rather than writing it, so keep writing on the caller's side.
 **The core must never depend on the `mcp` package** — ArchUnit pins it. See the
 `mcp-server` skill before changing a tool, and update
 `code/context/.../mcp/MCP_USAGE.md` in the same change.

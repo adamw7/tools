@@ -101,13 +101,10 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * True when {@code name} appears as a whole identifier rather than as a bare
-	 * substring, so the word "metadata" no longer documents a module called
-	 * {@code data} and "claude-code-enforcer" no longer documents one called
-	 * {@code code}. A neighbouring character that could continue an identifier —
-	 * a letter, a digit, an underscore, or the hyphen these names are written
-	 * with — disqualifies the match; punctuation around it, such as the backticks
-	 * and slashes of {@code `code/context`}, does not.
+	 * True when {@code name} appears as a whole identifier rather than a bare
+	 * substring, so "metadata" no longer documents a module called {@code data}. A
+	 * neighbouring letter, digit, underscore or hyphen disqualifies the match;
+	 * punctuation such as the backticks and slashes of {@code `code/context`} does not.
 	 */
 	private boolean mentions(String content, String name) {
 		return Pattern.compile(IDENTIFIER_BOUNDARY_BEFORE + Pattern.quote(name) + IDENTIFIER_BOUNDARY_AFTER)

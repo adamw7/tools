@@ -12,28 +12,25 @@ import java.util.Locale;
  *
  * <p>Two conditions have to hold, and both are narrowing.
  *
- * <p>First, the program must be {@code git} or {@code gh}. They are the only
- * commands the pipeline runs whose work <em>is</em> the network, and both are
- * re-runnable: a {@code git clone} that fails removes the directory it created, a
- * {@code git fetch} and a {@code git push} are idempotent, and a repeated
- * {@code gh pr create} is what {@link io.github.adamw7.tools.adopt.step.PullRequestStep}
- * already tolerates. The two commands left out are deliberate. A
- * {@code claude init} reaches the network too, but it is the run's most expensive
- * command and its transcript is a model's prose — text that may discuss a
- * connection reset without one having happened. A build tool's transcript carries
- * whatever the project's own tests print, for the same reason.
+ * <p>First, the program must be {@code git} or {@code gh}: the only commands whose
+ * work <em>is</em> the network, and both re-runnable — a failed {@code git clone}
+ * removes the directory it created, fetch and push are idempotent, and a repeated
+ * {@code gh pr create} is what
+ * {@link io.github.adamw7.tools.adopt.step.PullRequestStep} already tolerates. A
+ * {@code claude init} reaches the network too, but its transcript is a model's prose
+ * and may discuss a connection reset without one having happened; a build tool's
+ * carries whatever the project's tests print, for the same reason.
  *
  * <p>Second, the transcript must report a transport-level refusal in one of the
- * tools' own words. Everything else fails once, as it does today: an
- * authentication failure, a 403 or a 404, a rejected non-fast-forward push, and a
- * query answering "no" through its exit code all pass through untouched — the last
- * of which matters most, since {@link io.github.adamw7.tools.adopt.step.BranchStep}
- * and {@link io.github.adamw7.tools.adopt.step.CommitStep} ask git questions whose
+ * tools' own words. Everything else fails once: an authentication failure, a 403 or
+ * 404, a rejected non-fast-forward push, and a query answering "no" through its exit
+ * code — the last mattering most, since
+ * {@link io.github.adamw7.tools.adopt.step.BranchStep} and
+ * {@link io.github.adamw7.tools.adopt.step.CommitStep} ask git questions whose
  * answer is a non-zero exit.
  *
- * <p>A rate limit is not in the list. GitHub answers a secondary rate limit by
- * asking for a wait measured in minutes, and retrying it seconds later is what the
- * limit exists to stop — so it is reported to the operator rather than hammered.
+ * <p>A rate limit is not in the list: GitHub asks for a wait measured in minutes,
+ * and retrying seconds later is what the limit exists to stop.
  */
 public final class TransientFailures {
 

@@ -12,18 +12,15 @@ import org.apache.logging.log4j.Logger;
 /**
  * What becomes of a repository's checkout once its adoption is over.
  *
- * <p>A checkout is a full clone, and a run over a list of repositories makes one
- * per repository. Nothing removed them, so a fifty-repository batch left fifty
- * clones behind — under a temporary directory the operator never named and would
- * not think to look in. The adoption's own product is a pushed branch and a pull
- * request; the checkout is scaffolding.
+ * <p>A checkout is a full clone and a batch makes one per repository, so a
+ * fifty-repository run left fifty behind under a temporary directory the operator
+ * never named. The adoption's product is a pushed branch and a pull request; the
+ * checkout is scaffolding.
  *
- * <p>It is scaffolding worth keeping in exactly two cases, which is why this is a
- * choice rather than an unconditional delete. A checkout whose adoption
- * <em>failed</em> is the only record of how far the run got, and reading it is the
- * first thing an operator does. A dry run's checkout is the whole point of the
- * dry run: it commits the adoption locally and pushes nothing, so deleting it
- * would leave the operator with nothing to inspect.
+ * <p>It is worth keeping in exactly two cases, which is why this is a choice rather
+ * than an unconditional delete. A checkout whose adoption <em>failed</em> is the only
+ * record of how far the run got. A dry run's checkout is the whole point of the dry
+ * run, which commits locally and pushes nothing.
  */
 public enum CheckoutRetention {
 

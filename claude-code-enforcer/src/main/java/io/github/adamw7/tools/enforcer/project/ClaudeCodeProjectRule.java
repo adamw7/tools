@@ -30,23 +30,22 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  *
  * <p>What it runs is decided by what the project has. A part whose input is absent
  * is skipped rather than failed, because nothing named that path: a project with
- * no {@code .claude/commands} has no slash commands, which is not a fault, and it
- * starts being checked the day it grows one. {@link ProjectParts} says which parts
- * there are and {@link ProjectLayout} where each one looks.
+ * no {@code .claude/commands} has no slash commands, and it starts being checked
+ * the day it grows one. {@link ProjectParts} says which parts there are and
+ * {@link ProjectLayout} where each one looks.
  *
  * <p>Each part still collects its own violations; this rule decides what they
  * mean. So one severity, one baseline and one report cover the whole
  * configuration, and each violation is prefixed with the name of the part that
  * found it — the name to look up in the catalogue, and the name to put in
  * {@code <skippedRules>} to switch that part off. Wiring a rule individually is
- * still supported and still wins where a project needs to configure that rule's
- * own parameters.
+ * still supported and still wins where a project needs that rule's own parameters.
  */
 @Named("claudeCodeProject")
 public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 
 	/**
-	 * 32 KB, which is a long summary and a short manual — comfortably more than a
+	 * 32 KB: a long summary and a short manual — comfortably more than a
 	 * {@code CLAUDE.md} that defers detail elsewhere needs, and well under the point
 	 * at which loading it into every session is the thing costing the context.
 	 */
@@ -57,34 +56,33 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * Names of parts not to run, as the catalogue spells them, e.g.
-	 * {@code okfBundleFormat}. Matched without regard to case, since the point of the
-	 * parameter is to switch a part off rather than to test the speller.
+	 * {@code okfBundleFormat}. Matched without regard to case, since the point is to
+	 * switch a part off rather than to test the speller.
 	 */
 	private List<String> skippedRules;
 
 	/**
-	 * When true, the parts that can repair what they report do so. It is passed to
-	 * the document parts rather than set on this rule's own behalf, because a
-	 * composite has no document of its own to repair.
+	 * When true, the parts that can repair what they report do so. Passed to the
+	 * document parts rather than set on this rule's own behalf, because a composite
+	 * has no document of its own to repair.
 	 */
 	private boolean autoFix;
 
 	/**
 	 * The size a {@code CLAUDE.md} is held to, since it is loaded into every session
-	 * and is meant to be a summary that defers to the fuller document rather than a
-	 * copy of it. Zero switches the check off. It is a parameter with a default rather
-	 * than a path this rule could look up, because it is the one part of the
-	 * convention that is a number instead of a location.
+	 * and is meant to be a summary rather than a copy of the fuller document. Zero
+	 * switches the check off. It is a parameter with a default rather than a path
+	 * this rule could look up, being the one part of the convention that is a number
+	 * instead of a location.
 	 */
 	private int claudeMdBudgetBytes = DEFAULT_CLAUDE_MD_BUDGET_BYTES;
 
 	/**
 	 * The section headings {@code CLAUDE.md} must carry, when the project's are not
-	 * the defaults {@code claudeMdFormat} ships. It is passed through rather than left
-	 * to that rule's own configuration because a project wiring this rule is a project
-	 * that wanted to configure one thing, and its headings are the part of the
-	 * convention no convention can supply: they are what the project's document is
-	 * about.
+	 * the defaults {@code claudeMdFormat} ships. Passed through rather than left to
+	 * that rule's own configuration because a project wiring this rule wanted to
+	 * configure one thing, and its headings are the part of the convention no
+	 * convention can supply: they are what the project's document is about.
 	 */
 	private List<String> claudeMdSections;
 
@@ -119,7 +117,7 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 		try {
 			part.execute();
 		} catch (EnforcerRuleException | RuntimeException e) {
-			violations.add(named(nameOf(part), "could not be checked: " + e.getMessage()));
+			violations.add(named(part.ruleName(), "could not be checked: " + e.getMessage()));
 		}
 	}
 
@@ -136,7 +134,7 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 	private List<ClaudeCodeEnforcerRule> runnableParts() {
 		Set<String> skipped = skippedNames();
 		return new ProjectParts(new ProjectLayout(projectDir), documentContract()).present().stream()
-				.filter(part -> !skipped.contains(nameOf(part).toLowerCase(Locale.ROOT)))
+				.filter(part -> !skipped.contains(part.ruleName().toLowerCase(Locale.ROOT)))
 				.toList();
 	}
 
@@ -166,24 +164,10 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 	 */
 	private void logWhatIsChecked(List<ClaudeCodeEnforcerRule> parts) {
 		log().debug(() -> "claudeCodeProject is checking " + projectDir + " with "
-				+ parts.stream().map(this::nameOf).collect(Collectors.joining(", ")));
+				+ parts.stream().map(ClaudeCodeEnforcerRule::ruleName).collect(Collectors.joining(", ")));
 		if (parts.isEmpty()) {
 			log().warn("claudeCodeProject found no Claude Code configuration to check in " + projectDir);
 		}
-	}
-
-	/**
-	 * A part's catalogue name, derived the way every rule's is — the simple name
-	 * without its {@code Rule} suffix, decapitalised.
-	 *
-	 * @see ClaudeCodeEnforcerRule
-	 */
-	private String nameOf(ClaudeCodeEnforcerRule part) {
-		String simpleName = part.getClass().getSimpleName();
-		String withoutSuffix = simpleName.endsWith("Rule")
-				? simpleName.substring(0, simpleName.length() - "Rule".length())
-				: simpleName;
-		return withoutSuffix.substring(0, 1).toLowerCase(Locale.ROOT) + withoutSuffix.substring(1);
 	}
 
 	@Override

@@ -52,10 +52,9 @@ import io.github.adamw7.tools.mcp.ToolResult;
 public class AdoptTool implements McpTool {
 
 	/**
-	 * Builds the adoption a call runs, from the arguments that call supplied. The
-	 * seam is a factory rather than the adoption itself so the pipeline — and the
-	 * command runner behind it — is assembled once and then adopts every repository
-	 * of the batch, exactly as the command line does.
+	 * Builds the adoption a call runs. The seam is a factory rather than the adoption
+	 * itself so the pipeline — and the command runner behind it — is assembled once
+	 * and then adopts every repository of the batch, as the command line does.
 	 */
 	public interface Pipeline {
 		BatchAdoption.Adoption create(AdoptionOptions options);
@@ -171,8 +170,8 @@ public class AdoptTool implements McpTool {
 
 	/**
 	 * Bounded here as well as in {@link BatchAdoption}, so a client asking for fifty
-	 * threads is refused with the argument's name rather than with the batch's
-	 * complaint about a field it never sent.
+	 * threads is refused with the argument's name rather than the batch's complaint
+	 * about a field it never sent.
 	 */
 	private int parallelism(Map<String, Object> arguments) {
 		return ToolArguments.optionalBoundedInt(arguments, "parallel", BatchAdoption.SEQUENTIAL,
@@ -180,9 +179,8 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * What becomes of each repository's checkout, decided the same way the command
-	 * line decides it. A server serving many calls accumulates clones faster than an
-	 * operator does, so the default matters more here, not less.
+	 * What becomes of each repository's checkout, decided as the command line decides
+	 * it. A server serving many calls accumulates clones faster than an operator does.
 	 */
 	private CheckoutRetention checkoutRetention(Map<String, Object> arguments, AdoptionOptions options) {
 		return CheckoutRetention.of(ToolArguments.optionalBoolean(arguments, "keep_workspace", false),
@@ -191,19 +189,18 @@ public class AdoptTool implements McpTool {
 
 	/**
 	 * The call's arguments as they may be logged. A {@code repository_url} is the one
-	 * argument a client supplies with credentials in it, and this server is
-	 * long-lived, so logging the map as it arrived wrote that token to the log of
-	 * every call. The pipeline redacts the URL from its own logs; the arguments have
-	 * to be redacted here, before they reach it.
+	 * argument carrying credentials, and this server is long-lived, so logging the map
+	 * as it arrived wrote that token to the log of every call. The pipeline redacts
+	 * the URL from its own logs; the arguments are redacted here first.
 	 */
 	static String describe(Map<String, Object> arguments) {
 		return Redaction.of(String.valueOf(arguments));
 	}
 
 	/**
-	 * A batch in which anything failed is an error result, so a client is not told
-	 * an adoption that stopped at the push went through; the payload stays the report
-	 * either way, since that is what says which repositories landed.
+	 * A batch in which anything failed is an error result, so a client is not told an
+	 * adoption that stopped at the push went through. The payload stays the report
+	 * either way, that being what says which repositories landed.
 	 */
 	private ToolResult result(List<AdoptionRun> runs) {
 		String report = reportWriter.toJson(runs);
@@ -216,9 +213,9 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * Reads the repositories from either argument, so a client with one repository
-	 * keeps sending {@code repository_url} and one with a list sends
-	 * {@code repository_urls}; supplying both simply adopts them all.
+	 * Reads the repositories from either argument, so a client with one keeps sending
+	 * {@code repository_url} and one with a list sends {@code repository_urls};
+	 * supplying both adopts them all.
 	 *
 	 * @throws IllegalArgumentException when neither argument names a repository, the
 	 *                                  one requirement the schema cannot express as a
@@ -249,9 +246,8 @@ public class AdoptTool implements McpTool {
 	}
 
 	/**
-	 * A blank {@code branch} argument falls back to the default branch, matching the
-	 * command line's handling of a blank branch positional; only an explicitly named
-	 * branch overrides it, so an empty string is not rejected as an invalid branch.
+	 * A blank {@code branch} falls back to the default, matching the command line's
+	 * blank branch positional, so an empty string is not rejected as invalid.
 	 */
 	private String branch(Map<String, Object> arguments) {
 		return AdoptionContext.branchOrDefault(text(arguments, "branch"));

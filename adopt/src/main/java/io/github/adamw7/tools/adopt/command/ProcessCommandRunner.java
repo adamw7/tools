@@ -25,12 +25,11 @@ import io.github.adamw7.tools.adopt.Redaction;
  * reads from it — a {@code git} or {@code gh} credential prompt — sees
  * end-of-stream and fails fast instead of blocking until the timeout kills it.
  *
- * <p>Every command is traced at debug — what was run, where, how it exited and
- * how long it took — because this is the one place the adoption learns anything
- * from the outside world, and the steps above it report only the commands that
- * stopped the run. A tolerated failure or a step that decided it had nothing to do
- * leaves no trace anywhere else, so a run that did less than it was expected to
- * reads exactly like one that did everything.
+ * <p>Every command is traced at debug — what was run, where, how it exited, how long
+ * it took — because this is the one place the adoption learns anything from outside,
+ * and the steps above report only the commands that stopped the run. A tolerated
+ * failure leaves no trace elsewhere, so a run that did less than expected would
+ * otherwise read exactly like one that did everything.
  */
 public class ProcessCommandRunner implements CommandRunner {
 

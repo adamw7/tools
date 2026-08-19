@@ -29,13 +29,12 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * fresh one.
  *
  * <p>Both commands name the target repository with {@code --repo} rather than
- * letting {@code gh} infer it from the checkout's git remote, which an
- * {@code insteadOf} rewrite, an organisation mirror, or a proxied clone can leave
- * unreadable — failing the very last step of an otherwise complete adoption. A URL
- * that names no owner leaves the flag off. The pull request's URL is read back
- * with {@code gh pr list --json url} rather than scraped from {@code gh pr
- * create}'s human-oriented output, so both the fresh and the re-run case take one
- * structured path.
+ * letting {@code gh} infer it from the git remote, which an {@code insteadOf}
+ * rewrite, an organisation mirror or a proxied clone can leave unreadable — failing
+ * the last step of an otherwise complete adoption. A URL naming no owner leaves the
+ * flag off. The pull request's URL is read back with {@code gh pr list --json url}
+ * rather than scraped from human-oriented output, so the fresh and the re-run case
+ * take one structured path.
  */
 public class PullRequestStep extends AbstractCommandStep {
 

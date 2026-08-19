@@ -17,13 +17,12 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * {@code HEAD} whether or not it already exists, so re-running the adoption starts
  * it afresh rather than aborting.
  *
- * <p>A checkout with no local branch yet but whose {@code origin} already
- * publishes one — a fresh clone re-adopting a repository an earlier run pushed,
- * which the default temporary workspace produces every time — starts from that
- * published tip instead. Otherwise the branch would restart at the default branch
- * and {@link PushStep} would be rejected as a non-fast-forward. An existing local
- * branch is left to the plain {@code -B}, so unpushed work is never reset onto the
- * remote.
+ * <p>A checkout with no local branch but whose {@code origin} already publishes one
+ * — a fresh clone re-adopting a repository an earlier run pushed, which the default
+ * temporary workspace produces every time — starts from that published tip instead,
+ * the branch otherwise restarting at the default branch and {@link PushStep} being
+ * rejected as a non-fast-forward. An existing local branch is left to the plain
+ * {@code -B}, so unpushed work is never reset onto the remote.
  */
 public class BranchStep extends AbstractCommandStep {
 

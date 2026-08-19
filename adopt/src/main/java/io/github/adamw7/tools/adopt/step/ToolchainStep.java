@@ -18,13 +18,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * when its {@code --version} probe starts and exits zero, and every required tool
  * is probed even after one is found missing, so a single failure names them all.
  *
- * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds
- * for a GitHub CLI nobody is logged in to, which the adoption would only discover
- * at {@link PullRequestStep}. The login is therefore probed here too, by making a
- * call to GitHub rather than by asking {@code gh} what it has stored — see
- * {@link #authenticationProbe}. The adopted project's own build tool only becomes
- * known once the repository is cloned, so {@link BuildToolchainStep} probes it
- * there.
+ * <p>Being installed is not enough for {@code gh}: {@code gh --version} succeeds for
+ * a CLI nobody is logged in to, which the adoption would only discover at
+ * {@link PullRequestStep}. The login is probed here too, by calling GitHub rather
+ * than asking {@code gh} what it has stored. The adopted project's own build tool is
+ * only known once cloned, so {@link BuildToolchainStep} probes it there.
  *
  * <p>Which tools are required follows what the run will actually do: a dry run
  * needs neither {@code gh} nor the credentials behind it, and is checked with

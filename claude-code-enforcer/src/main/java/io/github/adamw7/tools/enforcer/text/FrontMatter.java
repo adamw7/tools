@@ -16,44 +16,34 @@ import org.yaml.snakeyaml.nodes.ScalarNode;
 import org.yaml.snakeyaml.nodes.SequenceNode;
 
 /**
- * The YAML front matter block at the top of a Markdown document: the lines
- * between a leading {@code ---} delimiter and the next {@code ---} delimiter.
+ * The YAML front matter block at the top of a Markdown document: the lines between
+ * a leading {@code ---} delimiter and the next.
  * <p>
- * The block is read by SnakeYAML, the same kind of loader Claude Code itself
- * reads front matter with, so what a rule validates is what the tool acts on.
- * Parsing stops at {@link Yaml#compose}, which answers the document's node tree
- * rather than constructing Java objects from it: a rule needs the text an author
- * declared, not a typed value. That distinction is not cosmetic — composing keeps
- * {@code okf_version: 0.20} the string {@code 0.20} instead of rounding it to a
- * double, and it keeps a duplicated key visible, which every loader that builds a
- * {@code Map} collapses.
+ * The block is read by SnakeYAML, the same kind of loader Claude Code reads front
+ * matter with, so what a rule validates is what the tool acts on. Parsing stops at
+ * {@link Yaml#compose}, which answers the node tree rather than constructing Java
+ * objects: a rule needs the text an author declared, not a typed value. Composing
+ * keeps {@code okf_version: 0.20} the string {@code 0.20} instead of rounding it,
+ * and keeps a duplicated key visible, which every loader building a {@code Map}
+ * collapses.
  * <p>
  * Each entry is answered as a single line of text, which is all the rules need:
- * they check a value's length, blankness, uniqueness, or shape, never its
- * structure. A value written across several lines — a block scalar, a wrapped
- * plain scalar, a nested mapping or sequence — is folded into one line joined by
- * single spaces, because the alternative is to answer the empty string for a value
- * written out in full on the lines below its key. Folding a mapping is lossy on
- * purpose: {@code by: agent/1} reads back as text rather than as a nested entry. A
- * rule that needs the structure itself should ask SnakeYAML for it directly.
+ * they check a value's length, blankness, uniqueness or shape, never its structure.
+ * A value written across several lines is folded into one joined by single spaces,
+ * the alternative being to answer the empty string for a value written out below
+ * its key. Folding a mapping is lossy on purpose — {@code by: agent/1} reads back
+ * as text; a rule needing the structure should ask SnakeYAML directly.
  * <p>
- * A block no loader can read — an unterminated quoted scalar, or a value such as
- * {@code "a" and "b"} whose quotes do not wrap it — is no front matter at all, and
- * {@link #parse} answers empty for it. Reading it as text instead and handing the
- * rules each key's characters verbatim validated something Claude Code never sees:
- * its loader fails on that block exactly as this one does. The rules already say so
- * far better than a guess could — "has no parseable YAML frontmatter block" — so
- * there is nothing here to invent. A block that reads but declares no entries, such
- * as the {@code name:value} that lacks the space a YAML entry needs, is present and
- * simply declares nothing.
+ * A block no loader can read is no front matter at all, and {@link #parse} answers
+ * empty for it: reading it as text validated something Claude Code never sees,
+ * since its loader fails on that block too. A block that reads but declares no
+ * entries — the {@code name:value} lacking the space a YAML entry needs — is
+ * present and simply declares nothing.
  * <p>
- * A key declared twice yields its <em>last</em> declaration, which is the one a
- * YAML loader keeps and so the one Claude Code acts on. Reading the first instead
- * validated a value the tool never sees — a second {@code description:} could
- * lengthen a capped one, break a name convention, or collide with another
- * definition, and every check would still be looking at the line above it.
- * {@link #duplicateKeys()} reports the duplication itself, since a key written
- * twice is a mistake whichever value wins.
+ * A key declared twice yields its <em>last</em> declaration, the one a YAML loader
+ * keeps and so the one Claude Code acts on; reading the first validated a value the
+ * tool never sees. {@link #duplicateKeys()} reports the duplication itself, a key
+ * written twice being a mistake whichever value wins.
  */
 public final class FrontMatter {
 
@@ -73,12 +63,11 @@ public final class FrontMatter {
 	}
 
 	/**
-	 * Parses the front matter at the start of {@code content}, or returns empty
-	 * when the content does not begin with a closed {@code ---} delimited block.
-	 * Claude Code only recognises a block whose opening delimiter is the very
-	 * first line, so content that reaches its {@code ---} after blank lines has
-	 * no front matter here either. A byte-order mark, if any, must already be
-	 * stripped by the caller.
+	 * Parses the front matter at the start of {@code content}, or empty when it does
+	 * not begin with a closed {@code ---} block. Claude Code only recognises a block
+	 * whose opening delimiter is the very first line, so content reaching its
+	 * {@code ---} after blank lines has none here either. Any byte-order mark must
+	 * already be stripped by the caller.
 	 */
 	public static Optional<FrontMatter> parse(String content) {
 		List<String> allLines = content.lines().toList();
@@ -118,10 +107,10 @@ public final class FrontMatter {
 	}
 
 	/**
-	 * The keys declared more than once, each named once, in the order they first
-	 * appear. Only the last of them takes effect, so the earlier lines say something
-	 * the tool never reads — the front matter equivalent of the duplicated JSON key
-	 * the configuration rules already reject.
+	 * The keys declared more than once, each named once, in first-appearance order.
+	 * Only the last takes effect, so the earlier lines say something the tool never
+	 * reads — the front matter equivalent of the duplicated JSON key the
+	 * configuration rules already reject.
 	 */
 	public List<String> duplicateKeys() {
 		Set<String> seen = new LinkedHashSet<>();
@@ -150,22 +139,15 @@ public final class FrontMatter {
 	 * block scalar's newlines read the same way a folded one's do.
 	 * <p>
 	 * The rendering stops at {@value #MAX_VALUE_LENGTH} characters and
-	 * {@value #MAX_DEPTH} levels. Composing is linear in the size of the document, but
-	 * the node graph it answers is a graph rather than a tree — an alias is the node it
-	 * names, not a copy of it — so walking it is not. Nine aliases nested nine deep is a
-	 * few lines of YAML that expands to hundreds of millions of characters, the shape
-	 * known as a billion laughs, and a rule that reads a repository's own files should
-	 * not be the thing that expands it.
-	 * <p>
-	 * The two caps answer two different shapes, and the length alone answered only one.
-	 * An alias may name a node that <em>contains</em> it — {@code description: &loop}
-	 * over a {@code - *loop} composes to a graph with a cycle in it — and the walk of
-	 * such a graph never reaches a leaf to append at, so it recurses until the stack
-	 * runs out. A {@link StackOverflowError} is not a {@link YAMLException}: it escaped
-	 * {@link #entriesOf} and failed the build as an internal error rather than as the
-	 * unreadable front matter it is. Both caps are far above any value a rule
-	 * meaningfully checks: a description this long, or this deep, has already failed
-	 * whatever it was held to.
+	 * {@value #MAX_DEPTH} levels, answering two different shapes. The node graph is a
+	 * graph rather than a tree — an alias is the node it names, not a copy — so nine
+	 * aliases nested nine deep expand to hundreds of millions of characters (a
+	 * billion laughs), which the length cap stops. An alias may also name a node that
+	 * <em>contains</em> it, and the walk of such a cycle never reaches a leaf, so it
+	 * recursed until the stack ran out — and a {@link StackOverflowError} is not a
+	 * {@link YAMLException}, so it escaped {@link #entriesOf} and failed the build as
+	 * an internal error rather than as the unreadable front matter it is. Both caps
+	 * sit far above any value a rule meaningfully checks.
 	 */
 	private static String folded(Node node) {
 		StringBuilder text = new StringBuilder();
@@ -218,9 +200,9 @@ public final class FrontMatter {
 
 	/**
 	 * Whether there is still room to render into {@code text}. Tested by the
-	 * collections rather than only on entry to {@link #render}, so a walk that has
-	 * filled the budget stops iterating instead of merely stopping appending — the
-	 * iteration is the part an alias graph multiplies.
+	 * collections rather than only on entry to {@link #render}, so a filled budget
+	 * stops the iteration — the part an alias graph multiplies — and not merely the
+	 * appending.
 	 */
 	private static boolean hasRoom(StringBuilder text) {
 		return text.length() < MAX_VALUE_LENGTH;

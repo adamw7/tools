@@ -14,12 +14,9 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  *
  * <p>An unrecognised value is refused rather than read as the default. Deciding
  * "not {@code warn}, therefore {@code error}" meant {@code <severity>warning</severity>}
- * and {@code <severity>info</severity>} failed the build while the author who
- * wrote them believed the rule had been downgraded — the one misconfiguration
- * whose symptom is indistinguishable from the rule working. Every other
- * build-setup mistake in {@link ClaudeCodeEnforcerRule} — an unconfigured
- * parameter, a file that is not there — fails immediately and says what was
- * wrong with the configuration, and this is one of those.
+ * failed the build while its author believed the rule had been downgraded — the
+ * one misconfiguration whose symptom is indistinguishable from the rule working.
+ * Like every other build-setup mistake, it fails immediately instead.
  */
 public enum Severity {
 
@@ -33,9 +30,8 @@ public enum Severity {
 	static final Severity DEFAULT = ERROR;
 
 	/**
-	 * Reads a configured severity, tolerating case and surrounding whitespace: a
-	 * {@code <severity>} element indented across lines arrives padded, and a rule
-	 * refusing {@code "warn\n\t"} would be refusing what the author plainly wrote.
+	 * Reads a configured severity, tolerating case and surrounding whitespace, since
+	 * a {@code <severity>} element indented across lines arrives padded.
 	 *
 	 * @param configured the value as configured, which may be null or blank for none
 	 * @return the severity it names, or empty when it names none at all

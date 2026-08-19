@@ -11,11 +11,9 @@ import java.util.regex.Pattern;
  * secret it looks like without echoing the secret itself.
  * <p>
  * Deliberately <em>not</em> named after the {@code secretPatterns} parameter it
- * serves. Plexus resolves the element type of a configured list from the child
- * element name, trying the rule's own package first, so a class called
- * {@code SecretPattern} would capture every {@code <secretPattern>} element a pom
- * writes and fail the build trying to instantiate it — leaving the parameter
- * configurable in a unit test but not in the builds it exists for.
+ * serves: Plexus resolves a configured list's element type from the child element
+ * name, trying the rule's own package first, so a {@code SecretPattern} class would
+ * capture every {@code <secretPattern>} element and fail the build instantiating it.
  */
 record CredentialPattern(String name, Pattern pattern) {
 

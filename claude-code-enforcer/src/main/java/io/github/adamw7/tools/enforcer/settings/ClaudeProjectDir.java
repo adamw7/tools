@@ -40,21 +40,17 @@ final class ClaudeProjectDir {
 	 * Claude Code resolves the same way.
 	 * <p>
 	 * Both spellings name the same file — Claude Code runs a hook from the project
-	 * directory, so {@code .claude/hooks/session-start.sh} resolves exactly where
-	 * {@code $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh} does — and a
-	 * settings.json is as likely to be written either way. They are therefore read
-	 * from the same tokens: the scripts of the command, as
-	 * {@link CommandTokens#scriptCandidatesOf} picks them out. Expanding <em>every</em>
-	 * token that mentioned the variable instead made the two spellings disagree, and
-	 * failed a build over an argument the hook was about to create: a
+	 * directory — so both are read from the same tokens, the scripts of the command
+	 * as {@link CommandTokens#scriptCandidatesOf} picks them out. Expanding
+	 * <em>every</em> token mentioning the variable made the two disagree and failed a
+	 * build over an argument the hook was about to create: a
 	 * {@code mkdir -p "$CLAUDE_PROJECT_DIR/target/logs"} was reported as a missing
-	 * script, while the identical {@code mkdir -p target/logs} passed.
+	 * script while the identical {@code mkdir -p target/logs} passed.
 	 * <p>
-	 * A command that names one script both ways yields it once. The separators are
-	 * normalised before the comparison because the two spellings are assembled
-	 * differently — an expansion keeps the separators the command was written with,
-	 * a relative path is resolved as a {@link File} — and on a platform where those
-	 * disagree the same script would otherwise be reported as two.
+	 * A command naming one script both ways yields it once. The separators are
+	 * normalised first, since an expansion keeps the ones the command was written
+	 * with while a relative path is resolved as a {@link File}, and the same script
+	 * would otherwise be reported as two.
 	 */
 	List<String> scriptsIn(String command) {
 		return CommandTokens.scriptCandidatesOf(command).stream()
@@ -75,13 +71,11 @@ final class ClaudeProjectDir {
 	}
 
 	/**
-	 * Whether a token names a repository-relative script rather than a tool the
-	 * shell finds for itself: {@code .claude/hooks/session-start.sh} and
-	 * {@code ./run.sh} do, while {@code bash}, {@code python3}, and {@code npx} name
-	 * no path at all and are looked up on the {@code PATH}. An absolute path, a
-	 * home-relative one, and one carrying a shell expansion all name a file outside
-	 * the repository's control — or one only a shell can resolve — so none of them is
-	 * a script this rule may require.
+	 * Whether a token names a repository-relative script rather than a tool the shell
+	 * finds for itself: {@code ./run.sh} does, while {@code bash} and {@code npx} name
+	 * no path and are looked up on the {@code PATH}. An absolute path, a home-relative
+	 * one and one carrying a shell expansion each name a file outside the repository's
+	 * control, so none is a script this rule may require.
 	 */
 	private static boolean isRelativeScript(String token) {
 		return token.indexOf('/') > 0 && token.indexOf('$') < 0 && !token.startsWith("~")
@@ -99,10 +93,9 @@ final class ClaudeProjectDir {
 	}
 
 	/**
-	 * The token without shell quote characters, so a quoted
-	 * {@code "$CLAUDE_PROJECT_DIR/hook.sh"} resolves to the same on-disk path as
-	 * its unquoted spelling — the shell removes the quotes after expansion, and a
-	 * hook path never legitimately contains one.
+	 * The token without shell quote characters, so a quoted path resolves to the same
+	 * on-disk path as its unquoted spelling: the shell removes the quotes after
+	 * expansion, and a hook path never legitimately contains one.
 	 */
 	private String withoutQuotes(String token) {
 		return token.replace("\"", "").replace("'", "");

@@ -18,14 +18,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * pull-request URL, and a successful run's {@code failure}, are serialised as JSON
  * {@code null} so the document's shape stays stable for consumers.
  *
- * <p>The checkout is in the document because it is the one output a run has that
- * does not reach GitHub: a dry run publishes nothing, and a caller that named no
- * workspace was given a temporary one it has no other way to find.
- *
- * <p>A run over several repositories is wrapped in a batch document instead: an
- * overall {@code succeeded}, true only when every repository was adopted, plus a
- * {@code repositories} array of exactly those per-repository documents. A single
- * repository is still written unwrapped.
+ * <p>The checkout is in the document because it is the one output that does not
+ * reach GitHub: a dry run publishes nothing, and a caller that named no workspace
+ * was given a temporary one it has no other way to find. A run over several
+ * repositories is wrapped in a batch document instead — an overall
+ * {@code succeeded}, true only when every repository was adopted, plus a
+ * {@code repositories} array. A single repository is still written unwrapped.
  */
 public class AdoptionReportWriter {
 

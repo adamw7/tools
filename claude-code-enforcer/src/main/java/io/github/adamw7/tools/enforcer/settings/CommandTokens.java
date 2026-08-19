@@ -11,25 +11,20 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Splits a hook command into the tokens a shell would see. Both hook rules need
- * this to find the script paths inside a command, so the splitting lives here
- * rather than in each of them.
+ * Splits a hook command into the tokens a shell would see, so both hook rules find
+ * the script paths inside a command the same way.
  * <p>
  * Splitting is on whitespace, on the redirections {@code <} and {@code >}, and on
- * the shell separators {@code ;}, {@code &}, {@code |}, a newline, and the
- * {@code (}/{@code )} of a subshell, all <em>outside</em> quotes. Whitespace alone is not enough: a command
- * chaining two hooks as {@code hook-a.sh; hook-b.sh} leaves the semicolon glued to
- * the first path, and the rules would then report a script that is really there as
- * missing. Quoting is honoured because a hook script path containing a space is
- * legitimate and is quoted for exactly that reason; a plain split would tear
- * {@code "$CLAUDE_PROJECT_DIR/my hook.sh"} into two halves. The quote characters are
- * kept on the token, since {@link ClaudeProjectDir} strips them as part of expanding
- * it.
+ * the separators {@code ;}, {@code &}, {@code |}, a newline and a subshell's
+ * {@code (}/{@code )}, all <em>outside</em> quotes. Whitespace alone leaves the
+ * semicolon of {@code hook-a.sh; hook-b.sh} glued to the first path, reported as a
+ * script that is really there but missing. Quoting is honoured because a path
+ * containing a space is quoted for exactly that reason; the quote characters stay
+ * on the token, since {@link ClaudeProjectDir} strips them as it expands it.
  * <p>
  * {@link #scriptCandidatesOf} answers the narrower question of which tokens name a
- * file the shell would execute or read as a script, which is what a rule resolving
- * a path on disk has to go on: a program is one, as is the script an interpreter is
- * handed, but never an argument that merely happens to look like a path.
+ * file the shell would execute or read: a program is one, as is the script an
+ * interpreter is handed, but never an argument that merely looks like a path.
  */
 final class CommandTokens {
 
@@ -43,42 +38,31 @@ final class CommandTokens {
 
 	/**
 	 * The programs that run a script named by one of their arguments rather than
-	 * being that script themselves, each described by how its own options are
-	 * written. A hook wired as {@code bash <script>} names a file that must exist
-	 * just as plainly as one wired as {@code <script>}, and reading only the program
-	 * would leave it unchecked.
-	 * <p>
-	 * The descriptions differ per program because the same letter means different
-	 * things to different ones: a shell's {@code -e} stops on error while node's,
-	 * perl's and ruby's carries the script's own text, and python's {@code -m} takes
-	 * a module name where a shell's takes nothing at all.
+	 * being it, each described by how its own options are written: a hook wired as
+	 * {@code bash <script>} names a file that must exist just as plainly as a bare
+	 * path does. The descriptions differ per program because the same letter differs
+	 * — a shell's {@code -e} stops on error where node's, perl's and ruby's carries
+	 * the script's text, and python's {@code -m} takes a module name.
 	 */
 	private static final Map<String, Interpreter> INTERPRETERS = interpreters();
 
 	/**
-	 * The shell operators that end a token just as whitespace does, and that end one
-	 * command and begin the next. A newline is one of them: a hook command written
-	 * across several lines runs one program per line, and reading only the first
-	 * would leave the rest of its scripts unresolved — and, with
-	 * {@code reportUnreferencedScripts}, report a script the hook really does run as
-	 * referenced by nothing. The parentheses of a subshell are operators for the
-	 * same reason, and because gluing one to the path inside it invents a program
-	 * named {@code (script.sh)} that no file can match.
+	 * The shell operators that end a token as whitespace does, and end one command
+	 * and begin the next. A newline is one: a multi-line hook runs one program per
+	 * line, and reading only the first left the rest unresolved — and, with
+	 * {@code reportUnreferencedScripts}, reported a script the hook really runs as
+	 * referenced by nothing. A subshell's parentheses are operators for the same
+	 * reason, and because gluing one to the path inside invents {@code (script.sh)}.
 	 */
 	private static final String OPERATORS = ";&|\n\r()";
 
 	/**
-	 * The redirection characters, which end a token without ending a command. A hook
-	 * written {@code .claude/hooks/build.sh> build.log} glues the {@code >} to the
-	 * path, and reading that as the program invented a script named
-	 * {@code build.sh>} that no file can match — reported, of course, as missing.
-	 * <p>
-	 * They are token separators and not operators on purpose. Ending the command at
-	 * a redirection would make the file after it the program of a fresh segment, so
-	 * the {@code logs/build.log} of {@code build.sh > logs/build.log} would become a
-	 * script this rule requires to exist — failing the build over the very file the
-	 * hook is about to write, which is the mistake {@link #scriptCandidatesOf} exists
-	 * to avoid.
+	 * The redirection characters, which end a token without ending a command:
+	 * {@code build.sh> build.log} glues the {@code >} to the path, inventing a
+	 * {@code build.sh>} no file can match. They are separators and not operators on
+	 * purpose — ending the command there would make {@code logs/build.log} the
+	 * program of a fresh segment, failing the build over the very file the hook is
+	 * about to write.
 	 */
 	private static final String REDIRECTIONS = "<>";
 
@@ -92,13 +76,10 @@ final class CommandTokens {
 
 	/**
 	 * The shell reserved words, which structure a command rather than name a program.
-	 * A hook that runs its script only under a condition writes
-	 * {@code if [ -n "$CI" ]; then .claude/hooks/session-start.sh; fi}, and reading
-	 * the first word of each segment blindly took {@code then} for the program — so
-	 * the script went unresolved, and {@code reportUnreferencedScripts} reported a
-	 * script the hook really does run as referenced by nothing. A shell skips over
-	 * these the same way it skips a {@code VAR=value} prefix, and so does this: the
-	 * word after them is what runs.
+	 * Reading the first word of each segment blindly took the {@code then} of
+	 * {@code if [ -n "$CI" ]; then hook.sh; fi} for the program, leaving the script
+	 * unresolved. A shell skips these as it skips a {@code VAR=value} prefix, and so
+	 * does this: the word after them is what runs.
 	 */
 	private static final Set<String> RESERVED_WORDS = Set.of(
 			"if", "then", "elif", "else", "fi",
@@ -107,20 +88,13 @@ final class CommandTokens {
 			"{", "}", "!");
 
 	/**
-	 * The programs that run the command their arguments name rather than being that
-	 * command themselves. A hook wired as {@code exec .claude/hooks/session-start.sh}
-	 * runs that script exactly as the bare path does, and reading the first word
-	 * blindly took {@code exec} for the program — so the script went unresolved, a
-	 * rename of it passed the missing-script check, and
-	 * {@code reportUnreferencedScripts} reported a script the hook really does run as
-	 * referenced by nothing.
-	 * <p>
-	 * They are listed apart from the reserved words because they are programs rather
-	 * than shell grammar, even though what a reader does with them is the same: skip
-	 * over them to reach what runs. Only the wrappers whose <em>next</em> word is the
-	 * command are listed. One that takes an option carrying a value — {@code sudo -u}
-	 * — would need its options described the way an {@link Interpreter}'s are, and
-	 * skipping it without that would name the option as the program.
+	 * The programs that run the command their arguments name rather than being it:
+	 * {@code exec hook.sh} runs that script as the bare path does, and reading the
+	 * first word blindly took {@code exec} for the program. Listed apart from the
+	 * reserved words because they are programs rather than shell grammar. Only
+	 * wrappers whose <em>next</em> word is the command are listed — one taking an
+	 * option with a value ({@code sudo -u}) would need its options described the way
+	 * an {@link Interpreter}'s are, or the option would be named as the program.
 	 */
 	private static final Set<String> COMMAND_WRAPPERS = Set.of(
 			"exec", "command", "builtin", "nohup", "env", "time");
@@ -136,14 +110,10 @@ final class CommandTokens {
 	/**
 	 * The tokens of {@code command} that name a script file: the program each
 	 * operator-separated segment runs, plus the script an interpreter among them is
-	 * handed, in order.
-	 * <p>
-	 * A hook chaining two scripts names two of them, so every segment is read. What is
-	 * deliberately left out is an ordinary argument, however much it looks like a path:
-	 * a hook invoked as {@code .claude/hooks/build.sh --out target/log.txt} names one
-	 * script and one output file, and requiring the second to exist would fail a build
-	 * over a file the hook is about to write. The same goes for the directory of a
-	 * {@code mkdir -p}.
+	 * handed, in order. Every segment is read, since a hook chaining two scripts
+	 * names two. An ordinary argument is left out however much it looks like a path:
+	 * the {@code target/log.txt} of {@code build.sh --out target/log.txt} is a file
+	 * the hook is about to write, not one that must already exist.
 	 */
 	static List<String> scriptCandidatesOf(String command) {
 		return split(command, CommandTokens::isOperator).stream()
@@ -184,16 +154,10 @@ final class CommandTokens {
 
 	/**
 	 * How one interpreter writes its options, which is all a reader needs to find the
-	 * script among its arguments: the short flags whose argument is the script's own
-	 * text rather than a path, the long options that say the same, and the flags and
-	 * options that consume the word after them.
-	 * <p>
-	 * The last of these is what a naive "first non-option argument" misses. A hook
-	 * wired as {@code bash -euo pipefail .claude/hooks/session-start.sh} hands the
-	 * word {@code pipefail} to the {@code -o} ending the cluster, so reading it as the
-	 * script both invented a file no hook ever named and hid the real one behind it —
-	 * and with {@code reportUnreferencedScripts}, reported a script the hook really
-	 * does run as referenced by nothing.
+	 * script among its arguments. The value-taking flags are what a naive "first
+	 * non-option argument" misses: {@code bash -euo pipefail hook.sh} hands
+	 * {@code pipefail} to the {@code -o} ending the cluster, so reading it as the
+	 * script invented a file no hook named and hid the real one behind it.
 	 *
 	 * @param inlineFlags   the short flags carrying the script's text, e.g. a
 	 *                      shell's {@code c} or node's {@code e} and {@code p}
@@ -244,10 +208,9 @@ final class CommandTokens {
 		}
 
 		/**
-		 * True when a cluster of short options carries one of {@code flags} anywhere in
-		 * it. A shell reads {@code -ec} as {@code -e -c} just as it reads {@code -c},
-		 * and missing the cluster would take the inline script's text for a path on
-		 * disk.
+		 * True when a cluster of short options carries one of {@code flags} anywhere.
+		 * A shell reads {@code -ec} as {@code -e -c}, and missing the cluster would
+		 * take the inline script's text for a path on disk.
 		 */
 		private boolean carriesFlag(String argument, String flags) {
 			return isShortCluster(argument) && argument.chars().skip(1).anyMatch(flag -> flags.indexOf(flag) >= 0);
@@ -270,10 +233,9 @@ final class CommandTokens {
 	}
 
 	/**
-	 * The interpreters this reader knows, each named by every spelling a hook invokes
-	 * it with. Only the options that decide where the script is are listed: one that
-	 * neither carries the script nor takes a value needs no entry, because a leading
-	 * dash is already enough to skip it.
+	 * The interpreters this reader knows, by every spelling a hook invokes them with.
+	 * Only the options deciding where the script is are listed: a leading dash is
+	 * already enough to skip anything else.
 	 */
 	private static Map<String, Interpreter> interpreters() {
 		Interpreter shell = new Interpreter("c", "o", Set.of(), Set.of("--rcfile", "--init-file"));

@@ -8,12 +8,11 @@ import java.util.Optional;
  * runs, which {@code claude-code-enforcer} version it pins, and which
  * {@code CLAUDE.md} sections it demands.
  *
- * <p>The three travel together because the guard and the reshape that has to
- * satisfy it are settled from the same answer. A section list that reached the
- * conformer but not the POM — or the other way round — is the one shape of bug
- * this whole area keeps producing: a document reshaped to a contract the guard
- * beside it does not make, discovered on somebody else's repository after the
- * branch is pushed.
+ * <p>The three travel together because the guard and the reshape that must satisfy
+ * it are settled from the same answer. A section list that reached the conformer but
+ * not the POM is the one shape of bug this area keeps producing: a document reshaped
+ * to a contract the guard beside it does not make, found on somebody else's
+ * repository after the branch is pushed.
  *
  * @param ruleVersion       the released rule version to pin, or {@code null} to
  *                          resolve the version of the {@code tools} build running

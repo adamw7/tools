@@ -15,11 +15,11 @@ import io.github.adamw7.tools.markdown.MarkdownConformer;
  * that reference — so without this reshape the adoption fails its own
  * {@link VerifyStep}.
  *
- * <p>Only the contract lives here; the reshape itself is
- * {@code markdown-common}'s, alongside the {@link io.github.adamw7.tools.markdown.MarkdownDocument}
- * reader the rule judges the result with. It used to be a second implementation
- * in this module, kept honest by a contract test running the real rule over its
- * output — which caught the drift but only after it had been written twice.
+ * <p>Only the contract lives here; the reshape is {@code markdown-common}'s,
+ * alongside the {@link io.github.adamw7.tools.markdown.MarkdownDocument} reader the
+ * rule judges the result with. A second implementation in this module was kept
+ * honest by a contract test, which caught the drift only after it had been written
+ * twice.
  *
  * <p>Which sections it demands is the caller's to choose, because the guard being
  * wired in differs by build system — see

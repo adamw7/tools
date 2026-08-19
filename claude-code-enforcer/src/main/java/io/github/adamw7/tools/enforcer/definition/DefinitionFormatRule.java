@@ -12,26 +12,22 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 
 /**
- * Base for the enforcer rules that validate one kind of Claude Code definition —
- * a skill, a sub-agent, a slash command — one file at a time. All three scan a
+ * Base for the enforcer rules that validate one kind of Claude Code definition — a
+ * skill, a sub-agent, a slash command — one file at a time. All three scan a
  * configured directory, read each definition, repair its front matter when asked
- * to, and report everything wrong with the lot in one grouped message. They differ
- * only in which entries of the directory carry a definition and in which front
- * matter checks they ask for.
- * <p>
- * The configured directory must exist, because that is a build-setup mistake
- * rather than a content problem; a directory holding no definitions is a pass.
+ * to, and report everything wrong in one grouped message; they differ only in which
+ * entries carry a definition and which front matter checks they ask for. The
+ * directory must exist, that being a build-setup mistake rather than a content
+ * problem; one holding no definitions is a pass.
  * <p>
  * Where {@link MultiDefinitionRule} checks a property <em>across</em> every
- * definition of every kind at once, this base checks each definition of one kind
- * on its own.
+ * definition of every kind at once, this base checks each one on its own.
  */
 abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 
 	/**
-	 * How a rule's messages name the definitions it checks. The five strings are one
-	 * thing — the vocabulary of a definition kind — so they are supplied together
-	 * rather than as five positional arguments a reader has to count.
+	 * How a rule's messages name the definitions it checks — the vocabulary of a
+	 * definition kind, supplied together rather than as five positional arguments.
 	 *
 	 * @param directoryParameter the configuration parameter naming the directory,
 	 *                           e.g. {@code skillsDir}

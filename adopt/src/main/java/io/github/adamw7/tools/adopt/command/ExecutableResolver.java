@@ -19,13 +19,12 @@ import io.github.adamw7.tools.adopt.Platform;
  * Resolves a command's program name to a form {@link ProcessBuilder} can actually
  * launch on the host operating system.
  *
- * <p>On POSIX the command is returned unchanged. On Windows a bare program name
- * such as {@code mvn} or {@code claude} routinely resolves to a {@code .cmd} or
- * {@code .bat} shim, which {@code CreateProcess} refuses to start. This resolver
- * searches the {@code PATH} using {@code PATHEXT} and rewrites a batch script to
- * run through {@code cmd.exe /c}, a real executable to its absolute path. A
- * program that cannot be located is returned unchanged, so the caller still fails
- * with its usual "could not start" error.
+ * <p>On POSIX the command is returned unchanged. On Windows a bare name such as
+ * {@code mvn} routinely resolves to a {@code .cmd} or {@code .bat} shim, which
+ * {@code CreateProcess} refuses to start, so the {@code PATH} is searched using
+ * {@code PATHEXT} and a batch script rewritten to run through {@code cmd.exe /c}, a
+ * real executable to its absolute path. A program that cannot be located is returned
+ * unchanged, so the caller still fails with its usual "could not start" error.
  *
  * <p>Only the program name is ever routed through {@code cmd.exe}; the arguments
  * reach {@link ProcessBuilder} unchanged, so free-form arguments such as a

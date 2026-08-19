@@ -7,13 +7,10 @@ import java.util.Optional;
  * The reporting configuration a build sets once for every rule, read from system
  * properties so a pom does not have to repeat it per rule.
  *
- * <p>A project wiring the full catalogue configures around twenty rules, and
- * {@code severity}, {@code reportFile} and {@code baselineFile} are the three
- * parameters that are the <em>same answer</em> for all of them: a team adopting
- * the rules gradually wants every rule downgraded, not one, and a build
- * publishing reports wants all of them under one directory. Spelled per rule that
- * is sixty elements to keep in step, and a rule left out of the sweep is a rule
- * whose severity silently differs from its neighbours'.
+ * <p>{@code severity}, {@code reportFile} and {@code baselineFile} are the three
+ * parameters that are the <em>same answer</em> for every rule of the catalogue:
+ * spelled per rule that is sixty elements to keep in step, and a rule left out of
+ * the sweep is one whose severity silently differs from its neighbours'.
  *
  * <table>
  * <caption>The properties and what they default</caption>
@@ -23,12 +20,11 @@ import java.util.Optional;
  * <tr><td>{@code claude.enforcer.baselineDir}</td><td>{@code baselineFile} to {@code <dir>/<ruleName>.txt}</td></tr>
  * </table>
  *
- * <p>A parameter configured on the rule itself always wins: the property is a
- * default, not an override, so a build can downgrade the catalogue and still
- * insist on one rule. Naming the files after the rule is what makes the
- * directories work at all — two rules sharing one report file would each
- * overwrite the other's verdict, and one shared baseline would let a violation
- * accepted for one rule suppress an identical message from another.
+ * <p>A parameter configured on the rule always wins: the property is a default,
+ * not an override, so a build can downgrade the catalogue and still insist on one
+ * rule. Naming the files after the rule is what makes the directories work — two
+ * rules sharing one report file would overwrite each other's verdict, and one
+ * shared baseline would let a violation accepted for one suppress another's.
  */
 final class RuleDefaults {
 

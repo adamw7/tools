@@ -11,10 +11,9 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * can be assembled, reordered, or tested one step at a time.
  *
  * <p>The pipeline invokes the three-argument {@link #execute(AdoptionContext,
- * CommandRunner, AdoptionReport)} so a step can contribute facts — such as the
- * opened pull request's URL — to the run's {@link AdoptionReport}. Most steps
- * have nothing to report and only implement the two-argument variant; the
- * default delegation keeps them unaware of the report.
+ * CommandRunner, AdoptionReport)} so a step can contribute facts — the opened pull
+ * request's URL — to the run's {@link AdoptionReport}. Most steps implement only the
+ * two-argument variant, the default delegation keeping them unaware of it.
  */
 public interface AdoptionStep {
 

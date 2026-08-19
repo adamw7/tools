@@ -16,11 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * repository's {@code .../repo} and {@code .../repo.git} forms; the second adoption
  * would otherwise run every step against the first repository's working tree.
  *
- * <p>Contexts are claimed one repository at a time rather than built for the whole
- * run up front, because both failures a claim can raise — a URL that names no
- * repository, and a checkout directory already taken — belong to the repository
- * that raised them. Building them all up front made either one abort the batch
- * before its first clone and leave the run with no report at all.
+ * <p>Contexts are claimed one repository at a time rather than up front, because
+ * both failures a claim can raise — a URL naming no repository, a checkout directory
+ * already taken — belong to the repository that raised them. Building them all up
+ * front made either abort the batch before its first clone, with no report at all.
  */
 public final class Checkouts {
 

@@ -11,12 +11,11 @@ import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
- * Decides whether an external tool can actually be run, by starting a probe
- * command and reading its exit code. Shared by {@link ToolchainStep}, which
- * checks the pipeline's own {@code git}/{@code claude}/{@code gh} before any work
- * begins, and {@link BuildToolchainStep}, which checks the adopted project's
- * build tool as soon as the clone reveals which one it is — so both report a
- * missing tool the same way.
+ * Decides whether an external tool can be run, by starting a probe command and
+ * reading its exit code. Shared by {@link ToolchainStep}, which checks the
+ * pipeline's own tools before any work begins, and {@link BuildToolchainStep}, which
+ * checks the adopted project's build tool once the clone reveals it — so both report
+ * a missing tool the same way.
  */
 final class ToolProbe {
 

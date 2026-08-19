@@ -147,11 +147,9 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	/**
 	 * True when the URL is assembled at load time from an environment variable, which
-	 * Claude Code expands before it ever reaches a URL parser. Only the shell knows
-	 * what {@code https://${MCP_HOST}/mcp} becomes, so there is nothing here to judge
-	 * — and judging it anyway reported a configuration Claude Code loads happily as
-	 * malformed, against the very advice {@code noSecrets} gives for keeping a
-	 * credential out of the file.
+	 * Claude Code expands before it reaches a URL parser. Only the shell knows what
+	 * {@code https://${MCP_HOST}/mcp} becomes, and judging it anyway reported a
+	 * configuration Claude Code loads happily as malformed.
 	 */
 	private boolean isExpanded(String url) {
 		return EXPANSION.matcher(url).find();
@@ -159,11 +157,10 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	/**
 	 * The {@code http}/{@code https} scheme of a syntactically valid absolute URL, or
-	 * null otherwise. Presence of an authority is what makes the URL absolute, read
-	 * from {@link URI#getAuthority()} rather than {@link URI#getHost()}: the latter is
-	 * null for a host name {@code java.net.URI} considers non-compliant, so an
-	 * underscore in it — routine in a container or service name — turned a URL Claude
-	 * Code connects to into a reported malformation.
+	 * null. Absoluteness is read from {@link URI#getAuthority()} rather than
+	 * {@link URI#getHost()}: the latter is null for a host name {@code java.net.URI}
+	 * considers non-compliant, so an underscore — routine in a container name — turned
+	 * a URL Claude Code connects to into a reported malformation.
 	 */
 	private String schemeOf(String url) {
 		try {

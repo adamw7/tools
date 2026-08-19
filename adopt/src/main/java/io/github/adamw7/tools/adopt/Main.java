@@ -21,13 +21,13 @@ import io.github.adamw7.tools.adopt.command.CommandRunners;
  * several repositories writes the batch document {@link AdoptionReportWriter}
  * describes.
  *
- * <p>{@code --help} is answered with the usage line and nothing is adopted. The
- * line goes to the log, which the console appender writes to standard error: the
- * same jar is the adoption MCP server, whose stdio transport owns standard output.
+ * <p>{@code --help} is answered with the usage line and nothing is adopted. The line
+ * goes to the log, which the console appender writes to standard error: the same jar
+ * is the adoption MCP server, whose stdio transport owns standard output.
  *
- * <p>A repository whose adoption fails does not stop the ones behind it — nor does
- * one whose URL names no repository at all: the batch runs to the end and the
- * failures are raised together afterwards, so the process still exits non-zero.
+ * <p>A repository whose adoption fails does not stop the ones behind it, nor does
+ * one whose URL names no repository: the batch runs to the end and the failures are
+ * raised together, so the process still exits non-zero.
  */
 public class Main {
 
@@ -44,9 +44,8 @@ public class Main {
 	}
 
 	/**
-	 * Runs the adoption of every requested repository and writes the report on both
-	 * paths, so a run that fails part-way still leaves the {@code --report} file
-	 * behind rather than nothing at all.
+	 * Runs every requested repository and writes the report on both paths, so a run
+	 * that fails part-way still leaves the {@code --report} file behind.
 	 *
 	 * @return the runs, once every repository has been attempted
 	 * @throws AdoptionException when any repository's adoption failed, naming each

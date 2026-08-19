@@ -22,11 +22,10 @@ import io.github.adamw7.tools.markdown.LineTerminators;
  * {@link VerifyStep}.
  *
  * <p>How much reshaping that takes is the detected {@link BuildSystem}'s to say,
- * through {@link BuildSystem#requiredClaudeMdSections()}: the Maven path wires in
- * the full format rule and gets the full set of sections, while a guard that asks
- * only for a non-empty file leaves the generated document as {@code claude init}
- * wrote it. Reshaping past what the guard checks would put a Java project's
- * headings into repositories that are not one.
+ * through {@link BuildSystem#requiredClaudeMdSections()}: the Maven path gets the
+ * full set of sections, while a guard asking only for a non-empty file leaves the
+ * document as {@code claude init} wrote it. Reshaping past what the guard checks
+ * would put a Java project's headings into repositories that are not one.
  *
  * <p>The step runs before the first commit so both files are committed together.
  * It never overwrites an {@code AGENTS.md} the project already carries, and

@@ -20,12 +20,10 @@ final class EnforcerRuleVersion {
 	}
 
 	/**
-	 * The released rule version to wire in. Resolving it lazily — only once a POM is
-	 * actually being edited — keeps merely constructing the default
-	 * {@link BuildSystems#DEFAULTS} list, or adopting a repository that builds with
-	 * something other than Maven, from depending on the running build's version. It is
-	 * re-read per repository rather than cached, so this class keeps the immutability
-	 * every step here is held to.
+	 * The released rule version to wire in, resolved lazily — only once a POM is being
+	 * edited — so constructing {@link BuildSystems#DEFAULTS} or adopting a non-Maven
+	 * repository does not depend on the running build's version. Re-read per
+	 * repository rather than cached, keeping the immutability every step is held to.
 	 */
 	static String release() {
 		return requireRelease(fromBuildMetadata());

@@ -23,16 +23,13 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * reused rather than re-cloned, so re-running the adoption against the same
  * workspace does not abort on an "already exists" clone failure.
  *
- * <p>A reused checkout is confirmed to be the repository under adoption before
- * anything is done to it, by comparing the repository its {@code origin} names
- * with the one the run was given. A checkout directory is named after the
- * repository alone, so two repositories of the same name — {@code alice/tools}
- * and {@code bob/tools}, or one repository and its fork — claim one directory
- * under a named {@code --workspace}. {@link io.github.adamw7.tools.adopt.Checkouts}
- * catches that collision within a single run, but two runs against the same
- * workspace never meet; without this check the second adoption would silently
- * branch, commit, and push the first repository's working tree, and report the
- * first repository's pull request as the second's.
+ * <p>A reused checkout is confirmed to be the repository under adoption first, by
+ * comparing what its {@code origin} names with the URL the run was given. A
+ * checkout directory is named after the repository alone, so {@code alice/tools}
+ * and {@code bob/tools} claim one directory under a named {@code --workspace};
+ * {@link io.github.adamw7.tools.adopt.Checkouts} catches that within a single run,
+ * but two runs against the same workspace never meet, and the second adoption would
+ * otherwise branch, commit and push the first repository's working tree.
  *
  * <p>A reused checkout must also be free of uncommitted work that is not the
  * adoption's own, since {@link CommitStep} stages the whole tree and would push a
@@ -57,11 +54,11 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Makes {@code git status} name every untracked file rather than collapsing a
-	 * wholly-untracked directory into a single entry. Without it a checkout whose
-	 * {@code .claude/} the adoption had just created was reported as that one path,
-	 * which is not among {@link AdoptionAssets#WRITTEN_PATHS} — so a resumed adoption
-	 * was refused for changes that were its own. That is the common case: a repository
-	 * being adopted has no {@code .claude/} to begin with.
+	 * wholly-untracked directory into one entry. Without it the {@code .claude/} the
+	 * adoption had just created was reported as that one path, which is not among
+	 * {@link AdoptionAssets#WRITTEN_PATHS}, so a resumed adoption was refused for
+	 * changes that were its own — the common case, since a repository being adopted
+	 * has no {@code .claude/} to begin with.
 	 */
 	private static final String UNTRACKED_FILES_ALL = "--untracked-files=all";
 
@@ -70,27 +67,21 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Keeps a fetch from recording the URL it fetched through in
-	 * {@code .git/FETCH_HEAD}, which is where a credentialled one would outlive the
-	 * run — the same leak {@link #forgetCredentials} closes in {@code .git/config}.
-	 * Nothing here reads that file: the fetch is made for the remote-tracking refs
-	 * {@link BranchStep} resolves. Only the credentialled fetch asks for it, so a git
-	 * too old to know the option is unaffected unless the run is driven by a URL
-	 * carrying credentials.
+	 * {@code .git/FETCH_HEAD}, where a credentialled one would outlive the run — the
+	 * leak {@link #forgetCredentials} closes in {@code .git/config}. Nothing here
+	 * reads that file. Only the credentialled fetch asks for the option, so a git too
+	 * old to know it is unaffected unless the run carries credentials.
 	 */
 	private static final String NO_FETCH_HEAD = "--no-write-fetch-head";
 
 	/**
-	 * One entry of {@code git status --porcelain}: the index and work-tree status
-	 * letters — the alphabet git documents for the format — then the space before the
-	 * path.
-	 *
-	 * <p>The transcript merges standard error into standard output, so it is not
-	 * reliably status entries and nothing else: a git that warns puts that line in
-	 * there too. Reading every line as an entry took the warning's fourth character
-	 * onwards for a path and refused the resume this step promises. At least one of
-	 * the two letters therefore has to say something — git never reports a path whose
-	 * index and work tree are both unchanged — because accepting two spaces let
-	 * through any line indented by three of them.
+	 * One entry of {@code git status --porcelain}: the two status letters git
+	 * documents, then the space before the path. The transcript merges standard error
+	 * in, so it is not reliably entries and nothing else — reading every line as one
+	 * took a warning's fourth character onwards for a path and refused the resume this
+	 * step promises. At least one letter has to say something, since git never reports
+	 * a path unchanged in both index and work tree, and accepting two spaces let
+	 * through any line indented by three.
 	 */
 	private static final Pattern STATUS_ENTRY = Pattern.compile("^(?! {2})[ MTADRCU?!]{2} .+");
 
@@ -101,9 +92,9 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Records the checkout before doing anything to it, so a run that fails part-way
-	 * still says where the working tree it left behind is. Nothing else answers the
-	 * question: a caller that named no workspace was given a temporary one, and a dry
-	 * run leaves that directory as the only thing there is to read.
+	 * still says where the working tree it left behind is — a caller that named no
+	 * workspace was given a temporary one, and a dry run leaves that directory as the
+	 * only thing to read.
 	 */
 	@Override
 	public void execute(AdoptionContext context, CommandRunner runner, AdoptionReport report) {
@@ -130,22 +121,18 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Rewrites the {@code origin} git just recorded to the credential-free form of the
-	 * same URL, because {@code git clone} writes the URL it was handed into
-	 * {@code .git/config} verbatim — so an adoption driven by CI, whose URL carries
-	 * {@code x-access-token:TOKEN}, left that token in plaintext in the workspace, for
-	 * as long as the workspace survives. Masking it in the logs and the report keeps it
-	 * out of what the run <em>says</em>; nothing but this keeps it out of what the run
-	 * <em>leaves behind</em>.
+	 * same URL: {@code git clone} writes the URL it was handed into
+	 * {@code .git/config} verbatim, so an adoption driven by CI left its
+	 * {@code x-access-token:TOKEN} in plaintext for as long as the workspace survives.
+	 * Masking keeps it out of what the run <em>says</em>; only this keeps it out of
+	 * what the run <em>leaves behind</em>.
 	 *
-	 * <p>The two commands that still have to authenticate are unaffected, because
-	 * neither reads the URL back from the checkout: {@link PushStep} supplies it as a
-	 * push-URL override, and {@link #fetchCommand} as a rewrite of the remote it
-	 * fetches from — each for that one invocation, and each written nowhere.
-	 *
-	 * <p>Only the remote this step just wrote is rewritten, and only when the URL
-	 * carried credentials at all. A reused checkout's {@code origin} is left exactly as
-	 * its owner configured it — it is not the adoption's to edit, and the operator may
-	 * well push through it themselves afterwards.
+	 * <p>The two commands that still authenticate are unaffected, neither reading the
+	 * URL back from the checkout: {@link PushStep} supplies it as a push-URL override
+	 * and {@link #fetchCommand} as a remote rewrite, each for one invocation and
+	 * written nowhere. Only the remote this step just wrote is rewritten, and only
+	 * when the URL carried credentials — a reused checkout's {@code origin} is its
+	 * owner's, not the adoption's to edit.
 	 */
 	private void forgetCredentials(AdoptionContext context, CommandRunner runner) {
 		if (context.checkoutUrl().equals(context.repositoryUrl())) {
@@ -166,16 +153,13 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * Refuses a reused checkout carrying uncommitted work that is not the adoption's
-	 * own. {@link CommitStep} stages the whole tree with {@code git add -A}, so
-	 * whatever a contributor had in progress in that checkout would be swept into the
-	 * adoption's commit, pushed to the feature branch, and offered for review as part
-	 * of adopting Claude Code.
-	 *
-	 * <p>Only unrelated paths stop the run. An adoption that failed between writing a
-	 * file and committing it leaves exactly the paths {@link AdoptionAssets} names, so
-	 * re-running against the same workspace still resumes — which is the case worth
-	 * resuming, the one that has already paid for a {@code claude init}.
+	 * Refuses a reused checkout carrying uncommitted work that is not the adoption's.
+	 * {@link CommitStep} stages the whole tree with {@code git add -A}, so a
+	 * contributor's work in progress would be swept into the adoption's commit and
+	 * offered for review as part of adopting Claude Code. Only unrelated paths stop
+	 * the run: an adoption that failed between writing a file and committing it leaves
+	 * exactly the paths {@link AdoptionAssets} names, so it still resumes — the case
+	 * worth resuming, having already paid for a {@code claude init}.
 	 */
 	private void requireNoUnrelatedChanges(AdoptionContext context, CommandRunner runner) {
 		List<String> unrelated = unrelatedChanges(context, runner);
@@ -204,11 +188,10 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * The paths one entry changes. A rename or a copy is reported as
-	 * {@code old -> new} and changes <em>both</em> sides, so both are asked about:
-	 * reading only the destination waved the whole entry through whenever that
-	 * destination happened to be a path the adoption writes, so a contributor's staged
-	 * {@code git mv docs/CLAUDE.md CLAUDE.md} was swept into the adoption's commit.
+	 * The paths one entry changes. A rename or copy is reported as {@code old -> new}
+	 * and changes <em>both</em> sides: reading only the destination waved the entry
+	 * through whenever that destination was a path the adoption writes, sweeping a
+	 * staged {@code git mv docs/CLAUDE.md CLAUDE.md} into the adoption's commit.
 	 */
 	private Stream<String> changedPaths(String statusLine) {
 		String path = statusLine.substring(STATUS_PREFIX);
@@ -243,11 +226,10 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * The transcript merges standard error into standard output, so the {@code origin}
-	 * URL is not reliably the whole of it and reading it as one URL failed a checkout
-	 * that was the right one all along. Every line is asked in turn, which keeps the
-	 * conservative reading {@link AdoptionContext#isSameRepository} is built on: noise
-	 * names no repository, so a transcript carrying nothing else still answers no.
+	 * The transcript merges standard error in, so the {@code origin} URL is not
+	 * reliably the whole of it and reading it as one URL failed a checkout that was
+	 * right all along. Every line is asked in turn, keeping the conservative reading
+	 * {@link AdoptionContext#isSameRepository} is built on: noise names no repository.
 	 */
 	private boolean namesThisRepository(AdoptionContext context, String transcript) {
 		return transcript.lines().map(String::strip).anyMatch(context::isSameRepository);
@@ -259,12 +241,10 @@ public class CloneStep extends AbstractCommandStep {
 	 * {@link PushStep} would have nowhere to publish the branch to anyway.
 	 *
 	 * <p>The remote is read from the configuration rather than with {@code git remote
-	 * get-url}, which expands the {@code url.<base>.insteadOf} rewrites the caller's
-	 * git may configure and so answers a URL the checkout never recorded. A rewrite
-	 * onto a mirror names a different host and path, so the reused checkout was
-	 * refused as a different repository in exactly the environments that configure
-	 * one. Only the raw configured value can be compared with the URL the run was
-	 * asked to adopt.
+	 * get-url}, which expands the caller's {@code url.<base>.insteadOf} rewrites and so
+	 * answers a URL the checkout never recorded — a rewrite onto a mirror names a
+	 * different host and path, refusing the reused checkout in exactly the
+	 * environments that configure one.
 	 */
 	private String originTranscript(AdoptionContext context, CommandRunner runner) {
 		return askGit(context, runner,
@@ -275,16 +255,13 @@ public class CloneStep extends AbstractCommandStep {
 
 	/**
 	 * Puts a question to git about the checkout being reused, answering with the
-	 * transcript. A query that could not be <em>run</em> leaves a checkout this step
-	 * cannot vouch for rather than an adoption that may go on, so it stops the run —
-	 * and stops it saying what {@link #runOrFail} does not: which directory, what
-	 * could not be established about it, and only then git's own words.
+	 * transcript. A query that could not be <em>run</em> stops the run, saying which
+	 * directory, what could not be established about it, and only then git's own words.
 	 *
-	 * <p>Both questions are asked through here because both have the same failure to
-	 * avoid. Each reads its answer out of the transcript, and a transcript that is
-	 * empty because the command never ran is indistinguishable from one that is empty
-	 * because the answer was "nothing" — a checkout with no {@code origin} read as one
-	 * whose {@code origin} matched, and an unreadable status as a clean working tree.
+	 * <p>Both questions come through here because both read their answer out of the
+	 * transcript, and one empty because the command never ran is indistinguishable
+	 * from one empty because the answer was "nothing" — a checkout with no
+	 * {@code origin} read as one whose {@code origin} matched.
 	 *
 	 * @param unanswered what a failed query leaves unknown, reported after the
 	 *                   checkout directory and before the redacted transcript
@@ -301,9 +278,9 @@ public class CloneStep extends AbstractCommandStep {
 	/**
 	 * Brings the reused checkout's remote-tracking refs up to date, so
 	 * {@link BranchStep} sees a feature branch an earlier adoption published and
-	 * resumes from its tip. A checkout that predates that push carries no
-	 * {@code origin/<branch>} ref, which would restart the branch at the default
-	 * branch and leave {@link PushStep} refused as a non-fast-forward.
+	 * resumes from its tip. A checkout predating that push carries no
+	 * {@code origin/<branch>}, restarting the branch at the default branch and leaving
+	 * {@link PushStep} refused as a non-fast-forward.
 	 */
 	private void refresh(AdoptionContext context, CommandRunner runner) {
 		log.info("Fetching {} in {}", AdoptionContext.REMOTE, context.repositoryDirectory());
@@ -311,29 +288,24 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * Fetches through the credentials the run was given, because the {@code origin}
-	 * a reused checkout carries has none: {@link #forgetCredentials} took them out of
-	 * {@code .git/config} the moment the clone put them there. A plain
-	 * {@code git fetch origin} therefore reaches a private repository as an anonymous
-	 * caller and is refused — so an adoption driven by CI into a workspace it keeps
-	 * between runs failed on the very step that exists to resume it, and failed for
-	 * exactly the repositories a credentialled URL is handed for.
+	 * Fetches through the credentials the run was given, the {@code origin} of a
+	 * reused checkout having none — {@link #forgetCredentials} took them out the
+	 * moment the clone put them there. A plain {@code git fetch origin} reaches a
+	 * private repository anonymously and is refused, so an adoption driven by CI into
+	 * a kept workspace failed on the very step that exists to resume it.
 	 *
-	 * <p>The credentials are supplied the way {@link PushStep} supplies them: to this
-	 * one invocation, written nowhere. They cannot go through
-	 * {@code -c remote.origin.url}, which git reads as <em>another</em> of that key's
-	 * values rather than as a replacement and resolves the configured one first, nor
-	 * through a URL named positionally, which git records verbatim in the reflog of
-	 * every ref it updates. A transient {@code insteadOf} rewrite leaves the fetch
-	 * naming the remote, so the reflog records only {@code fetch origin} — and
-	 * {@link #NO_FETCH_HEAD} keeps the rewritten URL out of {@code .git/FETCH_HEAD},
-	 * the one other place the fetch would have written it down.
+	 * <p>The credentials go to this one invocation, written nowhere. They cannot go
+	 * through {@code -c remote.origin.url}, which git reads as <em>another</em> of
+	 * that key's values and resolves the configured one first, nor through a
+	 * positional URL, which git records verbatim in the reflog of every ref it
+	 * updates. A transient {@code insteadOf} rewrite leaves the fetch naming the
+	 * remote, so the reflog records only {@code fetch origin}, and
+	 * {@link #NO_FETCH_HEAD} keeps the rewritten URL out of {@code .git/FETCH_HEAD}.
 	 *
-	 * <p>The rewrite is keyed on {@link AdoptionContext#checkoutUrl()}, which is the
+	 * <p>The rewrite is keyed on {@link AdoptionContext#checkoutUrl()}, the
 	 * {@code origin} of every checkout this step cloned. A checkout somebody else set
-	 * up may name the same repository by another form, which the rewrite does not
-	 * match and so leaves the fetch exactly as it was before — their {@code origin},
-	 * with whatever credentials they configured for it.
+	 * up may name the repository another way, which the rewrite does not match and so
+	 * leaves the fetch exactly as it was — their {@code origin}, their credentials.
 	 */
 	private List<String> fetchCommand(AdoptionContext context) {
 		if (context.checkoutUrl().equals(context.repositoryUrl())) {
@@ -348,12 +320,10 @@ public class CloneStep extends AbstractCommandStep {
 	}
 
 	/**
-	 * A checkout is recognised by its {@code .git} whether that is the directory a
-	 * plain clone leaves or the file a linked worktree does. Insisting on the
-	 * directory read a worktree as uncloned and ran {@code git clone} into a
-	 * directory that was not empty, which git refuses — so the step aborted on a
-	 * checkout it was meant to reuse, and did so without ever confirming it held the
-	 * repository under adoption.
+	 * A checkout is recognised by its {@code .git}, whether the directory a plain
+	 * clone leaves or the file a linked worktree does. Insisting on the directory read
+	 * a worktree as uncloned and ran {@code git clone} into a non-empty directory,
+	 * aborting on a checkout it was meant to reuse.
 	 */
 	private boolean alreadyCloned(AdoptionContext context) {
 		Path gitDirectory = context.repositoryDirectory().resolve(".git");

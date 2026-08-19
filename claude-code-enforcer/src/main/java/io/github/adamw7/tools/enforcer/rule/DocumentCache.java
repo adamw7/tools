@@ -16,28 +16,20 @@ import io.github.adamw7.tools.markdown.MarkdownDocument;
 /**
  * Reads and parses each input file once per build, however many rules ask for it.
  *
- * <p>The rules are deliberately independent — each names its own inputs and
- * reaches a verdict on them alone — and the cost of that is that they overlap. A
- * project wiring the catalogue has {@code CLAUDE.md} read and parsed by
- * {@code claudeMdFormat}, {@code contextBudget}, {@code memoryImports},
- * {@code crossDocConsistency} and {@code moduleMapConsistency}, and
- * {@code settings.json} read and parsed by {@code settingsJsonValid},
- * {@code hookCommandsValid}, {@code hooksFormat} and {@code permissionsFormat}.
- * Sharing the result costs the rules none of their independence, because what is
+ * <p>The rules are deliberately independent, and the cost of that is that they
+ * overlap: {@code CLAUDE.md} is read by five of them and {@code settings.json} by
+ * four. Sharing the result costs them none of that independence, because what is
  * shared is the file's content and not any rule's reading of it.
  *
- * <p>An entry is keyed by what the file <em>is</em> rather than by where it is:
- * the path together with its modification time and size. A file rewritten during
- * the build — which {@code autoFix} does — therefore misses rather than serving
- * the content it had before the fix, without anything having to remember to
- * invalidate it. Only successful reads and parses are kept; a file that could not
- * be read or did not parse is re-read, since the rule that asked is about to fail
- * the build anyway and a cached failure would have to carry its diagnosis too.
+ * <p>An entry is keyed by what the file <em>is</em> rather than where it is: the
+ * path with its modification time and size. A file rewritten during the build —
+ * which {@code autoFix} does — therefore misses, with nothing having to remember
+ * to invalidate it. Only successful reads and parses are kept; a failure is
+ * re-read, since the rule that asked is about to fail the build anyway.
  *
  * <p>The cache is static because a Maven session builds each rule afresh, so
  * anything held per instance is held for exactly one rule. It is bounded and
- * dropped wholesale when it fills: entries are worth keeping for one build, and a
- * build reads a handful of files.
+ * dropped wholesale when it fills: entries are worth keeping for one build.
  */
 final class DocumentCache {
 
@@ -50,11 +42,10 @@ final class DocumentCache {
 
 	/**
 	 * One map for every kind of entry, keyed by the file and what was made of it.
-	 * Values are held as {@link Object} and cast back on the way out, so that nothing
-	 * here names the type of any particular parse — a cache that mentioned Jackson
-	 * dragged it onto the classpath of every caller that loads a rule, and the adopt
-	 * module's contract test, which runs the real claudeMdFormat rule with no JSON
-	 * parser anywhere, failed to load a class it never uses.
+	 * Values are held as {@link Object} and cast back on the way out, so nothing here
+	 * names the type of any particular parse: mentioning Jackson dragged it onto the
+	 * classpath of every caller that loads a rule, and the adopt module's contract
+	 * test failed to load a class it never uses.
 	 */
 	private static final Map<Entry, Object> CACHE = new ConcurrentHashMap<>();
 
@@ -124,10 +115,9 @@ final class DocumentCache {
 
 	/**
 	 * What identifies a file's content for the length of a build: where it is, when
-	 * it was last written, and how big it is. A file whose stamp cannot be read —
-	 * because it is not there, or the filesystem refused — yields no key at all, and
-	 * the caller reads it directly: the rule's own missing-file diagnosis is a better
-	 * answer than anything this class could invent.
+	 * it was last written, how big it is. A file whose stamp cannot be read yields no
+	 * key, and the caller reads it directly — the rule's own missing-file diagnosis
+	 * beats anything this class could invent.
 	 */
 	private record Key(Path path, long lastModified, long size) {
 
@@ -143,9 +133,8 @@ final class DocumentCache {
 
 		/**
 		 * The finest modification time the filesystem records. Truncating to
-		 * milliseconds would leave a window in which two writes stamp identically, and
-		 * an equal-length rewrite inside it would be served from the cache — exactly the
-		 * stale read this key exists to prevent.
+		 * milliseconds leaves a window in which two writes stamp identically, and an
+		 * equal-length rewrite inside it would be served from the cache.
 		 */
 		private static long nanoseconds(BasicFileAttributes attributes) {
 			return attributes.lastModifiedTime().to(TimeUnit.NANOSECONDS);

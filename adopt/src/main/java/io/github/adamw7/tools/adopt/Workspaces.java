@@ -11,10 +11,10 @@ import java.util.Optional;
  * the caller left the choice open. Shared by the command line and the MCP server,
  * and failing with an {@link AdoptionException} like every other adoption failure.
  *
- * <p>The returned path is always absolute. The clone step runs {@code git clone}
+ * <p>The returned path is always absolute: the clone step runs {@code git clone}
  * with the workspace as its working directory and {@code workspace/name} as the
- * target, so a relative workspace would be resolved a second time and nest the
- * checkout under {@code workspace/workspace/name}.
+ * target, so a relative one would resolve twice and nest the checkout under
+ * {@code workspace/workspace/name}.
  */
 public final class Workspaces {
 

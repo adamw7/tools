@@ -5,14 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Reads and writes the text files an adoption touches — the checkout's build
- * script, the generated {@code CLAUDE.md}, the starter assets, the run's JSON
- * report — failing with an {@link AdoptionException} rather than a raw
- * {@link IOException} every caller would have to wrap for itself. Writes create
- * the parent directories first, so an asset under a directory the checkout does
- * not carry yet ({@code .claude/hooks/}) still lands, and the
- * {@code description} names the file in the failure message the way the operator
- * thinks of it.
+ * Reads and writes the text files an adoption touches, failing with an
+ * {@link AdoptionException} rather than a raw {@link IOException} every caller would
+ * wrap for itself. Writes create the parent directories first, so an asset under a
+ * directory the checkout does not carry yet still lands; {@code description} names
+ * the file in the failure message.
  */
 public final class AdoptionFiles {
 

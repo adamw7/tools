@@ -10,19 +10,17 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * Base for enforcer rules that validate a single JSON configuration file. It owns
- * the scaffolding every such rule repeats: the file parameter must be configured,
- * the file must exist (unless the subclass treats absence as a pass), be non-empty,
- * and parse as JSON. A parse failure is collected as a violation rather than
- * thrown, so it is reported through the shared {@link #report} path alongside any
- * structural problems.
+ * Base for enforcer rules that validate a single JSON configuration file: the file
+ * parameter must be configured, the file must exist (unless the subclass treats
+ * absence as a pass), be non-empty, and parse as JSON. A parse failure is collected
+ * as a violation rather than thrown, so it is reported through the shared
+ * {@link #report} path beside any structural problems.
  * <p>
- * A subclass names its file parameter and the human-readable description used in
- * messages at construction, and contributes the file itself, the report header,
- * and the document-specific checks against the parsed {@link JsonNode}. A
- * misconfigured rule or a missing or empty file always fails, because that is a
- * build-setup mistake; a rule whose file is optional says so with {@link #OPTIONAL}
- * and passes on an absent one instead.
+ * A subclass names its file parameter and the description used in messages at
+ * construction, and contributes the file, the report header and the checks against
+ * the parsed {@link JsonNode}. A misconfigured rule or a missing or empty file
+ * always fails as a build-setup mistake; a rule whose file is optional says so with
+ * {@link #OPTIONAL} and passes on an absent one.
  */
 public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 
@@ -82,9 +80,8 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * The parsed file, through {@link DocumentCache} so the four rules that each
-	 * check a section of {@code settings.json} parse it once between them. A parse
-	 * that fails is not cached: it collects the violation that says why, and the next
-	 * rule to ask needs that violation too.
+	 * check a section of {@code settings.json} parse it once between them. A failed
+	 * parse is not cached: the next rule to ask needs its violation too.
 	 */
 	private Optional<JsonNode> parse(File file, List<String> violations) throws EnforcerRuleException {
 		String content = requireContent(file, description);
@@ -104,14 +101,10 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	protected abstract void collectViolations(JsonNode root, List<String> violations) throws EnforcerRuleException;
 
 	/**
-	 * The optional object at {@code key}, for a rule that validates one section of a
-	 * larger file: empty when the file declares no such section, which is a pass, and
-	 * empty with a violation collected when it declares one that is not an object,
-	 * because a mistyped section must not slip through unvalidated.
-	 * <p>
-	 * The message names the file the way every other message from this rule does, so
-	 * the three rules that each validate a section of {@code settings.json} or
-	 * {@code .mcp.json} no longer spell the same sentence out three times.
+	 * The optional object at {@code key}, for a rule validating one section of a
+	 * larger file: empty when the file declares no such section (a pass), and empty
+	 * with a violation when it declares one that is not an object, since a mistyped
+	 * section must not slip through unvalidated.
 	 */
 	protected final Optional<JsonNode> section(JsonNode root, String key, List<String> violations) {
 		if (!root.has(key)) {

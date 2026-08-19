@@ -29,17 +29,17 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * {@code allowedExtensions} whitelist rejects a stray file such as a {@code .txt}
  * note left in the directory.
  * <p>
- * When {@code settingsFile} is configured, any command hook whose command resolves
- * a project-local path into the hooks directory — written with
- * {@code $CLAUDE_PROJECT_DIR} or as the plain repository-relative path Claude Code
- * resolves the same way — must point at a script that exists there, catching a hook
- * renamed on disk but not in settings;
- * {@code reportUnreferencedScripts} also reports a script no hook references. The
- * {@code hooksDir} parameter must be configured, but an absent directory is a pass
- * because hooks are optional; one that is there and is not a directory fails, since
- * a rule that silently scanned nothing cannot be told from a project with no hooks.
- * A {@code settingsFile} that is configured and absent fails outright, because that
- * is a build-setup mistake. All problems found are reported together.
+ * When {@code settingsFile} is configured, any command hook resolving a
+ * project-local path into the hooks directory — written with
+ * {@code $CLAUDE_PROJECT_DIR} or as the repository-relative path Claude Code
+ * resolves the same way — must point at a script that exists, catching a hook
+ * renamed on disk but not in settings; {@code reportUnreferencedScripts} also
+ * reports a script no hook references. {@code hooksDir} must be configured, but an
+ * absent directory is a pass since hooks are optional; a path that is there and is
+ * not a directory fails, a rule that silently scanned nothing being
+ * indistinguishable from a project with no hooks. A configured but absent
+ * {@code settingsFile} fails outright as a build-setup mistake. All problems are
+ * reported together.
  */
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {
@@ -82,22 +82,20 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * Every regular file under the hooks directory, however deep. The scan used to
-	 * stop at the top level, which left the two halves of this rule disagreeing about
-	 * what the hooks directory is: {@link HookWiring} resolves a hook naming
-	 * {@code .claude/hooks/setup/install.sh} as a script <em>inside</em> the directory
-	 * and requires it to exist, while the format checks never saw it — so that script
-	 * could be committed with no shebang and no executable bit, and
-	 * {@code reportUnreferencedScripts} could not report it either.
+	 * Every regular file under the hooks directory, however deep. Stopping at the top
+	 * level left the two halves of this rule disagreeing about what that directory
+	 * is: {@link HookWiring} requires a hook naming {@code hooks/setup/install.sh} to
+	 * exist, while the format checks never saw it, so that script could be committed
+	 * with no shebang and no executable bit.
 	 */
 	private List<File> scripts() throws EnforcerRuleException {
 		return new ScanTargets(List.of(), List.of(hooksDir)).filesInDirectories(path -> true);
 	}
 
 	/**
-	 * A file that cannot be decoded as text is reported rather than read, because
-	 * the hooks directory holds whatever a repository put there and an undecodable
-	 * file must not abort the build before the remaining scripts are checked.
+	 * A file that cannot be decoded as text is reported rather than read: the hooks
+	 * directory holds whatever a repository put there, and an undecodable file must
+	 * not abort the build before the remaining scripts are checked.
 	 */
 	private void collectScriptViolations(File script, List<String> violations) {
 		Optional<String> text = MarkdownText.readIfTextWithByteOrderMark(script);
@@ -122,12 +120,10 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * The shebang is read from the raw text, byte-order mark and all. The kernel
-	 * reads bytes, so a mark in front of the {@code #!} makes the script unrunnable
-	 * — and reading the stripped text reported exactly that script, the one this
-	 * rule exists to catch before it is committed, as well formed. A script with no
-	 * shebang at all is still reported as the missing shebang it is, so the message
-	 * names the problem the author has rather than the one behind it.
+	 * The shebang is read from the raw text, byte-order mark and all: the kernel
+	 * reads bytes, so a mark in front of the {@code #!} makes the script unrunnable,
+	 * and reading the stripped text reported exactly that script as well formed. A
+	 * script with no shebang at all is still reported as the missing shebang it is.
 	 */
 	private void collectShebangViolation(File script, String raw, List<String> violations) {
 		if (!MarkdownText.stripByteOrderMark(raw).startsWith(SHEBANG)) {
@@ -145,11 +141,10 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * A configured settings file that is not there is a build-setup mistake, so it
-	 * always fails, whatever the severity: reporting it as a violation let
-	 * {@code severity=warn} turn the whole wiring cross-check off silently, which is
-	 * the one outcome a rule must not have. Everything the cross-check itself finds
-	 * is a violation, and is collected by {@link HookWiring}.
+	 * A configured settings file that is not there is a build-setup mistake and fails
+	 * whatever the severity: reporting it as a violation let {@code severity=warn}
+	 * turn the whole wiring cross-check off silently. What the cross-check itself
+	 * finds is a violation, collected by {@link HookWiring}.
 	 */
 	private void collectWiringViolations(List<File> scripts, List<String> violations) throws EnforcerRuleException {
 		if (settingsFile == null) {

@@ -26,14 +26,13 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * configures stays in force.
  *
  * <p>Staging is also where the adoption finds out that the checkout excludes a file
- * it wrote, since {@code git add -A} skips an ignored path without saying so. That
- * is refused rather than committed around — see
+ * it wrote, {@code git add -A} skipping an ignored path silently. That is refused
+ * rather than committed around — see
  * {@link #requireNothingTheAdoptionWroteIsIgnored}.
  *
- * <p>The pipeline runs this step two or three times, so each one is qualified with
- * what it commits: a report whose {@code completedSteps} read {@code commit} three
- * times said only how far the run got by counting, while a qualified one says which
- * of the adoption's commits landed.
+ * <p>The pipeline runs this step two or three times, so each is qualified with what
+ * it commits: a report whose {@code completedSteps} read {@code commit} three times
+ * said only how far the run got by counting.
  */
 public class CommitStep extends AbstractCommandStep {
 

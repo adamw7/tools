@@ -31,10 +31,9 @@ final class McpServers {
 
 	/**
 	 * Hands each declared server to {@code check}, by name. An entry that is not a
-	 * JSON object arrives as {@code null}, since what to say about one differs
-	 * between the rules: a malformed entry is a violation to the rule that validates
-	 * the transport, and nothing to say for the rule that validates optional fields
-	 * the entry cannot have.
+	 * JSON object arrives as {@code null}, what to say about one differing between
+	 * the rules: a violation to the one validating the transport, nothing to the one
+	 * validating optional fields the entry cannot have.
 	 */
 	static void forEach(JsonNode servers, BiConsumer<String, JsonNode> check) {
 		for (String name : JsonNodes.fieldNames(servers)) {

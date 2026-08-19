@@ -27,18 +27,17 @@ import io.github.adamw7.tools.markdown.LineTerminators;
  * {@link #write()} untouched, so the adoption commit shows only the block that was
  * added.
  *
- * <p>The parse is only ever read — it answers which elements the POM declares, how
- * they nest, and where each of them sits in the source text — while the edit itself
- * is text spliced into the bytes the file already held. Writing an edited tree out
- * whole cannot keep that promise however carefully the serialiser is configured,
- * because the details it reformats are not in the tree to begin with. Keeping the
- * edit textual also means added elements inherit the POM's default namespace rather
- * than having to be qualified.
+ * <p>The parse is only ever read — which elements the POM declares, how they nest,
+ * where each sits in the source — while the edit is text spliced into the bytes the
+ * file already held. Writing an edited tree out whole cannot keep that promise
+ * however the serialiser is configured, the details it reformats not being in the
+ * tree to begin with; keeping the edit textual also lets added elements inherit the
+ * POM's default namespace.
  *
- * <p>The reading is jsoup's, whose XML parser reports the source range of every
- * start and end tag it reads — the one thing a plain DOM parse cannot answer. jsoup
- * resolves no DTDs and no external entities at all, so the secure-processing
- * configuration a JAXP parse needed has nothing left to switch off.
+ * <p>The reading is jsoup's, whose XML parser reports the source range of every tag
+ * — the one thing a plain DOM parse cannot answer. It resolves no DTDs or external
+ * entities, so the secure-processing configuration a JAXP parse needed has nothing
+ * left to switch off.
  *
  * <p>Added markup arrives one element per line, indented by
  * {@link #FRAGMENT_INDENT} per nesting level, and is re-indented to the document's
@@ -75,9 +74,8 @@ final class PomDocument {
 	}
 
 	/**
-	 * The file is read once and parsed from that same text, so the elements and the
-	 * source offsets they report can never come from two different reads of a file
-	 * that changed in between.
+	 * Read once and parsed from that same text, so the elements and their source
+	 * offsets never come from two different reads of a file that changed between them.
 	 */
 	static PomDocument read(Path file) {
 		String original = AdoptionFiles.read(file, DESCRIPTION);
@@ -90,9 +88,8 @@ final class PomDocument {
 
 	/**
 	 * The element the nested {@code path} names below the root, or empty when the POM
-	 * does not carry every level of it. The counterpart of {@link #insertUnder}: a
-	 * caller asks about the very place it would add to, so what it inspects and what
-	 * it edits cannot drift apart.
+	 * lacks a level of it. The counterpart of {@link #insertUnder}, so what a caller
+	 * inspects and what it edits cannot drift apart.
 	 */
 	Optional<Element> at(List<String> path) {
 		Optional<Element> element = Optional.of(root);
@@ -148,11 +145,10 @@ final class PomDocument {
 	}
 
 	/**
-	 * Writes the original text back with the added markup spliced into it, so every
-	 * byte the file already held — its XML declaration, its attribute layout, its
-	 * empty-element style, its trailing newline — is preserved by construction rather
-	 * than by a serialiser that has to be talked out of reformatting. A POM nothing was
-	 * added to is written back unchanged.
+	 * Writes the original text back with the added markup spliced in, so every byte the
+	 * file held — XML declaration, attribute layout, empty-element style, trailing
+	 * newline — is preserved by construction rather than by a serialiser talked out of
+	 * reformatting. A POM nothing was added to is written back unchanged.
 	 *
 	 * <p>The edits are applied last-first so that each one's offsets, taken from the
 	 * unmodified text, are still correct when it is applied.
@@ -180,12 +176,11 @@ final class PomDocument {
 	}
 
 	/**
-	 * Where the markup goes. An element that already had children takes it after the
-	 * last of them, leaving the whitespace before the end tag — and so that tag's
-	 * indentation — exactly as it was. An element that was empty or held only
-	 * whitespace has that content replaced instead, because there is no last child to
-	 * follow and its end tag needs indenting onto a line of its own; an element written
-	 * {@code <plugins/>} additionally has to grow an end tag to hold the markup at all.
+	 * Where the markup goes. An element with children takes it after the last of them,
+	 * leaving the whitespace before the end tag exactly as it was. One that was empty
+	 * or held only whitespace has that content replaced, there being no last child to
+	 * follow and its end tag needing a line of its own; a {@code <plugins/>} has to
+	 * grow an end tag to hold the markup at all.
 	 */
 	private Edit edit(Element parent, String addition) {
 		int contentStart = contentStart(parent);
@@ -210,10 +205,9 @@ final class PomDocument {
 	}
 
 	/**
-	 * Whether the element's start tag was written {@code <name/>}, read from the source
-	 * rather than from the parse — which reports the same implicit end range for a
-	 * self-closing element as for an unclosed one, the distinction
-	 * {@link #requireClosedElements} turns on.
+	 * Whether the start tag was written {@code <name/>}, read from the source rather
+	 * than the parse, which reports the same implicit end range for a self-closing
+	 * element as for an unclosed one.
 	 */
 	private static boolean isSelfClosing(String original, Element element) {
 		return original.startsWith(SELF_CLOSING_END, contentStart(element) - SELF_CLOSING_END.length());
@@ -262,10 +256,9 @@ final class PomDocument {
 	}
 
 	/**
-	 * The element and every element below it, in document order — what a caller asks
-	 * for when the thing it is looking for may sit at any depth, such as the rule
-	 * inside a plugin's {@code configuration/rules} that
-	 * {@link PomEnforcerInstaller} looks for.
+	 * The element and every element below it, in document order, for a caller whose
+	 * target may sit at any depth — such as the rule inside a plugin's
+	 * {@code configuration/rules}.
 	 */
 	static List<Element> selfAndDescendants(Element root) {
 		return List.copyOf(root.getAllElements());
@@ -308,12 +301,11 @@ final class PomDocument {
 	}
 
 	/**
-	 * Refuses a POM that left an element open. jsoup repairs what it reads rather than
-	 * rejecting it, so an unclosed element comes back closed at the point its parent
-	 * ends — an implicit range — and an edit spliced at that offset would land inside
-	 * an element it was never meant to touch. An element written {@code <name/>}
-	 * reports the same implicit range for the end tag it legitimately has none of, so
-	 * the source has the last word on which of the two it is.
+	 * Refuses a POM that left an element open. jsoup repairs what it reads, so an
+	 * unclosed element comes back closed where its parent ends — an implicit range —
+	 * and an edit spliced there would land inside an element it was never meant to
+	 * touch. A {@code <name/>} reports the same implicit range for the end tag it
+	 * legitimately has none of, so the source decides which of the two it is.
 	 */
 	private static void requireClosedElements(Path file, String original, Element root) {
 		Optional<Element> unclosed = selfAndDescendants(root).stream()

@@ -22,12 +22,10 @@ abstract class AbstractWrappedBuildSystem implements BuildSystem {
 
 	/**
 	 * The name and the program are taken separately because they are not always the
-	 * same word: Maven builds are run with {@code mvn} but the build system is called
-	 * {@code maven}, in the log line naming what a checkout builds with and in the
-	 * advice {@link BuildSystem#toolAdvice()} gives. Declaring the program as both let
-	 * the base report a name no subclass wanted, which Maven then had to override —
-	 * so the one build system whose two differ was also the one whose name this class
-	 * did not decide.
+	 * same word: Maven builds run with {@code mvn} but the build system is called
+	 * {@code maven}. Declaring the program as both let the base report a name Maven
+	 * then had to override — so the one build system whose two differ was also the one
+	 * whose name this class did not decide.
 	 *
 	 * @param name            what this build system is called in a message
 	 * @param tool            the program to launch when the checkout ships no wrapper

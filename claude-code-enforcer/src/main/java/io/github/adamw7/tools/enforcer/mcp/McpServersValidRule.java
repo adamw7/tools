@@ -65,13 +65,11 @@ public class McpServersValidRule extends JsonFileRule {
 	}
 
 	/**
-	 * A {@code mcpServers} the file does not declare and one it declares as something
-	 * other than an object are two different mistakes, so they are told apart:
-	 * reading both through a null lookup reported a section that is plainly there,
-	 * written as an array, as missing, and sent its author looking for the key they
-	 * had already typed. Absence is this rule's own message because the section is
-	 * required here; a mistyped one is reported by {@link #section} in the wording
-	 * every other section shares.
+	 * An {@code mcpServers} the file does not declare and one declared as something
+	 * other than an object are two different mistakes: reading both through a null
+	 * lookup reported a section plainly there, written as an array, as missing.
+	 * Absence is this rule's own message, the section being required here; a mistyped
+	 * one is reported by {@link #section} in the shared wording.
 	 */
 	@Override
 	protected void collectViolations(JsonNode mcp, List<String> violations) {
@@ -126,10 +124,9 @@ public class McpServersValidRule extends JsonFileRule {
 	}
 
 	/**
-	 * A {@code command} that is not a string is named as the type error it is, not as
-	 * the missing command it is not: a server declaring {@code "command": 123} has a
-	 * command written down, and telling its author it is missing sends them to the
-	 * wrong line.
+	 * A {@code command} that is not a string is named as the type error it is: a
+	 * server declaring {@code "command": 123} has a command written down, and calling
+	 * it missing sends its author to the wrong line.
 	 */
 	private void collectCommandViolation(String name, JsonNode server, List<String> violations) {
 		if (JsonNodes.declaresNonText(server, COMMAND_KEY)) {

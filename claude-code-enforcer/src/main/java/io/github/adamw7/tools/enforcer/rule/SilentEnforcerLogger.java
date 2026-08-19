@@ -8,14 +8,11 @@ import org.apache.maven.enforcer.rule.api.EnforcerLogger;
  * The logger a rule uses when it was never given one: every level disabled and
  * every message dropped.
  * <p>
- * maven-enforcer injects a logger before it runs a rule, but nothing else does.
- * A rule constructed directly — by a unit test, or by any caller embedding these
- * checks outside a Maven session — has a null logger, so a rule that logged what
- * it checked would throw on the logging rather than report on what it checked.
- * That is why the two debug lines this module already had were confined to paths
- * a test is unlikely to reach. Falling back to this instance removes the
- * constraint: a rule may log wherever logging is useful, and the caller that
- * wants to see it supplies a logger.
+ * maven-enforcer injects a logger before it runs a rule, but nothing else does, so
+ * a rule constructed directly — by a unit test, or by a caller embedding these
+ * checks outside a Maven session — would throw on the logging rather than report on
+ * what it checked. Falling back to this instance lets a rule log wherever logging
+ * is useful, with the caller that wants to see it supplying a logger.
  *
  * @see ClaudeCodeEnforcerRule#log()
  */

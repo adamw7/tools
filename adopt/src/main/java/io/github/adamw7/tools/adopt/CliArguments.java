@@ -64,12 +64,14 @@ public final class CliArguments {
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
 			+ " [--rules <minimal|project>] [--section <heading>]..."
-			+ " [--dry-run] [--verify-only] [--keep-workspace] [--timeout <minutes>] [--retries <count>]"
+			+ " [--dry-run] [--verify-only] [--keep-workspace] [--parallel <count>]"
+			+ " [--timeout <minutes>] [--retries <count>]"
 			+ " [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
 	static final String HELP_SHORTHAND = "-h";
 
+	private static final String PARALLEL_FLAG = "--parallel";
 	private static final String TIMEOUT_FLAG = "--timeout";
 	private static final String RETRIES_FLAG = "--retries";
 	private static final String REPOS_FLAG = "--repos";
@@ -140,6 +142,14 @@ public final class CliArguments {
 	 */
 	@Option(names = "--verify-only")
 	private boolean verifyOnly;
+
+	/**
+	 * How many repositories are adopted at once. Every line a run emits carries the
+	 * repository it belongs to, so a parallel batch stays readable; see
+	 * {@link BatchAdoption}.
+	 */
+	@Option(names = PARALLEL_FLAG, paramLabel = "<count>")
+	private String parallel;
 
 	@Option(names = "--dry-run")
 	private boolean dryRun;
@@ -261,6 +271,35 @@ public final class CliArguments {
 	 */
 	private GuardRules guardRules() {
 		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
+	}
+
+	/**
+	 * @return how many repositories to adopt at once, bounded here as well as in
+	 *         {@link BatchAdoption} so a bad value fails while the operator is still
+	 *         reading the command line rather than after the first clone
+	 */
+	public int parallelism() {
+		if (parallel == null || parallel.isBlank()) {
+			return BatchAdoption.SEQUENTIAL;
+		}
+		return requireWithinBounds(parsed(parallel));
+	}
+
+	private int parsed(String count) {
+		try {
+			return Integer.parseInt(count.strip());
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException(PARALLEL_FLAG + " takes a number of repositories, not '"
+					+ count.strip() + "'", e);
+		}
+	}
+
+	private int requireWithinBounds(int count) {
+		if (count < BatchAdoption.SEQUENTIAL || count > BatchAdoption.MAX_PARALLELISM) {
+			throw new IllegalArgumentException(PARALLEL_FLAG + " must be between " + BatchAdoption.SEQUENTIAL
+					+ " and " + BatchAdoption.MAX_PARALLELISM + " but was " + count);
+		}
+		return count;
 	}
 
 	/** What becomes of each repository's checkout once its adoption is over. */

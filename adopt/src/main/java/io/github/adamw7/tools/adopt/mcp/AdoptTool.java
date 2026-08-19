@@ -105,6 +105,11 @@ public class AdoptTool implements McpTool {
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
 											+ "Maven project; defaults to the version of this build")),
+							Map.entry("parallel", Map.of("type", "integer",
+									"description", "how many repositories to adopt at once, between "
+											+ BatchAdoption.SEQUENTIAL + " and " + BatchAdoption.MAX_PARALLELISM
+											+ "; every log line carries the repository it belongs to, so a "
+											+ "parallel batch stays readable")),
 							Map.entry("verify_only", Map.of("type", "boolean",
 									"description", "report whether each repository is still adopted and its guard "
 											+ "still passes, without adopting anything: it clones and reads, and "
@@ -159,8 +164,19 @@ public class AdoptTool implements McpTool {
 	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP adopt tool for {}", describe(arguments));
 		AdoptionOptions options = adoptionOptionsFrom(arguments);
-		BatchAdoption batch = new BatchAdoption(pipeline.create(options), checkoutRetention(arguments, options));
+		BatchAdoption batch = new BatchAdoption(pipeline.create(options), checkoutRetention(arguments, options),
+				parallelism(arguments));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
+	}
+
+	/**
+	 * Bounded here as well as in {@link BatchAdoption}, so a client asking for fifty
+	 * threads is refused with the argument's name rather than with the batch's
+	 * complaint about a field it never sent.
+	 */
+	private int parallelism(Map<String, Object> arguments) {
+		return ToolArguments.optionalBoundedInt(arguments, "parallel", BatchAdoption.SEQUENTIAL,
+				BatchAdoption.SEQUENTIAL, BatchAdoption.MAX_PARALLELISM);
 	}
 
 	/**

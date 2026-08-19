@@ -53,7 +53,7 @@ public class Main {
 	 *                           one and why it stopped
 	 */
 	static List<AdoptionRun> runAndReport(CliArguments cli, Checkouts checkouts, GitHubRepoAdopter adopter) {
-		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt, cli.checkoutRetention())
+		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt, cli.checkoutRetention(), cli.parallelism())
 				.adoptAll(cli.repositoryUrls(), checkouts);
 		try {
 			requireEveryAdoptionSucceeded(runs);

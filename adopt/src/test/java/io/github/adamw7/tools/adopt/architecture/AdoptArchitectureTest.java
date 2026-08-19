@@ -240,12 +240,18 @@ public class AdoptArchitectureTest {
 					+ "exception is resolving an executable on PATH, which lives behind the command runner");
 
 	@ArchTest
-	static final ArchRule onlyTheCommandPackageNeedsConcurrency = noClasses()
+	static final ArchRule onlyTheCommandPackageAndTheBatchNeedConcurrency = noClasses()
 			.that().resideOutsideOfPackage(COMMAND_PACKAGE)
+			.and().doNotHaveFullyQualifiedName(ADOPT_PACKAGE + ".BatchAdoption")
+			.and().doNotHaveFullyQualifiedName(ADOPT_PACKAGE + ".Checkouts")
 			.should().dependOnClassesThat().resideInAPackage("java.util.concurrent..")
 			.orShould().dependOnClassesThat().haveFullyQualifiedName("java.lang.Thread")
-			.because("the adoption is a sequential pipeline whose steps depend on the one before; only "
-					+ "spawning a process needs threads, to pump its output while a timeout runs");
+			.because("one repository's adoption is a sequential pipeline whose steps depend on the one "
+					+ "before, and a step that reached for a thread would be doing something the pipeline "
+					+ "does not do. Two places legitimately do: spawning a process, which pumps its output "
+					+ "while a timeout runs, and the batch, whose repositories are independent of each "
+					+ "other by construction — Checkouts is named with it because the claim that keeps them "
+					+ "independent is what several threads contend on");
 
 	@ArchTest
 	static final ArchRule packagesAreFreeOfCycles = slices()

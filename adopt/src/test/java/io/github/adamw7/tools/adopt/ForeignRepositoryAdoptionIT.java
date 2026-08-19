@@ -420,10 +420,16 @@ class ForeignRepositoryAdoptionIT {
 		return Main.runAndReport(cli, Main.checkouts(cli), localAdopter());
 	}
 
+	/**
+	 * The checkouts are kept because every assertion below reads one: what the
+	 * adoption committed, what it left alone, what the guard it wired in looks like.
+	 * An ordinary run removes the checkout of an adoption that landed, its product
+	 * being the pushed branch and the pull request.
+	 */
 	private static String[] commandLine() {
 		return Stream.concat(
 				REPOSITORIES.stream().flatMap(repository -> Stream.of("--repo", repository.url())),
-				Stream.of("--workspace", workspace.toString(), "--branch", BRANCH))
+				Stream.of("--workspace", workspace.toString(), "--branch", BRANCH, "--keep-workspace"))
 				.toArray(String[]::new);
 	}
 

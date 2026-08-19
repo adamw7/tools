@@ -58,6 +58,22 @@ passes → push → open a pull request with `gh pr create`.
 
 What is worth knowing before changing any of it:
 
+- **The guard checks the whole configuration by default.** A Maven project gets
+  `claudeCodeProject` wired into its `pom.xml`, so the `AGENTS.md` the run
+  installs — and, with `--assets`, the `.claude` directory of settings and hooks —
+  is checked by the same build that checks the `CLAUDE.md`. Wiring one rule left
+  what the adoption itself wrote unguarded: a malformed `settings.json`, a skill
+  with no definition, or a credential committed into a hook all passed. `--rules
+  minimal` wires the document rule alone, for a repository whose maintainers want
+  nothing else of theirs read. Either counts as already guarded, so re-adopting a
+  repository adopted before the composite existed leaves its guard alone rather
+  than splicing a second execution in beside it.
+- **The guard demands the sections the document was conformed to.** They are
+  written into the POM rather than left to the rule's defaults, read from the one
+  accessor the reshape also reads, so the document and the guard beside it cannot
+  make different demands — and a project whose `CLAUDE.md` is not a Java
+  project's is held to its own headings. `--section` names them; without it the
+  detected build system decides.
 - **The guard is build-tool aware**, behind a `BuildSystem` abstraction: a Maven
   project gets the `claude-code-enforcer` rule wired into its `pom.xml` and
   verified with `mvn -N validate`; a Gradle project (Groovy or Kotlin DSL) gets
@@ -77,6 +93,14 @@ What is worth knowing before changing any of it:
   Windows.
 - **`claude init` is skipped for a checkout that already has a `CLAUDE.md`**: the
   CLI's output is not reproducible, so regenerating would discard edits.
+- **`claude init` is retried on its outcome, not its transcript.** It is the run's
+  most expensive command and was the only one with no recovery: `TransientFailures`
+  leaves `claude` out because its transcript is a model's prose and may discuss a
+  connection reset without one having happened. That objection is about the
+  transcript, so what is judged instead is whether the file exists — a run that
+  produced it has succeeded whatever it exited with, and one that did not has
+  produced nothing to lose. The memory file is moved aside and restored around
+  each attempt, since a second attempt must meet the checkout the first one did.
 - **A reused checkout is confirmed to be the repository under adoption** by
   comparing what its `origin` names with the URL given, read with `git config
   --get-all remote.origin.url` rather than `git remote get-url`, which expands
@@ -96,6 +120,29 @@ What is worth knowing before changing any of it:
   Each repository gets its own checkout (claimed inside its own adoption) and its
   own report, and one that fails does not stop the rest; `Main` raises the
   failures together afterwards so the process still exits non-zero.
+- **`--parallel <n>`** adopts several at once (up to 8). The batch was sequential
+  because the tools' output interleaved into a log nobody could attribute, which
+  is a solvable problem rather than a reason: each adoption puts its repository
+  into the logging context of its own thread and both appender patterns print it.
+  The repositories were already independent; `Checkouts` claims through a
+  concurrent map so the test-and-set that stops two of them cloning into one
+  directory produces a claim and a refusal rather than two claims. A batch of one,
+  or a parallelism of one, starts no pool and runs on the calling thread.
+- **A checkout whose adoption landed is removed**, unless `--keep-workspace`. A
+  batch makes one full clone per repository and nothing used to remove them, so a
+  fifty-repository run left fifty behind under a temporary directory nobody named.
+  A failed adoption's checkout is kept — it is the only record of how far the run
+  got — and so is a dry run's, which is all a dry run produces. A checkout that
+  cannot be removed is a warning, not a reason to report the repository as failed.
+- **`--verify-only`** answers "is this repository still adopted, and does its
+  guard still pass?" without adopting anything: it clones, reads, and writes
+  nothing, needing only `git`. It is a pipeline of its own rather than an adoption
+  with its writing steps disabled, for the same reason a dry run is. Its extra
+  step is `check-adopted`, which exists because the guard's own command cannot
+  answer the question — a build with no guard wired in passes `mvn -N validate`
+  precisely because nothing ran, so a repository that was never adopted, or whose
+  guard a later commit removed, verified exactly like one that was. Both halves,
+  the document and the guard, are reported together.
 - **`--dry-run`** assembles the pipeline *without* `PushStep` and
   `PullRequestStep` rather than with steps that decide to do nothing, and asks
   the toolchain check only for the `git` and `claude` a rehearsal really runs. A
@@ -851,6 +898,7 @@ Skill: `enforcer-rules`.
 | `noSecrets` | the configured files and directories for literal credentials — Anthropic, AWS, GitHub and Slack token formats plus private key blocks by default; `secretPatterns` adds custom regexes, or replaces the defaults when `useDefaultPatterns` is off. Each match is reported with file, line and kind but only the first characters, so the report never republishes the secret. |
 | `localSettingsIgnored` | the configured `.gitignore` covers each `ignoredPaths` entry (by default `.claude/settings.local.json`), honouring negations, anchoring, directory patterns and `*`/`?`/`**` globs. |
 | `pluginFormat` | `.claude-plugin/plugin.json`, when present: valid JSON with every `requiredKeys` entry, a kebab-case `name`, a dotted `version` and a non-empty `description` — each declared as a JSON string — and `allowedKeys` reporting typos. |
+| `claudeCodeProject` | all of the above, from a `projectDir` alone. It resolves each input by the conventional path Claude Code itself uses, runs only the parts whose input is present, and prefixes every violation with the part that found it. `skippedRules` switches a part off by that name, `claudeMdSections`/`claudeMdReference` pass the document contract through, `claudeMdBudgetBytes` sizes `CLAUDE.md` (32 KB by default, zero to skip), and `autoFix` reaches the document parts. `crossDocConsistency` and `readmeConsistency` are deliberately not included: they take the patterns a particular project needs kept in step, and no convention supplies those. |
 
 Rules whose target is optional (`mcpServersValid`, `mcpConfigFormat`,
 `okfBundleFormat`, `pluginFormat`, `noSecrets`, `hooksFormat`) pass on the absent
@@ -869,7 +917,11 @@ directory it cannot walk, fail as a verdict naming the file rather than as an
 offers:
 
 - **`severity`** — `error` (default, fails the build) or `warn` (logs the same
-  violations), so a new rule can be adopted gradually.
+  violations), so a new rule can be adopted gradually. Anything else is refused as
+  a build-setup mistake: read as the default, a `<severity>warning</severity>`
+  failed the build while the author who wrote it believed the rule had been
+  downgraded, which is the one misconfiguration whose symptom is
+  indistinguishable from the rule working.
 - **`reportFile`** — a self-contained HTML report of what failed and why plus
   per-rule "How to fix" steps, written on pass and fail alike so it always
   reflects the latest run.
@@ -882,6 +934,19 @@ offers:
   Maven runs every module from wherever it was invoked, so without it the token
   falls back to the working directory and a baseline recorded from the root
   suppresses nothing when the build starts elsewhere.
+- **Build-wide defaults for all three** — `-Dclaude.enforcer.severity`,
+  `-Dclaude.enforcer.reportDir` and `-Dclaude.enforcer.baselineDir`. They are the
+  three parameters that are the same answer for every rule a project wires, and a
+  full catalogue is around twenty of them; spelled per rule that is sixty elements
+  to keep in step. A parameter configured on the rule itself still wins, so a
+  build can downgrade the catalogue and insist on one rule. A directory names each
+  rule's file after the rule — two rules sharing one report would overwrite each
+  other's verdict, and one shared baseline would let a violation accepted for one
+  suppress an identical message from another — and the reports written into one
+  gain an `index.html` linking them.
+- **Asking to record a baseline with no `baselineFile`** is refused rather than
+  ignored. It used to read as "no baseline, so check normally", which told the
+  operator the build failed on the very violations they had just asked to accept.
 - **A debug trace of what each rule was pointed at** — `mvn -X` prints one line
   per rule naming its configured input files and how many violations survived the
   baseline, plus the scan counts (`Skills: checking 13 definition(s) in …`) and
@@ -898,7 +963,22 @@ offers:
 `claudeMdFormat` and `agentsMdFormat` share a `MarkdownFormatRule` base doing the
 existence, BOM, title and section checks, with optional `forbiddenTokens`,
 `enforceSectionOrder`, `maxLineLength` and `validateFileReferences` (local links
-must resolve, read both as written and percent-decoded).
+must resolve, read both as written and percent-decoded). The title, the required
+sections and (for `claudeMdFormat`) the companion document to reference are all
+overridable, so a project whose documents are not this one's keeps the structural
+checking on its own headings; `<requiredReference/>` left empty drops the
+companion check for a project that keeps none.
+
+They also take `autoFix` (off by default), which repairs the structure it would
+otherwise only report: a missing title, a heading that is a near miss for a
+required one, an absent or empty section, and a missing companion reference are
+mechanical edits with one correct answer. The reshape is
+`markdown-common`'s `MarkdownConformer`, working to the same `MarkdownContract`
+the rule then checks against and reading the document through the same
+`MarkdownDocument` — which is also what the adoption pipeline's conformer uses, so
+the repair and the check cannot come to disagree. Only the structure is repaired:
+a forbidden token, an over-long line and a broken file reference are still
+reported, because what a link ought to point at is the author's to say.
 
 The front-matter rules (`skillFilesExist`, `subAgentFormat`, `commandFormat`)
 share a `DefinitionFormatRule` base owning the directory requirement, the scan
@@ -909,6 +989,45 @@ closer, the rule rewrites the file in place and continues against the corrected
 content. The repair only acts when the document opens with a dashes line
 enclosing real `key: value` entries, so a lone `---` thematic break is never
 mistaken for front matter.
+
+Each input file is read and parsed once per build, whatever asks for it:
+`CLAUDE.md` is read by five rules and `settings.json` by four, and sharing the
+result costs them none of their independence — what is shared is the file's
+content, not any rule's reading of it. An entry is keyed by the path with its
+modification time and size, so a file `autoFix` rewrote mid-build misses rather
+than serving what it held before the fix.
+
+### Running the rules without Maven
+
+A maven-enforcer rule has to be resolvable as a JAR before the build that uses it
+runs, which is the two-phase bootstrap below. That is the right cost for a check
+that gates a build and the wrong one for a pre-commit hook, a project built with
+Gradle or with nothing, or anyone wanting to know what the rules make of a
+repository before wiring anything. The jar is therefore also a command line,
+running the same `claudeCodeProject` composite a pom would configure:
+
+```bash
+java -cp tools.claude-code-enforcer.jar:enforcer-api.jar \
+     io.github.adamw7.tools.enforcer.cli.Main . --fix --skip okfBundleFormat
+```
+
+`enforcer-api` is on the classpath because it is a `provided` dependency of the
+rule jar — Maven supplies it in the wiring that matters, and a standalone run has
+to bring it. Every option is a parameter of that rule (`--skip`, `--fix`,
+`--warn`, `--budget`, `--report`, `--debug`), so the command line and a pom
+configure one thing rather than two that could drift; an unrecognised option is
+refused rather than ignored. Failure is reported by throwing, as everywhere else
+here, so the process exits non-zero without the class ending a JVM it does not
+own.
+
+The command line is analysed apart from the shared coding conventions, because
+one of them cannot hold there: an entry point invoked as `java -jar` has no host
+process to report through, and giving this module a logging framework to satisfy
+the rule would put one on the plugin class path of every build that wires a rule.
+`CommonCodingConventions` is explicit that such a rule must be exempted visibly
+rather than relaxed for everyone, so `..enforcer.cli` carries its own
+`CommandLineArchitectureTest` restating what does apply — including that only
+`Main` reaches a stream.
 
 ### Two things that will bite you
 

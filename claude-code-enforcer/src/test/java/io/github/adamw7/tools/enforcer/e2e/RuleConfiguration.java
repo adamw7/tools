@@ -272,6 +272,15 @@ final class RuleConfiguration {
 										<skippedRule>memoryImports</skippedRule>
 									</skippedRules>
 									<claudeMdBudgetBytes>32768</claudeMdBudgetBytes>
+									<claudeMdSections>
+										<claudeMdSection>## Project</claudeMdSection>
+										<claudeMdSection>## Java version</claudeMdSection>
+										<claudeMdSection>## Maven</claudeMdSection>
+										<claudeMdSection>## Principles for Java Development</claudeMdSection>
+										<claudeMdSection>## Testing</claudeMdSection>
+										<claudeMdSection>## Dependencies</claudeMdSection>
+									</claudeMdSections>
+									<claudeMdReference>AGENTS.md</claudeMdReference>
 									<autoFix>false</autoFix>
 								</claudeCodeProject>
 			""";

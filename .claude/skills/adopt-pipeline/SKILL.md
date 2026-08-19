@@ -144,8 +144,10 @@ clone URL's credentials come back in the tool's own error text.
   the guard is only ever an *addition* to a build file somebody else wrote and is
   written in that script's own DSL, the commits carry only
   `AdoptionAssets.WRITTEN_PATHS`, the working tree is left clean, the default
-  branch — read from the remote, never guessed — and the remote are untouched,
-  and a second adoption changes nothing. It installs the starter assets too, so
+  branch — read from the remote, never guessed — is untouched, and the repository
+  on GitHub is asked with `ls-remote` whether the adoption branch reached it (a
+  local tracking ref is evidence about the clone; the claim is about somebody
+  else's repository). A second adoption changes nothing. It installs the starter assets too, so
   `AssetInstaller`'s "the project's own version wins" is checked against files
   somebody else wrote — `claude-code`'s own `.github/workflows/claude.yml` and
   `servers`' own `.mcp.json`, which no fixture can imitate. Its Maven guard is pinned to a released `--rule-version`,

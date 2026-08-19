@@ -2,6 +2,7 @@ package io.github.adamw7.tools.enforcer.e2e;
 
 import static io.github.adamw7.tools.test.TestFiles.readString;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,8 +46,10 @@ import org.junit.jupiter.api.io.TempDir;
  * {@code AGENTS.md} somebody else wrote, a real {@code .mcp.json}, and a real
  * {@code .claude/agents} directory beside a real {@code .claude/settings.json} — and
  * every clone is shallow, so the whole class costs about as much as one of the
- * builds it runs. Nothing is written to any of them: the enforcing build runs in a
- * directory of its own and only the rule parameters point at a checkout.
+ * builds it runs. Nothing is written to any of them — the enforcing build runs in a
+ * directory of its own and only the rule parameters point at a checkout — and
+ * {@link #everyCheckoutIsLeftExactlyAsGitProducedIt} holds the builds to it rather
+ * than leaving it a claim in this comment.
  */
 class ForeignRepositoryEnforcementIT {
 
@@ -357,6 +360,29 @@ class ForeignRepositoryEnforcementIT {
 		assertFalse(enforcement.verdicts().messageOf(COMMAND_FORMAT).contains(ABSENT_COMMANDS),
 				() -> COMMAND_FORMAT + " reported " + commands.size() + " real command definition(s) absent: "
 						+ enforcement.outcome().describe());
+	}
+
+	/**
+	 * The other promise this class makes to the repositories it is pointed at: it reads
+	 * them and writes nothing back. They are somebody else's projects, and the enforcing
+	 * build is given only their path — so an auto-fix rewriting a document it was asked
+	 * to check, a report landing beside the file it read, or a later test laying a
+	 * fixture out in a shared checkout instead of a clone of its own would all be a rule
+	 * editing a project that asked it for a verdict.
+	 *
+	 * <p>Everything git can see is asked for — modified, staged, untracked and ignored
+	 * alike — because a rule writing a <em>new</em> file beside the one it read is the
+	 * shape this is likeliest to take, and a check of tracked files alone would not see
+	 * it. The two tests here that do write take clones of their own, so this holds
+	 * whichever order the class runs in.
+	 */
+	@Test
+	void everyCheckoutIsLeftExactlyAsGitProducedIt() {
+		for (Enforcement enforcement : enforcements) {
+			assertEquals("", GitClone.changesIn(enforcement.checkout()),
+					() -> "enforcing " + enforcement.repository() + " wrote into the checkout, which is somebody"
+							+ " else's project: " + enforcement.outcome().describe());
+		}
 	}
 
 	/**

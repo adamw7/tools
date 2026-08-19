@@ -588,7 +588,10 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   only paths `AdoptionAssets.WRITTEN_PATHS` names and the working tree is left
   clean, the guard commit's diff *removes* nothing the build file already
   declared, the default branch and the remote are untouched, and a second
-  adoption of the same batch commits nothing. The default branch is read from the
+  adoption of the same batch commits nothing. That nothing was published is asked
+  of GitHub itself with `ls-remote`, not only of the clone's tracking refs: a ref
+  in the checkout is evidence about the checkout, and the promise is about seven
+  repositories belonging to other people. The default branch is read from the
   remote rather than guessed, which only a repository like `timber` — developed
   on `trunk` — can show: its adoption branch is asserted to have been cut from
   that branch. The
@@ -647,11 +650,15 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   question the other way round, since for them an absent file *is* a pass:
   `servers` ships an `.mcp.json` declaring none of the servers the
   configuration requires, so a rule that read it has something to say and a
-  rule that passed it over has not. A further test adopts the contract into a
-  fresh clone and enforces it green, so the rules are shown satisfiable
-  outside the repository that wrote them. The last takes the adopter's other
-  route — record the backlog, gate what is added to it — and pins the half a
-  fixture cannot reach: `commandFormat`'s real backlog in
+  rule that passed it over has not. One more asks git what the eight checkouts
+  hold after all the builds — modified, staged, untracked and ignored alike —
+  because they are somebody else's projects and the enforcing build is given
+  only their path: an auto-fix rewriting a document it was asked to check, or a
+  report landing beside the file it read, would show up there and nowhere else.
+  A further test adopts the contract into a fresh clone and enforces it green,
+  so the rules are shown satisfiable outside the repository that wrote them. The
+  last takes the adopter's other route — record the backlog, gate what is added
+  to it — and pins the half a fixture cannot reach: `commandFormat`'s real backlog in
   `anthropics/claude-code` (the `allowed-tools` key its commands declare,
   which the configuration does not allow) is recorded against the shared
   checkout and replayed against a *second* clone of it, at a path the

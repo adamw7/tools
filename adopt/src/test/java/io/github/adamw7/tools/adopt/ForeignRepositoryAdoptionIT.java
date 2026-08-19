@@ -68,8 +68,9 @@ import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
  * nothing the project already declared is removed to make room for it, the starter
  * assets installed are the ones the repository was missing and the files it already
  * keeps at their paths are left exactly as they were cloned, the default branch — read
- * from the remote rather than assumed — and the remote itself are left exactly as they
- * were cloned, and adopting the same repository a second time changes nothing.
+ * from the remote rather than assumed — is where the clone left it, the repository on
+ * GitHub is asked directly and has no branch of the adoption's, and adopting the same
+ * repository a second time changes nothing.
  *
  * <p>The starter assets are installed here — {@code --include-assets} adds them to a
  * real run — because the promise {@link AssetInstaller} makes is about a file the
@@ -338,9 +339,16 @@ class ForeignRepositoryAdoptionIT {
 	/**
 	 * The promise the adoption makes to a repository it is pointed at: the default
 	 * branch is never written to, and nothing leaves the machine until an operator
-	 * pushes. Both are asserted against the refs {@code git clone} produced, so a step
-	 * that committed on the wrong branch — or a pipeline that grew a push — is caught
-	 * here rather than on somebody's repository.
+	 * pushes. The first is asserted against the refs {@code git clone} produced, so a
+	 * step that committed on the wrong branch is caught here rather than on somebody's
+	 * repository.
+	 *
+	 * <p>The second is asked of GitHub itself. A pipeline that grew a push would leave a
+	 * remote-tracking ref behind, which is checked too because it costs nothing — but a
+	 * ref in this checkout is evidence about this checkout, and the claim is about seven
+	 * repositories that belong to other people. Only {@code ls-remote} answers that, and
+	 * it answers it for a push this class knew nothing about as readily as for one of
+	 * its own.
 	 */
 	@Test
 	void neitherTheDefaultBranchNorTheRemoteIsWrittenTo() {
@@ -351,9 +359,11 @@ class ForeignRepositoryAdoptionIT {
 			assertEquals(git(checkout, "rev-parse", AdoptionContext.REMOTE + "/" + defaultBranch),
 					git(checkout, "rev-parse", defaultBranch),
 					() -> "adopting " + repository + " moved " + defaultBranch + " away from the remote's");
-			List<String> published = List.of("git", "rev-parse", "--verify", AdoptionContext.REMOTE + "/" + BRANCH);
-			assertFalse(RUNNER.run(checkout, published).succeeded(),
-					() -> "adopting " + repository + " published " + BRANCH + " to the remote");
+			List<String> tracked = List.of("git", "rev-parse", "--verify", AdoptionContext.REMOTE + "/" + BRANCH);
+			assertFalse(RUNNER.run(checkout, tracked).succeeded(),
+					() -> "adopting " + repository + " left a remote-tracking ref for " + BRANCH);
+			assertEquals("", git(checkout, "ls-remote", "--heads", AdoptionContext.REMOTE, "refs/heads/" + BRANCH),
+					() -> "adopting " + repository + " published " + BRANCH + " to the repository itself");
 		}
 	}
 

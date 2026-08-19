@@ -1322,6 +1322,9 @@ runs real Maven builds:
   going red on the rules' own account with an unbindable parameter or an
   exception escaping a file it did not expect. Only the log tells those apart, so
   the per-rule `passed` / `failed with message:` lines are read back out of it.
+  The checkouts are also asked, after all eight builds, to be exactly as `git`
+  produced them — these are somebody else's projects, and a rule that wrote into
+  one would have edited a project that asked it for a verdict.
 
 ### The adoption against real repositories
 
@@ -1355,8 +1358,9 @@ clone from GitHub with the real `git` and answer that:
   the guard commit removes nothing the build file already declared, the starter
   assets the project already keeps at those paths come through byte-identical to
   the blobs that were cloned, the default branch — read from the remote rather
-  than guessed — and the remote are left as cloned, and adopting the same batch a
-  second time commits nothing.
+  than guessed — is left as cloned, GitHub itself is asked with `ls-remote` and
+  has no branch of the adoption's, and adopting the same batch a second time
+  commits nothing.
 
 Both adoption `*IT`s stop short of the push and the pull request, so the runs stay
 **read-only towards GitHub**, need no logged-in `gh`, and may be repeated as often

@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jsoup.nodes.Element;
@@ -69,9 +70,15 @@ public class PomEnforcerInstaller {
 	private static final String IN_BUILD = "build/plugins";
 	private static final String IN_PLUGIN_MANAGEMENT = "build/pluginManagement";
 
+	/** The composite rule, which checks the whole configuration from the project directory. */
+	static final String PROJECT_RULE = GuardRules.PROJECT.ruleName();
+
+	/** The project directory the composite resolves every conventional path against. */
+	private static final String PROJECT_DIR = "${project.basedir}";
+
 	/**
-	 * The execution that runs the rule, bound to {@code validate} and not inherited
-	 * because {@code CLAUDE.md} lives only at the repository root.
+	 * The execution that runs the guard, bound to {@code validate} and not inherited
+	 * because the documents live only at the repository root.
 	 */
 	private static final String EXECUTION = """
 			<execution>
@@ -83,17 +90,16 @@ public class PomEnforcerInstaller {
 			  </goals>
 			  <configuration>
 			    <rules>
-			      <%1$s>
-			        <claudeMdFile>%2$s</claudeMdFile>
-			      </%1$s>
+			%s
 			    </rules>
 			  </configuration>
-			</execution>""".formatted(CLAUDE_MD_RULE, CLAUDE_MD_FILE);
+			</execution>""";
 
 	private final Supplier<String> ruleVersion;
+	private final GuardRules rules;
 
 	public PomEnforcerInstaller() {
-		this.ruleVersion = EnforcerRuleVersion::release;
+		this(EnforcerRuleVersion::release, GuardRules.PROJECT);
 	}
 
 	/**
@@ -103,18 +109,31 @@ public class PomEnforcerInstaller {
 	 * @param ruleVersion a released {@code claude-code-enforcer} version
 	 */
 	public PomEnforcerInstaller(String ruleVersion) {
+		this(released(ruleVersion), GuardRules.PROJECT);
+	}
+
+	private PomEnforcerInstaller(Supplier<String> ruleVersion, GuardRules rules) {
+		this.ruleVersion = ruleVersion;
+		this.rules = rules;
+	}
+
+	private static Supplier<String> released(String ruleVersion) {
 		String release = EnforcerRuleVersion.requireRelease(ruleVersion);
-		this.ruleVersion = () -> release;
+		return () -> release;
 	}
 
 	/**
-	 * The installer for an optionally supplied version: the one named, or the running
-	 * build's when none was. Naming the choice here keeps callers from spelling out
-	 * which of the two constructors an empty {@link Optional} means.
+	 * The installer the guard options describe: the version they pin, or the running
+	 * build's when they pin none, wiring the rule set they name. Naming the choice
+	 * here keeps callers from spelling out which of the constructors an empty
+	 * {@link Optional} means.
 	 */
-	static PomEnforcerInstaller pinning(Optional<String> ruleVersion) {
-		return ruleVersion.map(PomEnforcerInstaller::new).orElseGet(PomEnforcerInstaller::new);
+	static PomEnforcerInstaller from(GuardOptions guard) {
+		Supplier<String> version = guard.pinnedRuleVersion().map(PomEnforcerInstaller::released)
+				.orElse(EnforcerRuleVersion::release);
+		return new PomEnforcerInstaller(version, guard.rules());
 	}
+
 
 	/**
 	 * @return {@code true} when the rule was wired in, {@code false} when the POM
@@ -123,15 +142,74 @@ public class PomEnforcerInstaller {
 	 *         {@value #ENFORCER_ARTIFACT_ID} is pinned too far back to run the rule
 	 */
 	public boolean install(Path pomFile) {
+		return install(pomFile, List.of());
+	}
+
+	/**
+	 * @param requiredSections the {@code CLAUDE.md} headings the guard is to demand,
+	 *                         which are the headings the conformer has just reshaped
+	 *                         the document to. Written into the POM rather than left
+	 *                         to the rule's defaults, so a project whose document is
+	 *                         not a Java project's is held to its own headings instead
+	 *                         of to this repository's.
+	 * @return {@code true} when the guard was wired in, {@code false} when the POM
+	 *         already runs it and was left unchanged
+	 */
+	public boolean install(Path pomFile, List<String> requiredSections) {
 		PomDocument pom = PomDocument.read(pomFile);
 		if (alreadyRunsTheRule(pom)) {
 			return false;
 		}
+		String execution = EXECUTION.formatted(ruleConfiguration(requiredSections));
 		enforcerPluginOfTheBuild(pom).ifPresentOrElse(
-				plugin -> augment(pom, plugin),
-				() -> pom.insertUnder(pom.root(), BUILD_PLUGINS, plugin()));
+				plugin -> augment(pom, plugin, execution),
+				() -> pom.insertUnder(pom.root(), BUILD_PLUGINS, plugin(execution)));
 		pom.write();
 		return true;
+	}
+
+	/**
+	 * The rule element the execution configures, which is the whole difference between
+	 * the two rule sets: one document checked, or the whole configuration. Both are
+	 * given the section list, because both hold {@code CLAUDE.md} to it.
+	 */
+	private String ruleConfiguration(List<String> requiredSections) {
+		return rules == GuardRules.PROJECT
+				? projectRule(requiredSections)
+				: claudeMdRule(requiredSections);
+	}
+
+	private String claudeMdRule(List<String> requiredSections) {
+		return PomDocument.wrapped(CLAUDE_MD_RULE,
+				element("claudeMdFile", CLAUDE_MD_FILE) + sectionsElement(requiredSections));
+	}
+
+	private String projectRule(List<String> requiredSections) {
+		return PomDocument.wrapped(PROJECT_RULE,
+				element("projectDir", PROJECT_DIR) + claudeMdSectionsElement(requiredSections));
+	}
+
+	/**
+	 * Empty when the guard demands no particular section, which leaves the rule's own
+	 * defaults in place rather than writing an empty list that would demand nothing at
+	 * all. A build system whose guard asks only that the document exist is the case:
+	 * it has no sections to name, and it is not wiring this rule anyway.
+	 */
+	private String sectionsElement(List<String> requiredSections) {
+		return sections(requiredSections, "requiredSections", "requiredSection");
+	}
+
+	private String claudeMdSectionsElement(List<String> requiredSections) {
+		return sections(requiredSections, "claudeMdSections", "claudeMdSection");
+	}
+
+	private String sections(List<String> requiredSections, String wrapper, String item) {
+		if (requiredSections.isEmpty()) {
+			return "";
+		}
+		return PomDocument.wrapped(wrapper, requiredSections.stream()
+				.map(section -> element(item, section))
+				.collect(Collectors.joining("\n")));
 	}
 
 	/**
@@ -167,13 +245,22 @@ public class PomEnforcerInstaller {
 	 * name an element the same way elsewhere is not mistaken for one running it.
 	 */
 	private boolean runsClaudeMdRule(Element plugin) {
-		return PomDocument.selfAndDescendants(plugin).stream().anyMatch(this::isClaudeMdRule);
+		return PomDocument.selfAndDescendants(plugin).stream().anyMatch(this::isGuardRule);
 	}
 
-	private boolean isClaudeMdRule(Element element) {
+	/**
+	 * Either guard counts as one already wired. A repository adopted before the
+	 * composite existed runs {@code claudeMdFormat}, and re-adopting it must not
+	 * splice a second execution in beside the guard it already has — the run's job is
+	 * to leave a repository guarded, and it is.
+	 */
+	private boolean isGuardRule(Element element) {
 		Element parent = element.parent();
-		return CLAUDE_MD_RULE.equals(PomDocument.localName(element)) && parent != null
-				&& RULES.equals(PomDocument.localName(parent));
+		if (parent == null || !RULES.equals(PomDocument.localName(parent))) {
+			return false;
+		}
+		String name = PomDocument.localName(element);
+		return CLAUDE_MD_RULE.equals(name) || PROJECT_RULE.equals(name);
 	}
 
 	private boolean declaresRuleDependency(Element plugin) {
@@ -215,12 +302,12 @@ public class PomEnforcerInstaller {
 	 * execution is missing, and adding a second dependency on the same artifact would
 	 * leave the plugin's classpath deciding between two versions of it.
 	 */
-	private void augment(PomDocument pom, Element plugin) {
+	private void augment(PomDocument pom, Element plugin, String execution) {
 		requireRunnableEnforcer(pom, plugin);
 		if (!declaresRuleDependency(plugin)) {
 			pom.insertUnder(plugin, List.of("dependencies"), ruleDependency());
 		}
-		pom.insertUnder(plugin, List.of("executions"), EXECUTION);
+		pom.insertUnder(plugin, List.of("executions"), execution);
 	}
 
 	/**
@@ -277,7 +364,7 @@ public class PomEnforcerInstaller {
 	 */
 	private void requireRunnable(String version, String where) {
 		if (PluginVersion.isBelow(version, MINIMUM_ENFORCER_VERSION)) {
-			throw new AdoptionException("Cannot wire the " + CLAUDE_MD_RULE + " rule into the "
+			throw new AdoptionException("Cannot wire the " + rules.ruleName() + " rule into the "
 					+ ENFORCER_ARTIFACT_ID + " this project pins to " + version + " in " + where
 					+ ": the rule is looked up by name,"
 					+ " which the plugin only does from " + MINIMUM_ENFORCER_VERSION + ", so the guard would fail"
@@ -287,13 +374,13 @@ public class PomEnforcerInstaller {
 	}
 
 	/** A freshly declared enforcer plugin: pinned to a version, carrying the rule and its execution. */
-	private String plugin() {
+	private String plugin(String execution) {
 		return PomDocument.wrapped("plugin", String.join("\n",
 				element("groupId", ENFORCER_GROUP_ID),
 				element("artifactId", ENFORCER_ARTIFACT_ID),
 				element("version", ENFORCER_VERSION),
 				PomDocument.wrapped("dependencies", ruleDependency()),
-				PomDocument.wrapped("executions", EXECUTION)));
+				PomDocument.wrapped("executions", execution)));
 	}
 
 	private String ruleDependency() {

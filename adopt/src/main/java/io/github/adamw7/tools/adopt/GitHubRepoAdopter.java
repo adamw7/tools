@@ -84,7 +84,7 @@ public class GitHubRepoAdopter {
 	 * with the tool that was probed.
 	 */
 	public static List<AdoptionStep> defaultSteps(AdoptionOptions options) {
-		List<BuildSystem> buildSystems = BuildSystems.defaults(options.pinnedRuleVersion());
+		List<BuildSystem> buildSystems = BuildSystems.defaults(options.guard());
 		return Stream.of(
 				adoptionSteps(buildSystems, options),
 				assetSteps(options),

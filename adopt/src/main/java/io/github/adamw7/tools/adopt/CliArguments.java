@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -62,6 +63,7 @@ public final class CliArguments {
 			+ " [--workspace <directory>] [--branch <name>]"
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
+			+ " [--rules <minimal|project>] [--section <heading>]..."
 			+ " [--dry-run] [--timeout <minutes>] [--retries <count>] [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
@@ -88,6 +90,24 @@ public final class CliArguments {
 
 	@Option(names = "--assignee", paramLabel = "<user>")
 	private List<String> assignees = new ArrayList<>();
+
+	/**
+	 * How much of the adopted repository's configuration the guard checks. Named
+	 * rather than inferred, and refused when it names neither rule set, because a
+	 * misspelt value read as the default would quietly change what somebody else's
+	 * build enforces.
+	 */
+	@Option(names = "--rules", paramLabel = "<minimal|project>")
+	private String rules;
+
+	/**
+	 * A {@code CLAUDE.md} heading the guard is to demand, repeatable. Naming any
+	 * replaces the set the detected build system would have asked for, so a project
+	 * whose document is not a Java project's is reshaped to its own headings and
+	 * guarded on them.
+	 */
+	@Option(names = "--section", paramLabel = "<heading>")
+	private List<String> sections = new ArrayList<>();
 
 	@Option(names = "--rule-version", paramLabel = "<version>")
 	private String ruleVersion;
@@ -210,7 +230,17 @@ public final class CliArguments {
 
 	/** How this run is configured, as the pipeline and the command runner read it. */
 	public AdoptionOptions adoptionOptions() {
-		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries);
+		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries,
+				guardRules(), sections);
+	}
+
+	/**
+	 * @return the rule set named, or the default when none was. A blank value counts
+	 *         as none, so an omitted option and an empty one agree; anything else that
+	 *         is not a rule set is refused by {@link GuardRules#of}.
+	 */
+	private GuardRules guardRules() {
+		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
 	}
 
 	public Optional<Path> reportFile() {

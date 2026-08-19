@@ -340,7 +340,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains("maven-enforcer-plugin"));
 		assertTrue(result.contains("tools.claude-code-enforcer"));
 		assertTrue(result.contains("9.9.9"));
-		assertTrue(result.contains("claudeMdFormat"));
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE));
 	}
 
 	@Test
@@ -360,8 +360,8 @@ class PomEnforcerInstallerTest {
 	@Test
 	void configuresClaudeMdFileForTheRule(@TempDir Path dir) throws IOException {
 		String result = install(dir, POM_WITH_BUILD);
-		assertTrue(result.contains("<claudeMdFile>"));
-		assertTrue(result.contains("${project.basedir}/CLAUDE.md"));
+		assertTrue(result.contains("<projectDir>"));
+		assertTrue(result.contains("${project.basedir}"));
 	}
 
 	@Test
@@ -370,7 +370,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(installer.install(pom));
 		String result = Files.readString(pom);
 		assertTrue(result.contains("tools.claude-code-enforcer"));
-		assertTrue(result.contains("claudeMdFormat"));
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE));
 		assertEquals(1, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"));
 	}
 
@@ -423,7 +423,98 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains(CLAUDE_RULE_DECLARATION), "the profile's own declaration must be left verbatim");
 		assertEquals(2, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build needs its own declaration alongside the profile's:\n" + result);
-		assertTrue(result.contains("<claudeMdFile>"), "the added rule must be the configured, always-on one");
+		assertTrue(result.contains("<projectDir>"), "the added rule must be the configured, always-on one");
+	}
+
+	/**
+	 * The default guard checks the whole configuration, not just the document. The
+	 * adoption installs an AGENTS.md and, with --assets, a .claude directory, so a
+	 * guard reading only CLAUDE.md left what the run itself wrote unchecked.
+	 */
+	@Test
+	void wiresTheWholeProjectGuardByDefault(@TempDir Path dir) throws IOException {
+		String result = install(dir, POM_WITH_BUILD);
+
+		assertTrue(result.contains("<" + PomEnforcerInstaller.PROJECT_RULE + ">"), result);
+		assertTrue(result.contains("<projectDir>${project.basedir}</projectDir>"), result);
+	}
+
+	/** A repository whose maintainers want only the document checked says so. */
+	@Test
+	void wiresTheDocumentGuardAloneWhenAskedFor(@TempDir Path dir) throws IOException {
+		PomEnforcerInstaller minimal = PomEnforcerInstaller
+				.from(new GuardOptions("9.9.9", GuardRules.MINIMAL, List.of()));
+		Path pom = write(dir, POM_WITH_BUILD);
+
+		assertTrue(minimal.install(pom));
+
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<" + PomEnforcerInstaller.CLAUDE_MD_RULE + ">"), result);
+		assertFalse(result.contains(PomEnforcerInstaller.PROJECT_RULE), result);
+		assertTrue(result.contains("<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>"), result);
+	}
+
+	/**
+	 * The sections the conformer reshaped the document to are the sections the guard
+	 * demands. Leaving them to the rule's defaults held every adopted repository to
+	 * this repository's Java and Maven headings.
+	 */
+	@Test
+	void writesTheSectionsTheGuardIsToDemand(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, POM_WITH_BUILD);
+
+		assertTrue(installer.install(pom, List.of("## Overview", "## Running it")));
+
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<claudeMdSection>## Overview</claudeMdSection>"), result);
+		assertTrue(result.contains("<claudeMdSection>## Running it</claudeMdSection>"), result);
+	}
+
+	@Test
+	void writesTheSectionsIntoTheDocumentGuardToo(@TempDir Path dir) throws IOException {
+		PomEnforcerInstaller minimal = PomEnforcerInstaller
+				.from(new GuardOptions("9.9.9", GuardRules.MINIMAL, List.of()));
+		Path pom = write(dir, POM_WITH_BUILD);
+
+		assertTrue(minimal.install(pom, List.of("## Overview")));
+
+		assertTrue(Files.readString(pom).contains("<requiredSection>## Overview</requiredSection>"),
+				Files.readString(pom));
+	}
+
+	/**
+	 * A guard demanding no particular section writes none, leaving the rule's own
+	 * defaults rather than an empty list that would demand nothing at all.
+	 */
+	@Test
+	void writesNoSectionsWhenTheGuardDemandsNone(@TempDir Path dir) throws IOException {
+		String result = install(dir, POM_WITH_BUILD);
+
+		assertFalse(result.contains("<claudeMdSections>"), result);
+	}
+
+	/**
+	 * A repository adopted before the composite existed runs claudeMdFormat. Re-adopting
+	 * it must leave that guard alone rather than splice a second execution in beside it:
+	 * the run's job is to leave the repository guarded, and it is.
+	 */
+	@Test
+	void leavesARepositoryGuardedByTheOlderRuleAlone(@TempDir Path dir) throws IOException {
+		Path pom = write(dir, """
+				<project xmlns="http://maven.apache.org/POM/4.0.0">
+				  <artifactId>demo</artifactId>
+				  <build>
+				    <plugins>
+				      <plugin>
+				        <artifactId>maven-enforcer-plugin</artifactId>
+				%s
+				      </plugin>
+				    </plugins>
+				  </build>
+				</project>
+				""".formatted(CLAUDE_RULE_DECLARATION));
+
+		assertFalse(installer.install(pom), "a POM that already runs a guard must be left untouched");
 	}
 
 	/**
@@ -440,7 +531,7 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_THE_ARTIFACT_FOR_ANOTHER_RULE);
 		assertTrue(installer.install(pom), "the artifact is present but no CLAUDE.md guard is");
 		String result = Files.readString(pom);
-		assertTrue(result.contains(PomEnforcerInstaller.CLAUDE_MD_RULE), "the rule must be wired in:\n" + result);
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE), "the rule must be wired in:\n" + result);
 		assertTrue(result.contains("noSecrets"), "the rule the project already ran must keep running");
 	}
 
@@ -471,7 +562,8 @@ class PomEnforcerInstallerTest {
 		Path pom = write(dir, POM_WITH_RULE_ONLY_MANAGED);
 		assertTrue(installer.install(pom), "a managed rule binds to no phase, so the build still needs one");
 		String result = Files.readString(pom);
-		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired into the build that runs");
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE),
+				"the rule must be wired into the build that runs");
 		assertEquals(2, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build needs its own enforcer declaration alongside the managed one");
 	}
@@ -505,7 +597,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains(PROFILED_ENFORCER),
 				"the profile must be left verbatim; an execution there runs only when the profile is activated");
 		assertTrue(result.contains("<build>"), "the POM had no build of its own and needs one to run the rule from");
-		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired into that build");
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE), "the rule must be wired into that build");
 	}
 
 	/**
@@ -522,7 +614,7 @@ class PomEnforcerInstallerTest {
 		assertTrue(result.contains(MANAGED_ENFORCER), "the managed declaration must be left verbatim");
 		assertEquals(3, occurrences(result, "<artifactId>maven-enforcer-plugin</artifactId>"),
 				"the build's existing declaration must be augmented, not joined by a fourth");
-		assertTrue(result.contains("claudeMdFormat"), "the rule must be wired in");
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE), "the rule must be wired in");
 	}
 
 	/**
@@ -538,13 +630,15 @@ class PomEnforcerInstallerTest {
 		AdoptionException failure = assertThrows(AdoptionException.class, () -> installer.install(pom));
 		assertTrue(failure.getMessage().contains(PomEnforcerInstaller.MINIMUM_ENFORCER_VERSION),
 				"the failure must name the version to raise the plugin to: " + failure.getMessage());
-		assertFalse(Files.readString(pom).contains("claudeMdFormat"), "nothing may be written to a refused POM");
+		assertFalse(Files.readString(pom).contains(PomEnforcerInstaller.PROJECT_RULE),
+				"nothing may be written to a refused POM");
 	}
 
 	@Test
 	void augmentsAnEnforcerPinnedToTheMinimumVersion(@TempDir Path dir) throws IOException {
 		String result = install(dir, pomPinningEnforcerTo(PomEnforcerInstaller.MINIMUM_ENFORCER_VERSION));
-		assertTrue(result.contains("claudeMdFormat"), "the minimum version runs the rule and must be augmented");
+		assertTrue(result.contains(PomEnforcerInstaller.PROJECT_RULE),
+				"the minimum version runs the rule and must be augmented");
 	}
 
 	/**
@@ -555,9 +649,10 @@ class PomEnforcerInstallerTest {
 	 */
 	@Test
 	void augmentsAnEnforcerWhoseVersionCannotBeReadFromThePom(@TempDir Path dir) throws IOException {
-		assertTrue(install(dir, pomPinningEnforcerTo("${enforcer.version}")).contains("claudeMdFormat"),
+		assertTrue(install(dir, pomPinningEnforcerTo("${enforcer.version}"))
+				.contains(PomEnforcerInstaller.PROJECT_RULE),
 				"a version given as a property must not be read as an old one");
-		assertTrue(install(dir, POM_WITH_ENFORCER).contains("claudeMdFormat"),
+		assertTrue(install(dir, POM_WITH_ENFORCER).contains(PomEnforcerInstaller.PROJECT_RULE),
 				"a plugin declaring no version at all must not be read as an old one");
 	}
 
@@ -576,13 +671,14 @@ class PomEnforcerInstallerTest {
 		AdoptionException failure = assertThrows(AdoptionException.class, () -> installer.install(pom));
 		assertTrue(failure.getMessage().contains("build/pluginManagement"),
 				"the failure must name the declaration to raise: " + failure.getMessage());
-		assertFalse(Files.readString(pom).contains("claudeMdFormat"), "nothing may be written to a refused POM");
+		assertFalse(Files.readString(pom).contains(PomEnforcerInstaller.PROJECT_RULE),
+				"nothing may be written to a refused POM");
 	}
 
 	/** The same shape managed at a version that runs the rule is augmented, not refused. */
 	@Test
 	void augmentsAnEnforcerTheProjectManagesAtARunnableVersion(@TempDir Path dir) throws IOException {
-		assertTrue(install(dir, pomManagingEnforcerAt("3.5.0")).contains("claudeMdFormat"),
+		assertTrue(install(dir, pomManagingEnforcerAt("3.5.0")).contains(PomEnforcerInstaller.PROJECT_RULE),
 				"a managed version new enough to run the rule must be wired into");
 	}
 
@@ -597,7 +693,7 @@ class PomEnforcerInstallerTest {
 		String declaredNewer = pomManagingEnforcerAt("3.0.0-M2")
 				.replace("<artifactId>maven-enforcer-plugin</artifactId>\n      </plugin>",
 						"<artifactId>maven-enforcer-plugin</artifactId>\n        <version>3.5.0</version>\n      </plugin>");
-		assertTrue(install(dir, declaredNewer).contains("claudeMdFormat"),
+		assertTrue(install(dir, declaredNewer).contains(PomEnforcerInstaller.PROJECT_RULE),
 				"the version the build declares must win over the one it merely manages");
 	}
 

@@ -78,6 +78,22 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 	 */
 	private int claudeMdBudgetBytes = DEFAULT_CLAUDE_MD_BUDGET_BYTES;
 
+	/**
+	 * The section headings {@code CLAUDE.md} must carry, when the project's are not
+	 * the defaults {@code claudeMdFormat} ships. It is passed through rather than left
+	 * to that rule's own configuration because a project wiring this rule is a project
+	 * that wanted to configure one thing, and its headings are the part of the
+	 * convention no convention can supply: they are what the project's document is
+	 * about.
+	 */
+	private List<String> claudeMdSections;
+
+	/**
+	 * The companion document {@code CLAUDE.md} must reference, empty for a project
+	 * that keeps none. Passed through for the same reason as the sections.
+	 */
+	private String claudeMdReference;
+
 	@Override
 	public void execute() throws EnforcerRuleException {
 		requireConfigured(projectDir, "projectDir");
@@ -119,7 +135,7 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 	 */
 	private List<ClaudeCodeEnforcerRule> runnableParts() {
 		Set<String> skipped = skippedNames();
-		return new ProjectParts(new ProjectLayout(projectDir), autoFix, claudeMdBudgetBytes).present().stream()
+		return new ProjectParts(new ProjectLayout(projectDir), documentContract()).present().stream()
 				.filter(part -> !skipped.contains(nameOf(part).toLowerCase(Locale.ROOT)))
 				.toList();
 	}
@@ -193,5 +209,18 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 
 	public void setClaudeMdBudgetBytes(int claudeMdBudgetBytes) {
 		this.claudeMdBudgetBytes = claudeMdBudgetBytes;
+	}
+
+	public void setClaudeMdSections(List<String> claudeMdSections) {
+		this.claudeMdSections = claudeMdSections;
+	}
+
+	public void setClaudeMdReference(String claudeMdReference) {
+		this.claudeMdReference = claudeMdReference;
+	}
+
+	/** What the document parts are configured with, gathered so the parts take one argument. */
+	private DocumentContract documentContract() {
+		return new DocumentContract(autoFix, claudeMdBudgetBytes, claudeMdSections, claudeMdReference);
 	}
 }

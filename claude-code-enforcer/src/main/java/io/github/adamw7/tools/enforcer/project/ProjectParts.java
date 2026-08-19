@@ -61,13 +61,11 @@ import io.github.adamw7.tools.enforcer.settings.SettingsJsonValidRule;
 final class ProjectParts {
 
 	private final ProjectLayout layout;
-	private final boolean autoFix;
-	private final int claudeMdBudgetBytes;
+	private final DocumentContract contract;
 
-	ProjectParts(ProjectLayout layout, boolean autoFix, int claudeMdBudgetBytes) {
+	ProjectParts(ProjectLayout layout, DocumentContract contract) {
 		this.layout = layout;
-		this.autoFix = autoFix;
-		this.claudeMdBudgetBytes = claudeMdBudgetBytes;
+		this.contract = contract;
 	}
 
 	/**
@@ -87,13 +85,19 @@ final class ProjectParts {
 		whenFile(parts, layout.claudeMd(), () -> {
 			ClaudeMdFormatRule rule = new ClaudeMdFormatRule();
 			rule.setClaudeMdFile(layout.claudeMd());
-			rule.setAutoFix(autoFix);
+			rule.setAutoFix(contract.autoFix());
+			if (contract.claudeMdSections() != null) {
+				rule.setRequiredSections(contract.claudeMdSections());
+			}
+			if (contract.claudeMdReference() != null) {
+				rule.setRequiredReference(contract.claudeMdReference());
+			}
 			return rule;
 		});
 		whenFile(parts, layout.agentsMd(), () -> {
 			AgentsMdFormatRule rule = new AgentsMdFormatRule();
 			rule.setAgentsMdFile(layout.agentsMd());
-			rule.setAutoFix(autoFix);
+			rule.setAutoFix(contract.autoFix());
 			return rule;
 		});
 		whenFile(parts, layout.claudeMd(), () -> {
@@ -101,11 +105,11 @@ final class ProjectParts {
 			rule.setClaudeMdFile(layout.claudeMd());
 			return rule;
 		});
-		if (claudeMdBudgetBytes > 0) {
+		if (contract.budgetBytes() > 0) {
 			whenFile(parts, layout.claudeMd(), () -> {
 				ContextBudgetRule rule = new ContextBudgetRule();
 				rule.setFiles(List.of(layout.claudeMd()));
-				rule.setMaxBytes(claudeMdBudgetBytes);
+				rule.setMaxBytes(contract.budgetBytes());
 				return rule;
 			});
 		}

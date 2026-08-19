@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionOptions;
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.AdoptionReportWriter;
 import io.github.adamw7.tools.adopt.AdoptionRun;
@@ -112,7 +113,15 @@ public class AdoptTool implements McpTool {
 							Map.entry("retries", Map.of("type", "integer",
 									"description", "how many further attempts a git or gh command the network "
 											+ "refused earns, waiting longer before each; defaults to "
-											+ AdoptionOptions.DEFAULT_RETRIES + ", and 0 reports the first failure"))),
+											+ AdoptionOptions.DEFAULT_RETRIES + ", and 0 reports the first failure")),
+							Map.entry("rules", Map.of("type", "string",
+									"description", "how much of the adopted repository's Claude Code configuration "
+											+ "the wired guard checks: 'project' (default) for all of it, or "
+											+ "'minimal' for the CLAUDE.md format alone")),
+							Map.entry("claude_md_sections", Map.of("type", "string",
+									"description", "comma-separated CLAUDE.md headings the guard demands and the "
+											+ "reshape conforms to; an array is accepted too. Defaults to what the "
+											+ "detected build system asks for"))),
 					"required", List.of()));
 
 	public AdoptTool() {
@@ -238,7 +247,18 @@ public class AdoptTool implements McpTool {
 		return new AdoptionOptions(pullRequestOptionsFrom(arguments),
 				ToolArguments.optionalBoolean(arguments, "assets", false), text(arguments, "rule_version"),
 				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments),
-				retries(arguments));
+				retries(arguments), guardRules(arguments), textList(arguments, "claude_md_sections"));
+	}
+
+	/**
+	 * Refused here rather than defaulted, the same as on the command line: a client
+	 * naming a rule set that does not exist has asked for something, and quietly
+	 * giving it the default would change what the adopted build enforces without
+	 * saying so.
+	 */
+	private GuardRules guardRules(Map<String, Object> arguments) {
+		String rules = text(arguments, "rules");
+		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
 	}
 
 	/**

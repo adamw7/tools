@@ -42,10 +42,31 @@ import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
  * own rules there, because the {@code adopt} pipeline reads documents through the
  * same one and cannot depend on this module to get it.
  */
-@AnalyzeClasses(packages = EnforcerArchitectureTest.ENFORCER_PACKAGE, importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = EnforcerArchitectureTest.ENFORCER_PACKAGE,
+		importOptions = { ImportOption.DoNotIncludeTests.class, EnforcerArchitectureTest.WithoutTheCommandLine.class })
 public class EnforcerArchitectureTest {
 
 	static final String ENFORCER_PACKAGE = "io.github.adamw7.tools.enforcer";
+
+	/**
+	 * Leaves the command line out of the shared conventions, which
+	 * {@link CommonCodingConventions} says must hold for every module and so must not
+	 * be quietly weakened for one package. The one convention the command line cannot
+	 * keep is the ban on standard streams: an entry point invoked as
+	 * {@code java -jar} has no host process to report through, and giving this module
+	 * a logging framework to satisfy the rule would put one on the plugin class path
+	 * of every build that wires a rule. {@link CommandLineArchitectureTest} states
+	 * what does apply there, including that only {@code Main} touches a stream.
+	 */
+	public static final class WithoutTheCommandLine implements ImportOption {
+
+		private static final String CLI_PACKAGE = "/io/github/adamw7/tools/enforcer/cli/";
+
+		@Override
+		public boolean includes(com.tngtech.archunit.core.importer.Location location) {
+			return !location.contains(CLI_PACKAGE);
+		}
+	}
 
 	private static final String RULE_SUFFIX = "Rule";
 	private static final String TEXT_PACKAGE = "..enforcer.text..";

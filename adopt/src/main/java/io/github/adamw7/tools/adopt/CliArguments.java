@@ -64,7 +64,8 @@ public final class CliArguments {
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
 			+ " [--rules <minimal|project>] [--section <heading>]..."
-			+ " [--dry-run] [--timeout <minutes>] [--retries <count>] [--report <file>] [--help]";
+			+ " [--dry-run] [--keep-workspace] [--timeout <minutes>] [--retries <count>]"
+			+ " [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
 	static final String HELP_SHORTHAND = "-h";
@@ -120,6 +121,16 @@ public final class CliArguments {
 
 	@Option(names = "--assets")
 	private boolean assets;
+
+	/**
+	 * Keeps every checkout, whatever the outcome. Without it a checkout whose
+	 * adoption landed is removed — its product is a pushed branch and a pull request,
+	 * and a batch that made fifty full clones left fifty behind. A failed adoption's
+	 * checkout is kept either way, and so is a dry run's, which is the only thing a
+	 * dry run produces.
+	 */
+	@Option(names = "--keep-workspace")
+	private boolean keepWorkspace;
 
 	@Option(names = "--dry-run")
 	private boolean dryRun;
@@ -241,6 +252,11 @@ public final class CliArguments {
 	 */
 	private GuardRules guardRules() {
 		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
+	}
+
+	/** What becomes of each repository's checkout once its adoption is over. */
+	public CheckoutRetention checkoutRetention() {
+		return CheckoutRetention.of(keepWorkspace, dryRun);
 	}
 
 	public Optional<Path> reportFile() {

@@ -18,6 +18,10 @@ import org.apache.logging.log4j.Logger;
  * shells out to {@code git}, {@code claude}, and {@code gh}, whose output a
  * parallel batch would interleave.
  *
+ * <p>Each repository's checkout is settled once its adoption is over, by the
+ * {@link CheckoutRetention} the run was given: a batch makes one full clone per
+ * repository, and nothing used to remove them.
+ *
  * <p>Claiming a repository's checkout is part of its own adoption rather than a
  * preparation the whole run shares, so a URL that names no repository, or one
  * whose checkout directory another repository of the run already claimed, is that
@@ -40,9 +44,20 @@ public final class BatchAdoption {
 	private static final Logger log = LogManager.getLogger(BatchAdoption.class);
 
 	private final Adoption adoption;
+	private final CheckoutRetention retention;
 
 	public BatchAdoption(Adoption adoption) {
+		this(adoption, CheckoutRetention.ALWAYS);
+	}
+
+	/**
+	 * @param retention what becomes of each repository's checkout once its adoption
+	 *                  is over. A batch makes one full clone per repository and
+	 *                  nothing used to remove them.
+	 */
+	public BatchAdoption(Adoption adoption, CheckoutRetention retention) {
 		this.adoption = adoption;
+		this.retention = retention;
 	}
 
 	/**
@@ -74,11 +89,25 @@ public final class BatchAdoption {
 		String displayUrl = Redaction.of(repositoryUrl);
 		log.info("Repository {} of {}: {}", index + 1, repositoryUrls.size(), displayUrl);
 		try {
-			adoption.adopt(checkouts.claim(repositoryUrl), report);
+			AdoptionContext context = checkouts.claim(repositoryUrl);
+			adopt(context, report);
 		} catch (RuntimeException e) {
 			recordFailure(displayUrl, report, e);
 		}
 		return new AdoptionRun(displayUrl, checkouts.branchName(), report);
+	}
+
+	/**
+	 * Adopts one repository and then settles its checkout, on the failure path as
+	 * well as the successful one — a claim that threw has no context and so no
+	 * checkout to settle, which is why the claim sits outside this.
+	 */
+	private void adopt(AdoptionContext context, AdoptionReport report) {
+		try {
+			adoption.adopt(context, report);
+		} finally {
+			retention.apply(context.repositoryDirectory(), report.succeeded());
+		}
 	}
 
 	/**

@@ -17,6 +17,7 @@ import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.AdoptionReportWriter;
 import io.github.adamw7.tools.adopt.AdoptionRun;
 import io.github.adamw7.tools.adopt.BatchAdoption;
+import io.github.adamw7.tools.adopt.CheckoutRetention;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.Redaction;
@@ -104,6 +105,10 @@ public class AdoptTool implements McpTool {
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
 											+ "Maven project; defaults to the version of this build")),
+							Map.entry("keep_workspace", Map.of("type", "boolean",
+									"description", "keep every checkout after a successful adoption; by default "
+											+ "a checkout whose adoption landed is removed, since its product is "
+											+ "the pushed branch and the pull request")),
 							Map.entry("dry_run", Map.of("type", "boolean",
 									"description", "rehearse the adoption: clone, branch, and commit in the "
 											+ "workspace, but push nothing and open no pull request")),
@@ -149,8 +154,19 @@ public class AdoptTool implements McpTool {
 	@Override
 	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP adopt tool for {}", describe(arguments));
-		BatchAdoption batch = new BatchAdoption(pipeline.create(adoptionOptionsFrom(arguments)));
+		AdoptionOptions options = adoptionOptionsFrom(arguments);
+		BatchAdoption batch = new BatchAdoption(pipeline.create(options), checkoutRetention(arguments, options));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
+	}
+
+	/**
+	 * What becomes of each repository's checkout, decided the same way the command
+	 * line decides it. A server serving many calls accumulates clones faster than an
+	 * operator does, so the default matters more here, not less.
+	 */
+	private CheckoutRetention checkoutRetention(Map<String, Object> arguments, AdoptionOptions options) {
+		return CheckoutRetention.of(ToolArguments.optionalBoolean(arguments, "keep_workspace", false),
+				options.dryRun());
 	}
 
 	/**

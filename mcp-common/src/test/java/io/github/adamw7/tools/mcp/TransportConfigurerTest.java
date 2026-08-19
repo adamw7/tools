@@ -6,7 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 
+/**
+ * Runs alone under the class-parallel unit-test run: it clears the transport,
+ * web-application-type and banner system properties that
+ * {@link TransportConfigurer} sets process-wide, which a concurrently running
+ * server test would otherwise find missing.
+ */
+@Isolated
 public class TransportConfigurerTest {
 
 	private static final String TRANSPORT_MODE = "transport.mode";

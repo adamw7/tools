@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.adamw7.tools.data.source.file.PathValidator;
@@ -22,6 +23,12 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
+/**
+ * Runs alone under the class-parallel unit-test run: {@code tools()} confines file
+ * access by setting the JVM-wide {@link PathValidator} base directory, which would
+ * otherwise deny a concurrently running test the file it reads.
+ */
+@Isolated
 public class McpConfigurationTest {
 
 	private final McpConfiguration config = new McpConfiguration();

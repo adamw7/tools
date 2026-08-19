@@ -23,6 +23,21 @@ fails the build, not just review.
   under coverage). A fork that hangs outright is killed at 300 s
   (`forkedProcessTimeoutInSeconds`).
 
+### Unit tests run class-parallel
+- Surefire runs `unit.test.parallelism` (default **3**) test classes at once per
+  module; the methods **within** one class still run on a single thread, so a
+  `@BeforeEach`-built fixture is never shared across threads.
+- A `@TempDir` is unique per class, so an ordinary test needs nothing extra.
+- **Writing process-global state needs a guard**, or the test corrupts whatever
+  runs beside it:
+  - a system property, or `PathValidator.setAllowedBaseDir` → annotate the class
+    `@Isolated` (`org.junit.jupiter.api.parallel.Isolated`); it then runs alone.
+    ArchUnit fails the build if you forget.
+  - a fixture genuinely shared between classes (the embedded Derby database) →
+    `@ResourceLock("<name>")`, which serialises just those classes. Put it on the
+    shared base class; subclasses inherit it.
+- Debug a suspected ordering problem with `-Dunit.test.parallelism=1`.
+
 ### Network is off for unit tests
 - The `data` module's `NetworkOffExtension` engages the `Switch` kill-switch
   before any test runs, so a unit test **cannot** open an outbound connection.

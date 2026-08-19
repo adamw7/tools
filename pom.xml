@@ -112,6 +112,18 @@
 		     forked JVM after this many seconds, so a genuinely hung test still fails
 		     the build. Sized far above a full module's fast unit run. -->
 		<unit.test.fork.timeout>300</unit.test.fork.timeout>
+		<!-- How many test classes one module runs at a time. Unit tests are
+		     class-parallel (see the surefire configurationParameters): the reactor's
+		     -T1C already builds several modules at once, but the dependency graph
+		     starves it whenever a module everything waits on is the only one left,
+		     and that module then ran its whole suite one class after another. This
+		     fills those gaps. It is a small fixed number rather than a per-core one
+		     precisely because -T1C is already per-core: on a 4-core machine the two
+		     multiply out to 4 module threads x this, so a per-core value here would
+		     oversubscribe by the square of the core count and push the slowest
+		     methods into the ${unit.test.method.timeout} limit. Lower it to 1 to
+		     turn class-parallelism off for a run: -Dunit.test.parallelism=1. -->
+		<unit.test.parallelism>3</unit.test.parallelism>
 		<!-- Maven Central publishing behavior for the release profile. Defaults
 		     publish on release; overridable so the maven-publish.yml
 		     workflow_dispatch dry run can upload and validate without
@@ -405,11 +417,31 @@
 						<systemPropertyVariables>
 							<tools.test.network.off>true</tools.test.network.off>
 						</systemPropertyVariables>
+						<!-- Run each module's unit tests a class at a time in parallel
+						     (${unit.test.parallelism} of them at once), but every method
+						     of one class on a single thread. Concurrency between classes
+						     is the mode this suite can actually take: a class already
+						     owns its fixture (79 of them take a @TempDir, which JUnit
+						     makes unique per class), whereas concurrency *within* a class
+						     would interleave methods sharing one @BeforeEach-built
+						     instance, which nothing here was written for. State a class
+						     cannot own alone is guarded at the class that touches it:
+						     @Isolated where a test writes something JVM-wide that others
+						     read (a system property, the allowed base directory), and
+						     @ResourceLock where test classes share one database. Each
+						     module's TestConventionsArchitectureTest holds that line for
+						     new tests, so the next such test fails the build rather than
+						     the suite beside it. -->
 						<properties>
 							<configurationParameters>
 								junit.jupiter.execution.timeout.testable.method.default = ${unit.test.method.timeout}
 								junit.jupiter.execution.timeout.lifecycle.method.default = ${unit.test.lifecycle.timeout}
 								junit.jupiter.extensions.autodetection.enabled = true
+								junit.jupiter.execution.parallel.enabled = true
+								junit.jupiter.execution.parallel.mode.default = same_thread
+								junit.jupiter.execution.parallel.mode.classes.default = concurrent
+								junit.jupiter.execution.parallel.config.strategy = fixed
+								junit.jupiter.execution.parallel.config.fixed.parallelism = ${unit.test.parallelism}
 							</configurationParameters>
 						</properties>
 					</configuration>

@@ -462,6 +462,34 @@ apply to. The one module using Mockito (`protogen-maven-plugin`) pre-loads it as
 a surefire `-javaagent`, so the byte-buddy self-attach happens at JVM startup
 rather than inside the first timed test.
 
+**Unit tests run a class at a time in parallel.** Surefire turns JUnit's parallel
+execution on with `mode.classes.default = concurrent` but `mode.default =
+same_thread`: `unit.test.parallelism` (default **3**) test classes run at once in
+a module, while the methods of one class stay on a single thread. A class already
+owns its fixture — 79 of them take a `@TempDir`, which JUnit makes unique per
+class — so concurrency *between* classes is the mode this suite can take;
+concurrency *within* one would interleave methods sharing a `@BeforeEach`-built
+instance, which nothing here was written for. The number is deliberately a small
+constant, not per-core: the reactor's `-T1C` is already per-core, and a per-core
+value here would multiply out to the square of the core count and push the
+slowest methods into the 5 s limit. `-Dunit.test.parallelism=1` turns it off for
+a run.
+
+Process-global state is guarded at the class that writes it, because a class
+cannot own it alone:
+
+| State | Guard | Where |
+| --- | --- | --- |
+| a system property the whole JVM reads | `@Isolated` | `TransportConfigurerTest`, `TlsConfigurationTest`, `MainTest`, `ClaudeCodeEnforcerRuleConfigurationTest` |
+| `PathValidator`'s allowed base directory | `@Isolated` | `PathValidatorTest`, `McpConfigurationTest` |
+| the one embedded Derby database | `@ResourceLock("derby-testDB")` on `DBTest` | inherited by `UniquenessCheckTest`, `SQLDataSourceTest` |
+
+The Derby lock is what the suite most depends on: its subclasses share a static
+`Connection` and one `jdbc:derby:memory:testDB`, so without the lock two of them
+racing create the same tables, overwrite each other's connection, and drop the
+database mid-test — reproducibly, every run. `Switch` needs no guard: it is
+one-way and every class engages it before its own first test.
+
 **Unit tests run with the network off.** The `data` module registers a
 `NetworkOffExtension` — a JUnit `BeforeAllCallback` discovered through
 `META-INF/services` — that calls `Switch.off()` before any test runs. Both the
@@ -492,7 +520,9 @@ Repo-wide rules (declared once in `test-common` and imported with
   separate because `claude-code-enforcer` is exempt: its abstract rule bases are
   public API that poms configure by name.
 - `CommonTestConventions` — every `@Testable` method lives in a `*Test`/`*IT`
-  class; no `@Disabled`; JUnit 5 only; no `System.out`/`err`; no `Thread.sleep`.
+  class; no `@Disabled`; JUnit 5 only; no `System.out`/`err`; no `Thread.sleep`;
+  a `*Test` that writes a system property is `@Isolated`, since the unit run is
+  class-parallel (the `*IT`s failsafe runs one after another are exempt).
 
 Adding a repository-wide convention means editing one library, not six tests; an
 exemption means a module not importing a library, which stays visible.
@@ -502,7 +532,11 @@ Per-module rules:
 - **`data`** — data-source contracts in `source.interfaces` must not depend on
   their `source.db`/`source.file` implementations; the uniqueness core must not
   depend on its MCP adapter; the `structure` collections stay decoupled from data
-  sources; JDBC (`java.sql`) stays confined to `source.db`.
+  sources; JDBC (`java.sql`) stays confined to `source.db`. Its
+  `TestConventionsArchitectureTest` adds the module's counterpart to the shared
+  system-property rule: a `*Test` that sets or clears `PathValidator`'s allowed
+  base directory is `@Isolated`, that field being the other JVM-wide state a test
+  here can write.
 - **`adopt`** (`AdoptArchitectureTest`) — the `command` package is the only place
   a process is spawned, and a step knows only the `CommandRunner` contract, never
   `ProcessCommandRunner`; a step never reaches back to `GitHubRepoAdopter`,

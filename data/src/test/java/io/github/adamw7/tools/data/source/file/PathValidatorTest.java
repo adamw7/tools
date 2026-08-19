@@ -12,7 +12,16 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 
+/**
+ * Runs alone under the class-parallel unit-test run: the allowed base directory
+ * is one {@code volatile} field for the whole JVM, so while this class points it
+ * at a {@code @TempDir}, every other test constructing a file source would be
+ * refused the test resource it reads. Clearing it afterwards is not enough when
+ * something else runs *during*.
+ */
+@Isolated
 public class PathValidatorTest {
 
 	@AfterEach

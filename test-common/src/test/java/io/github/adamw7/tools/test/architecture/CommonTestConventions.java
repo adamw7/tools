@@ -4,11 +4,13 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.ArchTest;
@@ -73,6 +75,19 @@ public class CommonTestConventions {
 			.should().beStatic()
 			.because("JUnit 5 runs @BeforeAll/@AfterAll once per class only when they are static; "
 					+ "a non-static one fails at runtime unless the class opts into the PER_CLASS lifecycle")
+			.allowEmptyShould(true);
+
+	@ArchTest
+	static final ArchRule testsWritingSystemPropertiesAreIsolated = noClasses()
+			.that().haveSimpleNameEndingWith("Test")
+			.and().areNotAnnotatedWith(Isolated.class)
+			.should().callMethod(System.class, "setProperty", String.class, String.class)
+			.orShould().callMethod(System.class, "clearProperty", String.class)
+			.orShould().callMethod(System.class, "setProperties", Properties.class)
+			.because("unit tests run a class at a time in parallel and a system property is JVM-wide: "
+					+ "a class that writes one changes what every concurrently running test reads, "
+					+ "so it must carry @Isolated and run alone. Only the surefire unit run is "
+					+ "class-parallel, so the *IT classes failsafe runs one after another are exempt")
 			.allowEmptyShould(true);
 
 	@ArchTest

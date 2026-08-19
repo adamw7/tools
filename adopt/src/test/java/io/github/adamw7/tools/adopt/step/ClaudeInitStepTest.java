@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.adopt.step;
 
 import static io.github.adamw7.tools.test.ExpectedFailures.assertFailure;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,8 +11,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -161,6 +165,104 @@ class ClaudeInitStepTest {
 		RecordingCommandRunner runner = RecordingCommandRunner.answering("I did not create a CLAUDE.md");
 		assertFailure(AdoptionException.class, () -> new ClaudeInitStep().execute(context, runner),
 				"I did not create a CLAUDE.md");
+	}
+
+	/**
+	 * The run's most expensive command is the only one with no other recovery, because
+	 * TransientFailures leaves claude out: its transcript is a model's prose and may
+	 * discuss a connection reset without one having happened. What is judged here is
+	 * the outcome instead, which that objection does not reach.
+	 */
+	@Test
+	void runsTheCliAgainWhenItProducedNoClaudeMd(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		AtomicInteger runs = new AtomicInteger();
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			if (runs.incrementAndGet() == 3) {
+				writeRootClaudeMd(context);
+			}
+			return new CommandResult(command, 0, "nothing written");
+		});
+
+		assertDoesNotThrow(() -> step(3).execute(context, runner));
+
+		assertEquals(3, runner.count(), "the CLI should have been run until it produced the file");
+	}
+
+	/** A run that produced the file has succeeded, whatever its exit code claimed. */
+	@Test
+	void stopsAsSoonAsTheFileExistsEvenWhenTheCliExitedNonZero(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			writeRootClaudeMd(context);
+			return new CommandResult(command, 0, "");
+		});
+
+		assertDoesNotThrow(() -> step(3).execute(context, runner));
+
+		assertEquals(1, runner.count(), "a run that produced the file must not be repeated");
+	}
+
+	@Test
+	void givesUpAfterTheAttemptsRunOutAndReportsWhatTheCliSaid(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("I declined");
+
+		assertFailure(AdoptionException.class, () -> step(2).execute(context, runner), "I declined");
+		assertEquals(3, runner.count(), "one attempt plus the two retries");
+	}
+
+	/** Zero retries runs the CLI exactly once, as an undecorated step does. */
+	@Test
+	void runsOnceWhenNoRetriesAreAllowed(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		RecordingCommandRunner runner = RecordingCommandRunner.answering("nothing written");
+
+		assertThrows(AdoptionException.class, () -> step(0).execute(context, runner));
+		assertEquals(1, runner.count());
+	}
+
+	/** The wait doubles and is capped, so a generous retry count cannot idle a run for minutes. */
+	@Test
+	void waitsLongerBeforeEachAttemptUpToTheCap(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		List<Duration> waits = new ArrayList<>();
+		ClaudeInitStep step = new ClaudeInitStep(ClaudeInitStep.DEFAULT_COMMAND, 4, waits::add);
+
+		assertThrows(AdoptionException.class,
+				() -> step.execute(context, RecordingCommandRunner.answering("nothing")));
+
+		assertEquals(List.of(Duration.ofSeconds(5), Duration.ofSeconds(10), Duration.ofSeconds(20),
+				ClaudeInitStep.MAX_BACKOFF), waits);
+	}
+
+	/**
+	 * A second attempt has to meet the same checkout the first one did, so the memory
+	 * file is moved aside and restored around each attempt rather than around the run.
+	 */
+	@Test
+	void movesTheMemoryFileAsideForEveryAttempt(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		writeClaudeDirMemory(context);
+		AtomicInteger runs = new AtomicInteger();
+		RecordingCommandRunner runner = new RecordingCommandRunner(command -> {
+			assertFalse(Files.exists(claudeDirMemory(context)),
+					"the memory file must be aside while the CLI runs");
+			if (runs.incrementAndGet() == 2) {
+				writeRootClaudeMd(context);
+			}
+			return new CommandResult(command, 0, "");
+		});
+
+		assertDoesNotThrow(() -> step(2).execute(context, runner));
+
+		assertTrue(Files.exists(claudeDirMemory(context)), "the memory file must be restored afterwards");
+	}
+
+	/** Nothing is waited out where nothing is retried. */
+	private ClaudeInitStep step(int retries) {
+		return new ClaudeInitStep(ClaudeInitStep.DEFAULT_COMMAND, retries, duration -> {
+		});
 	}
 
 	/** The transcript is redacted like every other one, since it is the run's reported failure. */

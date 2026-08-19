@@ -65,8 +65,8 @@ class EnforcerRuleVersionTest {
 	 */
 	@Test
 	void metadataMissingFromTheClasspathIsRefused() {
-		assertFailure(AdoptionException.class, () -> EnforcerRuleVersion.read(null),
-				EnforcerRuleVersion.BUILD_PROPERTIES);
+		assertFailure(AdoptionException.class, () -> BuildMetadata.read(null, EnforcerRuleVersion.RULE_VERSION_KEY, "the rule version"),
+				BuildMetadata.BUILD_PROPERTIES);
 	}
 
 	/**
@@ -94,7 +94,8 @@ class EnforcerRuleVersionTest {
 	/** A resource that was filtered but carries some other key answers no version either. */
 	@Test
 	void metadataWithoutTheVersionKeyIsRefused() throws IOException {
-		assertFailure(AdoptionException.class, () -> EnforcerRuleVersion.read(metadata("some.other.key=2.6.0")),
+		assertFailure(AdoptionException.class, () -> BuildMetadata.read(metadata("some.other.key=2.6.0"), EnforcerRuleVersion.RULE_VERSION_KEY,
+						"the rule version"),
 				EnforcerRuleVersion.RULE_VERSION_KEY);
 	}
 
@@ -105,13 +106,15 @@ class EnforcerRuleVersionTest {
 	 */
 	@Test
 	void aFilteredVersionIsReadWithoutItsSurroundingWhitespace() throws IOException {
-		assertEquals("2.6.0", EnforcerRuleVersion.read(metadata(EnforcerRuleVersion.RULE_VERSION_KEY + "=  2.6.0  ")));
+		assertEquals("2.6.0", BuildMetadata.read(metadata(EnforcerRuleVersion.RULE_VERSION_KEY + "=  2.6.0  "),
+				EnforcerRuleVersion.RULE_VERSION_KEY, "the rule version"));
 	}
 
 	private void assertUnfiltered(String version) {
 		assertFailure(AdoptionException.class,
-				() -> EnforcerRuleVersion.read(metadata(EnforcerRuleVersion.RULE_VERSION_KEY + "=" + version)),
-				EnforcerRuleVersion.BUILD_PROPERTIES);
+				() -> BuildMetadata.read(metadata(EnforcerRuleVersion.RULE_VERSION_KEY + "=" + version),
+						EnforcerRuleVersion.RULE_VERSION_KEY, "the rule version"),
+				BuildMetadata.BUILD_PROPERTIES);
 	}
 
 	private InputStream metadata(String content) {
@@ -127,8 +130,8 @@ class EnforcerRuleVersionTest {
 	}
 
 	private String filteredRuleVersion() throws IOException {
-		try (InputStream stream = getClass().getResourceAsStream(EnforcerRuleVersion.BUILD_PROPERTIES)) {
-			assertNotNull(stream, EnforcerRuleVersion.BUILD_PROPERTIES + " must be filtered onto the test classpath");
+		try (InputStream stream = getClass().getResourceAsStream(BuildMetadata.BUILD_PROPERTIES)) {
+			assertNotNull(stream, BuildMetadata.BUILD_PROPERTIES + " must be filtered onto the test classpath");
 			Properties properties = new Properties();
 			properties.load(stream);
 			String version = properties.getProperty(EnforcerRuleVersion.RULE_VERSION_KEY, "").strip();

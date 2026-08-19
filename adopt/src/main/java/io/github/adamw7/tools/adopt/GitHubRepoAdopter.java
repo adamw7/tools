@@ -101,7 +101,7 @@ public class GitHubRepoAdopter {
 				new BuildToolchainStep(buildSystems),
 				new BranchStep(),
 				new TrustStep(),
-				new ClaudeInitStep(),
+				ClaudeInitStep.retrying(options.retries()),
 				new ClaudeMdConformanceStep(buildSystems),
 				new CommitStep("Adopt Claude Code: add CLAUDE.md", "claude-md"),
 				new EnforcerStep(buildSystems),

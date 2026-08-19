@@ -29,14 +29,32 @@ public class PomEnforcerInstaller {
 
 	private static final String ENFORCER_GROUP_ID = "org.apache.maven.plugins";
 	static final String ENFORCER_ARTIFACT_ID = "maven-enforcer-plugin";
-	static final String ENFORCER_VERSION = "3.6.3";
+
+	/** The property the build metadata carries the managed plugin version under. */
+	static final String ENFORCER_VERSION_KEY = "enforcer.plugin.version";
+
+	/**
+	 * The {@value #ENFORCER_ARTIFACT_ID} version a freshly declared plugin is pinned
+	 * to: the one the root pom manages, read through the build metadata rather than
+	 * written here as a literal. A literal is a number nobody builds — this project
+	 * would move on and go on asking strangers' repositories for the version it
+	 * stopped using, with nothing to notice by.
+	 *
+	 * <p>Resolved lazily, per POM, for the same reason the rule version is: merely
+	 * assembling {@link BuildSystems#DEFAULTS}, or adopting a repository that builds
+	 * with something other than Maven, must not depend on this build's metadata being
+	 * on the classpath.
+	 */
+	static String enforcerVersion() {
+		return BuildMetadata.value(ENFORCER_VERSION_KEY, "the maven-enforcer-plugin version to pin");
+	}
 
 	/**
 	 * The oldest {@value #ENFORCER_ARTIFACT_ID} that can run the rule wired in here.
 	 * {@value #CLAUDE_MD_RULE} is looked up by the component name it is published
 	 * under, which the plugin only does from this version; an older one fails the
 	 * build complaining it cannot find a rule the POM plainly declares. A declaration
-	 * this installer writes itself pins {@value #ENFORCER_VERSION}, so only a version
+	 * this installer writes itself pins {@link #enforcerVersion()}, so only a version
 	 * the project pinned — in its {@code build} or in the {@code pluginManagement}
 	 * that declaration resolves through — can be too old; see
 	 * {@link #requireRunnableEnforcer}.
@@ -330,7 +348,7 @@ public class PomEnforcerInstaller {
 	 * <p>Only a version literal is judged either way. One the POM leaves to a parent
 	 * or to a property cannot be read from here, and refusing on that would turn the
 	 * ordinary POM into an unadoptable one; see {@link PluginVersion}. A declaration
-	 * this installer writes itself always pins {@value #ENFORCER_VERSION}, which no
+	 * this installer writes itself always pins {@link #enforcerVersion()}, which no
 	 * {@code pluginManagement} entry overrides, so only a plugin the project already
 	 * had reaches this at all.
 	 */
@@ -378,7 +396,7 @@ public class PomEnforcerInstaller {
 		return PomDocument.wrapped("plugin", String.join("\n",
 				element("groupId", ENFORCER_GROUP_ID),
 				element("artifactId", ENFORCER_ARTIFACT_ID),
-				element("version", ENFORCER_VERSION),
+				element("version", enforcerVersion()),
 				PomDocument.wrapped("dependencies", ruleDependency()),
 				PomDocument.wrapped("executions", execution)));
 	}

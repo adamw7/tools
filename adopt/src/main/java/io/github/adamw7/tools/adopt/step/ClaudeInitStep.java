@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,7 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.Failures;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.adopt.command.RetryingCommandRunner.Pause;
 
 /**
  * Runs the Claude Code CLI in headless mode against the checkout so it generates a
@@ -35,6 +37,16 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * <p>The step is idempotent: a checkout that already carries a root
  * {@code CLAUDE.md} is left alone, because the CLI's output is not reproducible
  * and regenerating would discard whatever has been edited since.
+ *
+ * <p>A run that leaves no {@code CLAUDE.md} is tried again, a bounded number of
+ * times. This is the run's most expensive command and the only one with no other
+ * recovery: {@link io.github.adamw7.tools.adopt.command.TransientFailures} leaves
+ * {@code claude} out on purpose, because its transcript is a model's prose and may
+ * discuss a connection reset without one having happened. What is judged here is
+ * not the transcript but the <em>outcome</em> — whether the file exists — which
+ * that objection does not reach. A run that produced the file has succeeded
+ * whatever it exited with, and one that did not has produced nothing worth
+ * keeping, so there is no attempt to lose by trying again.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 
@@ -46,14 +58,51 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	private static final String CLAUDE_MD = AdoptionAssets.CLAUDE_MD_FILE;
 	private static final String CLAUDE_DIR = ".claude";
 
+	/**
+	 * The wait before a second attempt, doubling before each one after it. Longer than
+	 * the transport backoff next door because what is being waited out is different:
+	 * a model that declined, timed out, or answered without writing anything, none of
+	 * which a two-second pause changes.
+	 */
+	static final Duration FIRST_BACKOFF = Duration.ofSeconds(5);
+
+	/** The wait the doubling stops at, so a generous retry count cannot idle a run for minutes. */
+	static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
+
 	private final List<String> claudeCommand;
+	private final int retries;
+	private final Pause pause;
 
 	public ClaudeInitStep() {
 		this(DEFAULT_COMMAND);
 	}
 
+	/**
+	 * The default invocation, retried the number of times the run allows.
+	 *
+	 * @param retries how many further attempts a run that produced no {@code CLAUDE.md}
+	 *                earns
+	 */
+	public static ClaudeInitStep retrying(int retries) {
+		return new ClaudeInitStep(DEFAULT_COMMAND, retries);
+	}
+
 	public ClaudeInitStep(List<String> claudeCommand) {
+		this(claudeCommand, 0);
+	}
+
+	/**
+	 * @param retries how many further attempts a run that produced no {@code CLAUDE.md}
+	 *                earns; zero runs the CLI exactly once, as an undecorated step does
+	 */
+	public ClaudeInitStep(List<String> claudeCommand, int retries) {
+		this(claudeCommand, retries, Pause.sleeping());
+	}
+
+	ClaudeInitStep(List<String> claudeCommand, int retries, Pause pause) {
 		this.claudeCommand = List.copyOf(claudeCommand);
+		this.retries = retries;
+		this.pause = pause;
 	}
 
 	@Override
@@ -68,7 +117,27 @@ public class ClaudeInitStep extends AbstractCommandStep {
 			log.info("{} already carries {}; left unchanged", checkout, CLAUDE_MD);
 			return;
 		}
-		log.info("Running claude init in {}", checkout);
+		CommandResult result = attemptUntilGenerated(context, runner, checkout);
+		requireGenerated(context, result);
+	}
+
+	/**
+	 * Runs the CLI until it leaves a {@code CLAUDE.md} behind or the attempts run out,
+	 * answering the last attempt's result so the failure names what the CLI actually
+	 * said. The memory file is moved aside and restored around <em>each</em> attempt,
+	 * because a second attempt has to meet the same checkout the first one did.
+	 */
+	private CommandResult attemptUntilGenerated(AdoptionContext context, CommandRunner runner, Path checkout) {
+		CommandResult result = attempt(checkout, runner, 1);
+		for (int attempt = 1; attempt <= retries && !generated(context); attempt++) {
+			waitBefore(attempt, result);
+			result = attempt(checkout, runner, attempt + 1);
+		}
+		return result;
+	}
+
+	private CommandResult attempt(Path checkout, CommandRunner runner, int attempt) {
+		log.info("Running claude init in {} (attempt {} of {})", checkout, attempt, retries + 1);
 		Optional<Path> relocated = relocateExistingClaudeDirMemory(checkout);
 		CommandResult result;
 		try {
@@ -78,8 +147,31 @@ public class ClaudeInitStep extends AbstractCommandStep {
 			throw e;
 		}
 		restoreRelocated(relocated, checkout);
-		requireGenerated(context, result);
+		return result;
 	}
+
+	private boolean generated(AdoptionContext context) {
+		return Files.isRegularFile(context.repositoryDirectory().resolve(CLAUDE_MD));
+	}
+
+	/**
+	 * The attempt being replaced is logged here because nothing else will: an attempt a
+	 * later one succeeds after would otherwise leave no trace, and the transcript is
+	 * where a reader finds out that the CLI declined rather than failed.
+	 */
+	private void waitBefore(int attempt, CommandResult result) {
+		Duration backoff = backoff(attempt);
+		log.warn("claude init produced no {} (exit {}); retrying in {}s ({} of {}): {}", CLAUDE_MD,
+				result.exitCode(), backoff.toSeconds(), attempt, retries, result.redactedOutput().strip());
+		pause.of(backoff);
+	}
+
+	private Duration backoff(int attempt) {
+		Duration doubled = FIRST_BACKOFF.multipliedBy(1L << (attempt - 1));
+		return doubled.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : doubled;
+	}
+
+
 
 	private void restoreRelocated(Optional<Path> relocated, Path checkout) {
 		relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));

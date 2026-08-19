@@ -1,9 +1,5 @@
 package io.github.adamw7.tools.adopt.step;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
-
 import io.github.adamw7.tools.adopt.AdoptionException;
 
 /**
@@ -17,7 +13,6 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  */
 final class EnforcerRuleVersion {
 
-	static final String BUILD_PROPERTIES = "/adopt-build.properties";
 	static final String RULE_VERSION_KEY = "enforcer.rule.version";
 	private static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
 
@@ -60,46 +55,12 @@ final class EnforcerRuleVersion {
 
 	/**
 	 * Reads the rule version from the metadata Maven filters into
-	 * {@value #BUILD_PROPERTIES} at build time, so the dependency is pinned to the
-	 * exact {@code tools} release running the adoption — resolvable from the
-	 * repository that published it — rather than to a literal that silently drifts.
+	 * {@value BuildMetadata#BUILD_PROPERTIES} at build time, so the dependency is
+	 * pinned to the exact {@code tools} release running the adoption — resolvable from
+	 * the repository that published it — rather than to a literal that silently
+	 * drifts.
 	 */
 	static String fromBuildMetadata() {
-		try (InputStream stream = EnforcerRuleVersion.class.getResourceAsStream(BUILD_PROPERTIES)) {
-			return read(stream);
-		} catch (IOException e) {
-			throw new AdoptionException("Could not read build metadata: " + BUILD_PROPERTIES, e);
-		}
-	}
-
-	/**
-	 * Refuses metadata that reached the classpath unfiltered as firmly as metadata
-	 * that is missing: an unsubstituted token would otherwise be wired into the
-	 * adopted POM as if it were a version. Both delimiters are rejected — the
-	 * resource is written with {@code @...@}, which is what this build filters, and
-	 * {@code ${...}} is what it would carry had that configuration changed.
-	 *
-	 * <p>Package-visible because the stream is the only seam these refusals have.
-	 * {@link #fromBuildMetadata()} reads one resource off this class's own
-	 * classpath, and that resource is correct in every build that runs these tests —
-	 * so a test driving the version through it can only ever take the path that
-	 * succeeds, leaving the three failures this method words for nobody to reach.
-	 * They are the failures worth reaching: each one is what stands between a broken
-	 * build of {@code tools} and a literal {@code @enforcer.rule.version@} wired
-	 * into a stranger's {@code pom.xml} by a pull request the adoption opened.
-	 */
-	static String read(InputStream stream) throws IOException {
-		if (stream == null) {
-			throw new AdoptionException("Build metadata not on the classpath: " + BUILD_PROPERTIES
-					+ " (build the module so its resources are filtered)");
-		}
-		Properties properties = new Properties();
-		properties.load(stream);
-		String version = properties.getProperty(RULE_VERSION_KEY, "").strip();
-		if (version.isEmpty() || version.startsWith("@") || version.startsWith("${")) {
-			throw new AdoptionException(
-					RULE_VERSION_KEY + " was not filtered into " + BUILD_PROPERTIES + " (found: '" + version + "')");
-		}
-		return version;
+		return BuildMetadata.value(RULE_VERSION_KEY, "the claude-code-enforcer rule version to wire in");
 	}
 }

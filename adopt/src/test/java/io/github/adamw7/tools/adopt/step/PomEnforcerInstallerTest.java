@@ -346,7 +346,7 @@ class PomEnforcerInstallerTest {
 	@Test
 	void pinsEnforcerPluginVersionWhenCreatingIt(@TempDir Path dir) throws IOException {
 		String result = install(dir, POM_WITH_BUILD);
-		assertTrue(result.contains("<version>" + PomEnforcerInstaller.ENFORCER_VERSION + "</version>"),
+		assertTrue(result.contains("<version>" + PomEnforcerInstaller.enforcerVersion() + "</version>"),
 				"a freshly created maven-enforcer-plugin must declare a version so the adopted build validates");
 	}
 

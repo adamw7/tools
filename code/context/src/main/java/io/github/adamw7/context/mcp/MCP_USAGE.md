@@ -22,6 +22,11 @@ The server exposes four tools:
   (OKF) v0.2: a directory of markdown concept documents with YAML frontmatter,
   portable to any consumer that speaks OKF.
 
+All four resolve dependencies with the package-aware finder, which reads each
+source's `package` declaration and `import` statements, so two classes sharing a
+simple name in different packages are told apart rather than resolved to whichever
+was scanned first.
+
 ## Architecture
 
 The implementation lives in a package separate from the core finders:
@@ -65,7 +70,7 @@ Scans a project into a tree of folders, files and class dependencies.
 
 - `path` (string, required): absolute path to the project root directory
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
-- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
+- `depth` (integer, optional): levels of transitive dependencies to resolve, from `1` to `10` (default `1`)
 - `format` (string, optional): `json` (default), `markdown`, `text`, `dot` or `mermaid`
 
 **Example:**
@@ -88,7 +93,7 @@ Finds the classes a given class depends on, within a project.
 - `path` (string, required): absolute path to the project root directory
 - `class_name` (string, required): simple name of the class to inspect, e.g. `Foo` or `Foo.java`
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
-- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
+- `depth` (integer, optional): levels of transitive dependencies to resolve, from `1` to `10` (default `1`)
 
 **Returns:** a JSON array of dependency class names, e.g. `["A.java","B.java"]`.
 An unknown class is reported as an error result.
@@ -113,7 +118,7 @@ dependencies, to a bounded depth.
 - `path` (string, required): absolute path to the project root directory
 - `class_name` (string, required): simple name of the class to inspect, e.g. `Foo` or `Foo.java`
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
-- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
+- `depth` (integer, optional): levels of transitive dependencies to resolve, from `1` to `10` (default `1`)
 
 **Returns:** a JSON object with the `total` token estimate and a `classes` array of
 `{ "class": ..., "tokens": ... }` entries, the target class first. An unknown
@@ -137,13 +142,15 @@ Scans a project into a bundle in Google's Open Knowledge Format (OKF) v0.2.
 
 - `path` (string, required): absolute path to the project root directory
 - `language` (string, optional): `java` (default), `kotlin` or `scala`
-- `depth` (integer, optional): levels of transitive dependencies to resolve (default `1`)
+- `depth` (integer, optional): levels of transitive dependencies to resolve, from `1` to `10` (default `1`)
 
 **Returns:** a JSON object with the targeted `okf_version` and a `documents` map
 from each bundle-relative path to that document's markdown. Every directory
 becomes a reserved `index.md` listing what it holds, and every file becomes a
-concept document — YAML frontmatter naming it, then a `# Dependencies` section
-linking to the concepts it relies on. The bundle is **returned, never written**:
+concept document at its own name plus `.md` — or, where that would claim a name
+OKF reserves (a file called `index` or `log`), at that name plus `.concept.md`.
+A concept document is YAML frontmatter naming the file, then a `# Dependencies`
+section linking to the concepts it relies on. The bundle is **returned, never written**:
 the server stays read-only, so a client cannot use it to create files on the
 host. Write it out with `OkfBundleWriter` on the consumer's side.
 
@@ -254,8 +261,9 @@ constrained by design:
   **no authentication**, so it must not be exposed on a routable interface.
   Change `server.address` only after putting authentication in front of it.
 
-- **Bounded depth.** The `depth` argument is capped at `10` to bound the cost of
-  transitive dependency resolution.
+- **Bounded depth.** The `depth` argument runs from `1` to `10`: the cap bounds
+  the cost of transitive dependency resolution, and the floor refuses a depth of
+  zero, which resolves nothing.
 
 ## Configuring MCP Clients
 

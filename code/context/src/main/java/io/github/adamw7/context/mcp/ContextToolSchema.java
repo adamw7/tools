@@ -18,7 +18,7 @@ final class ContextToolSchema {
 	private static final Map<String, Object> LANGUAGE = property("string",
 			"source language: java (default), kotlin or scala");
 	private static final Map<String, Object> DEPTH = property("integer",
-			"how many levels of transitive dependencies to resolve (default 1)");
+			"how many levels of transitive dependencies to resolve, from 1 to 10 (default 1)");
 	private static final Map<String, Object> CLASS_NAME = property("string",
 			"simple name of the class to inspect, e.g. Foo or Foo.java");
 

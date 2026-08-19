@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -88,6 +92,35 @@ public class ProjectTreeToolTest extends AbstractContextToolTest {
 		writeJava("A", "public class A {}");
 
 		assertFalse(tool.apply(arguments()).isError());
+	}
+
+	@Test
+	void twoClassesSharingASimpleNameAreToldApartByTheirPackage() throws IOException {
+		// The name-based finder resolved either Dup to whichever was indexed first, so
+		// the one that lost drew an edge to the other — a self-edge, by the only name
+		// the tree carries. The package-aware finder resolves each within its own
+		// package, where neither depends on anything.
+		Path one = Files.createDirectory(projectRoot.resolve("one"));
+		Path two = Files.createDirectory(projectRoot.resolve("two"));
+		Files.writeString(one.resolve("Dup.java"), "package one;\npublic class Dup {}");
+		Files.writeString(two.resolve("Dup.java"), "package two;\npublic class Dup {}");
+		Files.writeString(one.resolve("User.java"), "package one;\npublic class User { Dup dup; }");
+
+		JsonNode tree = MAPPER.readTree(tool.apply(arguments()).text());
+
+		List<JsonNode> duplicates = nodesNamed(tree, "Dup.java");
+		assertEquals(2, duplicates.size());
+		duplicates.forEach(node -> assertTrue(node.get("dependencies").isEmpty(),
+				"a class must not depend on a class of its own name: " + node));
+	}
+
+	private List<JsonNode> nodesNamed(JsonNode node, String name) {
+		List<JsonNode> found = new ArrayList<>();
+		if (name.equals(node.get("name").asText())) {
+			found.add(node);
+		}
+		node.get("children").forEach(child -> found.addAll(nodesNamed(child, name)));
+		return found;
 	}
 
 	private Map<String, Object> arguments() {

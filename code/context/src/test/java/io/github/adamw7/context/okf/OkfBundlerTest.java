@@ -167,6 +167,45 @@ public class OkfBundlerTest {
 	}
 
 	@Test
+	void aFileNamedAfterAReservedDocumentDoesNotClaimIt() {
+		ProjectTreeNode root = directory("project");
+		root.addChild(file("index"));
+		root.addChild(file("log"));
+
+		OkfBundle bundle = bundler.bundle(root);
+
+		assertEquals(List.of("index.md", "index.concept.md", "log.concept.md"),
+				bundle.documents().stream().map(OkfDocument::path).toList());
+		assertTrue(document(bundle, "index.md").contains("* [index](index.concept.md)"));
+		assertTrue(document(bundle, "index.md").contains("* [log](log.concept.md)"));
+	}
+
+	@Test
+	void aFileNamedAfterAnEscapedReservedDocumentDoesNotClaimItEither() {
+		ProjectTreeNode root = directory("project");
+		root.addChild(file("index"));
+		root.addChild(file("index.concept"));
+
+		OkfBundle bundle = bundler.bundle(root);
+
+		assertEquals(List.of("index.md", "index.concept.md", "index.concept.concept.md"),
+				bundle.documents().stream().map(OkfDocument::path).toList());
+	}
+
+	@Test
+	void aDependencyOnAFileNamedAfterAReservedDocumentLinksToItsEscapedConcept() {
+		ProjectTreeNode root = directory("project");
+		root.addChild(file("index"));
+		ProjectTreeNode dependent = file("B.java");
+		dependent.addDependency("index");
+		root.addChild(dependent);
+
+		OkfBundle bundle = bundler.bundle(root);
+
+		assertTrue(document(bundle, "B.java.md").contains("* [`index`](/index.concept.md)"));
+	}
+
+	@Test
 	void aFileThatIsNotASourceFileIsTypedAsAProjectFile() {
 		ProjectTreeNode root = directory("project");
 		root.addChild(file("pom.xml"));

@@ -17,12 +17,18 @@ import io.github.adamw7.tools.mcp.ToolResult;
  * and bounding the depth happens once here, next to the {@link ContextToolSchema}
  * that advertises them. What a tool does with the {@link Scan} is its own, supplied
  * through {@link #answer}.
+ *
+ * <p>The depth is bounded below at {@value #MIN_DEPTH} as well as above. A depth of
+ * zero resolves nothing and every finder rejects it, so accepting it here only moved
+ * the refusal to a message that named no bound; refusing it while the arguments are
+ * read tells the caller the range the tools actually take.
  */
 abstract class AbstractContextTool implements ContextTool {
 
 	private static final Logger log = LogManager.getLogger(AbstractContextTool.class);
 
 	private static final int DEFAULT_DEPTH = 1;
+	private static final int MIN_DEPTH = 1;
 	private static final int MAX_DEPTH = 10;
 
 	protected final PathPolicy pathPolicy;
@@ -40,7 +46,7 @@ abstract class AbstractContextTool implements ContextTool {
 		log.info("Calling MCP {} tool for {}", getToolDefinition().name(), arguments);
 		Scan scan = new Scan(pathPolicy.resolve(ToolArguments.requiredString(arguments, "path")),
 				LanguageArguments.optionalLanguage(arguments, "language", Language.JAVA),
-				ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, 0, MAX_DEPTH));
+				ToolArguments.optionalBoundedInt(arguments, "depth", DEFAULT_DEPTH, MIN_DEPTH, MAX_DEPTH));
 		return answer(scan, arguments);
 	}
 

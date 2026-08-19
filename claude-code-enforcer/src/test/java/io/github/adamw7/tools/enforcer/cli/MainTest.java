@@ -17,11 +17,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 
 /**
  * The command line as a pre-commit hook or a non-Maven project meets it: run it at
  * a directory and read what it says.
  */
+/**
+ * Runs alone under the class-parallel unit-test run: it clears
+ * {@code claude.enforcer.reportDir}, a JVM-wide default every rule reads, so a
+ * rule test running beside it would be handed a report directory this test
+ * removed.
+ */
+@Isolated
 class MainTest {
 
 	private static final String VALID_CLAUDE_MD = """

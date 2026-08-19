@@ -169,6 +169,15 @@ Skill: `testing-conventions`.
   lifecycle-method timeout (15 s under coverage) covers shared setup like
   `@BeforeAll`, and surefire's **300-second** `forkedProcessTimeoutInSeconds`
   kills a fork that hangs outright.
+- **Unit tests run a class at a time in parallel**, `unit.test.parallelism`
+  (default **3**) classes at once per module, with the methods of one class still
+  on a single thread. Set `-Dunit.test.parallelism=1` to turn it off for a run.
+  A test that writes something the whole JVM reads — a system property, or
+  `PathValidator`'s allowed base directory — carries `@Isolated` so it runs
+  alone; test classes sharing the embedded Derby database carry `@ResourceLock`.
+  Each module's `TestConventionsArchitectureTest` fails the build on a new test
+  that writes such state without isolating, so it cannot break the suite beside
+  it instead.
 - **Unit tests run with the network off.** The `data` module's
   `NetworkOffExtension` engages the `Switch` kill-switch before any test runs, so
   a unit test can never open an outbound connection; the failsafe `*IT`s are

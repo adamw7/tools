@@ -17,6 +17,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 
 /**
  * The shared configuration every rule inherits: what a severity that is not a
@@ -24,6 +25,13 @@ import org.junit.jupiter.api.io.TempDir;
  * build-wide defaults that save a project spelling the same three parameters out
  * once per rule.
  */
+/**
+ * Runs alone under the class-parallel unit-test run: the build-wide defaults it
+ * sets are system properties {@link RuleDefaults} reads for every rule, so a
+ * concurrent rule test would inherit the severity or the directories this one is
+ * part-way through configuring.
+ */
+@Isolated
 class ClaudeCodeEnforcerRuleConfigurationTest {
 
 	@TempDir

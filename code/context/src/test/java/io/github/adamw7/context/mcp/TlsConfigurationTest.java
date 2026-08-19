@@ -8,9 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 
+/**
+ * Runs alone under the class-parallel unit-test run: every case here clears or
+ * restores {@code jdk.tls.namedGroups}, a JVM-wide system property that any
+ * concurrently running test reading TLS configuration would see change under it.
+ */
+@Isolated
 public class TlsConfigurationTest {
 
 	private final TlsConfiguration config = new TlsConfiguration();

@@ -8,9 +8,24 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 
+/**
+ * The shared embedded-Derby fixture: one in-memory database, created with its
+ * tables by {@link #setup()} and dropped again by {@link #tearDown()}.
+ *
+ * <p>The lock is what lets the suite run class-parallel. Every subclass boots the
+ * same {@code jdbc:derby:memory:testDB} and shares this class's static
+ * {@link #connection}, so two of them running at once would race three ways: both
+ * would create the same tables and one would fail on the duplicate, the second to
+ * connect would overwrite the connection the first is still issuing statements on,
+ * and the first to finish would close that connection and drop the database out
+ * from under the other. Holding one named lock for the whole class serialises the
+ * subclasses against each other while leaving them parallel with everything else.
+ */
+@ResourceLock("derby-testDB")
 public abstract class DBTest {
 	protected static Connection connection;
 	protected static String query;

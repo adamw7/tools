@@ -16,29 +16,26 @@ import java.util.TreeMap;
  * whether it passed.
  *
  * <p>Twenty rules writing twenty HTML files is twenty files nobody opens. Each
- * rule still writes its own — that is where its violations and its remediation
- * steps are — but the index says which of them are worth opening, which is the
- * question a reader arrives with.
+ * still writes its own, where its violations and remediation steps are, but the
+ * index says which are worth opening — the question a reader arrives with.
  *
- * <p>A rule reports as it runs and no rule knows what the others found, so the
- * index is rebuilt from a sidecar of outcomes rather than assembled at the end:
- * each rule records its own line, and the page is regenerated from every line
- * recorded so far. A build that runs a subset of the rules therefore indexes that
- * subset, and re-running one rule updates its row rather than duplicating it.
+ * <p>A rule reports as it runs and knows nothing of what the others found, so the
+ * index is rebuilt from a sidecar of outcomes rather than assembled at the end.
+ * A build running a subset of the rules indexes that subset, and re-running one
+ * rule updates its row rather than duplicating it.
  *
- * <p>Failing to write the index never fails the build. The rule's own verdict has
- * already been decided and its own report already written; losing the page that
- * links them is not worth converting a passing build into a broken one, so it is
- * reported as a warning and the run continues.
+ * <p>Failing to write the index never fails the build: the verdict is decided and
+ * the rule's own report written, so losing the page that links them is reported as
+ * a warning and the run continues.
  */
 final class ReportIndex {
 
 	static final String INDEX_FILE = "index.html";
 
 	/**
-	 * The recorded outcomes the page is rebuilt from. It is not itself HTML because
-	 * the page is regenerated whole on every write, and re-parsing markup to find out
-	 * what the previous rules found is a worse way to keep a list of pairs.
+	 * The recorded outcomes the page is rebuilt from. Not itself HTML: the page is
+	 * regenerated whole on every write, and re-parsing markup is a worse way to keep
+	 * a list of pairs.
 	 */
 	static final String SIDECAR_FILE = ".claude-code-enforcer-index";
 

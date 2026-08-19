@@ -67,12 +67,10 @@ public abstract class AbstractCommandStep implements AdoptionStep {
 	}
 
 	/**
-	 * Opens the report with the wait when a rate limit is what stopped the command.
-	 * The wait GitHub named is in the transcript either way, somewhere among the API's
-	 * prose and a link to its documentation, and an operator re-running a
-	 * fifty-repository batch had to find it. A rate limit is still not retried — see
-	 * {@link io.github.adamw7.tools.adopt.command.TransientFailures} — so what changes
-	 * is only what the report says.
+	 * Opens the report with the wait when a rate limit stopped the command. It is in
+	 * the transcript either way, somewhere among the API's prose, and an operator
+	 * re-running a fifty-repository batch had to find it. A rate limit is still not
+	 * retried; only what the report says changes.
 	 */
 	private String rateLimitNotice(CommandResult result) {
 		return RateLimits.describe(result.output())

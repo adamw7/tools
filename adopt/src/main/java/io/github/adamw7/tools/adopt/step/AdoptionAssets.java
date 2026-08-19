@@ -120,12 +120,11 @@ public final class AdoptionAssets {
 	 * the generated {@code CLAUDE.md}, and whatever build file each supported build
 	 * system wires its guard into.
 	 *
-	 * <p>{@link CloneStep} reads this to tell the adoption's own work apart from a
-	 * contributor's, and {@link CommitStep} refuses to commit while the checkout
-	 * ignores one of them, so a path missing from it is a file the adoption writes and
-	 * cannot account for. Nothing has to be added by hand for a new build system: the
-	 * asset installers name their own paths and each {@link BuildSystem} is asked for
-	 * {@link BuildSystem#writtenPaths()}, which it has to answer.
+	 * <p>{@link CloneStep} reads this to tell the adoption's work from a contributor's,
+	 * and {@link CommitStep} refuses to commit while the checkout ignores one, so a
+	 * missing path is a file the adoption writes and cannot account for. Nothing is
+	 * added by hand for a new build system: the installers name their own paths and
+	 * each {@link BuildSystem} must answer {@link BuildSystem#writtenPaths()}.
 	 */
 	public static final List<String> WRITTEN_PATHS = writtenPaths();
 

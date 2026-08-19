@@ -35,25 +35,22 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  * never written to. Steps and the command runner are injected, so the pipeline is
  * easy to reconfigure and to test.
  *
- * <p>Both toolchain checks are placed to fail early: the pipeline's own tools
- * before any expensive work, the project's build tool as soon as the clone
- * reveals which one it is, rather than at the verification. Each run returns an
- * {@link AdoptionReport} of the steps that completed and the pull request's URL;
- * a caller that needs the report of a run that <em>fails</em> supplies its own to
- * {@link #adopt(AdoptionContext, AdoptionReport)} and still holds it afterwards.
- * What the default pipeline contains is decided by {@link AdoptionOptions}: an
- * {@link AssetsStep} is included on request, and a dry run leaves out the two
- * steps that write to GitHub.
+ * <p>Both toolchain checks fail early: the pipeline's own tools before any expensive
+ * work, the project's build tool as soon as the clone reveals which one it is. Each
+ * run returns an {@link AdoptionReport} of the steps completed and the pull request's
+ * URL; a caller needing the report of a run that <em>fails</em> supplies its own to
+ * {@link #adopt(AdoptionContext, AdoptionReport)}. What the default pipeline contains
+ * is decided by {@link AdoptionOptions}: an {@link AssetsStep} on request, and a dry
+ * run leaves out the two steps that write to GitHub.
  */
 public class GitHubRepoAdopter {
 
 	/**
 	 * What the guard commit says it did. It names the guard rather than the artifact
-	 * that supplies one of them, because which guard {@link EnforcerStep} wires in is
-	 * the checkout's build system to decide and is not known when the pipeline is
-	 * assembled: only the Maven path adds the {@code claude-code-enforcer}. A message
-	 * naming the enforcer landed in the history of repositories given a Gradle task or
-	 * a workflow instead — a claim the diff beside it does not support.
+	 * supplying one of them: which guard {@link EnforcerStep} wires in is the
+	 * checkout's build system to decide, and only the Maven path adds the
+	 * {@code claude-code-enforcer}. A message naming the enforcer landed in the history
+	 * of repositories given a Gradle task instead.
 	 */
 	static final String GUARD_COMMIT_MESSAGE = "Adopt Claude Code: add the CLAUDE.md guard";
 
@@ -85,15 +82,11 @@ public class GitHubRepoAdopter {
 	 * with the tool that was probed.
 	 */
 	/**
-	 * The steps that answer "is this repository still adopted, and does its guard
-	 * still pass?" without adopting anything: check the tools, clone, check the
-	 * project's build tool, ask whether the document and the guard are there, and run
-	 * the guard. Nothing is branched, generated, committed, pushed, or opened.
-	 *
-	 * <p>It is a separate pipeline rather than an adoption with its writing steps
-	 * disabled, for the same reason a dry run is: the report then says what the run
-	 * really did, and a step that decided for itself to do nothing would still be
-	 * listed as having run.
+	 * The steps that answer "is this repository still adopted, and does its guard still
+	 * pass?" without adopting anything: check the tools, clone, check the project's
+	 * build tool, ask whether the document and the guard are there, and run the guard.
+	 * A separate pipeline rather than an adoption with its writing steps disabled, for
+	 * the same reason a dry run is: the report then says what the run really did.
 	 */
 	public static List<AdoptionStep> verificationSteps(AdoptionOptions options) {
 		List<BuildSystem> buildSystems = BuildSystems.defaults(options.guard());
@@ -170,10 +163,9 @@ public class GitHubRepoAdopter {
 	}
 
 	/**
-	 * Runs the pipeline into a report the caller already holds, so the outcome
-	 * survives a failure: a report created here and only handed back on the return
-	 * path is lost the moment a step throws, which is exactly when a caller wants to
-	 * know which steps completed.
+	 * Runs the pipeline into a report the caller already holds, so the outcome survives
+	 * a failure: one handed back only on the return path is lost the moment a step
+	 * throws, exactly when a caller wants to know which steps completed.
 	 *
 	 * @param report filled in as the run progresses, and marked as failed before a
 	 *               failing step's exception propagates
@@ -195,14 +187,11 @@ public class GitHubRepoAdopter {
 	}
 
 	/**
-	 * Each step is announced with its position in the pipeline and closed with what
-	 * it cost, because the two questions an operator has of a run that is still going
-	 * are how much of it is left and whether the step it is on is working or stuck.
-	 * The pipeline is assembled per run, so the count is the run's own.
-	 *
-	 * <p>A failing step is named here as well, without its stack trace: the exception
-	 * carries the failure and {@link BatchAdoption} logs it once, but nothing in that
-	 * account says which stage produced it or how far it had got.
+	 * Each step is announced with its position and closed with what it cost, the two
+	 * questions an operator has of a run still going being how much is left and whether
+	 * the current step is working or stuck. A failing step is named here too, without
+	 * its stack trace: {@link BatchAdoption} logs the exception once, but nothing there
+	 * says which stage produced it.
 	 */
 	private void runStep(AdoptionStep step, int ordinal, AdoptionContext context, AdoptionReport report) {
 		log.info("Step {}/{}: {}", ordinal, steps.size(), step.name());

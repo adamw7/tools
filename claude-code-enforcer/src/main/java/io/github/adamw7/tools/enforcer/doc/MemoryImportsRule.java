@@ -35,23 +35,19 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
  * by start-of-line or whitespace and followed by a path, outside code, HTML
- * comments and inline code spans alike, so neither {@code `@claude`} nor a bare
- * {@code @claude} in prose is an import, an import shown as a sample (fenced or
- * indented) is one the document illustrates rather than makes, and one an author
- * commented out is one it no longer makes.
+ * comments and inline code spans alike — so a bare or backticked {@code @claude} in
+ * prose is not an import, and neither is one shown as a sample or commented out.
  * <p>
- * A token counts as a path when it is written with an explicit path prefix
- * ({@code ./}, {@code ../}, {@code /}, {@code ~/}) or ends in one of
- * {@code importExtensions} — {@code md}, {@code markdown} and {@code txt} by
- * default. Anything carrying a separator or a dot used to qualify, which read the
- * {@code @anthropic-ai/claude-code} of an install line, the {@code @Named.class} of
- * a Java note and the {@code @adam.example.com} of an address as imports and failed
- * the build over files nobody meant to name. A
- * home-relative import ({@code @~/...}) points at machine-specific state a build
- * cannot see and is skipped, as is any import listed in {@code ignoredImports};
- * only a leading {@code ~} makes an import home-relative, so a path carrying a
- * Windows short name such as {@code RUNNER~1} is still followed.
- * Each file is scanned once; all problems found are reported together.
+ * A token counts as a path when written with an explicit path prefix ({@code ./},
+ * {@code ../}, {@code /}, {@code ~/}) or ending in one of {@code importExtensions}
+ * — {@code md}, {@code markdown} and {@code txt} by default. Anything carrying a
+ * separator or a dot used to qualify, which read {@code @anthropic-ai/claude-code},
+ * {@code @Named.class} and {@code @adam.example.com} as imports and failed the
+ * build over files nobody meant to name. A home-relative import ({@code @~/...})
+ * points at machine-specific state a build cannot see and is skipped, as is any
+ * import in {@code ignoredImports}; only a leading {@code ~} counts, so a path
+ * carrying a Windows short name such as {@code RUNNER~1} is still followed. Each
+ * file is scanned once; all problems are reported together.
  */
 @Named("memoryImports")
 public class MemoryImportsRule extends ClaudeCodeEnforcerRule {

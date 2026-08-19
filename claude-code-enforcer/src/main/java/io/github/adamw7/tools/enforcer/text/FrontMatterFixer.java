@@ -19,26 +19,20 @@ import java.util.stream.IntStream;
  * accept — the block must start on the first line.</li>
  * </ul>
  * <p>
- * The repair is deliberately conservative: it only acts when the document opens
+ * The repair is deliberately conservative: it acts only when the document opens
  * (past any leading blank lines) with a dashes-only line and the region that would
- * become the block actually contains at least one {@code key: value} entry, so a
- * lone {@code ---} thematic break is never mistaken for front matter. A document
- * whose front matter already parses, or whose problem is not one of the above, is
- * left untouched, and one that is repaired keeps the line separator it was written
- * with, so repairing two delimiter lines does not rewrite every other line of a
- * CRLF file.
+ * become the block carries at least one {@code key: value} entry, so a lone
+ * {@code ---} thematic break is never mistaken for front matter. A repaired
+ * document keeps the line separator it was written with, so repairing two delimiter
+ * lines does not rewrite every other line of a CRLF file.
  * <p>
  * A mend is reported only once the mended document has been read back and found to
- * parse, because delimiters are the only thing this fixer knows how to write and a
- * block can be unreadable for reasons that have nothing to do with them. Its
+ * parse. Delimiters are all this fixer knows how to write, and a block's
  * <em>YAML</em> may be malformed too — a value such as {@code "a" and "b"} whose
- * quotes do not wrap it, an entry indented with a tab — and canonical delimiters
- * around such a block leave it exactly as unreadable as it was. Reporting that as a
- * repair rewrote the author's file and logged {@code Auto-fixed malformed front
- * matter}, and the same run then failed on the same file for having no parseable
- * front matter: a fix that was announced, written, and worth nothing. Reading the
- * result back covers the block nothing was changed in for the same reason, since a
- * document that did not parse on the way in does not parse on the way out either.
+ * quotes do not wrap it, an entry indented with a tab — leaving it as unreadable as
+ * before. Reporting that as a repair rewrote the author's file, logged
+ * {@code Auto-fixed malformed front matter}, and then failed the same run on the
+ * same file for having no parseable front matter.
  */
 public final class FrontMatterFixer {
 
@@ -48,12 +42,10 @@ public final class FrontMatterFixer {
 	private static final String CARRIAGE_RETURN = "\r";
 	private static final String LINE_FEED = "\n";
 	/**
-	 * A {@code key:} or {@code key: value} entry. The key is a single identifier —
-	 * {@code name}, {@code description}, {@code allowed-tools} — with no spaces in
-	 * it, which is the shape every Claude Code front matter key takes. Allowing a
-	 * space would make ordinary prose such as {@code Some notes: here.} look like an
-	 * entry, and a document opening with a thematic break followed by that prose
-	 * would then be repaired into front matter it never had.
+	 * A {@code key:} or {@code key: value} entry, whose key is a single identifier
+	 * with no spaces — the shape every Claude Code front matter key takes. Allowing a
+	 * space would make prose such as {@code Some notes: here.} look like an entry, and
+	 * a thematic break followed by it would be repaired into front matter it never had.
 	 */
 	private static final Pattern KEY_ENTRY = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_.-]*:(\\s.*)?");
 
@@ -158,9 +150,9 @@ public final class FrontMatterFixer {
 	}
 
 	/**
-	 * The line separator the document is already written with. Rebuilding it with
-	 * {@code \n} regardless rewrote every line of a CRLF file to repair its two
-	 * delimiter lines, turning a two-line fix into a whole-file diff on Windows.
+	 * The line separator the document is already written with. Rebuilding with
+	 * {@code \n} regardless turned a two-line delimiter fix into a whole-file diff on
+	 * Windows.
 	 */
 	private static String separatorOf(String content) {
 		int carriageReturn = content.indexOf(CARRIAGE_RETURN);

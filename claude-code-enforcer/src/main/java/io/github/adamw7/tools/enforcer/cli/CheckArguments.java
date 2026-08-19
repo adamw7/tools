@@ -10,14 +10,11 @@ import io.github.adamw7.tools.enforcer.project.ClaudeCodeProjectRule;
  * The command line {@link Main} is driven by, parsed into the composite rule it
  * describes.
  *
- * <p>Every option here corresponds to a parameter of {@code claudeCodeProject},
- * because the command line exists to reach that rule from somewhere that is not a
- * Maven build — a pre-commit hook, a project built with something else — and an
- * option it did not have would be a second contract to keep in step.
- *
- * <p>An unrecognised option is refused rather than ignored. A hook invoking
- * {@code --fix-all} and being quietly given a plain check is the failure this
- * whole class exists to make impossible.
+ * <p>Every option corresponds to a parameter of {@code claudeCodeProject}: the
+ * command line exists to reach that rule from outside a Maven build, and an option
+ * it did not have would be a second contract to keep in step. An unrecognised
+ * option is refused rather than ignored — a hook invoking {@code --fix-all} and
+ * being quietly given a plain check is what this class exists to prevent.
  */
 final class CheckArguments {
 
@@ -160,9 +157,9 @@ final class CheckArguments {
 		}
 
 		/**
-		 * An argument that is not an option is the project directory. One that looks
-		 * like an option is refused, since a mistyped flag silently read as a directory
-		 * would run the check somewhere nobody meant.
+		 * An argument that is not an option is the project directory; one that looks
+		 * like an option is refused, a mistyped flag read as a directory having run the
+		 * check somewhere nobody meant.
 		 */
 		private int readPositional(String argument, int index) {
 			if (argument.startsWith("-")) {

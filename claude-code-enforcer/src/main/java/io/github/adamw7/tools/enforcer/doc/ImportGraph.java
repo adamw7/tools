@@ -35,18 +35,14 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * the rule reads that answer instead of counting hops as it recurses.
  * <p>
  * Imports are recognised the way Claude Code evaluates them: an {@code @} preceded
- * by start-of-line or whitespace and followed by a path — see {@link #isPath} for
- * what makes a token one — outside code, HTML comments and inline code spans alike,
- * so neither {@code `@claude`} nor a bare {@code @claude} in prose is an import, an
- * import shown as a sample (fenced or indented) is one the document illustrates
- * rather than makes, and one an author commented out is one it no longer makes. A
- * home-relative import ({@code @~/...}) names machine-specific state a build
- * cannot see and is skipped, as is any import the {@code ignored} predicate
- * accepts. Only a <em>leading</em> {@code ~} makes an import home-relative: one
- * inside a path is an ordinary character, which is how Windows spells a short
- * (8.3) name such as {@code RUNNER~1}. A file
- * that cannot be read as text is treated as a leaf rather than a failure, because
- * an imported file may be any format.
+ * by start-of-line or whitespace and followed by a path (see {@link #isPath}),
+ * outside code, HTML comments and inline code spans alike — so a bare or backticked
+ * {@code @claude} in prose is not an import, and neither is one shown as a sample or
+ * commented out. A home-relative import ({@code @~/...}) names machine-specific
+ * state a build cannot see and is skipped, as is any the {@code ignored} predicate
+ * accepts; only a <em>leading</em> {@code ~} counts, since one inside a path is how
+ * Windows spells a short name such as {@code RUNNER~1}. A file that cannot be read
+ * as text is a leaf rather than a failure, an imported file being any format.
  */
 final class ImportGraph {
 
@@ -158,26 +154,19 @@ final class ImportGraph {
 	}
 
 	/**
-	 * True when the token names a document rather than a bare word: it is written
-	 * with an explicit path prefix ({@code ./}, {@code ../}, {@code /}, {@code ~/}),
-	 * or its last segment ends in one of the configured extensions. So
-	 * {@code @AGENTS.md}, {@code @docs/setup.md} and {@code @./docs/setup} are
-	 * imports while the {@code @claude} of a mention workflow and the {@code @adamw7}
-	 * of a GitHub handle are prose.
+	 * True when the token names a document rather than a bare word: an explicit path
+	 * prefix ({@code ./}, {@code ../}, {@code /}, {@code ~/}), or a last segment
+	 * ending in one of the configured extensions. So {@code @AGENTS.md} and
+	 * {@code @./docs/setup} are imports while the {@code @claude} of a mention
+	 * workflow is prose.
 	 * <p>
 	 * Accepting any token carrying a separator or a dot was the earlier reading, and
-	 * it failed builds over prose nobody meant as a path: the {@code @anthropic-ai/claude-code}
-	 * of an install line, the {@code @Named.class} of a Java note, the
-	 * {@code @app.route} of a framework example, the {@code @v1.2} of a version and
-	 * the {@code @adam.example.com} of an address were each resolved against the
-	 * document's directory and reported as a missing file. Backticking every
-	 * occurrence works but cannot be relied on, and {@code ignoredImports} asks an
-	 * author to enumerate their own prose.
-	 * <p>
-	 * The cost is that an extensionless {@code @docs/setup} no longer reads as an
-	 * import, because nothing tells it apart from a scoped package name. Such an
-	 * import says so with the {@code ./} that names it as a path, or by adding its
-	 * extension to {@code importExtensions}.
+	 * it failed builds over prose nobody meant as a path — {@code @anthropic-ai/claude-code},
+	 * {@code @Named.class}, {@code @app.route}, {@code @v1.2},
+	 * {@code @adam.example.com}. The cost is that an extensionless
+	 * {@code @docs/setup} no longer reads as an import, nothing telling it apart from
+	 * a scoped package name; such an import says so with a {@code ./}, or by adding
+	 * its extension to {@code importExtensions}.
 	 */
 	private boolean isPath(String imported) {
 		return PATH_PREFIXES.stream().anyMatch(imported::startsWith) || hasKnownExtension(imported);
@@ -192,10 +181,9 @@ final class ImportGraph {
 
 	/**
 	 * True when the import starts at the importing user's home directory, which is
-	 * machine-specific state a build cannot see. Only the leading position counts:
-	 * a {@code ~} further along is an ordinary path character — {@code RUNNER~1} is
-	 * how Windows shortens a profile name, and an import spelling an absolute path
-	 * on such a machine has to carry it.
+	 * machine-specific state a build cannot see. Only the leading position counts: a
+	 * {@code ~} further along is an ordinary path character, as in the
+	 * {@code RUNNER~1} Windows shortens a profile name to.
 	 */
 	private static boolean isHomeRelative(String imported) {
 		return imported.startsWith(HOME_PREFIX);
@@ -209,21 +197,19 @@ final class ImportGraph {
 	}
 
 	/**
-	 * A leading slash means the path starts at a file system root rather than at
-	 * the importing file. Which root that is comes from the importing file, so a
-	 * document resolves the same way wherever the build was launched from — on a
-	 * single-rooted file system the two are the same, but on Windows
-	 * {@code new File("/docs.md")} would pick whichever drive the build happened
-	 * to be started on.
+	 * A leading slash starts the path at a file system root. Which root comes from
+	 * the importing file, so a document resolves the same way wherever the build was
+	 * launched from — on Windows {@code new File("/docs.md")} would otherwise pick
+	 * whichever drive the build started on.
 	 */
 	private File rootedAt(File file, String imported) {
 		return ProjectFiles.normalized(file).getRoot().resolve(imported.substring(1)).toFile();
 	}
 
 	/**
-	 * The file's content, or empty when it cannot be read as text. An imported
-	 * file may be any format, so a binary target is treated as a leaf rather than
-	 * a failure — its existence is verified by the rule, not here.
+	 * The file's content, or empty when it cannot be read as text. A binary target is
+	 * a leaf rather than a failure — its existence is the rule's to verify, not this
+	 * class's.
 	 */
 	private String readSafely(File file) {
 		try {

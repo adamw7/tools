@@ -16,11 +16,9 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * and read an entry the same way — or one would assert policy on a list the other
  * never validated.
  * <p>
- * An entry is a string and only a string. A list element of any other type is a
- * malformation {@code permissionsFormat} reports in its own right, and reading it
- * as its text besides let a JSON {@code 123} answer for a permission
- * {@code settingsJsonValid} was configured to require, which no settings file can
- * actually grant.
+ * An entry is a string and only a string. Any other type is a malformation
+ * {@code permissionsFormat} reports in its own right, and reading it as text
+ * besides let a JSON {@code 123} answer for a permission no settings file can grant.
  */
 final class Permissions {
 

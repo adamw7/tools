@@ -7,13 +7,11 @@ import java.util.stream.Collectors;
 /**
  * How much of the adopted repository's Claude Code configuration the guard checks.
  *
- * <p>The adoption used to wire one rule, {@code claudeMdFormat}, and the gap that
- * left was not academic: the run installs a companion {@code AGENTS.md} and, with
- * {@code --assets}, a {@code .claude} directory of settings and hooks — none of
- * which anything then checked. A repository could carry a malformed
- * {@code settings.json}, a skill with no definition, or a credential committed
- * into a hook, and its build stayed green while advertising that it had adopted
- * Claude Code.
+ * <p>Wiring only {@code claudeMdFormat} left a real gap: the run installs a companion
+ * {@code AGENTS.md} and, with {@code --assets}, a {@code .claude} directory of
+ * settings and hooks that nothing then checked. A repository could carry a malformed
+ * {@code settings.json} or a credential committed into a hook and stay green while
+ * advertising that it had adopted Claude Code.
  */
 public enum GuardRules {
 

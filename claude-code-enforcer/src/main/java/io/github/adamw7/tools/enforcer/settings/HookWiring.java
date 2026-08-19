@@ -22,17 +22,13 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * does not hold, and — when asked for — a script the directory holds that no hook
  * names.
  * <p>
- * This is a second opinion on files {@link HooksFormatRule} has already read as
- * scripts, and it answers a different question with different inputs: it reads
- * settings.json, walks its hooks through {@link HookCommands}, and resolves what
- * they name through {@link ClaudeProjectDir}. Keeping it beside the rule rather
- * than inside it leaves the rule to the scripts themselves, and puts the path
- * canonicalisation the containment check needs where nothing else has to read
- * past it.
- * <p>
- * A settings.json that cannot be decoded is reported rather than thrown: the
- * rules that own that file fail on it in their own right, so an undecodable one is
- * never left unreported by this check declining to abort the build over it.
+ * It answers a different question from {@link HooksFormatRule} with different
+ * inputs: it reads settings.json, walks its hooks through {@link HookCommands}, and
+ * resolves what they name through {@link ClaudeProjectDir}. Keeping it beside the
+ * rule leaves that rule to the scripts themselves, and puts the path
+ * canonicalisation the containment check needs where nothing else reads past it.
+ * A settings.json that cannot be decoded is reported rather than thrown, the rules
+ * that own that file failing on it in their own right.
  */
 final class HookWiring {
 
@@ -109,11 +105,10 @@ final class HookWiring {
 	}
 
 	/**
-	 * The real, symlink-resolved path of {@code path}. Symlinks are resolved on the
-	 * portion that exists on disk and the remaining names are appended, so a hook
-	 * script that is a symlink pointing outside the hooks directory no longer
-	 * satisfies the containment check by its lexical location alone, while a missing
-	 * script is still resolved beneath the real hooks directory so it is reported.
+	 * The real, symlink-resolved path of {@code path}: resolved on the portion that
+	 * exists and the remaining names appended, so a script symlinked outside the
+	 * hooks directory no longer satisfies containment by its lexical location, while
+	 * a missing one still resolves beneath the real directory and is reported.
 	 */
 	private Path canonical(Path path) {
 		Path absolute = ProjectFiles.normalized(path);

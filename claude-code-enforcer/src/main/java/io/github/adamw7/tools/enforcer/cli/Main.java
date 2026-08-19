@@ -12,13 +12,11 @@ import io.github.adamw7.tools.enforcer.project.ClaudeCodeProjectRule;
  * Command-line entry point: checks a project's Claude Code configuration without
  * a Maven build around it.
  *
- * <p>A maven-enforcer rule has to be resolvable as a JAR before the build that
- * uses it runs, which is why checking this repository's own documents takes two
- * commands and why its CI needs a bootstrap step. That is the right cost for a
- * check that gates a build; it is the wrong one for a pre-commit hook, for a
- * project built with Gradle or with nothing, and for anyone who wants to know
- * what the rules make of a repository before wiring anything at all. The rules
- * never needed Maven — they read files and collect violations — so this runs them
+ * <p>A maven-enforcer rule has to be resolvable as a JAR before the build using it
+ * runs, which is the right cost for a check that gates a build and the wrong one
+ * for a pre-commit hook, a project built with something else, or anyone wanting to
+ * know what the rules make of a repository before wiring anything. The rules never
+ * needed Maven — they read files and collect violations — so this runs them
  * directly:
  *
  * <pre>{@code
@@ -30,10 +28,9 @@ import io.github.adamw7.tools.enforcer.project.ClaudeCodeProjectRule;
  * so the command line and a pom configure one thing rather than two that could
  * come to disagree.
  *
- * <p>Failure is reported by throwing, as everywhere else in this repository, which
- * leaves the process exiting non-zero without this class deciding to end a JVM it
- * does not own. The violations are printed first, so what a hook shows its user is
- * the report rather than the throw.
+ * <p>Failure is reported by throwing, as everywhere else here, which exits the
+ * process non-zero without this class ending a JVM it does not own. The violations
+ * are printed first, so what a hook shows its user is the report.
  */
 public final class Main {
 
@@ -85,13 +82,10 @@ public final class Main {
 
 	/**
 	 * What a failed check throws, so the process exits non-zero without this class
-	 * ending a JVM it does not own.
-	 *
-	 * <p>It deliberately carries neither the rule's message nor the rule's exception
-	 * as its cause. Both would put the whole report into the stack trace a shell
-	 * prints after it, so an operator whose CLAUDE.md is missing six sections would
-	 * read those six twice — once as the report and once as a trace. The report has
-	 * already been printed; this only says that it was one.
+	 * ending a JVM it does not own. It deliberately carries neither the rule's
+	 * message nor its exception as a cause: either would put the whole report into
+	 * the stack trace a shell prints after it, and the report has already been
+	 * printed. This only says that it was one.
 	 */
 	static final class CheckFailedException extends RuntimeException {
 

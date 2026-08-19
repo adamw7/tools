@@ -19,11 +19,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * machine missing that build tool fails at verification, after a full
  * {@code claude init} and two commits.
  *
- * <p>The build system is detected through {@link AbstractBuildSystemStep} just as
+ * <p>The build system is detected through {@link AbstractBuildSystemStep} as
  * {@link EnforcerStep} and {@link VerifyStep} detect it, so the tool probed is the
- * tool the verification runs — including the {@link FallbackBuildSystem}'s shell,
- * which is a tool like any other and absent from a stock Windows {@code PATH}. A
- * build system that names no probe at all is a no-op.
+ * one the verification runs — including the {@link FallbackBuildSystem}'s shell,
+ * absent from a stock Windows {@code PATH}. A build system naming no probe is a no-op.
  */
 public class BuildToolchainStep extends AbstractBuildSystemStep {
 
@@ -54,11 +53,10 @@ public class BuildToolchainStep extends AbstractBuildSystemStep {
 
 	/**
 	 * The tool probed is whatever the verification will launch, which for a checkout
-	 * shipping a build wrapper is that wrapper rather than a program on the
-	 * {@code PATH} — so the failure says the tool could not be run rather than that
-	 * it was not installed, which for a wrapper present but unusable would be wrong.
-	 * The whole probe command is named in the failure, since for a wrapper that is
-	 * how the operator reproduces it.
+	 * shipping a wrapper is that wrapper — so the failure says the tool could not be
+	 * run rather than that it was not installed, which for a wrapper present but
+	 * unusable would be wrong. The whole probe command is named, that being how the
+	 * operator reproduces it.
 	 */
 	private void requireRunnable(List<String> command, BuildSystem buildSystem, Path repositoryDirectory,
 			CommandRunner runner) {

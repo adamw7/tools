@@ -10,13 +10,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
 
 /**
  * Runs the guard wired in by {@link EnforcerStep} so a missing or malformed
- * {@code CLAUDE.md} fails the adoption locally instead of breaking the
- * contributor's build after the pull request lands. The command to run is
- * chosen from the checkout's build tool — a non-recursive {@code mvn -N validate}
- * for Maven, the guard task for Gradle, the guard script for a project with no
- * recognised build file (see {@link BuildSystem}). The build system is detected
- * by {@link AbstractBuildSystemStep}, which also skips the step with a warning
- * when none matches and there is therefore nothing to verify.
+ * {@code CLAUDE.md} fails the adoption locally instead of breaking the contributor's
+ * build after the pull request lands. The command follows the checkout's build tool
+ * — {@code mvn -N validate}, the Gradle guard task, or the guard script (see
+ * {@link BuildSystem}). {@link AbstractBuildSystemStep} detects it and skips the step
+ * with a warning when none matches.
  */
 public class VerifyStep extends AbstractBuildSystemStep {
 

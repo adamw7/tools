@@ -10,16 +10,11 @@ import java.util.regex.Pattern;
  * Reads a rate limit out of what {@code git} or {@code gh} said, so a run stopped
  * by one says when to try again.
  *
- * <p>A rate limit is deliberately not retried — {@link TransientFailures} leaves
- * it out, because GitHub answers a secondary limit by asking for a wait measured
- * in minutes and retrying it seconds later is what the limit exists to stop. The
- * operator is told instead. What they were told, though, was the raw transcript:
- * the wait GitHub named is in there, somewhere among the API's prose and a link to
- * its documentation, and an operator re-running a fifty-repository batch had to
- * find it.
- *
- * <p>So the wait is lifted out and put in the failure's first line. Nothing here
- * changes what is retried; it changes only what the report says.
+ * <p>A rate limit is deliberately not retried — {@link TransientFailures} leaves it
+ * out, GitHub answering a secondary limit by asking for a wait measured in minutes.
+ * The operator is told instead, but what they were told was the raw transcript, with
+ * the wait somewhere among the API's prose. So it is lifted out into the failure's
+ * first line; nothing here changes what is retried.
  */
 public final class RateLimits {
 

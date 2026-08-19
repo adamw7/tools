@@ -16,13 +16,10 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * Reports whether a checkout is actually adopted: it carries a {@code CLAUDE.md},
  * and its build wires in a guard that checks it.
  *
- * <p>This is the step a verification run has that an adoption does not, and it
- * exists because the verification the adoption already had cannot answer the
- * question. {@link VerifyStep} runs the guard, and a build with no guard wired in
- * passes that command precisely because nothing ran — so a repository that had
- * never been adopted, or one whose guard a later commit removed, verified exactly
- * like one that was properly adopted. That is the drift a fleet-wide check exists
- * to find.
+ * <p>It exists because {@link VerifyStep} cannot answer the question: it runs the
+ * guard, and a build with no guard wired in passes precisely because nothing ran, so
+ * a repository never adopted — or one whose guard a later commit removed — verified
+ * exactly like a properly adopted one. That is the drift a fleet-wide check finds.
  *
  * <p>Both halves are reported together rather than at the first missing one, so an
  * operator re-adopting a repository knows whether they are restoring a document, a

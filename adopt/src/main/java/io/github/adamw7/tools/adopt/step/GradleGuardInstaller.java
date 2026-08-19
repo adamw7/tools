@@ -28,20 +28,18 @@ import io.github.adamw7.tools.markdown.LineTerminators;
  * {@code Project} reference, which would break {@code check} for every contributor
  * afterwards.
  *
- * <p>Registering the task is not enough on its own: a task nothing depends on is a
- * guard the project's ordinary build never runs. It is hung from
- * {@value #LIFECYCLE_TASK} through a live {@code matching}/{@code configureEach}
- * view, so a plugin applied further down the script still wires it in — and a
- * project that ends up with no {@value #LIFECYCLE_TASK} at all is given one. An
- * Android or aggregator root script routinely declares a {@code clean} task and
- * nothing else, and the guard was left registered but unreachable from any build a
- * contributor or CI would run.
+ * <p>Registering the task is not enough: one nothing depends on is a guard the
+ * ordinary build never runs. It is hung from {@value #LIFECYCLE_TASK} through a live
+ * {@code matching}/{@code configureEach} view, so a plugin applied further down still
+ * wires it in, and a project with no {@value #LIFECYCLE_TASK} at all is given one —
+ * an Android or aggregator root script routinely declares {@code clean} and nothing
+ * else, leaving the guard registered but unreachable.
  *
- * <p>That fallback registration is deferred to {@code afterEvaluate} rather than
- * made inline, because the name has to be free: claiming {@value #LIFECYCLE_TASK}
- * while the script is still being read would collide with a plugin applied below
- * this block. Applying Gradle's {@code base} plugin to obtain the task instead was
- * rejected for the same reason — it also registers {@code clean}.
+ * <p>That fallback is deferred to {@code afterEvaluate} rather than made inline,
+ * because the name has to be free: claiming {@value #LIFECYCLE_TASK} while the script
+ * is still being read would collide with a plugin applied below. Applying Gradle's
+ * {@code base} plugin was rejected for the same reason — it also registers
+ * {@code clean}.
  */
 public class GradleGuardInstaller {
 
@@ -64,10 +62,9 @@ public class GradleGuardInstaller {
 
 	/**
 	 * A terminated {@code /*} … {@code *}{@code /} comment, however many lines it spans.
-	 * The shortest match is taken so two comments on one line stay two, and an
-	 * unterminated one is left in the script: it is a syntax error either way, and
-	 * swallowing the rest of the file would read every real declaration below it as
-	 * commented out.
+	 * The shortest match keeps two comments on one line two, and an unterminated one is
+	 * left in the script: swallowing the rest of the file would read every real
+	 * declaration below it as commented out.
 	 */
 	private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
 
@@ -126,10 +123,9 @@ public class GradleGuardInstaller {
 	}
 
 	/**
-	 * The task name only counts when it appears in a registration outside a comment,
-	 * so a script that merely mentions {@value #GUARD_TASK} — in a {@code // TODO},
-	 * or in a declaration someone commented out — is still given the task rather
-	 * than left without the one {@link GradleBuildSystem#verifyCommand(Path)} runs.
+	 * The task name only counts inside a registration outside a comment, so a script
+	 * merely mentioning {@value #GUARD_TASK} in a {@code // TODO} is still given the
+	 * task {@link GradleBuildSystem#verifyCommand(Path)} runs.
 	 */
 	/** Whether the script already declares the guard task; read-only, for a verification. */
 	public boolean isInstalled(Path buildFile) {
@@ -142,21 +138,18 @@ public class GradleGuardInstaller {
 	}
 
 	/**
-	 * Both ways either DSL lets a registration be commented out. The block form is
-	 * removed first and by span rather than by line, because it is the form a whole
-	 * declaration is commented out with, and leaving it made the script read as
-	 * already declaring the task — so the guard was never appended and
-	 * {@link VerifyStep} ran a task the build does not have. The line form is cut
-	 * afterwards, and the lines are rejoined rather than matched one at a time so a
-	 * registration spread over several lines is still recognised.
+	 * Both ways either DSL lets a registration be commented out. The block form goes
+	 * first and by span rather than by line, being the form a whole declaration is
+	 * commented out with; leaving it made the script read as already declaring the
+	 * task, so {@link VerifyStep} ran a task the build does not have. The line form is
+	 * cut afterwards, the lines rejoined rather than matched one at a time so a
+	 * multi-line registration is still recognised.
 	 *
 	 * <p>A line comment is cut from its delimiter rather than taking the whole line,
-	 * because it does not have to start one: a registration written at the end of a
-	 * line of real code — {@code plugins { id 'java' } // tasks.register('enforceClaudeMd')}
-	 * — was left in the text, so the script read as already declaring the task and got
-	 * no guard. The line is kept in place, blank where it was wholly a comment, rather
-	 * than dropped: dropping it would join the lines either side of it, which is how
-	 * two halves of no declaration at all come to read as one.
+	 * since it need not start one — {@code plugins { id 'java' } // tasks.register(…)}
+	 * was left in the text and read as a declaration. The line stays in place, blank
+	 * where it was wholly a comment: dropping it would join the lines either side, which
+	 * is how two halves of no declaration come to read as one.
 	 */
 	private String withoutComments(String script) {
 		String withoutBlocks = BLOCK_COMMENT.matcher(script).replaceAll("");
@@ -166,10 +159,9 @@ public class GradleGuardInstaller {
 	}
 
 	/**
-	 * The line up to its first {@value #LINE_COMMENT} outside a string literal. The
-	 * literals are honoured because a Gradle script writes {@code url 'https://…'}
-	 * more readily than it writes anything else, and cutting there would drop the rest
-	 * of a line that may carry the declaration being looked for.
+	 * The line up to its first {@value #LINE_COMMENT} outside a string literal.
+	 * Literals are honoured because a Gradle script writes {@code url 'https://…'}
+	 * readily, and cutting there would drop the rest of the line.
 	 */
 	private static String withoutLineComment(String line) {
 		char quote = 0;
@@ -186,10 +178,9 @@ public class GradleGuardInstaller {
 	}
 
 	/**
-	 * The string literal still open after this character: the one it closes, the one
-	 * it opens, or none. A backslash inside a literal escapes the character after it,
-	 * a closing quote included, which is why {@link #withoutLineComment} steps over
-	 * two characters there.
+	 * The string literal still open after this character: the one it closes, the one it
+	 * opens, or none. A backslash inside a literal escapes the next character, a
+	 * closing quote included, so {@link #withoutLineComment} steps over two there.
 	 */
 	private static char quoteAfter(char quote, char character) {
 		if (quote != 0) {

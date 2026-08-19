@@ -11,13 +11,10 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * {@value #BUILD_PROPERTIES} at build time.
  *
  * <p>Both versions the adoption writes into somebody else's {@code pom.xml} come
- * from here rather than from literals in the code: the {@code claude-code-enforcer}
- * rule, pinned to the exact {@code tools} release running the adoption so it
- * resolves from the repository that published it, and the
- * {@code maven-enforcer-plugin}, pinned to the version this project builds
- * against. A literal would drift, and the half that drifts is the one nobody
- * builds — a stranger's repository, adopted with a version this project stopped
- * using.
+ * from here rather than from literals: the {@code claude-code-enforcer} rule, pinned
+ * to the exact {@code tools} release running the adoption, and the
+ * {@code maven-enforcer-plugin}, pinned to the version this project builds against.
+ * A literal would drift, and the half that drifts is the one nobody builds.
  */
 final class BuildMetadata {
 
@@ -41,19 +38,15 @@ final class BuildMetadata {
 
 	/**
 	 * Refuses metadata that reached the classpath unfiltered as firmly as metadata
-	 * that is missing: an unsubstituted token would otherwise be wired into the
-	 * adopted POM as if it were a version. Both delimiters are rejected — the
-	 * resource is written with {@code @...@}, which is what this build filters, and
-	 * {@code ${...}} is what it would carry had that configuration changed.
+	 * that is missing, an unsubstituted token otherwise being wired into the adopted
+	 * POM as a version. Both delimiters are rejected: the resource is written with
+	 * {@code @...@}, and {@code ${...}} is what it would carry had that changed.
 	 *
 	 * <p>Package-visible because the stream is the only seam these refusals have.
-	 * {@link #value} reads one resource off this class's own classpath, and that
-	 * resource is correct in every build that runs these tests — so a test driving a
-	 * version through it can only ever take the path that succeeds, leaving the
-	 * failures this method words for nobody to reach. They are the failures worth
-	 * reaching: each one is what stands between a broken build of {@code tools} and a
-	 * literal {@code @enforcer.rule.version@} wired into a stranger's {@code pom.xml}
-	 * by a pull request the adoption opened.
+	 * {@link #value} reads a resource that is correct in every build running these
+	 * tests, so a test driving a version through it can only take the succeeding path
+	 * — leaving unreached the failures standing between a broken build and a literal
+	 * {@code @enforcer.rule.version@} in a stranger's {@code pom.xml}.
 	 */
 	static String read(InputStream stream, String key, String description) throws IOException {
 		if (stream == null) {

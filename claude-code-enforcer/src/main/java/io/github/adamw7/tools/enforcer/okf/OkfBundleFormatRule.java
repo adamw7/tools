@@ -52,12 +52,10 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * <p>
  * Beyond that, {@code requiredKeys} adds frontmatter keys a project wants on every
  * concept, {@code okfVersion} pins the version the bundle root declares, and
- * {@code requireIndex} demands a listing in every directory that holds concepts —
- * off by default, since a consumer must tolerate a missing {@code index.md}.
- * <p>
- * An OKF bundle is optional, so an absent {@code bundleDir} is a pass: the rule
- * can be wired before a repository emits one and starts enforcing the moment it
- * does. All problems found are reported together.
+ * {@code requireIndex} demands a listing in every directory holding concepts — off
+ * by default, since a consumer must tolerate a missing {@code index.md}. An absent
+ * {@code bundleDir} is a pass, so the rule can be wired before a repository emits a
+ * bundle. All problems are reported together.
  */
 @Named("okfBundleFormat")
 public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
@@ -101,12 +99,10 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * An absent bundle is answered as no violations rather than by returning early,
-	 * so the pass still goes through {@link #report}. That is what writes a
-	 * configured {@code reportFile}: skipping it left the HTML report of a previous,
-	 * failing run on disk claiming the check had failed, for a rule that had just
-	 * passed — and this is the ordinary state of the rule, wired before a repository
-	 * emits a bundle so it starts enforcing the day one is committed.
+	 * An absent bundle answers no violations rather than returning early, so the pass
+	 * still goes through {@link #report} — which is what refreshes a configured
+	 * {@code reportFile}. Skipping it left a previous, failing run's HTML report on
+	 * disk claiming a rule that had just passed had failed.
 	 */
 	private List<String> violations() throws EnforcerRuleException {
 		if (!bundleDir.isDirectory()) {
@@ -199,9 +195,8 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * An {@code index.md} is a listing, not a concept, so it declares no frontmatter
-	 * — with the single exception the specification carves out for the bundle root,
-	 * where an {@code okf_version} may say which version the bundle targets.
+	 * An {@code index.md} is a listing, not a concept, so it declares no frontmatter —
+	 * except at the bundle root, where the specification allows an {@code okf_version}.
 	 */
 	private void collectIndexViolations(String name, String content, List<String> violations) {
 		Optional<FrontMatter> parsed = FrontMatter.parse(content);
@@ -234,11 +229,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 						name + " groups entries under '" + heading + "', which is not an ISO 8601 date"));
 	}
 
-	/**
-	 * Checks the version the bundle root declares, only when a project pinned one.
-	 * The declaration itself is optional in OKF, so configuring {@code okfVersion} is
-	 * what turns it into a requirement.
-	 */
+	/** The declaration is optional in OKF, so configuring {@code okfVersion} is what requires it. */
 	private void collectVersionViolations(List<File> documents, List<String> violations) {
 		if (okfVersion == null || okfVersion.isBlank()) {
 			return;

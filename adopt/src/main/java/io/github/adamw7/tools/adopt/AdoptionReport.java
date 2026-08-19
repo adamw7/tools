@@ -6,14 +6,11 @@ import java.util.Optional;
 
 /**
  * The machine-readable outcome of an adoption run: the steps that completed, in
- * order, the checkout they were made in, and the URL of the pull request the run
- * opened (or found already open). {@link GitHubRepoAdopter#adopt} fills one in and
- * returns it, so callers can report what happened without scraping logs. The
- * checkout and the pull-request URL are absent until a step records them.
- *
- * <p>A run that fails part-way is reported too: the steps that did complete stay
- * recorded and the failing step's message becomes the run's failure, so an
- * abandoned adoption cannot look like a short but successful one.
+ * order, the checkout they were made in, and the pull request's URL.
+ * {@link GitHubRepoAdopter#adopt} fills one in and returns it, so callers report
+ * what happened without scraping logs. A run that fails part-way is reported too —
+ * the completed steps stay recorded and the failing step's message becomes the run's
+ * failure, so an abandoned adoption cannot look like a short successful one.
  */
 public final class AdoptionReport {
 

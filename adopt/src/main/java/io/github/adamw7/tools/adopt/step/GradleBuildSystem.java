@@ -14,11 +14,10 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * task. Gradle has no {@code claude-code-enforcer} equivalent, so the guard is a
  * presence-and-non-empty check rather than the full Maven format rule.
  *
- * <p>A checkout that ships a {@code gradlew} is verified with that wrapper rather
- * than with a {@code gradle} off the {@code PATH}. Most Gradle projects ship only
- * the wrapper, so this is the ordinary case rather than the exception: without it
- * {@link BuildToolchainStep} found no {@code gradle} to probe and aborted the
- * adoption. See {@link AbstractWrappedBuildSystem}.
+ * <p>A checkout shipping a {@code gradlew} is verified with that wrapper rather than
+ * a {@code gradle} off the {@code PATH} — the ordinary case, since most Gradle
+ * projects ship only the wrapper and {@link BuildToolchainStep} otherwise found none
+ * to probe. See {@link AbstractWrappedBuildSystem}.
  */
 public class GradleBuildSystem extends AbstractWrappedBuildSystem {
 

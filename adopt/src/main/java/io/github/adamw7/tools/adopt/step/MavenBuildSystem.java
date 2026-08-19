@@ -11,10 +11,10 @@ import java.util.List;
  * freshly generated {@code CLAUDE.md} is validated against the full format rule
  * before the branch is pushed.
  *
- * <p>A checkout that ships an {@code mvnw} is verified with that wrapper rather
- * than with a {@code mvn} off the {@code PATH}, so the guard runs under the Maven
- * version the project pinned and a host with no Maven installed can still adopt
- * it. See {@link AbstractWrappedBuildSystem}.
+ * <p>A checkout shipping an {@code mvnw} is verified with that wrapper rather than a
+ * {@code mvn} off the {@code PATH}, so the guard runs under the Maven version the
+ * project pinned and a host with none installed can still adopt it. See
+ * {@link AbstractWrappedBuildSystem}.
  */
 public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 
@@ -85,16 +85,12 @@ public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 	}
 
 	/**
-	 * The only build system that demands sections, because it is the only one wiring
-	 * in a rule that reads them — the guard {@link #verifyCommand(Path)} then runs,
-	 * and the one that fails a {@code CLAUDE.md} for a missing section rather than
-	 * merely for being absent or blank.
-	 *
-	 * <p>The default is this repository's own list, on the reasoning that a Maven
-	 * checkout is a JVM project and can answer Java and Maven questions. That is a
-	 * default and not a fact: a Maven build whose {@code CLAUDE.md} is about something
-	 * else names its own sections through {@link GuardOptions}, and they are written
-	 * into the guard as well as conformed to.
+	 * The only build system that demands sections, being the only one wiring in a rule
+	 * that reads them and fails a {@code CLAUDE.md} for a missing section rather than
+	 * merely for being absent or blank. The default is this repository's own list, on
+	 * the reasoning that a Maven checkout is a JVM project — a default and not a fact,
+	 * so a Maven build whose document is about something else names its own sections
+	 * through {@link GuardOptions}.
 	 */
 	@Override
 	public List<String> requiredClaudeMdSections() {

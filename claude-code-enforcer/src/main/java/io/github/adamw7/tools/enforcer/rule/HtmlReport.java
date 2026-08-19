@@ -36,9 +36,8 @@ final class HtmlReport {
 
 	/**
 	 * Writes the rendered report to {@code file}, failing the build if it cannot be
-	 * written. Missing parent directories are created first, because a report under
-	 * {@code target/} is typically written at {@code validate}, before any plugin
-	 * has created that directory.
+	 * written. Missing parent directories are created first: a report under
+	 * {@code target/} is written at {@code validate}, before any plugin created it.
 	 */
 	void writeTo(File file) throws EnforcerRuleException {
 		try {

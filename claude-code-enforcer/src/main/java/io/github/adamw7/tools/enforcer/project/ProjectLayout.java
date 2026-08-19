@@ -6,14 +6,11 @@ import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Where Claude Code keeps a project's configuration, so a composite rule can find
- * it from the project directory alone.
- *
- * <p>Every path here is the one Claude Code itself uses. That is what lets
- * {@link ClaudeCodeProjectRule} be configured with a single {@code projectDir}
- * instead of the sixty-odd elements naming each rule's inputs one at a time — and
- * it is why the convention is stated once, here, rather than spelled into each
- * part's configuration where two of them could come to disagree about where the
- * skills live.
+ * it from the project directory alone. Every path here is the one Claude Code
+ * itself uses, which is what lets {@link ClaudeCodeProjectRule} be configured with
+ * a single {@code projectDir} instead of the sixty-odd elements naming each rule's
+ * inputs; stating the convention once keeps two parts from disagreeing about where
+ * the skills live.
  *
  * @param projectDir the project's root, which every other path is resolved against
  */
@@ -74,16 +71,12 @@ public record ProjectLayout(File projectDir) {
 	}
 
 	/**
-	 * Whether {@link #pom()} is an aggregator, and so whether there is a module map to
-	 * hold the documents to at all. A single-module project has a {@code pom.xml} and
-	 * no {@code <module>} in it, and the rule pointed at such a pom answers that it
-	 * was pointed at the wrong one — which is the right answer to a configured path
-	 * and the wrong one to a convention.
-	 *
-	 * <p>It is a text search rather than a parse because the question is only whether
-	 * the element occurs; which modules it names, and whether the documents agree, is
-	 * the rule's to answer. A pom that cannot be read is not an aggregator, and the
-	 * rule that reads it properly will say why.
+	 * Whether {@link #pom()} is an aggregator, and so whether there is a module map
+	 * at all. A single-module pom declares no {@code <module>}, and the rule pointed
+	 * at one answers that it was pointed at the wrong pom — the right answer to a
+	 * configured path and the wrong one to a convention. A text search rather than a
+	 * parse, because the question is only whether the element occurs; a pom that
+	 * cannot be read is not an aggregator, and the rule that reads it will say why.
 	 */
 	public boolean declaresModules() {
 		return MarkdownText.readIfText(pom()).filter(pom -> pom.contains("<module>")).isPresent();

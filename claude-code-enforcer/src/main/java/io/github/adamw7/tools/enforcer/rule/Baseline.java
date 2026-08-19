@@ -29,11 +29,10 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * path still matches.
  * <p>
  * The base directory is the one the rule was configured with, not the build's
- * working directory: Maven runs every module of a reactor from wherever it was
- * invoked, so a working-directory token would resolve to a different prefix
- * depending on whether the build was started from the repository root, from a
- * module directory, or by an IDE — and a baseline recorded under one would quietly
- * suppress nothing under another.
+ * working directory: Maven runs every module from wherever it was invoked, so a
+ * working-directory token resolves differently depending on whether the build
+ * started at the repository root, in a module, or in an IDE — and a baseline
+ * recorded under one would quietly suppress nothing under another.
  */
 final class Baseline {
 
@@ -49,11 +48,9 @@ final class Baseline {
 	}
 
 	/**
-	 * Reads the accepted violations from {@code file}, resolving the
-	 * {@code ${basedir}} token against {@code baseDir}. A null or absent file yields
-	 * an empty baseline that suppresses nothing, so a rule with no configured
-	 * baseline — or one whose baseline has not been recorded yet — behaves exactly
-	 * as it did before.
+	 * Reads the accepted violations from {@code file}, resolving {@code ${basedir}}
+	 * against {@code baseDir}. A null or absent file yields an empty baseline, so a
+	 * rule with no baseline — or one not yet recorded — behaves as it did before.
 	 */
 	static Baseline read(File file, File baseDir) throws EnforcerRuleException {
 		Signatures signatures = Signatures.rootedAt(baseDir);
@@ -94,11 +91,9 @@ final class Baseline {
 	}
 
 	/**
-	 * Writes {@code violations} to {@code file} as a fresh baseline, replacing any
-	 * previous content, so a team can record the current violations once and then
-	 * gate only new ones. Signatures are normalised against {@code baseDir},
-	 * de-duplicated, and sorted so the file stays stable and diffable, and a header
-	 * comment explains it. Missing parent directories are created first.
+	 * Writes {@code violations} as a fresh baseline, replacing any previous content.
+	 * Signatures are normalised against {@code baseDir}, de-duplicated and sorted so
+	 * the file stays diffable. Missing parent directories are created first.
 	 */
 	static void write(File file, List<String> violations, File baseDir) throws EnforcerRuleException {
 		try {
@@ -128,15 +123,13 @@ final class Baseline {
 	private record Signatures(String base) {
 
 		/**
-		 * Any line break. A baseline stores one accepted violation per line, so a
-		 * violation carrying a break of its own could not survive the round trip: it was
-		 * written as several lines, each of which was read back as a separate entry that
-		 * no violation ever matches. The violation was therefore never suppressed and the
-		 * fragments were reported as stale for ever after. A rule builds its messages on
-		 * one line, but it interpolates text it did not write — the entry
-		 * {@code permissionsFormat} quotes back is any string the settings file declared,
-		 * newlines included — so the fold belongs here, where it is applied to a live
-		 * violation and a recorded entry alike and the two still compare equal.
+		 * Any line break. A baseline stores one violation per line, so one carrying a
+		 * break was written as several lines, each read back as an entry no violation
+		 * matches — never suppressed, and reported as stale for ever after. A rule builds
+		 * its messages on one line but interpolates text it did not write (the entry
+		 * {@code permissionsFormat} quotes back is any string the settings file
+		 * declared), so the fold belongs here, applied to a live violation and a
+		 * recorded entry alike.
 		 */
 		private static final Pattern LINE_BREAK = Pattern.compile("\\R");
 

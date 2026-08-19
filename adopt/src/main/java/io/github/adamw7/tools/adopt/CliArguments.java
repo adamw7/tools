@@ -32,28 +32,24 @@ import picocli.CommandLine.ParameterException;
  * missing its value, fails with the usage line.
  *
  * <p>The arguments are matched by picocli rather than by a loop of this module's
- * own, so what the parser accepts is declared in one place instead of being
- * spelled out twice. {@code --repo} and {@code --repos} are bound to methods
- * because picocli calls a method option once per occurrence, in the order the
- * operator wrote it: that order is the one thing a batch cannot lose, since a run
- * mixing the two adopts and reports its repositories in the order they were named.
- * The workspace and branch are bound to methods too, because a flag and its
- * positional write the one field and the last one named has to win — which is what
- * {@code setOverwrittenOptionsAllowed} buys, and the same setting that lets the
- * repeatable flags be named again and again.
+ * own, so what the parser accepts is declared once. {@code --repo} and
+ * {@code --repos} are bound to methods because picocli calls a method option once
+ * per occurrence, in the order the operator wrote it — the one thing a batch cannot
+ * lose. The workspace and branch are bound to methods too, because a flag and its
+ * positional write the one field and the last one named has to win, which is what
+ * {@code setOverwrittenOptionsAllowed} buys.
  *
  * <p>A flag that names something is never followed by another flag, and picocli
  * refuses one that is: {@code --branch --draft} named a branch called
  * {@code --draft}, created it, and pushed it, with the draft silently dropped.
- * {@code --title} and {@code --body} take free-form prose, and prose that merely
- * looks like a flag is still prose — the refusal is for a value that is an option
- * of this command, not for any word opening with dashes.
+ * {@code --title} and {@code --body} take free-form prose, and prose that looks
+ * like a flag is still prose — the refusal is for a value that is an option of this
+ * command, not for any word opening with dashes.
  *
- * <p>The usage line is written out rather than generated from the declarations
- * below, because picocli orders a generated synopsis by reflecting over the
- * members and the JVM does not promise the order it reports them in. This one is
- * ordered to be read: the positionals first, then the flags that name what to
- * adopt, then the pull request's metadata.
+ * <p>The usage line is written out rather than generated, picocli ordering a
+ * generated synopsis by reflection over members the JVM reports in no promised
+ * order. This one is ordered to be read: positionals, then what to adopt, then the
+ * pull request's metadata.
  */
 @Command(name = "adopt")
 public final class CliArguments {
@@ -95,19 +91,16 @@ public final class CliArguments {
 	private List<String> assignees = new ArrayList<>();
 
 	/**
-	 * How much of the adopted repository's configuration the guard checks. Named
-	 * rather than inferred, and refused when it names neither rule set, because a
-	 * misspelt value read as the default would quietly change what somebody else's
-	 * build enforces.
+	 * How much of the adopted repository's configuration the guard checks. Refused
+	 * when it names neither rule set, since a misspelt value read as the default would
+	 * quietly change what somebody else's build enforces.
 	 */
 	@Option(names = "--rules", paramLabel = "<minimal|project>")
 	private String rules;
 
 	/**
 	 * A {@code CLAUDE.md} heading the guard is to demand, repeatable. Naming any
-	 * replaces the set the detected build system would have asked for, so a project
-	 * whose document is not a Java project's is reshaped to its own headings and
-	 * guarded on them.
+	 * replaces the set the detected build system would have asked for.
 	 */
 	@Option(names = "--section", paramLabel = "<heading>")
 	private List<String> sections = new ArrayList<>();
@@ -125,29 +118,23 @@ public final class CliArguments {
 	private boolean assets;
 
 	/**
-	 * Keeps every checkout, whatever the outcome. Without it a checkout whose
-	 * adoption landed is removed — its product is a pushed branch and a pull request,
-	 * and a batch that made fifty full clones left fifty behind. A failed adoption's
-	 * checkout is kept either way, and so is a dry run's, which is the only thing a
-	 * dry run produces.
+	 * Keeps every checkout, whatever the outcome. Without it one whose adoption landed
+	 * is removed — its product is a pushed branch and a pull request, and a batch of
+	 * fifty full clones left fifty behind. A failed adoption's checkout is kept either
+	 * way, as is a dry run's, that being all a dry run produces.
 	 */
 	@Option(names = "--keep-workspace")
 	private boolean keepWorkspace;
 
 	/**
 	 * Reports whether each repository is still adopted and its guard still passes,
-	 * without adopting anything. The question a fleet asks between adoptions: a
-	 * CLAUDE.md a later commit deleted, or a guard someone removed from the build,
-	 * leaves a repository looking adopted and checking nothing.
+	 * without adopting anything: a CLAUDE.md a later commit deleted, or a guard
+	 * someone removed, leaves a repository looking adopted and checking nothing.
 	 */
 	@Option(names = "--verify-only")
 	private boolean verifyOnly;
 
-	/**
-	 * How many repositories are adopted at once. Every line a run emits carries the
-	 * repository it belongs to, so a parallel batch stays readable; see
-	 * {@link BatchAdoption}.
-	 */
+	/** How many repositories are adopted at once; see {@link BatchAdoption}. */
 	@Option(names = PARALLEL_FLAG, paramLabel = "<count>")
 	private String parallel;
 
@@ -182,12 +169,10 @@ public final class CliArguments {
 	}
 
 	/**
-	 * A command line that asked for the usage line is answered with it even when
-	 * another of its arguments could not be read. picocli calls an option's method as
-	 * it parses, so an unreadable {@code --repos} file or a {@code --timeout} that is
-	 * not a number is raised while {@code --help} is still only a flag further along
-	 * the list. The refusal is the answer only for a run that was asking to adopt
-	 * something.
+	 * A command line asking for the usage line gets it even when another argument
+	 * could not be read: picocli calls an option's method as it parses, so an
+	 * unreadable {@code --repos} file is raised while {@code --help} is still only a
+	 * flag further along the list.
 	 */
 	private static CliArguments helpOrRefusal(CliArguments cli, CommandLine parser, String[] args,
 			ParameterException e) {
@@ -200,11 +185,10 @@ public final class CliArguments {
 
 	/**
 	 * Whether the command line asked for the usage line, rather than merely carrying
-	 * the word somewhere. A help flag written where a value was expected is that
-	 * value — {@code --title -h} names a title, badly — so it is read as the argument
-	 * the operator got wrong and not as a request. Reading every occurrence as a
-	 * request answered {@code --repo <url> --title -h} with the usage line and exited
-	 * zero, having adopted nothing.
+	 * the word. A help flag written where a value was expected is that value —
+	 * {@code --title -h} names a title, badly. Reading every occurrence as a request
+	 * answered {@code --repo <url> --title -h} with the usage line and exited zero,
+	 * having adopted nothing.
 	 */
 	private static boolean asksForHelp(CommandLine parser, String[] args) {
 		Set<String> valueOptions = optionsTakingAValue(parser);
@@ -218,9 +202,8 @@ public final class CliArguments {
 	}
 
 	/**
-	 * The names of the options that consume the argument after them, read from the
-	 * declarations above rather than listed again here, so an option added to this
-	 * command cannot swallow a help flag the parse then answers as a request.
+	 * The options that consume the argument after them, read from the declarations
+	 * above so an option added to this command cannot swallow a help flag.
 	 */
 	private static Set<String> optionsTakingAValue(CommandLine parser) {
 		return parser.getCommandSpec().options().stream()
@@ -238,9 +221,8 @@ public final class CliArguments {
 	}
 
 	/**
-	 * @return every repository to adopt in this run, in the order the operator named
-	 *         them, and without duplicates — the same repository twice would adopt
-	 *         one checkout a second time
+	 * @return every repository to adopt, in the order named and without duplicates —
+	 *         the same repository twice would adopt one checkout a second time
 	 */
 	public List<String> repositoryUrls() {
 		return RepositoryUrls.distinct(repositoryUrls);
@@ -266,8 +248,8 @@ public final class CliArguments {
 
 	/**
 	 * @return the rule set named, or the default when none was. A blank value counts
-	 *         as none, so an omitted option and an empty one agree; anything else that
-	 *         is not a rule set is refused by {@link GuardRules#of}.
+	 *         as none; anything else that is not a rule set is refused by
+	 *         {@link GuardRules#of}.
 	 */
 	private GuardRules guardRules() {
 		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
@@ -275,8 +257,7 @@ public final class CliArguments {
 
 	/**
 	 * @return how many repositories to adopt at once, bounded here as well as in
-	 *         {@link BatchAdoption} so a bad value fails while the operator is still
-	 *         reading the command line rather than after the first clone
+	 *         {@link BatchAdoption} so a bad value fails before the first clone
 	 */
 	public int parallelism() {
 		if (parallel == null || parallel.isBlank()) {
@@ -313,15 +294,12 @@ public final class CliArguments {
 
 	/**
 	 * The refusal to raise for an argument picocli would not accept. A failure raised
-	 * by one of the methods below — an unreadable repository list, a bad timeout — is
-	 * already the failure this module means, and travels on unchanged. Anything else
-	 * is the parser's own complaint, answered with the usage line.
-	 *
-	 * <p>That complaint quotes the argument it could not place, and one of the
-	 * arguments this command takes is a clone URL carrying credentials, so it goes
-	 * through {@link Redaction}. The parser's exception is deliberately <em>not</em>
-	 * chained: it carries the unmasked text as its message, which the stack trace of
-	 * an uncaught refusal would print straight back out.
+	 * by one of the methods below is already the failure this module means and travels
+	 * on unchanged; anything else is the parser's complaint, answered with the usage
+	 * line. That complaint quotes the argument it could not place, which may be a
+	 * clone URL carrying credentials, so it goes through {@link Redaction} — and the
+	 * parser's exception is deliberately <em>not</em> chained, carrying the unmasked
+	 * text as its message.
 	 */
 	private static RuntimeException refusal(ParameterException e) {
 		if (e.getCause() instanceof RuntimeException raised) {
@@ -371,12 +349,10 @@ public final class CliArguments {
 	}
 
 	/**
-	 * The timeout is read as whole minutes rather than as an ISO-8601 duration,
-	 * because it is set in the units the operator is reasoning about — how long a
-	 * {@code claude init} over their largest repository takes. It is refused while
-	 * they are still reading the command line rather than after a clone, and bounded
-	 * by {@link AdoptionOptions#MAX_TIMEOUT} because a batch left running overnight
-	 * cannot reclaim a command whose budget outlasts it either.
+	 * Read as whole minutes rather than an ISO-8601 duration, being set in the units
+	 * the operator reasons about — how long a {@code claude init} over their largest
+	 * repository takes. Refused before a clone, and bounded by
+	 * {@link AdoptionOptions#MAX_TIMEOUT}.
 	 */
 	@Option(names = TIMEOUT_FLAG, paramLabel = "<minutes>")
 	private void timeout(String value) {
@@ -386,9 +362,8 @@ public final class CliArguments {
 	}
 
 	/**
-	 * Zero is a meaningful answer here rather than a missing one — an operator who
-	 * wants every failure reported the moment it happens says so with
-	 * {@code --retries 0} — so only a blank value falls back to the default.
+	 * Zero is meaningful rather than missing — {@code --retries 0} asks for every
+	 * failure the moment it happens — so only a blank value falls back to the default.
 	 */
 	@Option(names = RETRIES_FLAG, paramLabel = "<count>")
 	private void retries(String value) {
@@ -419,12 +394,9 @@ public final class CliArguments {
 	}
 
 	/**
-	 * The whole number a counting flag names, refused unless it falls within the
-	 * bounds that flag allows. Both flags that take one are read here rather than each
-	 * spelling out its own parse and its own range check, so a value neither of them
-	 * accepts is refused in the one wording — naming the flag, what it counts, and the
-	 * range — and followed by the usage line, as every other refusal this parser
-	 * raises is.
+	 * The whole number a counting flag names, refused unless it falls within that
+	 * flag's bounds. Both flags read it here, so a bad value is refused in one wording
+	 * — naming the flag, what it counts, and the range — followed by the usage line.
 	 *
 	 * @param unit what the number counts, so the refusal reads as the operator's own
 	 *             question rather than as a type error
@@ -448,9 +420,9 @@ public final class CliArguments {
 	}
 
 	/**
-	 * A run that asked for the usage line is not asked to adopt anything, so the
-	 * repository requirements are not applied to it: {@code --help} on its own would
-	 * otherwise be refused with the very line it asked to be shown.
+	 * A run asking for the usage line is not asked to adopt anything, so the
+	 * repository requirements do not apply: {@code --help} alone would otherwise be
+	 * refused with the very line it asked to be shown.
 	 */
 	private void requireSomethingToAdopt() {
 		if (!help) {
@@ -466,19 +438,13 @@ public final class CliArguments {
 	}
 
 	/**
-	 * Rejects a first positional that names no repository owner when the flags
-	 * already named repositories — {@code --repos list.txt /tmp/workspace}, where the
-	 * operator meant the workspace the flags left unnamed. The positional keeps its
-	 * meaning whatever else is on the command line, so that path would otherwise be
-	 * cloned and fail several steps later; saying so here names the argument and the
-	 * flag meant instead. The check is only worth making when the flags supplied a
-	 * repository, since a run whose only repository is the positional has nothing
-	 * else it could be.
-	 *
-	 * <p>The argument is named through {@link Redaction}: a URL naming no owner can
-	 * still carry credentials — {@code https://x-access-token:TOKEN@github.com/repo},
-	 * whose userinfo and host collapse into one segment — and this message is the
-	 * last thing a run prints before it stops.
+	 * Rejects a first positional naming no repository owner when the flags already
+	 * named repositories — {@code --repos list.txt /tmp/workspace}, where the operator
+	 * meant the workspace. The positional keeps its meaning whatever else is on the
+	 * command line, so that path would otherwise be cloned and fail several steps
+	 * later. Only worth checking when the flags supplied a repository, since
+	 * otherwise the positional has nothing else it could be. It is named through
+	 * {@link Redaction}, a URL naming no owner still being able to carry credentials.
 	 */
 	private void requirePositionalNamesARepository() {
 		if (positionalUrl != null && flagsNamedARepository && namesNoOwner(positionalUrl)) {
@@ -489,11 +455,9 @@ public final class CliArguments {
 	}
 
 	/**
-	 * An argument {@link RepositoryUrl} cannot parse at all names no owner either —
-	 * and no repository — so answering the question here is what puts the refusal
-	 * above in front of the operator, rather than the parse failure's "repositoryUrl
-	 * must end in a repository name", which names neither the argument that was
-	 * misread nor the flag that was meant.
+	 * An argument {@link RepositoryUrl} cannot parse names no owner either, so
+	 * answering here puts the refusal above in front of the operator rather than a
+	 * parse failure naming neither the misread argument nor the flag meant instead.
 	 */
 	private boolean namesNoOwner(String url) {
 		try {

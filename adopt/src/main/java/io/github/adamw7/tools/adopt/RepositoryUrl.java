@@ -24,14 +24,11 @@ public final class RepositoryUrl {
 	/**
 	 * The port ending a URL's authority, dropped before the URL is split into
 	 * segments: splitting on {@code ':'} — which the scp-like form needs — otherwise
-	 * reads the port as a path segment of its own, so
-	 * {@code https://ghe.example.com:8443/owner/repo} yielded a third-from-last
-	 * segment that is the port rather than the host and {@link #repositorySlug}
-	 * concluded the URL named no owner.
-	 *
-	 * <p>Only a URL carrying a scheme is treated this way. The scp-like
-	 * {@code git@host:owner/repo} cannot carry a port at all — that is what
-	 * {@code ssh://} exists for — so its {@code ':'} always separates a path.
+	 * reads the port as a path segment, so {@code https://ghe.example.com:8443/owner/repo}
+	 * gave {@link #repositorySlug} the port where the host should be and it concluded
+	 * the URL named no owner. Only a URL carrying a scheme is treated this way: the
+	 * scp-like {@code git@host:owner/repo} cannot carry a port, so its {@code ':'}
+	 * always separates a path.
 	 */
 	private static final Pattern PORT = Pattern.compile("^([^/]*):\\d+(?=/|$)");
 
@@ -45,20 +42,16 @@ public final class RepositoryUrl {
 
 	/**
 	 * The credentials of an {@code http(s)} URL: everything between the {@code ://}
-	 * and the last {@code @} before the path, the same reading {@link Redaction}
-	 * takes. Only those two schemes are matched, because {@link #withoutCredentials()}
-	 * removes what it finds rather than masking it: the {@code git@} of an
-	 * {@code ssh://git@host/owner/repo} is the account to log in as, not a secret, and
-	 * a URL stripped of it authenticates as whoever is running the adoption instead.
+	 * and the last {@code @} before the path, the reading {@link Redaction} takes.
+	 * Only those two schemes match, because {@link #withoutCredentials()} removes what
+	 * it finds rather than masking it — the {@code git@} of {@code ssh://git@host/...}
+	 * is the account to log in as, not a secret.
 	 *
-	 * <p>The scheme is matched without regard to case, as {@link #SCHEME} and
-	 * {@link #stripGitSuffix} already read a URL: a scheme is case-insensitive and git
-	 * clones {@code HTTPS://token@host/owner/repo} as readily as the lower-case form.
-	 * Reading only the lower-case one left {@link #withoutCredentials()} answering the
-	 * URL unchanged, so {@code CloneStep} saw nothing to rewrite and the token stayed
-	 * in the checkout's {@code .git/config} — while {@link Redaction}, which matches
-	 * any scheme, masked it everywhere the run <em>reported</em> the URL, leaving
-	 * nothing to notice it by.
+	 * <p>The scheme is matched without regard to case, git cloning
+	 * {@code HTTPS://token@host/owner/repo} as readily as the lower-case form. Reading
+	 * only lower case left the URL unchanged, so {@code CloneStep} saw nothing to
+	 * rewrite and the token stayed in {@code .git/config} — while {@link Redaction},
+	 * which matches any scheme, masked it everywhere the run <em>reported</em> it.
 	 */
 	private static final Pattern HTTP_CREDENTIALS = Pattern.compile("(?<=^https?://)[^/\\s]+@",
 			Pattern.CASE_INSENSITIVE);
@@ -88,8 +81,8 @@ public final class RepositoryUrl {
 	}
 
 	/**
-	 * The URL as given, stripped of surrounding whitespace — the one {@code git}
-	 * is handed, credentials included. Anything that outlives the run reports
+	 * The URL as given, stripped of surrounding whitespace — the one {@code git} is
+	 * handed, credentials included. Anything outliving the run reports
 	 * {@link #redacted()} instead.
 	 */
 	public String value() {
@@ -108,10 +101,8 @@ public final class RepositoryUrl {
 	 * The URL with its credentials removed rather than masked, so it still clones and
 	 * fetches: {@link #redacted()} answers {@code https://***@host/owner/repo}, which
 	 * names a host called {@code ***@host} and is no use to git. This is the form the
-	 * checkout records as its {@code origin}, because a credentialled URL written
-	 * there outlives the run as plaintext in {@code .git/config} — the adoption is
-	 * handed {@code https://x-access-token:TOKEN@github.com/owner/repo.git} by CI, and
-	 * the workspace it leaves behind is not where that token should live.
+	 * checkout records as its {@code origin}, a credentialled URL written there
+	 * outliving the run as plaintext in {@code .git/config}.
 	 *
 	 * @return the URL without its user information for {@code http} and {@code https},
 	 *         and unchanged for every other form
@@ -144,10 +135,10 @@ public final class RepositoryUrl {
 	 * {@code .../alice/tools} and {@code .../bob/tools} are two.
 	 *
 	 * <p>Anything that does not reduce to the same text is answered as a different
-	 * repository. The comparison errs in that direction deliberately, because the
-	 * caller is deciding whether a checkout it found is the one it was asked to
-	 * adopt: refusing a checkout that was in fact the right one costs a clone, while
-	 * accepting the wrong one commits to it, pushes it, and opens its pull request.
+	 * repository. The comparison errs that way deliberately: the caller is deciding
+	 * whether a checkout it found is the one it was asked to adopt, and refusing the
+	 * right one costs a clone while accepting the wrong one commits to it, pushes it,
+	 * and opens its pull request.
 	 *
 	 * @param otherUrl the URL to compare against, typically a checkout's recorded
 	 *                 {@code origin}; blank or {@code null} names no repository and
@@ -194,9 +185,8 @@ public final class RepositoryUrl {
 
 	/**
 	 * A URL whose last segment is empty or a directory alias — {@code .../repo//},
-	 * {@code .../.git}, or a bare {@code ..} — would resolve the checkout onto the
-	 * workspace itself or above it, so the clone would land beside the other
-	 * repositories the workspace holds.
+	 * {@code .../.git}, a bare {@code ..} — would resolve the checkout onto the
+	 * workspace itself or above it.
 	 */
 	private static String requireName(String name, String repositoryUrl) {
 		if (name.isEmpty() || ".".equals(name) || "..".equals(name) || isPath(name) || isUserInfo(name)) {
@@ -207,16 +197,12 @@ public final class RepositoryUrl {
 	}
 
 	/**
-	 * A last segment that ends at an {@code @} is the URL's user information and
-	 * nothing else — {@code https://token@} names credentials and no repository. Only
-	 * a URL with no path past its authority reaches this, so a checkout directory
-	 * legitimately containing an {@code @} is unaffected.
-	 *
-	 * <p>What it protects is {@link #identity}, which strips exactly that user
-	 * information: such a URL reduced to the empty identity that
-	 * {@link #isSameRepositoryAs} answers for text naming no repository, so a checkout
-	 * of <em>any</em> other repository was accepted as this one, then branched,
-	 * committed, and pushed.
+	 * A last segment ending at an {@code @} is the URL's user information and nothing
+	 * else — {@code https://token@} names credentials and no repository. Only a URL
+	 * with no path past its authority reaches this. It protects {@link #identity},
+	 * which strips exactly that user information: such a URL reduced to the empty
+	 * identity {@link #isSameRepositoryAs} answers for text naming no repository, so a
+	 * checkout of <em>any</em> other repository was accepted as this one.
 	 */
 	private static boolean isUserInfo(String name) {
 		return name.endsWith("@");
@@ -224,9 +210,8 @@ public final class RepositoryUrl {
 
 	/**
 	 * A repository name never carries a backslash, so a last segment that does is a
-	 * path rather than a name — a Windows-style {@code C:\repos\tools}, or a segment
-	 * carrying a {@code ..} traversal. Resolving one against the workspace would put
-	 * the checkout outside it on a platform that reads {@code '\'} as a separator.
+	 * path — a Windows-style {@code C:\repos\tools}, or a {@code ..} traversal —
+	 * which would put the checkout outside the workspace on such a platform.
 	 */
 	private static boolean isPath(String name) {
 		return name.indexOf('\\') >= 0;
@@ -238,10 +223,9 @@ public final class RepositoryUrl {
 	 * and the scp-like {@code git@host:owner/repo} — hence splitting on both
 	 * separators.
 	 *
-	 * <p>A URL only names an owner when a host-looking segment precedes the last two.
-	 * Without that check a plain filesystem path such as {@code /tmp/workspace/repo}
-	 * would yield the nonsense slug {@code workspace/repo} and point a tool at a
-	 * repository that does not exist; an empty result leaves the step to infer.
+	 * <p>A URL only names an owner when a host-looking segment precedes the last two:
+	 * without that, a filesystem path such as {@code /tmp/workspace/repo} yields the
+	 * nonsense slug {@code workspace/repo}. An empty result leaves the step to infer.
 	 *
 	 * @return the slug, or {@code null} when the URL names no owner
 	 */
@@ -286,10 +270,9 @@ public final class RepositoryUrl {
 	}
 
 	/**
-	 * The suffix is matched case-insensitively, because git clones
-	 * {@code .../repo.GIT} as readily as {@code .../repo.git} and both name the one
-	 * repository. Keeping the case would ask GitHub about {@code owner/repo.GIT},
-	 * which answers 404 and stops the adoption on its very first step.
+	 * Matched case-insensitively: git clones {@code .../repo.GIT} as readily as
+	 * {@code .../repo.git}, and keeping the case asked GitHub about
+	 * {@code owner/repo.GIT}, which answers 404.
 	 */
 	private static String stripGitSuffix(String segment) {
 		int suffixStart = segment.length() - GIT_SUFFIX.length();

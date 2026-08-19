@@ -22,32 +22,28 @@ import org.apache.logging.log4j.ThreadContext;
  * batch means.
  *
  * <p>That independence is also what lets a batch run several repositories at once.
- * It used to be sequential for one reason: every adoption shells out to
- * {@code git}, {@code claude} and {@code gh}, and a parallel batch interleaved
- * their output into a log nobody could attribute. That is a solvable problem
- * rather than a reason, and it is solved by putting the repository into the
- * logging context of the thread adopting it, so every line a run emits says which
- * repository it belongs to. A batch of one, or a {@code parallelism} of one, still
- * runs on the calling thread and starts no pool at all.
+ * It was sequential because every adoption shells out to {@code git}, {@code claude}
+ * and {@code gh}, and a parallel batch interleaved their output into a log nobody
+ * could attribute — solved by putting the repository into the logging context of the
+ * thread adopting it. A batch of one, or a {@code parallelism} of one, still runs on
+ * the calling thread and starts no pool.
  *
  * <p>Each repository's checkout is settled once its adoption is over, by the
  * {@link CheckoutRetention} the run was given: a batch makes one full clone per
  * repository, and nothing used to remove them.
  *
  * <p>Claiming a repository's checkout is part of its own adoption rather than a
- * preparation the whole run shares, so a URL that names no repository, or one
- * whose checkout directory another repository of the run already claimed, is that
- * repository's recorded failure and not the batch's. Otherwise a single malformed
- * line in a {@code --repos} file stopped every repository behind it before the
- * first clone, and left the run with no report to say so.
+ * preparation the run shares, so a URL naming no repository — or one whose checkout
+ * directory another repository already claimed — is that repository's recorded
+ * failure and not the batch's. Otherwise one malformed line in a {@code --repos}
+ * file stopped every repository behind it before the first clone.
  */
 public final class BatchAdoption {
 
 	/**
-	 * A single repository's adoption, filling in the report it is handed. The report
-	 * is a parameter rather than a return value so a failed adoption still yields one:
-	 * a report only handed back on the return path is lost the moment the adoption
-	 * throws, which is when the batch most needs to know how far that repository got.
+	 * A single repository's adoption, filling in the report it is handed. The report is
+	 * a parameter rather than a return value so a failed adoption still yields one —
+	 * exactly when the batch most needs to know how far that repository got.
 	 */
 	public interface Adoption {
 		void adopt(AdoptionContext context, AdoptionReport report);
@@ -56,9 +52,8 @@ public final class BatchAdoption {
 	private static final Logger log = LogManager.getLogger(BatchAdoption.class);
 
 	/**
-	 * The key each adoption's log lines are attributed by. Named here because the
-	 * appender patterns in {@code log4j2.properties} read it, and a value put under
-	 * one key and read under another attributes nothing.
+	 * The key each adoption's log lines are attributed by, named here because the
+	 * appender patterns in {@code log4j2.properties} read it.
 	 */
 	public static final String REPOSITORY_CONTEXT_KEY = "repository";
 
@@ -66,10 +61,9 @@ public final class BatchAdoption {
 	public static final int SEQUENTIAL = 1;
 
 	/**
-	 * The most an operator may ask for. Each thread runs a clone, a {@code claude
-	 * init} and a build, so the limit that matters is the host's and the remote's
-	 * patience rather than its cores; past this a batch is mostly waiting on GitHub,
-	 * which answers by rate limiting the run.
+	 * The most an operator may ask for. Each thread runs a clone, a {@code claude init}
+	 * and a build, so the limit is the host's and the remote's patience rather than
+	 * its cores; past this a batch is mostly waiting on GitHub's rate limiter.
 	 */
 	public static final int MAX_PARALLELISM = 8;
 
@@ -125,9 +119,8 @@ public final class BatchAdoption {
 	}
 
 	/**
-	 * A batch small enough to need no pool does not start one, so the ordinary
-	 * single-repository run is exactly the run it always was — same thread, same
-	 * stack, nothing to shut down.
+	 * A batch small enough to need no pool does not start one, so a single-repository
+	 * run is the run it always was — same thread, same stack, nothing to shut down.
 	 */
 	private List<AdoptionRun> run(List<String> repositoryUrls, Checkouts checkouts) {
 		if (parallelism == SEQUENTIAL || repositoryUrls.size() == 1) {
@@ -143,10 +136,9 @@ public final class BatchAdoption {
 	 * rather than the order they finished: a run is read repository by repository,
 	 * against the list the operator handed in.
 	 *
-	 * <p>Nothing here has to handle a failing adoption, because
-	 * {@link #adoptOne} already records one and returns; a task that threw anyway
-	 * would be a defect in this class rather than in a repository, so it is allowed
-	 * to end the batch.
+	 * <p>Nothing here handles a failing adoption: {@link #adoptOne} records one and
+	 * returns, so a task that threw anyway is a defect in this class and is allowed to
+	 * end the batch.
 	 */
 	private List<AdoptionRun> inParallel(List<String> repositoryUrls, Checkouts checkouts) {
 		try (ExecutorService executor = Executors.newFixedThreadPool(parallelism)) {
@@ -169,10 +161,9 @@ public final class BatchAdoption {
 	}
 
 	/**
-	 * The URL is redacted up front so a repository that fails its claim — and so
-	 * never has a context to ask — is still reported without its credentials. The
-	 * repository is taken by position so the line announcing it can say which of how
-	 * many it is; every line below it names a step, not a repository.
+	 * The URL is redacted up front so a repository that fails its claim — and so never
+	 * has a context to ask — is still reported without its credentials. It is taken by
+	 * position so the announcing line can say which of how many it is.
 	 */
 	private AdoptionRun adoptOne(List<String> repositoryUrls, int index, Checkouts checkouts) {
 		String repositoryUrl = repositoryUrls.get(index);
@@ -211,11 +202,10 @@ public final class BatchAdoption {
 	}
 
 	/**
-	 * Closes the batch with what the operator has to act on: how much of it landed,
-	 * what it cost, and — when some of it did not — which repositories to re-run.
-	 * Those failures are scattered through however many repositories' worth of steps
-	 * separate them, so naming them together at the end is the difference between
-	 * reading the run and searching it.
+	 * Closes the batch with what the operator has to act on: how much landed, what it
+	 * cost, and which repositories to re-run. Those failures are scattered through
+	 * however many repositories' steps separate them, so naming them together is the
+	 * difference between reading the run and searching it.
 	 */
 	private void logSummary(List<AdoptionRun> runs, Elapsed elapsed) {
 		List<String> failed = runs.stream().filter(run -> !run.succeeded()).map(AdoptionRun::repositoryUrl).toList();
@@ -226,10 +216,9 @@ public final class BatchAdoption {
 	}
 
 	/**
-	 * The failure is logged with its stack trace here because it is not rethrown:
-	 * swallowing it to keep the batch going would otherwise be the last that is seen
-	 * of it. A failure the pipeline already described — naming the step that raised
-	 * it — is left alone, since that reads better than the bare message.
+	 * Logged with its stack trace because it is not rethrown: swallowing it to keep the
+	 * batch going would otherwise be the last seen of it. A failure the pipeline
+	 * already described, naming the step that raised it, is left alone.
 	 */
 	private void recordFailure(String displayUrl, AdoptionReport report, RuntimeException failure) {
 		log.error("Adoption failed for {}", displayUrl, failure);

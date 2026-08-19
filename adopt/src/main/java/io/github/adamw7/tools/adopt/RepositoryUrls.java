@@ -10,11 +10,10 @@ import java.util.List;
  * already collected in memory. Both end in {@link #distinct(List)}, so the two
  * cannot drift apart on what counts as a repository worth adopting.
  *
- * <p>A list file is written for people: blank lines are skipped and a line whose
- * first non-blank character is {@code #} is a comment, so a batch can be annotated
- * and a repository commented out for a run rather than deleted. Duplicates are
- * dropped, keeping the order the URLs were given in — the same URL twice would
- * clone into one checkout directory and adopt it a second time.
+ * <p>A list file is written for people: blank lines are skipped and a {@code #}
+ * first non-blank character is a comment, so a batch can be annotated and a
+ * repository commented out rather than deleted. Duplicates are dropped, keeping the
+ * order given — the same URL twice would adopt one checkout a second time.
  */
 public final class RepositoryUrls {
 

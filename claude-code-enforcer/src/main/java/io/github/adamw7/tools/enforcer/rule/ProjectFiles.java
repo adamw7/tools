@@ -11,15 +11,13 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 /**
  * The file-system helpers the rules share: the null-safe {@link File#listFiles}
  * wrappers, the {@code .md} handling, the "directory must exist" check, and the
- * normalised path a file is keyed by. Every rule that scans a directory or
- * compares two paths needs some of these, so they live here rather than once per
- * feature package — the layering forbids those packages from reaching sideways
- * into each other, so a helper only one of them owned had to be written twice.
+ * normalised path a file is keyed by. They live here rather than once per feature
+ * package, since the layering forbids those packages reaching sideways into each
+ * other and a helper only one of them owned had to be written twice.
  * <p>
- * Listings are returned sorted by natural {@link File} order.
- * {@link File#listFiles} yields entries in an unspecified, filesystem-dependent
- * order, which would let a rule report its violations differently run to run and
- * so churn both the HTML report and a recorded baseline.
+ * Listings are sorted by natural {@link File} order: {@link File#listFiles} yields
+ * entries in a filesystem-dependent order, which would let a rule report its
+ * violations differently run to run and churn both the report and a baseline.
  */
 public final class ProjectFiles {
 

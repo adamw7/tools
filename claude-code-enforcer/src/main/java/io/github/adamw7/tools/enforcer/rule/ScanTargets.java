@@ -26,11 +26,10 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
  * there and is not a directory is a build-setup mistake, because a rule silently
  * scanning nothing is indistinguishable from one that found nothing.
  * <p>
- * The two parameters overlap freely — naming a file explicitly and scanning the
- * directory it sits in is a natural way to say "this one especially" — so
- * {@link #allFiles} yields each file once. A rule that checked both lists in turn
- * would report the overlapping file's violations twice and record them twice in a
- * baseline.
+ * The two parameters overlap freely — naming a file and scanning the directory it
+ * sits in is a natural way to say "this one especially" — so {@link #allFiles}
+ * yields each file once, rather than reporting the overlap twice and recording it
+ * twice in a baseline.
  */
 public final class ScanTargets {
 
@@ -44,9 +43,9 @@ public final class ScanTargets {
 
 	/**
 	 * Fails when neither parameter names anything to check, and when a configured
-	 * directory is a file. Both are build-setup mistakes: the second one used to
-	 * pass, because a path that is not a directory lists nothing, so a
-	 * {@code <directory>} pointed at a file scanned nothing and reported nothing.
+	 * directory is a file. Both are build-setup mistakes: the second used to pass,
+	 * since a path that is not a directory lists nothing, so a {@code <directory>}
+	 * pointed at a file scanned and reported nothing.
 	 */
 	public void requireConfigured() throws EnforcerRuleException {
 		if (files.isEmpty() && directories.isEmpty()) {
@@ -90,8 +89,7 @@ public final class ScanTargets {
 	/**
 	 * The regular files under the configured directories that {@code accepted}
 	 * matches. A directory the walk cannot read fails as a rule verdict naming it,
-	 * rather than as the {@link java.io.UncheckedIOException} that used to escape and
-	 * abort the build as an internal error.
+	 * not as an {@link java.io.UncheckedIOException} aborting the build.
 	 */
 	public List<File> filesInDirectories(Predicate<Path> accepted) throws EnforcerRuleException {
 		List<File> found = new ArrayList<>();

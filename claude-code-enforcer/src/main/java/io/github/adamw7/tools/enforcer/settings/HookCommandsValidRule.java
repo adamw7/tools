@@ -18,18 +18,15 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * as a JSON string; a {@code command} hook must also declare a non-blank
  * {@code command}, likewise as a string.
  * <p>
- * A command that points at a project-local script — through the
- * {@code $CLAUDE_PROJECT_DIR} variable, or as the plain repository-relative path
- * Claude Code resolves the same way — is resolved against {@code projectDir} (the
- * parent of the settings file's directory by default) and must exist on disk, so a
- * renamed or missing hook script is caught; the check is on by default and can be
- * switched off with {@code validateScriptReferences}. Only the program of each
- * chained command is read as a relative script, never an argument, so a hook passing
- * a path it is about to write is not required to exist. An event name outside a
- * configured {@code allowedEvents} is reported, which catches a mistyped
- * {@code SessionSart}. A settings file without a {@code hooks} key is allowed, but
- * a {@code hooks} that is present and is not an object is reported rather than
- * skipped, so a mistyped section cannot pass unvalidated.
+ * A command pointing at a project-local script — through {@code $CLAUDE_PROJECT_DIR}
+ * or as the repository-relative path Claude Code resolves the same way — is resolved
+ * against {@code projectDir} (the settings file's grandparent by default) and must
+ * exist, so a renamed hook script is caught; switch it off with
+ * {@code validateScriptReferences}. Only the program of each chained command is read
+ * as a script, never an argument, so a hook passing a path it is about to write need
+ * not exist. An event outside {@code allowedEvents} is reported, catching a mistyped
+ * {@code SessionSart}. A file with no {@code hooks} key passes, but a {@code hooks}
+ * that is present and is not an object is reported rather than skipped.
  */
 @Named("hookCommandsValid")
 public class HookCommandsValidRule extends JsonFileRule {
@@ -108,10 +105,9 @@ public class HookCommandsValidRule extends JsonFileRule {
 	}
 
 	/**
-	 * A {@code type} that is not a string is reported as the type error it is rather
-	 * than read as its text: a hook declaring {@code "type": 123} is not the
-	 * {@code command} hook it may well have meant to be, so reading it as
-	 * {@code "123"} matched nothing and skipped every command check in silence.
+	 * A {@code type} that is not a string is reported as the type error it is: a hook
+	 * declaring {@code "type": 123} read as {@code "123"} matched nothing and skipped
+	 * every command check in silence.
 	 */
 	private void collectEntryViolations(String event, JsonNode entry, List<String> violations) {
 		if (entry == null) {

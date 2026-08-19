@@ -4,11 +4,9 @@ import java.util.Locale;
 
 /**
  * The host operating system, as the adoption needs to read it. Windows is the one
- * platform the adoption treats differently — a build wrapper is {@code mvnw.cmd}
- * rather than {@code mvnw} there, and a bare program name has to be resolved
- * through {@code PATHEXT} before {@link ProcessBuilder} will start it — so the
- * detection lives here rather than being spelled out by each place that branches
- * on it.
+ * platform treated differently — a build wrapper is {@code mvnw.cmd} there, and a
+ * bare program name has to be resolved through {@code PATHEXT} before
+ * {@link ProcessBuilder} will start it — so the detection lives here.
  */
 public final class Platform {
 

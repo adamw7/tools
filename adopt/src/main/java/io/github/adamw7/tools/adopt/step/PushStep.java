@@ -13,12 +13,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  * {@code git push -u origin <branch>}, setting the upstream so the freshly
  * created branch is published and can be the head of a pull request.
  *
- * <p>The credentials the run was given are supplied to that one command rather
- * than read back from the checkout, because {@link CloneStep} deliberately does
- * not leave them there. They are passed as a {@code -c remote.origin.pushurl}
- * override, which git applies to this invocation alone and writes nowhere: pushing
- * to the URL positionally would publish the branch just as well but leaves git
- * unable to set an upstream, since a URL is not a remote to track.
+ * <p>The credentials are supplied to that one command rather than read back from the
+ * checkout, {@link CloneStep} deliberately not leaving them there. They go as a
+ * {@code -c remote.origin.pushurl} override, applied to this invocation alone and
+ * written nowhere: pushing to the URL positionally publishes the branch but leaves
+ * git unable to set an upstream, a URL not being a remote to track.
  */
 public class PushStep extends AbstractCommandStep {
 

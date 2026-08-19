@@ -16,21 +16,17 @@ import io.github.adamw7.tools.adopt.AdoptionException;
  * through and no step has to know it is there.
  *
  * <p>What this buys is a batch that survives its network. An adoption is a long
- * unattended run over a list of repositories, and a single {@code git clone} met by
- * a connection reset failed that repository outright — after the run had already
- * paid for its {@code claude init}, which is the expensive part. The repositories
- * behind it were never in doubt ({@link io.github.adamw7.tools.adopt.BatchAdoption}
- * isolates them), but the one that was refused had to be adopted again from the
- * beginning, by an operator who had to notice first.
+ * unattended run, and a single {@code git clone} met by a connection reset failed
+ * that repository outright — after the run had already paid for its
+ * {@code claude init}, the expensive part — and had to be adopted again from the
+ * beginning by an operator who had to notice first.
  *
  * <p>Only the failures {@link TransientFailures} recognises are retried: a
- * {@code git} or {@code gh} that reports a transport-level refusal. Everything else
- * — a rejected push, a 403, a query answering through its exit code — is handed
- * back on the first attempt exactly as an undecorated runner hands it back. A
- * command that <em>throws</em> is not retried either: the two failures
- * {@link ProcessCommandRunner} raises are a program that could not be started and
- * one destroyed on its timeout, and re-running either buys nothing but another
- * timeout's wait.
+ * {@code git} or {@code gh} reporting a transport-level refusal. Everything else — a
+ * rejected push, a 403, a query answering through its exit code — is handed back on
+ * the first attempt. A command that <em>throws</em> is not retried either: the two
+ * failures {@link ProcessCommandRunner} raises are a program that could not start
+ * and one destroyed on its timeout, and re-running either buys another wait.
  *
  * <p>A runner configured with no retries is a pass-through, so the entry points can
  * always wrap and let {@code --retries 0} answer for itself.
@@ -47,11 +43,10 @@ public class RetryingCommandRunner implements CommandRunner {
 		void of(Duration duration);
 
 		/**
-		 * The pause a real run serves. It lives here rather than beside each caller
-		 * because sleeping means touching {@link Thread}, and the architecture rules
-		 * keep concurrency inside this package: the adoption is a sequential pipeline,
-		 * and a step that reached for a thread would be doing something the pipeline
-		 * does not do.
+		 * The pause a real run serves. It lives here because sleeping means touching
+		 * {@link Thread}, and the architecture rules keep concurrency inside this
+		 * package: a step that reached for a thread would be doing something the
+		 * sequential pipeline does not do.
 		 */
 		static Pause sleeping() {
 			return RetryingCommandRunner::sleep;
@@ -61,10 +56,9 @@ public class RetryingCommandRunner implements CommandRunner {
 	private static final Logger log = LogManager.getLogger(RetryingCommandRunner.class);
 
 	/**
-	 * The wait before the second attempt, doubling before each one after it. Sized for
-	 * the failure being waited out — a proxy hiccup, a load balancer restarting, a DNS
-	 * lookup that missed — rather than for an outage, which no bounded retry recovers
-	 * from and which the operator has to be told about instead.
+	 * The wait before the second attempt, doubling thereafter. Sized for the failure
+	 * being waited out — a proxy hiccup, a load balancer restarting, a DNS lookup that
+	 * missed — rather than for an outage no bounded retry recovers from.
 	 */
 	static final Duration FIRST_BACKOFF = Duration.ofSeconds(2);
 
@@ -99,11 +93,10 @@ public class RetryingCommandRunner implements CommandRunner {
 	}
 
 	/**
-	 * How many further attempts a refused command earns here. Package-visible so
+	 * How many further attempts a refused command earns. Package-visible so
 	 * {@link CommandRunners} can be asserted to have carried the run's own
-	 * {@code --retries} into the decorator that serves them: a run wired with fewer
-	 * than were asked for behaves exactly like one whose network faltered a little
-	 * more, and neither this runner nor the step above it reports the difference.
+	 * {@code --retries} through: a run wired with fewer behaves exactly like one whose
+	 * network faltered a little more, and nothing reports the difference.
 	 */
 	int retries() {
 		return retries;
@@ -111,11 +104,9 @@ public class RetryingCommandRunner implements CommandRunner {
 
 	/**
 	 * The runner this one decorates. Package-visible so the toolchain
-	 * {@link CommandRunners} assembles can be asserted to still have both halves.
-	 * Losing the decorated half is the failure that shows least: an undecorated
-	 * runner answers every command exactly as this one answers a command the network
-	 * did not refuse, so a run only differs on the transport failure this class
-	 * exists to absorb — by which point the batch has already failed the repository.
+	 * {@link CommandRunners} assembles can be asserted to still have both halves —
+	 * losing the decorated half shows only on the transport failure this class exists
+	 * to absorb, by which point the batch has already failed the repository.
 	 */
 	CommandRunner delegate() {
 		return delegate;
@@ -134,11 +125,10 @@ public class RetryingCommandRunner implements CommandRunner {
 	}
 
 	/**
-	 * The transcript of the attempt being retried is logged here because nothing else
-	 * will: a step only reports the command that stopped it, so an attempt this runner
-	 * goes on to replace with a successful one would otherwise leave no trace of the
-	 * network having faltered at all. It is redacted for the usual reason — a tool
-	 * handed a credentialled clone URL echoes it back when it cannot use it.
+	 * The transcript of the retried attempt is logged here because nothing else will:
+	 * a step only reports the command that stopped it, so an attempt replaced by a
+	 * successful one would leave no trace of the network having faltered. Redacted for
+	 * the usual reason — a tool handed a credentialled URL echoes it back.
 	 */
 	private void waitBefore(int attempt, CommandResult result) {
 		Duration backoff = backoff(attempt);
@@ -149,9 +139,8 @@ public class RetryingCommandRunner implements CommandRunner {
 	}
 
 	/**
-	 * A run that needed more than one attempt says so even when it ended well, so the
-	 * cost of a flaky network is readable in the log of a batch that landed rather
-	 * than only in the one that did not.
+	 * A run needing more than one attempt says so even when it ended well, so a flaky
+	 * network is readable in the log of a batch that landed.
 	 */
 	private CommandResult reported(CommandResult result, int attempts) {
 		if (attempts > 1 && result.succeeded()) {
@@ -167,9 +156,8 @@ public class RetryingCommandRunner implements CommandRunner {
 
 	/**
 	 * The pause a real run serves. An interrupt aborts the adoption rather than being
-	 * swallowed into an immediate retry, and leaves the flag set, so a host shutting
-	 * its worker down — an MCP server, a cancelled CI job — is obeyed here as it is
-	 * inside {@link ProcessCommandRunner}.
+	 * swallowed into an immediate retry, and leaves the flag set, so a host shutting a
+	 * worker down is obeyed here as inside {@link ProcessCommandRunner}.
 	 */
 	private static void sleep(Duration backoff) {
 		try {

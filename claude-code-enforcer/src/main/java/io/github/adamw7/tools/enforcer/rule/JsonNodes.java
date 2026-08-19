@@ -20,11 +20,10 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 public final class JsonNodes {
 
 	/**
-	 * Parses strictly, because these rules exist to catch a hand-edited
-	 * configuration file that Claude Code will not read the way its author meant.
-	 * Jackson's defaults stop at the first complete value and let a later
-	 * definition of a key silently win, so content after the closing brace, and a
-	 * duplicated key, would both parse clean; both are rejected here instead.
+	 * Parses strictly, these rules existing to catch a hand-edited file Claude Code
+	 * will not read the way its author meant. Jackson's defaults stop at the first
+	 * complete value and let a later definition of a key win, so content after the
+	 * closing brace and a duplicated key both parse clean; both are rejected here.
 	 */
 	private static final ObjectMapper MAPPER = JsonMapper.builder()
 			.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)

@@ -18,12 +18,10 @@ import org.apache.logging.log4j.Logger;
  * still recovered.
  *
  * <p>The stream is copied verbatim, so the transcript keeps the child's own line
- * terminators rather than a re-joined approximation — up to the bound
- * {@link BoundedTranscript} holds it to, past which the middle of a very long
- * transcript is dropped rather than the adoption growing with whatever the child
- * chose to print. {@link #output()} bounds its wait for the reader thread, because
- * a descendant the child spawned can keep the pipe open after the child itself has
- * exited.
+ * terminators — up to the bound {@link BoundedTranscript} holds it to, past which
+ * the middle is dropped rather than the adoption growing with whatever the child
+ * printed. {@link #output()} bounds its wait for the reader thread, a descendant the
+ * child spawned being able to keep the pipe open after the child has exited.
  */
 final class StreamGobbler {
 
@@ -76,11 +74,9 @@ final class StreamGobbler {
 
 	/**
 	 * A read that fails ends the transcript where it failed rather than propagating.
-	 * This runs on a thread nobody joins for a result, so a thrown exception reaches
-	 * the JVM's default handler and prints a stack trace to standard error — the one
-	 * channel this module never logs on, and one the operator cannot attribute to a
-	 * command. The partial output is what {@link #output()} answers either way, so
-	 * the caller is no worse off for the failure being recorded here instead.
+	 * This runs on a thread nobody joins, so a thrown exception would reach the JVM's
+	 * default handler and print a stack trace to standard error — the one channel this
+	 * module never logs on. {@link #output()} answers the partial output either way.
 	 */
 	private void drain(InputStream stream) {
 		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {

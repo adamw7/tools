@@ -20,8 +20,8 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  *
  * <p>Both entry points build one of these, so the command line and the MCP tool
  * cannot drift apart on what an omitted option means. The timeout is here rather
- * than left to the caller's {@link ProcessCommandRunner} because it is part of the
- * same answer: an operator who raises it does so for the run, not for one command.
+ * than on the caller's {@link ProcessCommandRunner} because an operator who raises
+ * it does so for the run, not for one command.
  *
  * @param pullRequest     the metadata {@link io.github.adamw7.tools.adopt.step.PullRequestStep}
  *                        opens its pull request with, defaulting to the adoption's own
@@ -29,9 +29,8 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  *                        committed alongside the {@code CLAUDE.md}
  * @param ruleVersion     the released {@code claude-code-enforcer} version to pin
  *                        into an adopted Maven project, or {@code null} to resolve
- *                        the version of the {@code tools} build running the
- *                        adoption — read through {@link #pinnedRuleVersion()},
- *                        which is the accessor that says so in its type
+ *                        the running build's — read through
+ *                        {@link #pinnedRuleVersion()}, which says so in its type
  * @param dryRun          whether the run stops after the verification, committing
  *                        the adoption locally but pushing nothing and opening no
  *                        pull request
@@ -44,12 +43,11 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  *                        {@link #DEFAULT_RETRIES} and bounded by
  *                        {@link #MAX_RETRIES}; zero adopts exactly as an
  *                        undecorated run does
- * @param guardRules      how much of the adopted repository's Claude Code
- *                        configuration the wired guard checks, defaulting to all of
- *                        it — the adoption installs an {@code AGENTS.md}, and with
- *                        {@code --assets} a {@code .claude} directory, so a guard
- *                        that read only {@code CLAUDE.md} left what the run itself
- *                        wrote unchecked
+ * @param guardRules      how much of the adopted repository's configuration the
+ *                        wired guard checks, defaulting to all of it: the adoption
+ *                        installs an {@code AGENTS.md} and, with {@code --assets},
+ *                        a {@code .claude} directory, so a {@code CLAUDE.md}-only
+ *                        guard left what the run wrote unchecked
  * @param claudeMdSections the headings the guard demands and the reshape conforms
  *                        to, empty to use the ones the detected build system asks
  *                        for
@@ -62,32 +60,25 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 		List<String> claudeMdSections, boolean verifyOnly) {
 
 	/**
-	 * Two further attempts, which is what a transport-level hiccup takes: the failure
-	 * being waited out is a connection that was refused or reset, and one that has
-	 * survived four and twelve seconds of waiting is an outage the operator has to be
-	 * told about rather than one more attempt can absorb.
+	 * Two further attempts, what a transport-level hiccup takes. A connection still
+	 * refused after four and twelve seconds of waiting is an outage to report rather
+	 * than one more attempt can absorb.
 	 */
 	public static final int DEFAULT_RETRIES = 2;
 
 	/**
 	 * The most an operator may ask for. Bounded rather than merely non-negative
-	 * because a run is unattended: every attempt beyond this one waits out
-	 * {@link io.github.adamw7.tools.adopt.command.RetryingCommandRunner#MAX_BACKOFF}
-	 * before it, so a generous number turns a network that is simply down into a batch
-	 * that looks like it is working.
+	 * because a run is unattended: every further attempt waits out
+	 * {@link io.github.adamw7.tools.adopt.command.RetryingCommandRunner#MAX_BACKOFF},
+	 * so a generous number turns a network that is down into a batch that looks busy.
 	 */
 	public static final int MAX_RETRIES = 10;
 
 	/**
-	 * The longest a single command may be given. A day, past which a command that has
-	 * not returned is a stuck one rather than a slow adoption, and waiting out the
-	 * rest of a budget it is never going to use reports nothing the operator can act
-	 * on.
-	 *
-	 * <p>Stated here rather than at each entry point because it is the same answer for
-	 * both: the MCP tool serves its calls inside a long-lived server and the command
-	 * line runs an unattended batch, and neither reclaims a command whose budget
-	 * outlasts the run that set it.
+	 * The longest a single command may be given: a day, past which a command that has
+	 * not returned is stuck rather than slow. Stated here rather than at each entry
+	 * point, being the same answer for both — neither the MCP server nor an unattended
+	 * batch reclaims a command whose budget outlasts the run that set it.
 	 */
 	public static final Duration MAX_TIMEOUT = Duration.ofDays(1);
 
@@ -102,9 +93,8 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	}
 
 	/**
-	 * The options without a guard named, which is every caller that does not care
-	 * which rules the adopted build ends up running: the whole configuration is
-	 * checked, on the sections the detected build system asks for.
+	 * The options without a guard named: the whole configuration is checked, on the
+	 * sections the detected build system asks for.
 	 */
 	public AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
 			boolean dryRun, Duration commandTimeout, int retries) {
@@ -130,10 +120,9 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	}
 
 	/**
-	 * What the guard wired into an adopted project is made of, gathered from the
-	 * options that describe it. The pipeline is assembled from this rather than from
-	 * the three fields separately, so the reshape and the guard it has to satisfy
-	 * cannot be built from different answers.
+	 * What the guard wired into an adopted project is made of. The pipeline is
+	 * assembled from this rather than from the three fields separately, so the reshape
+	 * and the guard it must satisfy cannot be built from different answers.
 	 */
 	public GuardOptions guard() {
 		return new GuardOptions(ruleVersion, guardRules, claudeMdSections);
@@ -150,11 +139,9 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	}
 
 	/**
-	 * A run is rejected here rather than at the first command it would have killed,
-	 * so {@code --timeout 0} fails while the operator is still reading the command
-	 * line instead of after a clone — and a timeout past {@link #MAX_TIMEOUT} fails
-	 * there too, rather than being honoured by a runner that would then be holding a
-	 * command the run cannot outlast.
+	 * Rejected here rather than at the first command it would have killed, so
+	 * {@code --timeout 0} fails before a clone — as does one past {@link #MAX_TIMEOUT},
+	 * rather than leaving a runner holding a command the run cannot outlast.
 	 */
 	private static Duration requireWithinBounds(Duration commandTimeout) {
 		if (commandTimeout.isNegative() || commandTimeout.isZero() || commandTimeout.compareTo(MAX_TIMEOUT) > 0) {
@@ -165,10 +152,9 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	}
 
 	/**
-	 * Rejected here as well as at each entry point, because this record is what a
-	 * caller assembling the pipeline for itself builds — and a retry count read from
-	 * somewhere neither the command line nor the MCP tool validated would otherwise
-	 * only be noticed by the runner, mid-run.
+	 * Rejected here as well as at each entry point, this record being what a caller
+	 * assembling its own pipeline builds: a count neither entry point validated would
+	 * otherwise only be noticed by the runner, mid-run.
 	 */
 	private static int requireWithinBounds(int retries) {
 		if (retries < 0 || retries > MAX_RETRIES) {

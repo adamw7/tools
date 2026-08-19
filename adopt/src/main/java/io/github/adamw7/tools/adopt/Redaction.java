@@ -3,17 +3,15 @@ package io.github.adamw7.tools.adopt;
 import java.util.regex.Pattern;
 
 /**
- * Masks the credentials a clone URL can carry before the text reaches somewhere
- * it outlives the run. An adoption driven by CI is handed URLs of the form
- * {@code https://x-access-token:TOKEN@github.com/owner/repo.git}, and the
- * adoption puts that URL in three places a secret must not reach: the log, the
- * message of the {@link AdoptionException} a failing command raises, and the
- * {@code failure} field of the JSON report written to disk and answered to MCP
- * clients.
+ * Masks the credentials a clone URL can carry before the text reaches somewhere it
+ * outlives the run. An adoption driven by CI is handed
+ * {@code https://x-access-token:TOKEN@github.com/owner/repo.git}, and puts that URL
+ * in three places a secret must not reach: the log, a failing command's
+ * {@link AdoptionException}, and the JSON report's {@code failure} field.
  *
- * <p>Only the user information of a URL with a scheme is masked, so the
- * scp-like {@code git@host:owner/repo} — whose {@code git@} is the well-known
- * user every such URL carries, not a credential — reads as it was given.
+ * <p>Only the user information of a URL with a scheme is masked, so the scp-like
+ * {@code git@host:owner/repo} — whose {@code git@} is a well-known user, not a
+ * credential — reads as it was given.
  */
 public final class Redaction {
 

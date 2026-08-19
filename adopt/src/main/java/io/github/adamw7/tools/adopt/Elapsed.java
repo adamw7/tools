@@ -8,10 +8,10 @@ import java.time.Duration;
  * each take between a millisecond and ten minutes, so how long a step took is the
  * question an operator asks first of a run that felt slow.
  *
- * <p>Elapsed time is measured with {@link System#nanoTime()} rather than the wall
- * clock, so a step's duration is not rewritten by a clock correction landing
- * mid-command. {@link #toString()} is what a log line interpolates, in place of the
- * ISO-8601 {@link Duration#toString()} a reader would have to decode.
+ * <p>Measured with {@link System#nanoTime()} rather than the wall clock, so a clock
+ * correction landing mid-command does not rewrite a duration. {@link #toString()} is
+ * what a log line interpolates, in place of the ISO-8601
+ * {@link Duration#toString()} a reader would have to decode.
  */
 public final class Elapsed {
 

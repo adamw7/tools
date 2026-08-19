@@ -36,28 +36,20 @@ public class PomEnforcerInstaller {
 	/**
 	 * The {@value #ENFORCER_ARTIFACT_ID} version a freshly declared plugin is pinned
 	 * to: the one the root pom manages, read through the build metadata rather than
-	 * written here as a literal. A literal is a number nobody builds — this project
-	 * would move on and go on asking strangers' repositories for the version it
-	 * stopped using, with nothing to notice by.
-	 *
-	 * <p>Resolved lazily, per POM, for the same reason the rule version is: merely
-	 * assembling {@link BuildSystems#DEFAULTS}, or adopting a repository that builds
-	 * with something other than Maven, must not depend on this build's metadata being
-	 * on the classpath.
+	 * written here as a literal nobody builds. Resolved lazily, per POM, so that
+	 * assembling {@link BuildSystems#DEFAULTS} or adopting a non-Maven repository does
+	 * not depend on this build's metadata being on the classpath.
 	 */
 	static String enforcerVersion() {
 		return BuildMetadata.value(ENFORCER_VERSION_KEY, "the maven-enforcer-plugin version to pin");
 	}
 
 	/**
-	 * The oldest {@value #ENFORCER_ARTIFACT_ID} that can run the rule wired in here.
-	 * {@value #CLAUDE_MD_RULE} is looked up by the component name it is published
-	 * under, which the plugin only does from this version; an older one fails the
-	 * build complaining it cannot find a rule the POM plainly declares. A declaration
-	 * this installer writes itself pins {@link #enforcerVersion()}, so only a version
-	 * the project pinned — in its {@code build} or in the {@code pluginManagement}
-	 * that declaration resolves through — can be too old; see
-	 * {@link #requireRunnableEnforcer}.
+	 * The oldest {@value #ENFORCER_ARTIFACT_ID} that can run the rule wired in here:
+	 * {@value #CLAUDE_MD_RULE} is looked up by component name, which the plugin only
+	 * does from this version, and an older one fails the build complaining it cannot
+	 * find a rule the POM plainly declares. A declaration this installer writes pins
+	 * {@link #enforcerVersion()}, so only a version the project pinned can be too old.
 	 */
 	static final String MINIMUM_ENFORCER_VERSION = "3.1.0";
 	private static final String RULE_ARTIFACT_ID = "tools.claude-code-enforcer";
@@ -121,8 +113,8 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Pins an explicitly supplied version instead of the running build's, checked here
-	 * — before anything is cloned — rather than at the one step that edits a POM.
+	 * Pins an explicitly supplied version instead of the running build's, checked
+	 * before anything is cloned rather than at the step that edits a POM.
 	 *
 	 * @param ruleVersion a released {@code claude-code-enforcer} version
 	 */
@@ -142,9 +134,7 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * The installer the guard options describe: the version they pin, or the running
-	 * build's when they pin none, wiring the rule set they name. Naming the choice
-	 * here keeps callers from spelling out which of the constructors an empty
-	 * {@link Optional} means.
+	 * build's when they pin none, wiring the rule set they name.
 	 */
 	static PomEnforcerInstaller from(GuardOptions guard) {
 		Supplier<String> version = guard.pinnedRuleVersion().map(PomEnforcerInstaller::released)
@@ -164,21 +154,18 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Answers the question a verification asks and an install answers only by doing
-	 * it: does this POM already run a guard? Read-only, so a run that is checking a
-	 * repository rather than adopting one leaves it exactly as it was cloned.
+	 * Does this POM already run a guard? Read-only, so a run checking a repository
+	 * rather than adopting one leaves it exactly as it was cloned.
 	 */
 	public boolean isInstalled(Path pomFile) {
 		return alreadyRunsTheRule(PomDocument.read(pomFile));
 	}
 
 	/**
-	 * @param requiredSections the {@code CLAUDE.md} headings the guard is to demand,
-	 *                         which are the headings the conformer has just reshaped
-	 *                         the document to. Written into the POM rather than left
-	 *                         to the rule's defaults, so a project whose document is
-	 *                         not a Java project's is held to its own headings instead
-	 *                         of to this repository's.
+	 * @param requiredSections the {@code CLAUDE.md} headings the guard is to demand —
+	 *                         the ones the conformer has just reshaped the document
+	 *                         to. Written into the POM rather than left to the rule's
+	 *                         defaults, so a project is held to its own headings.
 	 * @return {@code true} when the guard was wired in, {@code false} when the POM
 	 *         already runs it and was left unchanged
 	 */
@@ -217,10 +204,8 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
-	 * Empty when the guard demands no particular section, which leaves the rule's own
-	 * defaults in place rather than writing an empty list that would demand nothing at
-	 * all. A build system whose guard asks only that the document exist is the case:
-	 * it has no sections to name, and it is not wiring this rule anyway.
+	 * Empty when the guard demands no particular section, leaving the rule's defaults
+	 * in place rather than writing an empty list that would demand nothing at all.
 	 */
 	private String sectionsElement(List<String> requiredSections) {
 		return sections(requiredSections, "requiredSections", "requiredSection");
@@ -241,45 +226,39 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * Asks the plugins of the POM's own {@code build} — the one place a rule runs on
-	 * every build, and the very place {@link #enforcerPluginOfTheBuild} would add one,
-	 * so what is inspected and what is edited cannot disagree.
+	 * every build, and where {@link #enforcerPluginOfTheBuild} would add one, so what
+	 * is inspected and what is edited cannot disagree.
 	 *
-	 * <p>A rule declared anywhere else is not one an ordinary build runs, so it is not
-	 * a guard this installer may stand down for: {@code pluginManagement} binds
-	 * nothing, a {@code profile} binds only while activated, and a {@code reporting}
-	 * plugin does not run in the lifecycle. Counting any of them left the project with
-	 * no guard on the build it actually runs, and nothing downstream said so —
+	 * <p>A rule declared anywhere else is not one an ordinary build runs:
+	 * {@code pluginManagement} binds nothing, a {@code profile} binds only while
+	 * activated, and a {@code reporting} plugin does not run in the lifecycle.
+	 * Counting any of them left the project with no guard on the build it runs, and
 	 * {@link VerifyStep}'s {@code mvn -N validate} passes precisely because the rule
-	 * never ran. A project that gated the rule behind a profile therefore ends up
-	 * running it on every build too, which is the direction to err in: an extra run is
-	 * visible and removable, a guard nobody runs reads as adopted and is not.
+	 * never ran. So a project that gated the rule behind a profile ends up running it
+	 * on every build too — the direction to err in, since an extra run is visible and
+	 * removable while a guard nobody runs reads as adopted and is not.
 	 */
 	private boolean alreadyRunsTheRule(PomDocument pom) {
 		return buildPlugins(pom).anyMatch(this::runsClaudeMdRule);
 	}
 
 	/**
-	 * Whether the plugin actually configures the {@code claudeMdFormat} rule, rather
-	 * than merely carrying the artifact that supplies it. {@value #RULE_ARTIFACT_ID}
-	 * ships a rule per document and per piece of agent configuration, so a project
-	 * that wired in {@code noSecrets} has the dependency and no {@code CLAUDE.md}
-	 * guard at all — and reading the dependency as the guard left that POM untouched
-	 * while {@link VerifyStep} passed on the rule the project already had.
-	 *
-	 * <p>The rule is looked for at any depth below the plugin, because it is
-	 * configured either on an execution or on the plugin itself, and only directly
-	 * under a {@code rules} element, so a project whose own configuration happens to
-	 * name an element the same way elsewhere is not mistaken for one running it.
+	 * Whether the plugin configures the {@code claudeMdFormat} rule, rather than
+	 * merely carrying the artifact supplying it. {@value #RULE_ARTIFACT_ID} ships a
+	 * rule per document, so a project that wired in {@code noSecrets} has the
+	 * dependency and no {@code CLAUDE.md} guard — and reading the dependency as the
+	 * guard left that POM untouched. The rule is looked for at any depth below the
+	 * plugin, being configured on an execution or on the plugin itself, but only
+	 * directly under a {@code rules} element.
 	 */
 	private boolean runsClaudeMdRule(Element plugin) {
 		return PomDocument.selfAndDescendants(plugin).stream().anyMatch(this::isGuardRule);
 	}
 
 	/**
-	 * Either guard counts as one already wired. A repository adopted before the
+	 * Either guard counts as one already wired: a repository adopted before the
 	 * composite existed runs {@code claudeMdFormat}, and re-adopting it must not
-	 * splice a second execution in beside the guard it already has — the run's job is
-	 * to leave a repository guarded, and it is.
+	 * splice a second execution in beside the guard it has.
 	 */
 	private boolean isGuardRule(Element element) {
 		Element parent = element.parent();
@@ -299,8 +278,7 @@ public class PomEnforcerInstaller {
 	/**
 	 * The {@code maven-enforcer-plugin} of the POM's own {@code build}, and only that
 	 * one: an execution spliced into {@code pluginManagement} configures a plugin the
-	 * build never runs, and one spliced into a profile runs only when that profile is
-	 * activated. A POM whose only enforcer sits somewhere else therefore gets its own
+	 * build never runs. A POM whose only enforcer sits elsewhere gets its own
 	 * declaration in {@code build/plugins}.
 	 */
 	private Optional<Element> enforcerPluginOfTheBuild(PomDocument pom) {
@@ -308,11 +286,7 @@ public class PomEnforcerInstaller {
 				.findFirst();
 	}
 
-	/**
-	 * The plugins the POM's own {@code build} binds, which every build runs. Said once
-	 * because {@link #alreadyRunsTheRule} and {@link #enforcerPluginOfTheBuild} ask
-	 * about the same place for the same reason.
-	 */
+	/** The plugins the POM's own {@code build} binds, which every build runs. */
 	private Stream<Element> buildPlugins(PomDocument pom) {
 		return pom.at(BUILD_PLUGINS).stream()
 				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream());
@@ -320,14 +294,11 @@ public class PomEnforcerInstaller {
 
 	/**
 	 * Adds the rule dependency and the execution to the {@code maven-enforcer-plugin}
-	 * the build already declares — reusing its {@code dependencies} and
-	 * {@code executions} when it has them — so the project keeps a single enforcer
-	 * plugin entry and the rules it already ran keep running.
-	 *
-	 * <p>A plugin that already depends on {@value #RULE_ARTIFACT_ID} for a rule of its
-	 * own keeps the dependency it declared, at the version it pinned: only the
-	 * execution is missing, and adding a second dependency on the same artifact would
-	 * leave the plugin's classpath deciding between two versions of it.
+	 * the build already declares, reusing its {@code dependencies} and
+	 * {@code executions}, so the project keeps a single enforcer entry and its
+	 * existing rules keep running. A plugin already depending on
+	 * {@value #RULE_ARTIFACT_ID} keeps that dependency at the version it pinned —
+	 * a second one would leave the classpath deciding between two versions.
 	 */
 	private void augment(PomDocument pom, Element plugin, String execution) {
 		requireRunnableEnforcer(pom, plugin);
@@ -341,25 +312,20 @@ public class PomEnforcerInstaller {
 	 * Refuses to splice the execution into a {@value #ENFORCER_ARTIFACT_ID} the
 	 * project pinned below {@value #MINIMUM_ENFORCER_VERSION}, which cannot resolve
 	 * the rule by name: adding it anyway left the adoption advertising a guard that
-	 * fails every build it runs in. Raising the project's pinned version instead is
-	 * not the adoption's call — bumping it would change how the rules the project
-	 * already runs behave, the same reason {@link CommitStep} refuses an ignored path
+	 * fails every build it runs in. Raising the project's pinned version is not the
+	 * adoption's call, for the same reason {@link CommitStep} refuses an ignored path
 	 * rather than forcing the file in.
 	 *
-	 * <p>A declaration that names no version of its own is judged by the one the POM's
-	 * own {@code pluginManagement} pins for it, because that is the version the build
-	 * resolves — and pinning there while declaring the plugin bare in {@code build}
-	 * is how Maven projects are ordinarily written, so reading only the declaration
-	 * left this refusal blind to the common shape of the very thing it refuses. The
-	 * execution was spliced in, committed, and left to {@link VerifyStep} to fail on,
-	 * naming a rule Maven could not find rather than the declaration to raise.
+	 * <p>A declaration naming no version of its own is judged by the one the POM's
+	 * {@code pluginManagement} pins, that being the version the build resolves — and
+	 * the ordinary Maven shape, so reading only the declaration left this refusal
+	 * blind to the common form of the very thing it refuses.
 	 *
-	 * <p>Only a version literal is judged either way. One the POM leaves to a parent
-	 * or to a property cannot be read from here, and refusing on that would turn the
-	 * ordinary POM into an unadoptable one; see {@link PluginVersion}. A declaration
-	 * this installer writes itself always pins {@link #enforcerVersion()}, which no
-	 * {@code pluginManagement} entry overrides, so only a plugin the project already
-	 * had reaches this at all.
+	 * <p>Only a version literal is judged. One left to a parent or a property cannot
+	 * be read from here, and refusing on that would make the ordinary POM
+	 * unadoptable; see {@link PluginVersion}. A declaration this installer writes
+	 * always pins {@link #enforcerVersion()}, so only a plugin the project already had
+	 * reaches this.
 	 */
 	private void requireRunnableEnforcer(PomDocument pom, Element plugin) {
 		versionOf(plugin).ifPresentOrElse(
@@ -367,11 +333,7 @@ public class PomEnforcerInstaller {
 				() -> managedEnforcerVersion(pom).ifPresent(version -> requireRunnable(version, IN_PLUGIN_MANAGEMENT)));
 	}
 
-	/**
-	 * The version the POM's own {@code pluginManagement} pins for the
-	 * {@value #ENFORCER_ARTIFACT_ID}, which is what a declaration naming none resolves
-	 * to.
-	 */
+	/** What a declaration naming no version resolves to: the {@code pluginManagement} pin. */
 	private Optional<String> managedEnforcerVersion(PomDocument pom) {
 		return pom.at(MANAGED_PLUGINS).stream()
 				.flatMap(plugins -> PomDocument.children(plugins, "plugin").stream())

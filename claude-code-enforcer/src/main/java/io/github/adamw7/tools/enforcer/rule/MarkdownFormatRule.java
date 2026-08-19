@@ -19,48 +19,37 @@ import io.github.adamw7.tools.markdown.MarkdownDocument;
 import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
- * Base for enforcer rules that validate a Markdown document follows an expected
- * structure: it must exist, be non-empty, start with a required title heading (a
- * leading UTF-8 BOM is tolerated), and contain every required section heading as a
- * real, non-empty heading.
+ * Base for enforcer rules that validate a Markdown document's structure: it must
+ * exist, be non-empty, start with a required title heading (a leading UTF-8 BOM is
+ * tolerated), and carry every required section heading as a real, non-empty one.
  * <p>
- * Headings are matched outside code, so a heading mentioned in a sample — fenced or
- * indented — or in prose does not satisfy a requirement, and a partial match such as
- * {@code # CLAUDE.md-extended} does not satisfy {@code # CLAUDE.md}. They are
- * matched by the text they carry rather than by the line they were typed on, so a
- * heading balanced with a closing {@code #} run satisfies the requirement its plain
- * spelling does — the title included. All structural problems are collected and
- * reported together.
+ * Headings are matched outside code, so one mentioned in a sample or in prose does
+ * not satisfy a requirement, and {@code # CLAUDE.md-extended} does not satisfy
+ * {@code # CLAUDE.md}. They are matched by the text they carry rather than the line
+ * they were typed on, so a heading balanced with a closing {@code #} run satisfies
+ * its plain spelling — the title included. All problems are reported together.
  * <p>
- * Several optional checks, each disabled by default, can be switched on from the
- * rule configuration: {@code forbiddenTokens} that must not appear outside code,
+ * Several optional checks are off by default: {@code forbiddenTokens} outside code,
  * {@code enforceSectionOrder}, a {@code maxLineLength} cap, and
- * {@code validateFileReferences} to confirm that links to local files resolve on
- * disk. The title and required sections default to the subclass-provided values
- * but can be overridden, so the rule is reusable across projects without a
+ * {@code validateFileReferences}. The title and required sections default to the
+ * subclass's values but can be overridden, so the rule is reusable without a
  * recompile.
  * <p>
- * With {@code <autoFix>true</autoFix>} the structural part of that contract is
- * <em>repaired</em> rather than merely reported: the document is reshaped by
- * {@link MarkdownConformer} — the same reshape the adoption pipeline runs, against
- * the same {@link MarkdownDocument} reader this rule judges the result with — and
- * the checks then run over the repaired document. A missing title, a heading that
- * is a near miss for a required one, an absent or empty section, and a missing
- * companion-document reference are all mechanical edits with one correct answer,
- * and reporting them left that answer to be typed out by hand on every project
- * that adopts the rule.
- * <p>
- * Only that structural part is repaired. A forbidden token, an over-long line and
- * a broken file reference are still reported, because each of those has no one
- * correct repair — what a link ought to point at is the author's to say.
+ * With {@code <autoFix>true</autoFix>} the structural part is <em>repaired</em>
+ * instead: the document is reshaped by {@link MarkdownConformer} — the same reshape
+ * the adoption pipeline runs, against the same {@link MarkdownDocument} reader this
+ * rule judges the result with — and the checks run over the result. A missing
+ * title, a near-miss heading, an absent or empty section and a missing
+ * companion-document reference are mechanical edits with one correct answer. A
+ * forbidden token, an over-long line and a broken file reference are still only
+ * reported: what a link ought to point at is the author's to say.
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * A Markdown link, whose destination may carry one level of balanced parentheses
-	 * — {@code [img](assets/logo(1).png)} — as Markdown allows. Stopping at the first
-	 * closing parenthesis truncated such a target and reported the half of it that
-	 * naturally does not exist as a missing file.
+	 * — {@code [img](assets/logo(1).png)}. Stopping at the first closing parenthesis
+	 * truncated such a target and reported the half that does not exist as missing.
 	 */
 	private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[[^\\]]*\\]\\(((?:[^()]|\\([^()]*\\))+)\\)");
 	private static final Pattern EXTERNAL_REFERENCE = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
@@ -208,10 +197,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * Reading and parsing both go through {@link DocumentCache}, so the five rules
-	 * that each check something about {@code CLAUDE.md} parse it once between them.
-	 * They stay independent either way: what is shared is the document, not any
-	 * rule's reading of it.
+	 * Reading and parsing go through {@link DocumentCache}, so the five rules that
+	 * each check something about {@code CLAUDE.md} parse it once between them. What
+	 * is shared is the document, not any rule's reading of it.
 	 */
 	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
@@ -222,12 +210,10 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * Reshapes the document and writes it back when {@code autoFix} is on and the
-	 * reshape actually changed something, answering the content the checks then run
-	 * over. A reshape that changed nothing is not written, so a conforming document
-	 * keeps its modification time and a build that repairs nothing touches no file.
-	 *
-	 * <p>The line terminators the file already used are put back, so repairing a CRLF
-	 * document does not rewrite every line of it as a side effect.
+	 * reshape changed something, answering the content the checks run over. A reshape
+	 * that changed nothing is not written, so a build that repairs nothing touches no
+	 * file. The file's own line terminators are put back, so repairing a CRLF
+	 * document does not rewrite every line of it.
 	 */
 	private String repaired(File file, String content) throws EnforcerRuleException {
 		if (!autoFix) {
@@ -243,16 +229,12 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * The title is matched the way every other heading here is: by the text it
-	 * carries rather than by the line it was typed on. Comparing the raw first line
-	 * instead made the rule contradict itself — a {@code # CLAUDE.md ##} balanced
-	 * with a closing run, or one separated by two spaces or a tab, satisfies every
-	 * required-section lookup in this class and was still reported as a document that
-	 * "must start with the '# CLAUDE.md' title heading", which is exactly what it
-	 * does start with.
-	 * <p>
-	 * A configured title that is not a heading at all is compared verbatim, since
-	 * there is no canonical form to read it into.
+	 * The title is matched by the text it carries, as every other heading here is.
+	 * Comparing the raw first line made the rule contradict itself: a
+	 * {@code # CLAUDE.md ##} balanced with a closing run satisfies every
+	 * required-section lookup here and was still reported as a document that "must
+	 * start with the '# CLAUDE.md' title heading". A configured title that is not a
+	 * heading is compared verbatim, there being no canonical form to read it into.
 	 */
 	private void collectTitleViolation(MarkdownDocument document, List<String> violations) {
 		if (!declaresTitle(document.firstNonBlankLine())) {
@@ -268,10 +250,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * Missing and empty are two answers to one lookup, so the heading is located
-	 * once per section and the body question asked of the index it found. Asking
-	 * {@code hasHeading} and then {@code hasBody} walked the document twice per
-	 * section to answer a question the first walk had already settled.
+	 * Missing and empty are two answers to one lookup, so the heading is located once
+	 * per section and the body question asked of the index it found, rather than
+	 * walking the document twice per section.
 	 */
 	private void collectSectionViolations(MarkdownDocument document, List<String> violations) {
 		for (String section : requiredSections()) {
@@ -285,15 +266,12 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * When ordering is enforced, the required sections that are present must appear
-	 * in the same relative order as configured. Absent sections are already
-	 * reported by the section check, so only the present ones are compared here.
-	 * <p>
-	 * A section named twice in the configuration counts once, because that is how
-	 * {@link MarkdownDocument#headingsInOrder} reports the document's side of the
-	 * comparison: the document was expected to carry the repeated heading twice and
-	 * answered with the one heading it has, so a correctly ordered document was
-	 * reported as out of order and no edit to it could settle the complaint.
+	 * The required sections that are present must appear in the configured relative
+	 * order; absent ones are already reported by the section check. A section named
+	 * twice in the configuration counts once, matching how
+	 * {@link MarkdownDocument#headingsInOrder} reports the document's side —
+	 * otherwise a correctly ordered document was reported as out of order and no edit
+	 * to it could settle the complaint.
 	 */
 	private void collectOrderViolations(MarkdownDocument document, List<String> violations) {
 		if (!enforceSectionOrder) {
@@ -343,9 +321,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * Links are read outside code, HTML comments and inline code spans alike, so a
-	 * sample link written as {@code `[label](example.md)`} is documentation rather
-	 * than a reference this rule must resolve on disk, and a link an author
-	 * commented out is one the document no longer makes.
+	 * sample written as {@code `[label](example.md)`} is documentation rather than a
+	 * reference to resolve, and a commented-out link is one the document no longer
+	 * makes.
 	 */
 	private void collectLineReferences(MarkdownDocument document, int index, File baseDir, List<String> violations) {
 		if (document.isInsideCode(index) || document.isInsideComment(index)) {
@@ -378,12 +356,10 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/**
 	 * True when the link lands on a file, read both as written and with its
-	 * percent-escapes decoded. A Markdown destination escapes the characters a URL
-	 * cannot carry raw — a space becomes {@code %20} — so a link to a real
-	 * {@code my doc.md} is written {@code my%20doc.md}, and matching only the literal
-	 * spelling reported every such file as missing. Both readings are accepted rather
-	 * than the decoded one alone, so a file whose name genuinely contains a percent
-	 * sign still resolves.
+	 * percent-escapes decoded: a link to a real {@code my doc.md} is written
+	 * {@code my%20doc.md}, and matching only the literal spelling reported every such
+	 * file as missing. Both readings are accepted so a name genuinely containing a
+	 * percent sign still resolves.
 	 */
 	private boolean resolves(String localPath, File baseDir) {
 		return new File(baseDir, localPath).exists() || new File(baseDir, decoded(localPath)).exists();

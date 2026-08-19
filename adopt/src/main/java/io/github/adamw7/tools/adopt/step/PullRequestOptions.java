@@ -15,13 +15,11 @@ import io.github.adamw7.tools.adopt.Text;
  * and the MCP tool map their arguments straight in and no {@code null} can reach
  * {@code gh}'s arguments.
  *
- * <p>Each list entry is stripped, and a blank one is dropped rather than carried:
- * every entry becomes an argument of its own — {@code gh pr create --reviewer
- * <entry>} — so a blank one reached {@code gh} as an empty argument and failed the
- * adoption at its very last step, with the branch already pushed. Doing it here
- * rather than at each entry point keeps the command line and the MCP tool from
- * disagreeing about what an omitted value means. Duplicates are left alone, as
- * {@code gh} treats naming a reviewer twice as naming them once.
+ * <p>Each list entry is stripped and a blank one dropped: every entry becomes an
+ * argument of its own, so a blank one reached {@code gh} as an empty argument and
+ * failed the adoption at its last step with the branch already pushed. Doing it here
+ * keeps the command line and the MCP tool agreeing on what an omitted value means.
+ * Duplicates are left alone, {@code gh} treating a reviewer named twice as once.
  *
  * @param title     the pull request's title, or blank for {@value #DEFAULT_TITLE}
  * @param body      the pull request's body, or blank for the adoption's own

@@ -26,14 +26,12 @@ import io.github.adamw7.tools.enforcer.rule.Patterns;
  * silently at runtime. A duplicate within a list, and an entry that appears in
  * both {@code allow} and {@code deny}, are reported too.
  * <p>
- * When {@code allowedTools} is configured, the tool-name part of every entry must
- * be in that list, so a typo such as {@code Bsah(mvn *)} cannot slip through;
- * entries naming MCP tools (prefixed {@code mcp__}) are exempt because their names
- * are defined by the project's servers. When {@code forbiddenEntryPatterns} is
- * configured, an {@code allow} entry matching any of the regular expressions is
- * reported, so an over-broad grant such as {@code Bash(*)} can be banned by shape
- * rather than by exact spelling. A file without a {@code permissions} section
- * passes.
+ * {@code allowedTools} requires every entry's tool name to be in that list, so a
+ * typo such as {@code Bsah(mvn *)} cannot slip through; MCP tools (prefixed
+ * {@code mcp__}) are exempt, their names being defined by the project's servers.
+ * {@code forbiddenEntryPatterns} reports an {@code allow} entry matching any of the
+ * regular expressions, so an over-broad grant such as {@code Bash(*)} can be banned
+ * by shape rather than spelling. A file without a {@code permissions} section passes.
  */
 @Named("permissionsFormat")
 public class PermissionsFormatRule extends JsonFileRule {

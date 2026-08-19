@@ -18,12 +18,11 @@ import io.github.adamw7.tools.adopt.AdoptionFiles;
  *
  * <p>Both files are committed, so the guard is shared with every contributor. The
  * script is the single source of truth: the workflow invokes it and
- * {@link FallbackBuildSystem#verifyCommand(Path)} runs the same script locally, so
- * the adoption fails before the branch is pushed just as it would in CI.
- *
- * <p>The two are installed independently and neither is ever overwritten — the
- * rule {@link AssetInstaller} applies to every file the adoption writes — so a
- * checkout that kept the workflow but lost the script has it written back.
+ * {@link FallbackBuildSystem#verifyCommand(Path)} runs it locally, so the adoption
+ * fails before the branch is pushed just as it would in CI. The two are installed
+ * independently and neither is overwritten — the rule {@link AssetInstaller} applies
+ * to every file the adoption writes — so a checkout that kept the workflow but lost
+ * the script has it written back.
  */
 public class WorkflowGuardInstaller {
 

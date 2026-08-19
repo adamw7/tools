@@ -14,11 +14,10 @@ import java.util.stream.Stream;
  * milestone of the minimum reads as the release and is not refused, while every
  * version genuinely below it still is.
  *
- * <p>A literal carrying no leading number at all — an unsubstituted
- * {@code ${enforcer.version}}, or the empty text of a version the POM leaves to a
- * parent — is <em>not</em> below anything. Refusing what cannot be read here would
- * turn an ordinary POM into an unadoptable one, and {@link VerifyStep} still runs
- * the guard before any of it is pushed.
+ * <p>A literal carrying no leading number — an unsubstituted
+ * {@code ${enforcer.version}}, or a version the POM leaves to a parent — is
+ * <em>not</em> below anything: refusing what cannot be read would turn an ordinary
+ * POM into an unadoptable one, and {@link VerifyStep} still runs the guard first.
  */
 final class PluginVersion {
 

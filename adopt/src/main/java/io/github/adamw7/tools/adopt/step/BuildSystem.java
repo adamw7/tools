@@ -27,9 +27,8 @@ public interface BuildSystem {
 	 *
 	 * <p>Deliberately not defaulted: {@link AdoptionAssets#WRITTEN_PATHS} is what
 	 * {@link CloneStep} tells the adoption's work apart with and what
-	 * {@link CommitStep} refuses an ignored path over, so a file this list did not
-	 * name would be silently dropped from the branch. Requiring an answer makes the
-	 * compiler ask a new build system for one.
+	 * {@link CommitStep} refuses an ignored path over, so a file this list did not name
+	 * would be silently dropped from the branch.
 	 *
 	 * @return the paths, listed whether or not the checkout happens to carry them
 	 */
@@ -50,10 +49,9 @@ public interface BuildSystem {
 	 * only as far as {@link #install(Path)} and {@link #verifyCommand(Path)} between
 	 * them actually demand.
 	 *
-	 * <p>Empty by default, which is what a presence-and-non-empty guard wants: it
-	 * asks for no section in particular, so appending any is noise in the adoption's
-	 * first pull request rather than something the build would have rejected. A build
-	 * system wiring in a guard that does demand sections names them by overriding.
+	 * <p>Empty by default, which is what a presence-and-non-empty guard wants: it asks
+	 * for no section in particular, so appending any is noise in the adoption's first
+	 * pull request. A build system whose guard does demand sections overrides this.
 	 *
 	 * @return the required headings, empty when the guard demands none
 	 */
@@ -64,11 +62,10 @@ public interface BuildSystem {
 	/**
 	 * Whether this checkout already carries the guard this build system installs.
 	 *
-	 * <p>It is the read-only half of {@link #install(Path)}, which answers the same
-	 * question but only by acting on it. A verification asks it of a repository it
-	 * must leave exactly as it cloned it, and the guard's own verification command
-	 * cannot answer it: a build with no guard wired in passes that command precisely
-	 * because nothing ran.
+	 * <p>The read-only half of {@link #install(Path)}, which answers the same question
+	 * only by acting on it. A verification asks it of a repository it must leave as it
+	 * cloned it, and the guard's own command cannot answer it: a build with no guard
+	 * passes that command precisely because nothing ran.
 	 */
 	boolean isGuardInstalled(Path repositoryDirectory);
 

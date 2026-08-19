@@ -6,12 +6,10 @@ import java.util.List;
 /**
  * Builds the argument list of one command to hand to a {@link CommandRunner}.
  *
- * <p>Nearly every adoption step assembles its command the same way: a fixed program
- * and its leading arguments, then arguments that depend on the run — a
- * {@code --repo} the URL may not name, a {@code --draft} only a draft pull request
- * carries, a {@code --reviewer} per requested reviewer. Collecting that here leaves
- * each step naming only its own arguments, and makes the immutable result the
- * single way to finish rather than something each step has to remember.
+ * <p>Nearly every step assembles its command the same way: a fixed program and its
+ * leading arguments, then arguments that depend on the run — a {@code --repo} the URL
+ * may not name, a {@code --draft} only a draft carries, a {@code --reviewer} each.
+ * Collecting that here leaves each step naming only its own arguments.
  */
 public final class CommandLine {
 

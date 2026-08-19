@@ -40,13 +40,11 @@ import io.github.adamw7.tools.adopt.command.RetryingCommandRunner.Pause;
  *
  * <p>A run that leaves no {@code CLAUDE.md} is tried again, a bounded number of
  * times. This is the run's most expensive command and the only one with no other
- * recovery: {@link io.github.adamw7.tools.adopt.command.TransientFailures} leaves
- * {@code claude} out on purpose, because its transcript is a model's prose and may
- * discuss a connection reset without one having happened. What is judged here is
- * not the transcript but the <em>outcome</em> — whether the file exists — which
- * that objection does not reach. A run that produced the file has succeeded
- * whatever it exited with, and one that did not has produced nothing worth
- * keeping, so there is no attempt to lose by trying again.
+ * recovery, {@link io.github.adamw7.tools.adopt.command.TransientFailures} leaving
+ * {@code claude} out because its transcript is a model's prose. What is judged here
+ * is the <em>outcome</em> — whether the file exists — which that objection does not
+ * reach: a run that produced the file succeeded whatever it exited with, and one
+ * that did not produced nothing to lose by trying again.
  */
 public class ClaudeInitStep extends AbstractCommandStep {
 

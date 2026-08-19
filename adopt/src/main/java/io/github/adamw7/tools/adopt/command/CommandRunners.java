@@ -10,10 +10,9 @@ import io.github.adamw7.tools.adopt.AdoptionOptions;
  *
  * <p>Said once because both entry points need it and neither may answer it
  * differently — the same reason {@link AdoptionOptions} groups what a run is
- * configured with. A command line and an MCP call that assembled their own runners
- * would have been one edit away from a {@code --timeout} the server honours and an
- * argument the command line quietly drops, and nothing downstream reports a
- * decorator that was left off: the run simply stops retrying.
+ * configured with. Assembling their own runners would leave them one edit away from
+ * a {@code --timeout} one honours and the other drops, and nothing downstream
+ * reports a decorator left off: the run simply stops retrying.
  */
 public final class CommandRunners {
 
@@ -21,9 +20,8 @@ public final class CommandRunners {
 	}
 
 	/**
-	 * A runner configured with no retries is wrapped all the same, because the
-	 * decorator is then a pass-through and the alternative is two ways of building
-	 * the same toolchain — the very thing this method exists to prevent.
+	 * A runner configured with no retries is wrapped all the same: the decorator is
+	 * then a pass-through, and the alternative is two ways of building one toolchain.
 	 *
 	 * @param options how the run is configured, supplying the per-command timeout and
 	 *                the number of further attempts a refused command earns

@@ -10,9 +10,9 @@ import java.util.Optional;
  * to — and a run over several repositories is read repository by repository.
  *
  * <p>The repository and branch are held as text rather than as the
- * {@link AdoptionContext} they came from, because a repository whose URL names no
- * repository at all never gets a context and still has to be reported: surviving
- * that is the whole point of {@link BatchAdoption}.
+ * {@link AdoptionContext} they came from: a URL naming no repository never gets a
+ * context and still has to be reported, surviving that being the point of
+ * {@link BatchAdoption}.
  *
  * @param repositoryUrl the repository that was adopted, with any clone credentials
  *                      masked — a run is a reporting artifact, written to the

@@ -14,11 +14,10 @@ import io.github.adamw7.tools.adopt.command.CommandLine;
  * {@code gradlew} for Gradle — so the adoption verifies the {@code CLAUDE.md}
  * guard with the build tool the project itself expects to be built with.
  *
- * <p>Most Gradle projects ship only the wrapper and no system-wide {@code gradle},
- * so probing the {@code PATH} for one failed {@link BuildToolchainStep} and
- * aborted the adoption of a repository the host could have built perfectly well.
- * Preferring the wrapper also pins the build to the version the project pinned,
- * which is the whole reason a wrapper is committed.
+ * <p>Most Gradle projects ship only the wrapper, so probing the {@code PATH} for a
+ * {@code gradle} failed {@link BuildToolchainStep} and aborted the adoption of a
+ * repository the host could have built. Preferring the wrapper also pins the build
+ * to the version the project pinned, the whole reason a wrapper is committed.
  *
  * <p>The wrapper is answered as an <em>absolute</em> path, because
  * {@link ProcessBuilder} resolves a relative program name against the JVM's own
@@ -43,12 +42,10 @@ final class BuildWrapper {
 	}
 
 	/**
-	 * The executable bit is read through {@code executable} rather than straight off
-	 * the filesystem, because the POSIX one a test needs to describe is not a state a
-	 * file can be put into on every host: Windows has no executable bit, so
-	 * {@link Files#isExecutable} answers for a plain file there and the shelled branch
-	 * below could not be reached on the platform whose wrappers most often need it.
-	 * Faking the host with {@code windows} alone left the other half of POSIX real.
+	 * The executable bit is read through {@code executable} rather than off the
+	 * filesystem: Windows has no executable bit, so {@link Files#isExecutable} answers
+	 * for a plain file there and the shelled branch below could not be reached on the
+	 * platform whose wrappers most often need it.
 	 */
 	BuildWrapper(String posixName, String windowsName, boolean windows, Predicate<Path> executable) {
 		this.fileName = windows ? windowsName : posixName;
@@ -66,12 +63,11 @@ final class BuildWrapper {
 	}
 
 	/**
-	 * The probe that shows this build tool can actually be launched in the checkout,
-	 * built from the same launcher {@link #commandIn} uses so what
-	 * {@link BuildToolchainStep} checks is what {@link VerifyStep} will run. Probing
-	 * the launcher rather than the wrapper's file name matters for a wrapper that has
-	 * to go through {@link #SHELL}, since {@code sh --version} is not portable and a
-	 * probe of the program alone would report a working wrapper as unrunnable.
+	 * The probe that shows this build tool can be launched in the checkout, built from
+	 * the launcher {@link #commandIn} uses so what {@link BuildToolchainStep} checks is
+	 * what {@link VerifyStep} runs. Probing the launcher matters for a wrapper going
+	 * through {@link #SHELL}: {@code sh --version} is not portable, so probing the
+	 * program alone reported a working wrapper as unrunnable.
 	 */
 	List<String> probeIn(Path repositoryDirectory, String fallback) {
 		return commandIn(repositoryDirectory, fallback, List.of(ToolProbe.VERSION_FLAG));
@@ -87,12 +83,11 @@ final class BuildWrapper {
 
 	/**
 	 * A wrapper whose executable bit the project never committed — the usual state of
-	 * one added from Windows — cannot be launched as a program at all, so
+	 * one added from Windows — cannot be launched as a program, so
 	 * {@link BuildToolchainStep} aborted the adoption of a repository whose build was
-	 * fine. Running it through {@code sh} is what the project's own CI does with it,
-	 * and needs no change to the checkout, where a {@code chmod} would leave a mode
-	 * change in the adoption's commit that nobody asked for. Only the POSIX wrapper is
-	 * ever shelled: a {@code .bat}/{@code .cmd} is not a shell script.
+	 * fine. Running it through {@code sh} is what the project's own CI does, and needs
+	 * no {@code chmod} leaving a mode change in the adoption's commit. Only the POSIX
+	 * wrapper is shelled: a {@code .bat}/{@code .cmd} is not a shell script.
 	 */
 	private List<String> launch(String wrapper) {
 		return windows || executable.test(Path.of(wrapper)) ? List.of(wrapper) : List.of(SHELL, wrapper);

@@ -566,29 +566,43 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `claude`, never pushes, never opens a pull request and needs no `gh` login.
   Because it clones over the network, it identifies each checkout by the
   `owner/repository` its `origin` names rather than by the URL it was given.
-- `adopt`'s `ForeignRepositoryAdoptionIT` adopts five **real** repositories in
+- `adopt`'s `ForeignRepositoryAdoptionIT` adopts seven **real** repositories in
   one batch — `google/gson`, `square/okhttp`,
-  `anthropics/anthropic-quickstarts`, `anthropics/claude-code` and
-  `github/gitignore` — chosen for the shapes they put in front of the steps that
-  read a checkout: a multi-module Maven build, a Gradle build on the Kotlin DSL,
-  a real `CLAUDE.md`, a real `.claude` directory, and a very large flat tree with
-  no build file. Every step test drives its step over a directory this repository
-  laid out, so between them these five are the only place all three
-  `BuildSystem`s meet build files nobody wrote for them. What is asserted is that
+  `anthropics/anthropic-quickstarts`, `anthropics/claude-code`,
+  `github/gitignore`, `JakeWharton/timber` and `modelcontextprotocol/servers` —
+  chosen for the shapes they put in front of the steps that read a checkout: a
+  multi-module Maven build, a Gradle build on the Kotlin DSL and another on the
+  Groovy one, a real `CLAUDE.md`, a real `.claude` directory, a project whose own
+  files already sit where two of the starter assets go, a default branch called
+  neither `main` nor `master`, and a very large flat tree with no build file.
+  Every step test drives its step over a directory this repository laid out, so
+  between them these seven are the only place all three `BuildSystem`s — and both
+  Gradle DSLs — meet build files nobody wrote for them. What is asserted is that
   the adoption's work is *its own and nothing else*: the pipeline runs to its end
   on each, the guard that lands is the one the checkout's build files ask for
   (the enforcer execution spliced into gson's `pom.xml`, the guard task appended
-  to okhttp's `build.gradle.kts`, the workflow and script for the rest), the two
-  commits carry only paths `AdoptionAssets.WRITTEN_PATHS` names and the working
-  tree is left clean, the guard commit's diff *removes* nothing the build file
-  already declared, the default branch and the remote are untouched, and a second
-  adoption of the same batch commits nothing. The run installs the starter assets
-  too, because `AssetInstaller`'s promise that the project's own version always
-  wins is about a file somebody else keeps at one of their paths, and only a real
-  repository brings one: `claude-code` ships a `claude.yml` workflow of its own,
-  so the batch asserts each repository was given exactly the assets it lacked and
-  that workflow came through byte-identical to the blob that was cloned. A last
-  test reads the one document the pipeline reshapes rather than adds beside:
+  to okhttp's `build.gradle.kts` and to timber's `build.gradle`, the workflow and
+  script for the rest) and is written in that script's own DSL — a Kotlin block
+  appended to a Groovy script would register the task the verification looks for
+  and leave the project a build that no longer compiles — the two commits carry
+  only paths `AdoptionAssets.WRITTEN_PATHS` names and the working tree is left
+  clean, the guard commit's diff *removes* nothing the build file already
+  declared, the default branch and the remote are untouched, and a second
+  adoption of the same batch commits nothing. That nothing was published is asked
+  of GitHub itself with `ls-remote`, not only of the clone's tracking refs: a ref
+  in the checkout is evidence about the checkout, and the promise is about seven
+  repositories belonging to other people. The default branch is read from the
+  remote rather than guessed, which only a repository like `timber` — developed
+  on `trunk` — can show: its adoption branch is asserted to have been cut from
+  that branch. The
+  run installs the starter assets too, because `AssetInstaller`'s promise that
+  the project's own version always wins is about a file somebody else keeps at
+  one of their paths, and only a real repository brings one: `claude-code` ships
+  a `claude.yml` workflow of its own and `servers` an `.mcp.json` of its own, so
+  the batch asserts each repository was given exactly the assets it lacked and
+  that both of those files came through byte-identical to the blobs that were
+  cloned. A last test reads the one document the pipeline reshapes rather than
+  adds beside:
   `anthropic-quickstarts`' real `CLAUDE.md` is conformed and the real
   `claudeMdFormat` rule then accepts it, the foreign document having been
   asserted to fail it first.
@@ -616,37 +630,50 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   and then breaks a *copy* — a skill losing its `SKILL.md`, the two agent
   documents disagreeing about the Java version — to prove the wiring bites.
   `ForeignRepositoryEnforcementIT` points the same complete configuration at
-  five **real** repositories shallow-cloned from GitHub — `octocat/Hello-World`,
-  `octocat/Spoon-Knife`, `github/gitignore`, `anthropics/claude-code` and
-  `anthropics/anthropic-quickstarts` — because both tests above read files
-  written to be read by these rules, and an adopter's project was not. None of
-  the five passes and none should; what is asserted is that every rule *reaches a
-  verdict* on every one of them (`EnforcerVerdicts` reads maven-enforcer's
-  per-rule `passed`/`failed with message:` lines back out of the log, since an
-  exit code cannot tell a rule that examined a project from one that never ran),
-  that no build goes red on the rules' own account — an unbindable parameter, an
-  exception escaping a rule — that every failure says why, that the four
-  optional-file rules pass where the file really is absent, and that
-  `commandFormat` reads `anthropics/claude-code`'s real `.claude/commands`
-  instead of reporting it absent. A sixth test adopts the contract into a fresh
-  clone and enforces it green, so the rules are shown satisfiable outside the
-  repository that wrote them. A seventh takes the adopter's other route — record
-  the backlog, gate what is added to it — and pins the half a fixture cannot
-  reach: `commandFormat`'s real backlog in `anthropics/claude-code` (the
-  `allowed-tools` key its commands declare, which the configuration does not
-  allow) is recorded against the shared checkout and replayed against a *second*
-  clone of it, at a path the recording never saw. A baseline is a file a project
-  commits, so a signature naming the clone it was recorded under would suppress
-  nothing anywhere else — the fixture's three baseline builds share one directory
-  and cannot show it. Only a command added to the second clone fails that build,
-  and everything the baseline accepted stays unreported. The build runs in a
+  eight **real** repositories shallow-cloned from GitHub — `octocat/Hello-World`,
+  `octocat/Spoon-Knife`, `github/gitignore`, `anthropics/claude-code`,
+  `anthropics/anthropic-quickstarts`, `github/spec-kit`,
+  `modelcontextprotocol/servers` and `anthropics/claude-code-action` — because
+  both tests above read files written to be read by these rules, and an adopter's
+  project was not. None of the eight passes and none should; what is asserted is
+  that every rule *reaches a verdict* on every one of them (`EnforcerVerdicts`
+  reads maven-enforcer's per-rule `passed`/`failed with message:` lines back
+  out of the log, since an exit code cannot tell a rule that examined a
+  project from one that never ran), that no build goes red on the rules' own
+  account — an unbindable parameter, an exception escaping a rule — that every
+  failure says why, that the four optional-file rules pass where the file
+  really is absent, and that a rule reads a real file rather than reporting it
+  absent: `commandFormat` over `anthropics/claude-code`'s `.claude/commands`,
+  `subAgentFormat` and `settingsJsonValid` over `claude-code-action`'s
+  `.claude/agents` and `.claude/settings.json`, and `agentsMdFormat` over
+  `spec-kit`'s `AGENTS.md`. The two optional MCP rules are asked the same
+  question the other way round, since for them an absent file *is* a pass:
+  `servers` ships an `.mcp.json` declaring none of the servers the
+  configuration requires, so a rule that read it has something to say and a
+  rule that passed it over has not. One more asks git what the eight checkouts
+  hold after all the builds — modified, staged, untracked and ignored alike —
+  because they are somebody else's projects and the enforcing build is given
+  only their path: an auto-fix rewriting a document it was asked to check, or a
+  report landing beside the file it read, would show up there and nowhere else.
+  A further test adopts the contract into a fresh clone and enforces it green,
+  so the rules are shown satisfiable outside the repository that wrote them. The
+  last takes the adopter's other route — record the backlog, gate what is added
+  to it — and pins the half a fixture cannot reach: `commandFormat`'s real backlog in
+  `anthropics/claude-code` (the `allowed-tools` key its commands declare,
+  which the configuration does not allow) is recorded against the shared
+  checkout and replayed against a *second* clone of it, at a path the
+  recording never saw. A baseline is a file a project commits, so a signature
+  naming the clone it was recorded under would suppress nothing anywhere else
+  — the fixture's three baseline builds share one directory and cannot show
+  it. Only a command added to the second clone fails that build, and
+  everything the baseline accepted stays unreported. The build runs in a
   directory of its own and only the rule parameters point at a checkout
-  (`RuleConfiguration.against`), so no shared clone is written to; the shared pom
-  both fixtures build lives in `EnforcerPom`.
-  Two mechanics: the `*IT`s run at `integration-test`, *before* this module is
-  installed, so they publish the freshly packaged jar themselves (`install-file`,
-  with the flattened pom); and a forked test JVM cannot work out where Maven, the
-  local repository or that jar are, so the profile passes each in as an
+  (`RuleConfiguration.against`), so no shared clone is written to; the shared
+  pom both fixtures build lives in `EnforcerPom`. Two mechanics: the `*IT`s
+  run at `integration-test`, *before* this module is installed, so they
+  publish the freshly packaged jar themselves (`install-file`, with the
+  flattened pom); and a forked test JVM cannot work out where Maven, the local
+  repository or that jar are, so the profile passes each in as an
   `enforcer.it.*` system property that `BuildEnvironment` reads.
 
 ### Coverage and mutation testing

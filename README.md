@@ -1312,13 +1312,19 @@ runs real Maven builds:
   cannot ship unwired unnoticed, and then breaks a **copy** of the checkout to
   prove the wiring bites.
 - **[`ForeignRepositoryEnforcementIT`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/e2e/ForeignRepositoryEnforcementIT.java)**
-  points that complete configuration at five **real** repositories shallow-cloned
-  from GitHub, none of which has ever heard of this enforcer. None of them passes
+  points that complete configuration at eight **real** repositories shallow-cloned
+  from GitHub, none of which has ever heard of this enforcer — among them a real
+  `AGENTS.md`, a real `.mcp.json` and a real `.claude/agents` directory beside a
+  real `.claude/settings.json`, so the rules that read those meet a file somebody
+  else wrote rather than only its absence. None of them passes
   and none should; what is asserted is that every rule **reaches a verdict** on
   every one of them — a pass, or a failure naming what is wrong — rather than
   going red on the rules' own account with an unbindable parameter or an
   exception escaping a file it did not expect. Only the log tells those apart, so
   the per-rule `passed` / `failed with message:` lines are read back out of it.
+  The checkouts are also asked, after all eight builds, to be exactly as `git`
+  produced them — these are somebody else's projects, and a rule that wrote into
+  one would have edited a project that asked it for a verdict.
 
 ### The adoption against real repositories
 
@@ -1336,20 +1342,25 @@ clone from GitHub with the real `git` and answer that:
   stub and synthetic URLs prove the wiring; only a `git clone` that really ran
   twice into one workspace proves the checkouts.
 - **[`ForeignRepositoryAdoptionIT`](adopt/src/test/java/io/github/adamw7/tools/adopt/ForeignRepositoryAdoptionIT.java)**
-  adopts five real repositories — `google/gson`, `square/okhttp`,
-  `anthropics/anthropic-quickstarts`, `anthropics/claude-code` and
-  `github/gitignore` — chosen for the shapes they put in front of the steps that
-  read a checkout: a multi-module Maven build, a Gradle build on the Kotlin DSL,
-  a real `CLAUDE.md`, a real `.claude` directory, and a very large flat tree with
-  no build file at all. Between them they are the only place all three build
-  systems meet build files this repository did not write. What is asserted is
+  adopts seven real repositories — `google/gson`, `square/okhttp`,
+  `anthropics/anthropic-quickstarts`, `anthropics/claude-code`,
+  `github/gitignore`, `JakeWharton/timber` and `modelcontextprotocol/servers` —
+  chosen for the shapes they put in front of the steps that read a checkout: a
+  multi-module Maven build, a Gradle build on the Kotlin DSL and another on the
+  Groovy one, a real `CLAUDE.md`, a real `.claude` directory, a project whose own
+  files already sit where two of the starter assets go, a default branch called
+  neither `main` nor `master`, and a very large flat tree with no build file at
+  all. Between them they are the only place all three build systems — and both
+  Gradle DSLs — meet build files this repository did not write. What is asserted is
   that the adoption's work is **its own and nothing else**: the guard that lands
-  is the one the checkout's build files ask for, the commits carry only the paths
-  the pipeline claims to write, the guard commit removes nothing the build file
-  already declared, a starter asset the project already keeps at that path comes
-  through byte-identical to the blob that was cloned, the default branch and the
-  remote are left as cloned, and adopting the same batch a second time commits
-  nothing.
+  is the one the checkout's build files ask for and is written in that build
+  script's own DSL, the commits carry only the paths the pipeline claims to write,
+  the guard commit removes nothing the build file already declared, the starter
+  assets the project already keeps at those paths come through byte-identical to
+  the blobs that were cloned, the default branch — read from the remote rather
+  than guessed — is left as cloned, GitHub itself is asked with `ls-remote` and
+  has no branch of the adoption's, and adopting the same batch a second time
+  commits nothing.
 
 Both adoption `*IT`s stop short of the push and the pull request, so the runs stay
 **read-only towards GitHub**, need no logged-in `gh`, and may be repeated as often

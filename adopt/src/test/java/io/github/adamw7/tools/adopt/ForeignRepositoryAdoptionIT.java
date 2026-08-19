@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -42,7 +43,7 @@ import io.github.adamw7.tools.adopt.step.ToolchainStep;
 import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
 
 /**
- * Adopts five <em>real</em> repositories, cloned from GitHub over the network, none
+ * Adopts seven <em>real</em> repositories, cloned from GitHub over the network, none
  * of which has ever heard of this pipeline.
  *
  * <p>{@link MultiRepoAdoptionIT} proves a batch gives each repository its own
@@ -53,19 +54,22 @@ import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
  * to a project nobody prepared for it — which is every project it will ever be
  * pointed at.
  *
- * <p>The five are chosen for the shapes they put in front of the steps that read the
- * checkout: a real multi-module Maven build, a real Gradle build on the Kotlin DSL, a
- * real {@code CLAUDE.md}, a real {@code .claude} directory, and a very large flat tree
- * with no build file at all. Between them they exercise all three
- * {@link BuildSystem}s on build files this repository did not write.
+ * <p>The seven are chosen for the shapes they put in front of the steps that read the
+ * checkout: a real multi-module Maven build, a real Gradle build on the Kotlin DSL and
+ * another on the Groovy one, a real {@code CLAUDE.md}, a real {@code .claude} directory,
+ * a project whose own files already sit where two of the starter assets go, a default
+ * branch called neither {@code main} nor {@code master}, and a very large flat tree with
+ * no build file at all. Between them they exercise all three {@link BuildSystem}s — and
+ * both Gradle DSLs — on build files this repository did not write.
  *
  * <p>What is asserted is that the adoption's work on each of them is <em>its own and
  * nothing else</em>: the guard that lands is the one the checkout's build files ask
  * for, the commits carry only paths {@link AdoptionAssets#WRITTEN_PATHS} names,
  * nothing the project already declared is removed to make room for it, the starter
- * assets installed are the ones the repository was missing and a file it already
- * keeps at one of their paths is left exactly as it was cloned, the default branch
- * and the remote are left exactly as they were cloned, and adopting the same
+ * assets installed are the ones the repository was missing and the files it already
+ * keeps at their paths are left exactly as they were cloned, the default branch — read
+ * from the remote rather than assumed — is where the clone left it, the repository on
+ * GitHub is asked directly and has no branch of the adoption's, and adopting the same
  * repository a second time changes nothing.
  *
  * <p>The starter assets are installed here — {@code --include-assets} adds them to a
@@ -106,6 +110,15 @@ class ForeignRepositoryAdoptionIT {
 		}
 	}
 
+	/** A file a repository already keeps at one of {@link #ASSET_PATHS}, which is not the adoption's. */
+	private record OwnAsset(RealRepository repository, String path) {
+
+		@Override
+		public String toString() {
+			return path + " in " + repository;
+		}
+	}
+
 	private static final String WORKFLOW_GUARD = ".github/workflows/claude-md-guard.yml";
 	private static final String GUARD_SCRIPT = ".github/claude-md-guard.sh";
 
@@ -113,6 +126,20 @@ class ForeignRepositoryAdoptionIT {
 	private static final List<String> WORKFLOW_GUARD_PATHS = List.of(GUARD_SCRIPT, WORKFLOW_GUARD);
 
 	private static final String GITHUB_ACTIONS = "github-actions";
+	private static final String GRADLE = "gradle";
+
+	private static final String GROOVY_BUILD_FILE = "build.gradle";
+	private static final String KOTLIN_BUILD_FILE = "build.gradle.kts";
+
+	/**
+	 * How each Gradle DSL spells the registration of the guard task. The two build
+	 * scripts here are real ones in different languages, and a block in the other DSL
+	 * would still register a task by the name {@link BuildSystem#isGuardInstalled} looks
+	 * for while failing to compile in the project it was appended to.
+	 */
+	private static final Map<String, String> GRADLE_REGISTRATIONS = Map.of(
+			GROOVY_BUILD_FILE, "tasks.register('enforceClaudeMd')",
+			KOTLIN_BUILD_FILE, "tasks.register(\"enforceClaudeMd\")");
 
 	private static final List<RealRepository> REPOSITORIES = List.of(
 			new RealRepository("https://github.com/google/gson.git",
@@ -131,16 +158,37 @@ class ForeignRepositoryAdoptionIT {
 					GITHUB_ACTIONS, WORKFLOW_GUARD_PATHS),
 			new RealRepository("https://github.com/github/gitignore.git",
 					"thousands of small files in one flat tree, and no build file",
+					GITHUB_ACTIONS, WORKFLOW_GUARD_PATHS),
+			new RealRepository("https://github.com/JakeWharton/timber.git",
+					"a real Gradle build on the Groovy DSL, developed on a default branch called neither"
+							+ " main nor master",
+					GRADLE, List.of(GROOVY_BUILD_FILE)),
+			new RealRepository("https://github.com/modelcontextprotocol/servers.git",
+					"a project already keeping files of its own where two of the starter assets go",
 					GITHUB_ACTIONS, WORKFLOW_GUARD_PATHS));
 
 	/** The repository whose {@code CLAUDE.md} somebody else wrote. */
 	private static final RealRepository WITH_CLAUDE_MD = named("anthropic-quickstarts");
 
-	/** The repository already shipping a file at one of {@link #ASSET_PATHS}. */
-	private static final RealRepository WITH_OWN_ASSET = named("claude-code");
-
-	/** The path {@link #WITH_OWN_ASSET} carries a version of that is not the adoption's. */
 	private static final String CLAUDE_WORKFLOW = ".github/workflows/claude.yml";
+	private static final String MCP_CONFIG = ".mcp.json";
+
+	/**
+	 * The files these repositories were cloned already carrying where a starter asset
+	 * goes: a {@code claude.yml} workflow doing a different job from the adoption's
+	 * starter one, and an {@code .mcp.json} declaring a server of the project's own. Two
+	 * of them, and at different paths, because one asset left alone is as easily an
+	 * installer that skips that one path as one that honours what it finds.
+	 */
+	private static final List<OwnAsset> OWN_ASSETS = List.of(
+			new OwnAsset(named("claude-code"), CLAUDE_WORKFLOW),
+			new OwnAsset(named("servers"), MCP_CONFIG));
+
+	/** The repository developed on a branch neither {@link #CONVENTIONAL_BRANCHES} names. */
+	private static final RealRepository WITH_OWN_DEFAULT_BRANCH = named("timber");
+
+	/** The two names a pipeline that guessed the default branch instead of reading it would guess. */
+	private static final List<String> CONVENTIONAL_BRANCHES = List.of("main", "master");
 
 	private static final String CLAUDE_MD = "CLAUDE.md";
 
@@ -175,7 +223,7 @@ class ForeignRepositoryAdoptionIT {
 	 * enough that a stalled network fails the class in minutes. The pipeline's own
 	 * default is sized for a {@code claude init}, which is not among the steps here.
 	 *
-	 * <p>Wrapped as a real run wraps it, so a GitHub that refused one of the five
+	 * <p>Wrapped as a real run wraps it, so a GitHub that refused one of the seven
 	 * clones does not report this class's subject — the guard the adoption writes into
 	 * somebody else's build file — as broken.
 	 */
@@ -183,7 +231,7 @@ class ForeignRepositoryAdoptionIT {
 			new ProcessCommandRunner(Duration.ofMinutes(5)), AdoptionOptions.DEFAULT_RETRIES);
 
 	/**
-	 * Class-scoped, because the five clones are what this class costs and every test
+	 * Class-scoped, because the seven clones are what this class costs and every test
 	 * below reads the same checkouts.
 	 */
 	@TempDir
@@ -291,9 +339,16 @@ class ForeignRepositoryAdoptionIT {
 	/**
 	 * The promise the adoption makes to a repository it is pointed at: the default
 	 * branch is never written to, and nothing leaves the machine until an operator
-	 * pushes. Both are asserted against the refs {@code git clone} produced, so a step
-	 * that committed on the wrong branch — or a pipeline that grew a push — is caught
-	 * here rather than on somebody's repository.
+	 * pushes. The first is asserted against the refs {@code git clone} produced, so a
+	 * step that committed on the wrong branch is caught here rather than on somebody's
+	 * repository.
+	 *
+	 * <p>The second is asked of GitHub itself. A pipeline that grew a push would leave a
+	 * remote-tracking ref behind, which is checked too because it costs nothing — but a
+	 * ref in this checkout is evidence about this checkout, and the claim is about seven
+	 * repositories that belong to other people. Only {@code ls-remote} answers that, and
+	 * it answers it for a push this class knew nothing about as readily as for one of
+	 * its own.
 	 */
 	@Test
 	void neitherTheDefaultBranchNorTheRemoteIsWrittenTo() {
@@ -304,9 +359,11 @@ class ForeignRepositoryAdoptionIT {
 			assertEquals(git(checkout, "rev-parse", AdoptionContext.REMOTE + "/" + defaultBranch),
 					git(checkout, "rev-parse", defaultBranch),
 					() -> "adopting " + repository + " moved " + defaultBranch + " away from the remote's");
-			List<String> published = List.of("git", "rev-parse", "--verify", AdoptionContext.REMOTE + "/" + BRANCH);
-			assertFalse(RUNNER.run(checkout, published).succeeded(),
-					() -> "adopting " + repository + " published " + BRANCH + " to the remote");
+			List<String> tracked = List.of("git", "rev-parse", "--verify", AdoptionContext.REMOTE + "/" + BRANCH);
+			assertFalse(RUNNER.run(checkout, tracked).succeeded(),
+					() -> "adopting " + repository + " left a remote-tracking ref for " + BRANCH);
+			assertEquals("", git(checkout, "ls-remote", "--heads", AdoptionContext.REMOTE, "refs/heads/" + BRANCH),
+					() -> "adopting " + repository + " published " + BRANCH + " to the repository itself");
 		}
 	}
 
@@ -314,7 +371,7 @@ class ForeignRepositoryAdoptionIT {
 	 * The starter assets arrive in a repository that already has files of its own, and
 	 * {@link AssetsStep} installs exactly the ones it is missing. Asserting the commit's
 	 * paths against the difference — rather than against a list written out here — is
-	 * what makes the claim hold for whatever these five repositories ship next: an
+	 * what makes the claim hold for whatever these seven repositories ship next: an
 	 * installer that started overwriting would commit a path the project already
 	 * tracked, and one that stopped installing would leave a missing path out.
 	 */
@@ -330,23 +387,69 @@ class ForeignRepositoryAdoptionIT {
 	}
 
 	/**
-	 * The one repository here that already ships a file at an asset's path — a
+	 * The two repositories here that already ship a file at an asset's path — a
 	 * {@code claude.yml} workflow of its own, doing a different job from the adoption's
-	 * starter one. {@link AssetInstaller} promises the project's version always wins,
-	 * and every fixture that promise is checked against holds a file this repository
-	 * wrote to be overwritten. Comparing against the blob on the cloned default branch
-	 * is what makes it somebody else's file: nothing here says what it should contain.
+	 * starter one, and an {@code .mcp.json} declaring a server of the project's own.
+	 * {@link AssetInstaller} promises the project's version always wins, and every
+	 * fixture that promise is checked against holds a file this repository wrote to be
+	 * overwritten. Comparing against the blob on the cloned default branch is what makes
+	 * it somebody else's file: nothing here says what either should contain.
 	 */
 	@Test
-	void theProjectsOwnFileAtAnAssetsPathIsLeftExactlyAsItWasCloned() {
-		Path checkout = checkoutOf(WITH_OWN_ASSET);
-		assertTrue(Files.isRegularFile(checkout.resolve(CLAUDE_WORKFLOW)),
-				() -> WITH_OWN_ASSET + " no longer ships " + CLAUDE_WORKFLOW + ", so this test needs a repository"
-						+ " that carries a file at one of " + ASSET_PATHS);
-		assertTrue(assetsAlreadyIn(WITH_OWN_ASSET).contains(CLAUDE_WORKFLOW),
-				() -> CLAUDE_WORKFLOW + " must be the project's own, or overwriting it would prove nothing");
-		assertEquals("", git(checkout, "diff", defaultBranchOf(checkout), "HEAD", "--", CLAUDE_WORKFLOW),
-				() -> "adopting " + WITH_OWN_ASSET + " changed the project's own " + CLAUDE_WORKFLOW);
+	void theProjectsOwnFilesAtAnAssetsPathAreLeftExactlyAsTheyWereCloned() {
+		for (OwnAsset own : OWN_ASSETS) {
+			Path checkout = checkoutOf(own.repository());
+			assertTrue(Files.isRegularFile(checkout.resolve(own.path())),
+					() -> own.repository() + " no longer ships " + own.path() + ", so this test needs a repository"
+							+ " that carries a file at one of " + ASSET_PATHS);
+			assertTrue(assetsAlreadyIn(own.repository()).contains(own.path()),
+					() -> own + " must be the project's own, or overwriting it would prove nothing");
+			assertEquals("", git(checkout, "diff", defaultBranchOf(checkout), "HEAD", "--", own.path()),
+					() -> "adopting " + own.repository() + " changed the project's own " + own.path());
+		}
+	}
+
+	/**
+	 * Which Gradle DSL the guard is written in is read from the build script's own
+	 * extension, and only a repository of each kind puts that decision in front of a
+	 * real script. Both blocks register a task by the same name, so an installer that
+	 * appended the Kotlin one to a Groovy script would pass every other assertion here
+	 * — the guard commit carries the right path, removes nothing, and declares the task
+	 * — and leave the adopted project a build script that no longer compiles.
+	 */
+	@Test
+	void eachGradleScriptIsGivenTheGuardWrittenInItsOwnDsl() {
+		for (RealRepository repository : gradleRepositories()) {
+			String buildFile = repository.guardPaths().getFirst();
+			String added = addedBy(repository, GitHubRepoAdopter.GUARD_COMMIT_MESSAGE);
+			assertTrue(added.contains(GRADLE_REGISTRATIONS.get(buildFile)),
+					() -> "the guard appended to " + buildFile + " in " + repository + " is not the one the "
+							+ buildFile + " DSL registers a task with: " + added);
+			assertFalse(added.contains(otherDslRegistration(buildFile)),
+					() -> "the guard appended to " + buildFile + " in " + repository + " is written in the other"
+							+ " Gradle DSL: " + added);
+		}
+	}
+
+	/**
+	 * The default branch is read from the remote rather than assumed, and one repository
+	 * here is what makes the reading matter: {@code timber} develops on {@code trunk}. A
+	 * pipeline that took {@code main} for the default would clone this repository, cut
+	 * its branch from the wrong ref or from none, and pass every other assertion in this
+	 * class on the six that are conventionally named.
+	 */
+	@Test
+	void aRepositoryDevelopedOnItsOwnDefaultBranchIsAdoptedFromThatBranch() {
+		Path checkout = checkoutOf(WITH_OWN_DEFAULT_BRANCH);
+		String defaultBranch = defaultBranchOf(checkout);
+
+		assertFalse(CONVENTIONAL_BRANCHES.contains(defaultBranch),
+				() -> WITH_OWN_DEFAULT_BRANCH + " now develops on " + defaultBranch + ", so this test needs a"
+						+ " repository whose default branch is none of " + CONVENTIONAL_BRANCHES);
+		assertEquals(git(checkout, "rev-parse", defaultBranch),
+				git(checkout, "merge-base", defaultBranch, BRANCH),
+				() -> "adopting " + WITH_OWN_DEFAULT_BRANCH + " cut " + BRANCH + " from something other than "
+						+ defaultBranch);
 	}
 
 	/**
@@ -411,8 +514,8 @@ class ForeignRepositoryAdoptionIT {
 	}
 
 	/**
-	 * The run goes through the command line an operator would type, so the five
-	 * repositories are one batch into one workspace rather than five runs assembled from
+	 * The run goes through the command line an operator would type, so the seven
+	 * repositories are one batch into one workspace rather than seven runs assembled from
 	 * {@link BatchAdoption} inwards.
 	 */
 	private static List<AdoptionRun> adoptAll() {
@@ -480,6 +583,31 @@ class ForeignRepositoryAdoptionIT {
 				defaultBranchOf(checkout) + ".." + BRANCH);
 		assertFalse(commit.isBlank(), () -> "adopting " + repository + " left no commit saying " + message);
 		return commit;
+	}
+
+	/** The listed repositories the adoption wires a Gradle guard into, one per DSL. */
+	private static List<RealRepository> gradleRepositories() {
+		List<RealRepository> gradle = REPOSITORIES.stream()
+				.filter(repository -> GRADLE.equals(repository.buildSystem()))
+				.toList();
+		assertEquals(GRADLE_REGISTRATIONS.keySet(),
+				gradle.stream().map(repository -> repository.guardPaths().getFirst())
+						.collect(Collectors.toSet()),
+				() -> "this test needs one real repository per Gradle DSL, and has " + gradle);
+		return gradle;
+	}
+
+	/** The registration belonging to the DSL the build file is not written in. */
+	private static String otherDslRegistration(String buildFile) {
+		return GRADLE_REGISTRATIONS.get(GROOVY_BUILD_FILE.equals(buildFile) ? KOTLIN_BUILD_FILE : GROOVY_BUILD_FILE);
+	}
+
+	/** The lines that commit added, which is where a guard block written for it appears. */
+	private static String addedBy(RealRepository repository, String message) {
+		return git(checkoutOf(repository), "show", "--unified=0", "--pretty=format:",
+				commitOf(repository, message)).lines()
+				.filter(line -> line.startsWith("+") && !line.startsWith("+++ "))
+				.collect(Collectors.joining("\n"));
 	}
 
 	/** The paths that commit carries, sorted so the expectation reads as a set. */

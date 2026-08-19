@@ -127,15 +127,21 @@ parameter left out fails `EnforcerRuleBuildIT`), and `RepositoryEnforcementIT`
 compares the shipped catalogue against the root pom's profile. Run them with
 `mvn -pl claude-code-enforcer -am -P integration-tests verify`.
 
-**A new rule also meets five real repositories.**
+**A new rule also meets eight real repositories.**
 `ForeignRepositoryEnforcementIT` points the same complete configuration at
 shallow clones of `octocat/Hello-World`, `octocat/Spoon-Knife`,
-`github/gitignore`, `anthropics/claude-code` and
-`anthropics/anthropic-quickstarts` — projects nobody prepared for these rules.
-It does not expect them to pass; it expects every rule to *reach a verdict* on
-each of them, to say why when it fails, and never to break the build on the
-rule's own account. So a new rule must survive a file it did not expect and a
-directory that is not there, and report both as violations rather than throwing.
+`github/gitignore`, `anthropics/claude-code`,
+`anthropics/anthropic-quickstarts`, `github/spec-kit`,
+`modelcontextprotocol/servers` and `anthropics/claude-code-action` — projects
+nobody prepared for these rules. It does not expect them to pass; it expects
+every rule to *reach a verdict* on each of them, to say why when it fails, and
+never to break the build on the rule's own account. So a new rule must survive a
+file it did not expect and a directory that is not there, and report both as
+violations rather than throwing. Between them the eight carry a real `CLAUDE.md`,
+a real `AGENTS.md`, a real `.mcp.json`, and a real `.claude` directory with
+commands, sub-agents and a `settings.json` — so a rule reading one of those is
+pinned to *read* it rather than report it absent. If your rule reads a file none
+of the eight ships, say so in its test rather than leaving the claim untested.
 
 **Naming trap for a `List<String>` parameter.** Plexus infers a configured
 list's element type from the *child element name*, trying the rule's own package
@@ -179,5 +185,5 @@ fails a real build with "Failed to create enforcer rules with name: …". The
 - `claude-code-enforcer/.../architecture/EnforcerArchitectureTest.java` — layering
 - `claude-code-enforcer/.../e2e/EnforcerRuleBuildIT.java` — the pom-to-rule seam
 - `claude-code-enforcer/.../e2e/ForeignRepositoryEnforcementIT.java` — the rules
-  against five real repositories that never adopted them
+  against eight real repositories that never adopted them
 - Root `pom.xml` — the `claude-md-enforce` profile

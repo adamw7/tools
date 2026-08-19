@@ -50,6 +50,30 @@ final class GitClone {
 	}
 
 	/**
+	 * Everything {@code git} reports as changed in a checkout — modified, staged,
+	 * untracked and ignored alike — which for a clone nothing has written to is nothing
+	 * at all.
+	 * <p>
+	 * This is how a test asks whether the enforcing builds kept the promise this class
+	 * makes: a rule writing a report or an auto-fix beside the file it read, or a
+	 * fixture laid out in a shared checkout rather than a clone of its own, shows up
+	 * here and nowhere else.
+	 * <p>
+	 * Ignored files are asked for too, and cost nothing: a clone materialises only
+	 * tracked files, so a fresh one has none, while a report written to a path the
+	 * project happens to ignore — a {@code target} directory, an {@code *.html} — is
+	 * exactly the write that would otherwise go unseen.
+	 */
+	static String changesIn(Path checkout) {
+		BuildOutcome outcome = GIT.run(checkout,
+				List.of("git", "status", "--porcelain", "--untracked-files=all", "--ignored"));
+		if (!outcome.succeeded()) {
+			throw new IllegalStateException("Could not read the status of " + checkout + ": " + outcome.output());
+		}
+		return outcome.output().strip();
+	}
+
+	/**
 	 * The repository's own name, which is what {@code git clone} would have called the
 	 * directory anyway. It is spelled out here rather than left to git so a caller can
 	 * name the checkout before the clone has run.

@@ -54,6 +54,11 @@ public class FallbackBuildSystem implements BuildSystem {
 	}
 
 	@Override
+	public boolean isGuardInstalled(Path repositoryDirectory) {
+		return installer.isInstalled(repositoryDirectory);
+	}
+
+	@Override
 	public List<String> verifyCommand(Path repositoryDirectory) {
 		return VERIFY_COMMAND;
 	}

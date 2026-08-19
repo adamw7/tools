@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.adopt.step;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -130,6 +131,12 @@ public class GradleGuardInstaller {
 	 * or in a declaration someone commented out — is still given the task rather
 	 * than left without the one {@link GradleBuildSystem#verifyCommand(Path)} runs.
 	 */
+	/** Whether the script already declares the guard task; read-only, for a verification. */
+	public boolean isInstalled(Path buildFile) {
+		return Files.isRegularFile(buildFile)
+				&& declaresGuard(AdoptionFiles.read(buildFile, BUILD_FILE_DESCRIPTION));
+	}
+
 	private boolean declaresGuard(String script) {
 		return DECLARATION.matcher(withoutComments(script)).find();
 	}

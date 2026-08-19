@@ -164,6 +164,15 @@ public class PomEnforcerInstaller {
 	}
 
 	/**
+	 * Answers the question a verification asks and an install answers only by doing
+	 * it: does this POM already run a guard? Read-only, so a run that is checking a
+	 * repository rather than adopting one leaves it exactly as it was cloned.
+	 */
+	public boolean isInstalled(Path pomFile) {
+		return alreadyRunsTheRule(PomDocument.read(pomFile));
+	}
+
+	/**
 	 * @param requiredSections the {@code CLAUDE.md} headings the guard is to demand,
 	 *                         which are the headings the conformer has just reshaped
 	 *                         the document to. Written into the POM rather than left

@@ -260,6 +260,11 @@ class BuildSystemsTest {
 	private static final class NoVerifyCommandBuildSystem implements BuildSystem {
 
 		@Override
+		public boolean isGuardInstalled(Path repositoryDirectory) {
+			return false;
+		}
+
+		@Override
 		public String name() {
 			return "none";
 		}

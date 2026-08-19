@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.RecordingCommandRunner;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 
 class GitHubRepoAdopterTest {
@@ -229,5 +230,29 @@ class GitHubRepoAdopterTest {
 	private AdoptionOptions dryRun() {
 		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, true, null,
 				AdoptionOptions.DEFAULT_RETRIES);
+	}
+
+	/**
+	 * A verification is a pipeline of its own rather than an adoption with its writing
+	 * steps disabled, for the same reason a dry run is: the report then says what the
+	 * run really did.
+	 */
+	@Test
+	void aVerificationRunNeitherGeneratesNorPublishes() {
+		List<String> steps = GitHubRepoAdopter.verificationSteps(verifyOnly()).stream()
+				.map(AdoptionStep::name).toList();
+
+		assertEquals(List.of("toolchain", "clone", "build-toolchain", "check-adopted", "verify"), steps);
+	}
+
+	@Test
+	void aVerificationRunIsTheOneTheOptionsAskFor() {
+		GitHubRepoAdopter adopter = GitHubRepoAdopter.forRun(new RecordingCommandRunner(), verifyOnly());
+
+		assertEquals(5, adopter.steps().size());
+	}
+
+	private AdoptionOptions verifyOnly() {
+		return new AdoptionOptions(null, false, "9.9.9", false, null, 0, GuardRules.PROJECT, List.of(), true);
 	}
 }

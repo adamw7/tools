@@ -67,6 +67,12 @@ public class MavenBuildSystem extends AbstractWrappedBuildSystem {
 		return List.of(POM);
 	}
 
+	@Override
+	public boolean isGuardInstalled(Path repositoryDirectory) {
+		Path pom = repositoryDirectory.resolve(POM);
+		return Files.isRegularFile(pom) && installer.isInstalled(pom);
+	}
+
 	/**
 	 * The sections the guard is given are the ones {@link #requiredClaudeMdSections()}
 	 * answers, which is what the conformer has just reshaped the document to. Reading

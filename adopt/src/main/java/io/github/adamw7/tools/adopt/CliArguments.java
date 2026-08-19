@@ -64,7 +64,7 @@ public final class CliArguments {
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
 			+ " [--rules <minimal|project>] [--section <heading>]..."
-			+ " [--dry-run] [--keep-workspace] [--timeout <minutes>] [--retries <count>]"
+			+ " [--dry-run] [--verify-only] [--keep-workspace] [--timeout <minutes>] [--retries <count>]"
 			+ " [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
@@ -131,6 +131,15 @@ public final class CliArguments {
 	 */
 	@Option(names = "--keep-workspace")
 	private boolean keepWorkspace;
+
+	/**
+	 * Reports whether each repository is still adopted and its guard still passes,
+	 * without adopting anything. The question a fleet asks between adoptions: a
+	 * CLAUDE.md a later commit deleted, or a guard someone removed from the build,
+	 * leaves a repository looking adopted and checking nothing.
+	 */
+	@Option(names = "--verify-only")
+	private boolean verifyOnly;
 
 	@Option(names = "--dry-run")
 	private boolean dryRun;
@@ -242,7 +251,7 @@ public final class CliArguments {
 	/** How this run is configured, as the pipeline and the command runner read it. */
 	public AdoptionOptions adoptionOptions() {
 		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries,
-				guardRules(), sections);
+				guardRules(), sections, verifyOnly);
 	}
 
 	/**
@@ -256,7 +265,7 @@ public final class CliArguments {
 
 	/** What becomes of each repository's checkout once its adoption is over. */
 	public CheckoutRetention checkoutRetention() {
-		return CheckoutRetention.of(keepWorkspace, dryRun);
+		return CheckoutRetention.of(keepWorkspace, dryRun || verifyOnly);
 	}
 
 	public Optional<Path> reportFile() {

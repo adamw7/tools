@@ -37,6 +37,9 @@ public class ToolchainStep implements AdoptionStep {
 	static final String GITHUB_CLI = "gh";
 	static final List<String> DEFAULT_TOOLS = List.of("git", "claude", GITHUB_CLI);
 
+	/** All a verification shells out to: it clones and runs a guard, and generates nothing. */
+	static final List<String> VERIFICATION_TOOLS = List.of("git");
+
 	/**
 	 * What a dry run actually shells out to. A dry run's pipeline is assembled
 	 * without {@link PushStep} and {@link PullRequestStep}, and {@code gh} is used
@@ -72,6 +75,17 @@ public class ToolchainStep implements AdoptionStep {
 	 */
 	public static ToolchainStep forDryRun() {
 		return new ToolchainStep(DRY_RUN_TOOLS);
+	}
+
+	/**
+	 * The check for a run that only reads a repository. A verification clones and
+	 * runs the guard already wired into the checkout; it generates nothing, so it
+	 * needs neither {@code claude} nor the {@code gh} a dry run has already dropped.
+	 * Requiring either would fail a fleet-wide check on a host that has no reason to
+	 * carry them.
+	 */
+	public static ToolchainStep forVerification() {
+		return new ToolchainStep(VERIFICATION_TOOLS);
 	}
 
 	@Override

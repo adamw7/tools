@@ -82,6 +82,11 @@ class VerifyStepTest {
 
 	private static final class FakeBuildSystem implements BuildSystem {
 
+		@Override
+		public boolean isGuardInstalled(Path repositoryDirectory) {
+			return false;
+		}
+
 		private final List<String> verifyCommand;
 
 		private FakeBuildSystem(List<String> verifyCommand) {

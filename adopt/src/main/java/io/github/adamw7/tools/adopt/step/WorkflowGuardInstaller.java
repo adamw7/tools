@@ -63,6 +63,16 @@ public class WorkflowGuardInstaller {
 	 * @return {@code true} when either guard file was written, {@code false} when the
 	 *         checkout already carried both and was left unchanged.
 	 */
+	/**
+	 * Whether the checkout already carries this adoption's workflow and its script;
+	 * read-only, for a verification. Both are required, because the workflow runs the
+	 * script and either alone guards nothing.
+	 */
+	public boolean isInstalled(Path repositoryDirectory) {
+		return isAdoptionWorkflow(repositoryDirectory.resolve(WORKFLOW_FILE))
+				&& Files.isRegularFile(repositoryDirectory.resolve(SCRIPT_FILE));
+	}
+
 	public boolean install(Path repositoryDirectory) {
 		boolean workflowWritten = workflowInstaller.install(repositoryDirectory);
 		boolean scriptWritten = scriptInstaller.install(repositoryDirectory);

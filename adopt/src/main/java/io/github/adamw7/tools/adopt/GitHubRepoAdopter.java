@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.adopt.step.AdoptionCheckStep;
 import io.github.adamw7.tools.adopt.step.AdoptionStep;
 import io.github.adamw7.tools.adopt.step.AssetsStep;
 import io.github.adamw7.tools.adopt.step.BranchStep;
@@ -83,6 +84,33 @@ public class GitHubRepoAdopter {
 	 * build-system list, so the guard that is wired in is the guard that is verified
 	 * with the tool that was probed.
 	 */
+	/**
+	 * The steps that answer "is this repository still adopted, and does its guard
+	 * still pass?" without adopting anything: check the tools, clone, check the
+	 * project's build tool, ask whether the document and the guard are there, and run
+	 * the guard. Nothing is branched, generated, committed, pushed, or opened.
+	 *
+	 * <p>It is a separate pipeline rather than an adoption with its writing steps
+	 * disabled, for the same reason a dry run is: the report then says what the run
+	 * really did, and a step that decided for itself to do nothing would still be
+	 * listed as having run.
+	 */
+	public static List<AdoptionStep> verificationSteps(AdoptionOptions options) {
+		List<BuildSystem> buildSystems = BuildSystems.defaults(options.guard());
+		return List.of(
+				ToolchainStep.forVerification(),
+				new CloneStep(),
+				new BuildToolchainStep(buildSystems),
+				new AdoptionCheckStep(buildSystems),
+				new VerifyStep(buildSystems));
+	}
+
+	/** The pipeline the options describe: a verification, or an adoption. */
+	public static GitHubRepoAdopter forRun(CommandRunner runner, AdoptionOptions options) {
+		return new GitHubRepoAdopter(runner,
+				options.verifyOnly() ? verificationSteps(options) : defaultSteps(options));
+	}
+
 	public static List<AdoptionStep> defaultSteps(AdoptionOptions options) {
 		List<BuildSystem> buildSystems = BuildSystems.defaults(options.guard());
 		return Stream.of(
@@ -151,6 +179,11 @@ public class GitHubRepoAdopter {
 	 *               failing step's exception propagates
 	 * @return the same report, once every step has completed
 	 */
+	/** The steps this adopter runs, so a test can assert which pipeline it was given. */
+	List<AdoptionStep> steps() {
+		return steps;
+	}
+
 	public AdoptionReport adopt(AdoptionContext context, AdoptionReport report) {
 		log.info("Adopting Claude Code into {} in {} steps", context.displayUrl(), steps.size());
 		Elapsed elapsed = Elapsed.started();

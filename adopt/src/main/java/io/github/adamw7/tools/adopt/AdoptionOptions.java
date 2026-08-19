@@ -53,10 +53,13 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * @param claudeMdSections the headings the guard demands and the reshape conforms
  *                        to, empty to use the ones the detected build system asks
  *                        for
+ * @param verifyOnly      whether the run only reports whether each repository is
+ *                        still adopted and its guard still passes, cloning and
+ *                        reading but writing nothing at all
  */
 public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
 		boolean dryRun, Duration commandTimeout, int retries, GuardRules guardRules,
-		List<String> claudeMdSections) {
+		List<String> claudeMdSections, boolean verifyOnly) {
 
 	/**
 	 * Two further attempts, which is what a transport-level hiccup takes: the failure
@@ -106,7 +109,15 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	public AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
 			boolean dryRun, Duration commandTimeout, int retries) {
 		this(pullRequest, includeAssets, ruleVersion, dryRun, commandTimeout, retries, GuardRules.PROJECT,
-				List.of());
+				List.of(), false);
+	}
+
+	/** The options without a verification asked for, which is every adoption. */
+	public AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
+			boolean dryRun, Duration commandTimeout, int retries, GuardRules guardRules,
+			List<String> claudeMdSections) {
+		this(pullRequest, includeAssets, ruleVersion, dryRun, commandTimeout, retries, guardRules,
+				claudeMdSections, false);
 	}
 
 	/**
@@ -115,7 +126,7 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	 */
 	public static AdoptionOptions defaults() {
 		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null, DEFAULT_RETRIES,
-				GuardRules.PROJECT, List.of());
+				GuardRules.PROJECT, List.of(), false);
 	}
 
 	/**

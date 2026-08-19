@@ -62,6 +62,17 @@ public interface BuildSystem {
 	}
 
 	/**
+	 * Whether this checkout already carries the guard this build system installs.
+	 *
+	 * <p>It is the read-only half of {@link #install(Path)}, which answers the same
+	 * question but only by acting on it. A verification asks it of a repository it
+	 * must leave exactly as it cloned it, and the guard's own verification command
+	 * cannot answer it: a build with no guard wired in passes that command precisely
+	 * because nothing ran.
+	 */
+	boolean isGuardInstalled(Path repositoryDirectory);
+
+	/**
 	 * Command that runs the wired guard so a missing or malformed {@code CLAUDE.md}
 	 * fails the build. The checkout is a parameter because the command depends on
 	 * what the checkout itself ships: a project carrying a build wrapper is built

@@ -40,8 +40,7 @@ public class Main {
 			return;
 		}
 		AdoptionOptions options = cli.adoptionOptions();
-		runAndReport(cli, checkouts(cli),
-				GitHubRepoAdopter.withDefaultPipeline(CommandRunners.forRun(options), options));
+		runAndReport(cli, checkouts(cli), GitHubRepoAdopter.forRun(CommandRunners.forRun(options), options));
 	}
 
 	/**

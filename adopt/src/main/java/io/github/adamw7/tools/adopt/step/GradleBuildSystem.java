@@ -61,6 +61,15 @@ public class GradleBuildSystem extends AbstractWrappedBuildSystem {
 	}
 
 	/**
+	 * A checkout with no Gradle build file at all carries no guard, rather than being
+	 * a failure: this is asked of a repository that may not be a Gradle project.
+	 */
+	@Override
+	public boolean isGuardInstalled(Path repositoryDirectory) {
+		return locate(repositoryDirectory).filter(installer::isInstalled).isPresent();
+	}
+
+	/**
 	 * Prefers the Groovy build file over the Kotlin one when a checkout carries
 	 * both, matching the order most Gradle projects resolve them in.
 	 */

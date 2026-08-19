@@ -105,6 +105,10 @@ public class AdoptTool implements McpTool {
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
 											+ "Maven project; defaults to the version of this build")),
+							Map.entry("verify_only", Map.of("type", "boolean",
+									"description", "report whether each repository is still adopted and its guard "
+											+ "still passes, without adopting anything: it clones and reads, and "
+											+ "writes nothing at all")),
 							Map.entry("keep_workspace", Map.of("type", "boolean",
 									"description", "keep every checkout after a successful adoption; by default "
 											+ "a checkout whose adoption landed is removed, since its product is "
@@ -143,7 +147,7 @@ public class AdoptTool implements McpTool {
 	 * {@code timeout_minutes} or a {@code retries} differently.
 	 */
 	private static BatchAdoption.Adoption runDefaultPipeline(AdoptionOptions options) {
-		return GitHubRepoAdopter.withDefaultPipeline(CommandRunners.forRun(options), options)::adopt;
+		return GitHubRepoAdopter.forRun(CommandRunners.forRun(options), options)::adopt;
 	}
 
 	@Override
@@ -166,7 +170,7 @@ public class AdoptTool implements McpTool {
 	 */
 	private CheckoutRetention checkoutRetention(Map<String, Object> arguments, AdoptionOptions options) {
 		return CheckoutRetention.of(ToolArguments.optionalBoolean(arguments, "keep_workspace", false),
-				options.dryRun());
+				options.dryRun() || options.verifyOnly());
 	}
 
 	/**
@@ -263,7 +267,8 @@ public class AdoptTool implements McpTool {
 		return new AdoptionOptions(pullRequestOptionsFrom(arguments),
 				ToolArguments.optionalBoolean(arguments, "assets", false), text(arguments, "rule_version"),
 				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments),
-				retries(arguments), guardRules(arguments), textList(arguments, "claude_md_sections"));
+				retries(arguments), guardRules(arguments), textList(arguments, "claude_md_sections"),
+				ToolArguments.optionalBoolean(arguments, "verify_only", false));
 	}
 
 	/**

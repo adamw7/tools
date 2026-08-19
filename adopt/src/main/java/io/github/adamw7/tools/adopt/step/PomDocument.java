@@ -17,6 +17,7 @@ import org.jsoup.parser.Parser;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.AdoptionFiles;
+import io.github.adamw7.tools.markdown.LineTerminators;
 
 /**
  * A {@code pom.xml} read for editing and written back without reformatting.

@@ -63,7 +63,7 @@ public class CommandFormatRule extends DefinitionFormatRule {
 		checks.checkModel(allowedModels);
 	}
 
-	void setCommandsDir(File commandsDir) {
+	public void setCommandsDir(File commandsDir) {
 		this.commandsDir = commandsDir;
 	}
 

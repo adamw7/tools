@@ -274,9 +274,18 @@ inconsistent. Skills: `doc-contract` (editing the docs), `enforcer-rules`
   three definition rules are the opposite — a *configured* directory must exist,
   so `.claude/skills`, `.claude/agents` and `.claude/commands` were each added
   together with the rule reading them.
+- `claudeCodeProject` runs all of the above from a `projectDir` alone, finding
+  each input by convention and skipping the parts a project has nothing for. It
+  is what another project wires; this repository keeps the rules listed
+  individually, because its profile is the worked example and two of its rules
+  take patterns no convention supplies.
 - Every rule offers `severity` (`error` by default, or `warn` to log without
-  failing), an optional `reportFile` for an HTML report, and an optional
-  `baselineFile` that suppresses already-accepted violations.
+  failing — anything else is refused), an optional `reportFile` for an HTML
+  report, and an optional `baselineFile` that suppresses already-accepted
+  violations. All three have build-wide defaults: `-Dclaude.enforcer.severity`,
+  `-Dclaude.enforcer.reportDir`, `-Dclaude.enforcer.baselineDir`.
+- `claudeMdFormat` and `agentsMdFormat` take `autoFix`, which repairs the
+  structural problems they would otherwise only report.
 
 The check is opt-in via the `claude-md-enforce` profile and needs a two-phase
 build, since a maven-enforcer rule must be resolvable as a JAR before the build
@@ -288,7 +297,10 @@ mvn -N validate -DenforceClaudeMd          # 2. quick root-only doc check
 ```
 
 `.github/workflows/maven.yml` is the only CI workflow that opts in; ordinary
-builds are unaffected.
+builds are unaffected. The same rules run without Maven at all —
+`java -cp tools.claude-code-enforcer.jar:enforcer-api.jar
+io.github.adamw7.tools.enforcer.cli.Main <project-directory>` — which is the path
+for a pre-commit hook or a project built with something else.
 
 ## Dependencies
 

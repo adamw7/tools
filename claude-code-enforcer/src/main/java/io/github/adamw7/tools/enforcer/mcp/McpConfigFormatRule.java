@@ -179,7 +179,7 @@ public class McpConfigFormatRule extends JsonFileRule {
 		}
 	}
 
-	void setMcpFile(File mcpFile) {
+	public void setMcpFile(File mcpFile) {
 		this.mcpFile = mcpFile;
 	}
 

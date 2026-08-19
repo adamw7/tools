@@ -147,7 +147,7 @@ public class McpServersValidRule extends JsonFileRule {
 		}
 	}
 
-	void setMcpFile(File mcpFile) {
+	public void setMcpFile(File mcpFile) {
 		this.mcpFile = mcpFile;
 	}
 

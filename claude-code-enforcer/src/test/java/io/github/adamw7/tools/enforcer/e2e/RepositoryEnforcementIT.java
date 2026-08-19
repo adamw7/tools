@@ -52,14 +52,23 @@ class RepositoryEnforcementIT {
 			"pom.xml", "CLAUDE.md", "AGENTS.md", "README.md", ".gitignore", ".claude");
 
 	/**
-	 * The rules that ship unwired on purpose — none today. The two that were
-	 * exempted, {@code subAgentFormat} and {@code commandFormat}, take a definition
-	 * directory that must exist when configured, so they were wired the day
+	 * The rules that ship unwired on purpose. The two that were once exempted,
+	 * {@code subAgentFormat} and {@code commandFormat}, take a definition directory
+	 * that must exist when configured, so they were wired the day
 	 * {@code .claude/agents} and {@code .claude/commands} were added. A rule may be
-	 * listed here again only with a reason of that kind; the assertion below is what
-	 * stops the list growing quietly.
+	 * listed here only with a reason of that kind; the assertion below is what stops
+	 * the list growing quietly.
+	 * <p>
+	 * {@code claudeCodeProject} runs the other rules from the project directory
+	 * alone, so wiring it beside them would run every part twice. This repository
+	 * wires them individually because it is the enforcer's own: the profile is the
+	 * worked example of the whole configuration surface, and two of its rules —
+	 * {@code crossDocConsistency} and {@code readmeConsistency} — take the patterns
+	 * this project needs kept in step, which no convention could supply. A project
+	 * adopting the rules wires the composite instead, and
+	 * {@link EnforcerRuleBuildIT} is where that route is proved to bind.
 	 */
-	private static final Set<String> DELIBERATELY_UNWIRED = Set.of();
+	private static final Set<String> DELIBERATELY_UNWIRED = Set.of("claudeCodeProject");
 
 	private static BuildEnvironment environment;
 	private static MavenBuild maven;

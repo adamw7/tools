@@ -45,6 +45,17 @@ public class RetryingCommandRunner implements CommandRunner {
 	public interface Pause {
 
 		void of(Duration duration);
+
+		/**
+		 * The pause a real run serves. It lives here rather than beside each caller
+		 * because sleeping means touching {@link Thread}, and the architecture rules
+		 * keep concurrency inside this package: the adoption is a sequential pipeline,
+		 * and a step that reached for a thread would be doing something the pipeline
+		 * does not do.
+		 */
+		static Pause sleeping() {
+			return RetryingCommandRunner::sleep;
+		}
 	}
 
 	private static final Logger log = LogManager.getLogger(RetryingCommandRunner.class);

@@ -42,10 +42,31 @@ import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
  * own rules there, because the {@code adopt} pipeline reads documents through the
  * same one and cannot depend on this module to get it.
  */
-@AnalyzeClasses(packages = EnforcerArchitectureTest.ENFORCER_PACKAGE, importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = EnforcerArchitectureTest.ENFORCER_PACKAGE,
+		importOptions = { ImportOption.DoNotIncludeTests.class, EnforcerArchitectureTest.WithoutTheCommandLine.class })
 public class EnforcerArchitectureTest {
 
 	static final String ENFORCER_PACKAGE = "io.github.adamw7.tools.enforcer";
+
+	/**
+	 * Leaves the command line out of the shared conventions, which
+	 * {@link CommonCodingConventions} says must hold for every module and so must not
+	 * be quietly weakened for one package. The one convention the command line cannot
+	 * keep is the ban on standard streams: an entry point invoked as
+	 * {@code java -jar} has no host process to report through, and giving this module
+	 * a logging framework to satisfy the rule would put one on the plugin class path
+	 * of every build that wires a rule. {@link CommandLineArchitectureTest} states
+	 * what does apply there, including that only {@code Main} touches a stream.
+	 */
+	public static final class WithoutTheCommandLine implements ImportOption {
+
+		private static final String CLI_PACKAGE = "/io/github/adamw7/tools/enforcer/cli/";
+
+		@Override
+		public boolean includes(com.tngtech.archunit.core.importer.Location location) {
+			return !location.contains(CLI_PACKAGE);
+		}
+	}
 
 	private static final String RULE_SUFFIX = "Rule";
 	private static final String TEXT_PACKAGE = "..enforcer.text..";
@@ -53,6 +74,7 @@ public class EnforcerArchitectureTest {
 	private static final String JSON_NODES = ENFORCER_PACKAGE + ".rule.JsonNodes";
 	private static final String BASELINE = ENFORCER_PACKAGE + ".rule.Baseline";
 	private static final String HTML_REPORT = ENFORCER_PACKAGE + ".rule.HtmlReport";
+	private static final String REPORT_INDEX = ENFORCER_PACKAGE + ".rule.ReportIndex";
 	private static final String FILE_MUTATIONS =
 			"write|writeString|newBufferedWriter|newOutputStream|createFile|createDirectory|createDirectories"
 					+ "|delete|deleteIfExists|move|copy";
@@ -71,6 +93,7 @@ public class EnforcerArchitectureTest {
 			.layer("Okf").definedBy("..enforcer.okf..")
 			.layer("Secret").definedBy("..enforcer.secret..")
 			.layer("Settings").definedBy("..enforcer.settings..")
+			.layer("Project").definedBy("..enforcer.project..")
 			.whereLayer("Text").mayNotAccessAnyLayer()
 			.whereLayer("Rule").mayOnlyAccessLayers("Text")
 			.whereLayer("Definition").mayOnlyAccessLayers("Rule", "Text")
@@ -79,8 +102,12 @@ public class EnforcerArchitectureTest {
 			.whereLayer("Okf").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Secret").mayOnlyAccessLayers("Rule", "Text")
 			.whereLayer("Settings").mayOnlyAccessLayers("Rule", "Text")
-			.as("text is the foundation, rule builds on it, and the feature packages "
-					+ "build on rule without depending on each other");
+			.whereLayer("Project").mayOnlyAccessLayers("Definition", "Doc", "Mcp", "Okf", "Secret", "Settings",
+					"Rule", "Text")
+			.as("text is the foundation, rule builds on it, the feature packages build on rule without "
+					+ "depending on each other, and project sits above them all: the composite rule is the "
+					+ "one place that may know every feature package, which is what stops any of them "
+					+ "reaching sideways to reach another");
 
 	@ArchTest
 	static final ArchRule packagesAreFreeOfCycles = slices()
@@ -172,10 +199,13 @@ public class EnforcerArchitectureTest {
 	static final ArchRule rulesDoNotWriteToTheProjectTheyCheck = noClasses()
 			.that().doNotHaveFullyQualifiedName(BASELINE)
 			.and().doNotHaveFullyQualifiedName(HTML_REPORT)
+			.and().doNotHaveFullyQualifiedName(REPORT_INDEX)
 			.should().callMethodWhere(target(owner(type(Files.class))).and(target(nameMatching(FILE_MUTATIONS))))
-			.because("a check reports what it found; the two places that write here are the ones a build "
-					+ "asked for — the HTML report and the recorded baseline. The front-matter fix writes "
-					+ "through markdown-common's MarkdownText, which its own module holds to the same rule")
+			.because("a check reports what it found; the three places that write here are the ones a build "
+					+ "asked for — the HTML report, the index linking the reports, and the recorded "
+					+ "baseline. Each writes only where a configured parameter or property pointed it, "
+					+ "never into the project under check. The front-matter fix writes through "
+					+ "markdown-common's MarkdownText, which its own module holds to the same rule")
 			.allowEmptyShould(true);
 
 	/**

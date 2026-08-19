@@ -12,10 +12,12 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionOptions;
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.AdoptionReport;
 import io.github.adamw7.tools.adopt.AdoptionReportWriter;
 import io.github.adamw7.tools.adopt.AdoptionRun;
 import io.github.adamw7.tools.adopt.BatchAdoption;
+import io.github.adamw7.tools.adopt.CheckoutRetention;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
 import io.github.adamw7.tools.adopt.Redaction;
@@ -103,6 +105,19 @@ public class AdoptTool implements McpTool {
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
 											+ "Maven project; defaults to the version of this build")),
+							Map.entry("parallel", Map.of("type", "integer",
+									"description", "how many repositories to adopt at once, between "
+											+ BatchAdoption.SEQUENTIAL + " and " + BatchAdoption.MAX_PARALLELISM
+											+ "; every log line carries the repository it belongs to, so a "
+											+ "parallel batch stays readable")),
+							Map.entry("verify_only", Map.of("type", "boolean",
+									"description", "report whether each repository is still adopted and its guard "
+											+ "still passes, without adopting anything: it clones and reads, and "
+											+ "writes nothing at all")),
+							Map.entry("keep_workspace", Map.of("type", "boolean",
+									"description", "keep every checkout after a successful adoption; by default "
+											+ "a checkout whose adoption landed is removed, since its product is "
+											+ "the pushed branch and the pull request")),
 							Map.entry("dry_run", Map.of("type", "boolean",
 									"description", "rehearse the adoption: clone, branch, and commit in the "
 											+ "workspace, but push nothing and open no pull request")),
@@ -112,7 +127,15 @@ public class AdoptTool implements McpTool {
 							Map.entry("retries", Map.of("type", "integer",
 									"description", "how many further attempts a git or gh command the network "
 											+ "refused earns, waiting longer before each; defaults to "
-											+ AdoptionOptions.DEFAULT_RETRIES + ", and 0 reports the first failure"))),
+											+ AdoptionOptions.DEFAULT_RETRIES + ", and 0 reports the first failure")),
+							Map.entry("rules", Map.of("type", "string",
+									"description", "how much of the adopted repository's Claude Code configuration "
+											+ "the wired guard checks: 'project' (default) for all of it, or "
+											+ "'minimal' for the CLAUDE.md format alone")),
+							Map.entry("claude_md_sections", Map.of("type", "string",
+									"description", "comma-separated CLAUDE.md headings the guard demands and the "
+											+ "reshape conforms to; an array is accepted too. Defaults to what the "
+											+ "detected build system asks for"))),
 					"required", List.of()));
 
 	public AdoptTool() {
@@ -129,7 +152,7 @@ public class AdoptTool implements McpTool {
 	 * {@code timeout_minutes} or a {@code retries} differently.
 	 */
 	private static BatchAdoption.Adoption runDefaultPipeline(AdoptionOptions options) {
-		return GitHubRepoAdopter.withDefaultPipeline(CommandRunners.forRun(options), options)::adopt;
+		return GitHubRepoAdopter.forRun(CommandRunners.forRun(options), options)::adopt;
 	}
 
 	@Override
@@ -140,8 +163,30 @@ public class AdoptTool implements McpTool {
 	@Override
 	public ToolResult apply(Map<String, Object> arguments) {
 		log.info("Calling MCP adopt tool for {}", describe(arguments));
-		BatchAdoption batch = new BatchAdoption(pipeline.create(adoptionOptionsFrom(arguments)));
+		AdoptionOptions options = adoptionOptionsFrom(arguments);
+		BatchAdoption batch = new BatchAdoption(pipeline.create(options), checkoutRetention(arguments, options),
+				parallelism(arguments));
 		return result(batch.adoptAll(repositoryUrls(arguments), checkoutsFrom(arguments)));
+	}
+
+	/**
+	 * Bounded here as well as in {@link BatchAdoption}, so a client asking for fifty
+	 * threads is refused with the argument's name rather than with the batch's
+	 * complaint about a field it never sent.
+	 */
+	private int parallelism(Map<String, Object> arguments) {
+		return ToolArguments.optionalBoundedInt(arguments, "parallel", BatchAdoption.SEQUENTIAL,
+				BatchAdoption.SEQUENTIAL, BatchAdoption.MAX_PARALLELISM);
+	}
+
+	/**
+	 * What becomes of each repository's checkout, decided the same way the command
+	 * line decides it. A server serving many calls accumulates clones faster than an
+	 * operator does, so the default matters more here, not less.
+	 */
+	private CheckoutRetention checkoutRetention(Map<String, Object> arguments, AdoptionOptions options) {
+		return CheckoutRetention.of(ToolArguments.optionalBoolean(arguments, "keep_workspace", false),
+				options.dryRun() || options.verifyOnly());
 	}
 
 	/**
@@ -238,7 +283,19 @@ public class AdoptTool implements McpTool {
 		return new AdoptionOptions(pullRequestOptionsFrom(arguments),
 				ToolArguments.optionalBoolean(arguments, "assets", false), text(arguments, "rule_version"),
 				ToolArguments.optionalBoolean(arguments, "dry_run", false), commandTimeout(arguments),
-				retries(arguments));
+				retries(arguments), guardRules(arguments), textList(arguments, "claude_md_sections"),
+				ToolArguments.optionalBoolean(arguments, "verify_only", false));
+	}
+
+	/**
+	 * Refused here rather than defaulted, the same as on the command line: a client
+	 * naming a rule set that does not exist has asked for something, and quietly
+	 * giving it the default would change what the adopted build enforces without
+	 * saying so.
+	 */
+	private GuardRules guardRules(Map<String, Object> arguments) {
+		String rules = text(arguments, "rules");
+		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
 	}
 
 	/**

@@ -71,7 +71,7 @@ public class LocalSettingsIgnoredRule extends ClaudeCodeEnforcerRule {
 		return withoutDot.startsWith("/") ? withoutDot.substring(1) : withoutDot;
 	}
 
-	void setGitignoreFile(File gitignoreFile) {
+	public void setGitignoreFile(File gitignoreFile) {
 		this.gitignoreFile = gitignoreFile;
 	}
 

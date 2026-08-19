@@ -115,7 +115,7 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		return (content.length() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
 	}
 
-	void setFiles(List<File> files) {
+	public void setFiles(List<File> files) {
 		this.files = files;
 	}
 
@@ -123,7 +123,7 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		this.directories = directories;
 	}
 
-	void setMaxBytes(long maxBytes) {
+	public void setMaxBytes(long maxBytes) {
 		this.maxBytes = maxBytes;
 	}
 

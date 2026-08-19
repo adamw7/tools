@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -62,11 +63,15 @@ public final class CliArguments {
 			+ " [--workspace <directory>] [--branch <name>]"
 			+ " [--title <title>] [--body <body>] [--reviewer <user>]... [--label <label>]..."
 			+ " [--assignee <user>]... [--draft] [--assets] [--rule-version <version>]"
-			+ " [--dry-run] [--timeout <minutes>] [--retries <count>] [--report <file>] [--help]";
+			+ " [--rules <minimal|project>] [--section <heading>]..."
+			+ " [--dry-run] [--verify-only] [--keep-workspace] [--parallel <count>]"
+			+ " [--timeout <minutes>] [--retries <count>]"
+			+ " [--report <file>] [--help]";
 
 	static final String HELP_FLAG = "--help";
 	static final String HELP_SHORTHAND = "-h";
 
+	private static final String PARALLEL_FLAG = "--parallel";
 	private static final String TIMEOUT_FLAG = "--timeout";
 	private static final String RETRIES_FLAG = "--retries";
 	private static final String REPOS_FLAG = "--repos";
@@ -89,6 +94,24 @@ public final class CliArguments {
 	@Option(names = "--assignee", paramLabel = "<user>")
 	private List<String> assignees = new ArrayList<>();
 
+	/**
+	 * How much of the adopted repository's configuration the guard checks. Named
+	 * rather than inferred, and refused when it names neither rule set, because a
+	 * misspelt value read as the default would quietly change what somebody else's
+	 * build enforces.
+	 */
+	@Option(names = "--rules", paramLabel = "<minimal|project>")
+	private String rules;
+
+	/**
+	 * A {@code CLAUDE.md} heading the guard is to demand, repeatable. Naming any
+	 * replaces the set the detected build system would have asked for, so a project
+	 * whose document is not a Java project's is reshaped to its own headings and
+	 * guarded on them.
+	 */
+	@Option(names = "--section", paramLabel = "<heading>")
+	private List<String> sections = new ArrayList<>();
+
 	@Option(names = "--rule-version", paramLabel = "<version>")
 	private String ruleVersion;
 
@@ -100,6 +123,33 @@ public final class CliArguments {
 
 	@Option(names = "--assets")
 	private boolean assets;
+
+	/**
+	 * Keeps every checkout, whatever the outcome. Without it a checkout whose
+	 * adoption landed is removed — its product is a pushed branch and a pull request,
+	 * and a batch that made fifty full clones left fifty behind. A failed adoption's
+	 * checkout is kept either way, and so is a dry run's, which is the only thing a
+	 * dry run produces.
+	 */
+	@Option(names = "--keep-workspace")
+	private boolean keepWorkspace;
+
+	/**
+	 * Reports whether each repository is still adopted and its guard still passes,
+	 * without adopting anything. The question a fleet asks between adoptions: a
+	 * CLAUDE.md a later commit deleted, or a guard someone removed from the build,
+	 * leaves a repository looking adopted and checking nothing.
+	 */
+	@Option(names = "--verify-only")
+	private boolean verifyOnly;
+
+	/**
+	 * How many repositories are adopted at once. Every line a run emits carries the
+	 * repository it belongs to, so a parallel batch stays readable; see
+	 * {@link BatchAdoption}.
+	 */
+	@Option(names = PARALLEL_FLAG, paramLabel = "<count>")
+	private String parallel;
 
 	@Option(names = "--dry-run")
 	private boolean dryRun;
@@ -210,7 +260,51 @@ public final class CliArguments {
 
 	/** How this run is configured, as the pipeline and the command runner read it. */
 	public AdoptionOptions adoptionOptions() {
-		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries);
+		return new AdoptionOptions(pullRequestOptions(), assets, ruleVersion, dryRun, commandTimeout, retries,
+				guardRules(), sections, verifyOnly);
+	}
+
+	/**
+	 * @return the rule set named, or the default when none was. A blank value counts
+	 *         as none, so an omitted option and an empty one agree; anything else that
+	 *         is not a rule set is refused by {@link GuardRules#of}.
+	 */
+	private GuardRules guardRules() {
+		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
+	}
+
+	/**
+	 * @return how many repositories to adopt at once, bounded here as well as in
+	 *         {@link BatchAdoption} so a bad value fails while the operator is still
+	 *         reading the command line rather than after the first clone
+	 */
+	public int parallelism() {
+		if (parallel == null || parallel.isBlank()) {
+			return BatchAdoption.SEQUENTIAL;
+		}
+		return requireWithinBounds(parsed(parallel));
+	}
+
+	private int parsed(String count) {
+		try {
+			return Integer.parseInt(count.strip());
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException(PARALLEL_FLAG + " takes a number of repositories, not '"
+					+ count.strip() + "'", e);
+		}
+	}
+
+	private int requireWithinBounds(int count) {
+		if (count < BatchAdoption.SEQUENTIAL || count > BatchAdoption.MAX_PARALLELISM) {
+			throw new IllegalArgumentException(PARALLEL_FLAG + " must be between " + BatchAdoption.SEQUENTIAL
+					+ " and " + BatchAdoption.MAX_PARALLELISM + " but was " + count);
+		}
+		return count;
+	}
+
+	/** What becomes of each repository's checkout once its adoption is over. */
+	public CheckoutRetention checkoutRetention() {
+		return CheckoutRetention.of(keepWorkspace, dryRun || verifyOnly);
 	}
 
 	public Optional<Path> reportFile() {

@@ -124,11 +124,11 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 		return ignoredModules != null && ignoredModules.contains(name);
 	}
 
-	void setPomFile(File pomFile) {
+	public void setPomFile(File pomFile) {
 		this.pomFile = pomFile;
 	}
 
-	void setDocFiles(List<File> docFiles) {
+	public void setDocFiles(List<File> docFiles) {
 		this.docFiles = docFiles;
 	}
 

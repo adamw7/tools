@@ -164,11 +164,11 @@ public class HookCommandsValidRule extends JsonFileRule {
 		return new ClaudeProjectDir(projectDir, settingsFile).scriptsIn(command);
 	}
 
-	void setSettingsFile(File settingsFile) {
+	public void setSettingsFile(File settingsFile) {
 		this.settingsFile = settingsFile;
 	}
 
-	void setProjectDir(File projectDir) {
+	public void setProjectDir(File projectDir) {
 		this.projectDir = projectDir;
 	}
 

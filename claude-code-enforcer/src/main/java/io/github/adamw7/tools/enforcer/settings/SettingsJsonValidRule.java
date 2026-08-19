@@ -63,7 +63,7 @@ public class SettingsJsonValidRule extends JsonFileRule {
 		return permissions != null ? Permissions.entriesIn(permissions, Permissions.ALLOW_KEY) : Set.of();
 	}
 
-	void setSettingsFile(File settingsFile) {
+	public void setSettingsFile(File settingsFile) {
 		this.settingsFile = settingsFile;
 	}
 

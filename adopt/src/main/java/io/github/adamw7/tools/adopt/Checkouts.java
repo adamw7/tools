@@ -1,8 +1,8 @@
 package io.github.adamw7.tools.adopt;
 
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Gives every repository of a run its own checkout: one workspace, one branch
@@ -27,8 +27,14 @@ public final class Checkouts {
 	private final Path workspace;
 	private final String branchName;
 
-	/** The checkout each repository of the run has taken, so a second claim on one is caught. */
-	private final Map<Path, String> urlsByCheckout = new HashMap<>();
+	/**
+	 * The checkout each repository of the run has taken, so a second claim on one is
+	 * caught. Concurrent because a parallel batch claims from several threads at once,
+	 * and {@link Map#putIfAbsent} on this map is the atomic test-and-set the claim
+	 * relies on: two threads racing for one directory must produce a claim and a
+	 * refusal, never two claims.
+	 */
+	private final Map<Path, String> urlsByCheckout = new ConcurrentHashMap<>();
 
 	/**
 	 * @param workspace  the directory every clone is created under

@@ -12,6 +12,9 @@ import java.util.regex.Pattern;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.markdown.LineTerminators;
+import io.github.adamw7.tools.markdown.MarkdownConformer;
+import io.github.adamw7.tools.markdown.MarkdownContract;
 import io.github.adamw7.tools.markdown.MarkdownDocument;
 import io.github.adamw7.tools.markdown.MarkdownText;
 
@@ -36,6 +39,20 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * disk. The title and required sections default to the subclass-provided values
  * but can be overridden, so the rule is reusable across projects without a
  * recompile.
+ * <p>
+ * With {@code <autoFix>true</autoFix>} the structural part of that contract is
+ * <em>repaired</em> rather than merely reported: the document is reshaped by
+ * {@link MarkdownConformer} — the same reshape the adoption pipeline runs, against
+ * the same {@link MarkdownDocument} reader this rule judges the result with — and
+ * the checks then run over the repaired document. A missing title, a heading that
+ * is a near miss for a required one, an absent or empty section, and a missing
+ * companion-document reference are all mechanical edits with one correct answer,
+ * and reporting them left that answer to be typed out by hand on every project
+ * that adopts the rule.
+ * <p>
+ * Only that structural part is repaired. A forbidden token, an over-long line and
+ * a broken file reference are still reported, because each of those has no one
+ * correct repair — what a link ought to point at is the author's to say.
  */
 public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
@@ -71,6 +88,9 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 
 	/** Base directory for resolving relative file references. Defaults to the document's directory. */
 	private File referenceBaseDir;
+
+	/** When true, the document's structure is repaired in place before it is checked. */
+	private boolean autoFix;
 
 	/**
 	 * @param documentName            human-readable file name used in messages, e.g.
@@ -163,10 +183,63 @@ public abstract class MarkdownFormatRule extends ClaudeCodeEnforcerRule {
 		this.referenceBaseDir = referenceBaseDir;
 	}
 
+	public void setAutoFix(boolean autoFix) {
+		this.autoFix = autoFix;
+	}
+
+	/**
+	 * The companion document the checked document must mention in prose, empty when
+	 * it must mention none. The base class asks so that a repair can insert a missing
+	 * reference; the check for it belongs to whichever subclass makes it.
+	 */
+	protected String requiredReference() {
+		return "";
+	}
+
+	/**
+	 * The shape a repair reshapes the document into: exactly what this rule goes on to
+	 * check it for, read from the same configured parameters. Deriving one from the
+	 * other is what stops a repair satisfying a contract the rule no longer makes.
+	 */
+	private MarkdownContract contract() {
+		return MarkdownContract.titled(titleHeading())
+				.requiring(requiredSections())
+				.referencing(requiredReference());
+	}
+
+	/**
+	 * Reading and parsing both go through {@link DocumentCache}, so the five rules
+	 * that each check something about {@code CLAUDE.md} parse it once between them.
+	 * They stay independent either way: what is shared is the document, not any
+	 * rule's reading of it.
+	 */
 	private MarkdownDocument readDocument() throws EnforcerRuleException {
 		File file = documentFile();
 		requireDocument(file, documentName());
-		return MarkdownDocument.parse(requireContent(file, documentName()));
+		String content = repaired(file, requireContent(file, documentName()));
+		return DocumentCache.markdown(file, content);
+	}
+
+	/**
+	 * Reshapes the document and writes it back when {@code autoFix} is on and the
+	 * reshape actually changed something, answering the content the checks then run
+	 * over. A reshape that changed nothing is not written, so a conforming document
+	 * keeps its modification time and a build that repairs nothing touches no file.
+	 *
+	 * <p>The line terminators the file already used are put back, so repairing a CRLF
+	 * document does not rewrite every line of it as a side effect.
+	 */
+	private String repaired(File file, String content) throws EnforcerRuleException {
+		if (!autoFix) {
+			return content;
+		}
+		String conformed = LineTerminators.matching(new MarkdownConformer(contract()).conform(content), content);
+		if (conformed.equals(content)) {
+			return content;
+		}
+		MarkdownText.write(file, conformed, documentName());
+		log().info("Auto-fixed the structure of " + documentName() + " in " + file);
+		return conformed;
 	}
 
 	/**

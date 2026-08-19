@@ -196,8 +196,15 @@ class MultiRepoAdoptionIT {
 		return new GitHubRepoAdopter(runner, steps);
 	}
 
+	/**
+	 * Every command line here keeps its checkouts, because inspecting them is what
+	 * these tests do: an ordinary run removes the checkout of an adoption that landed,
+	 * its product being the pushed branch and the pull request.
+	 */
 	private CliArguments parse(String... arguments) {
-		return CliArguments.parse(arguments);
+		String[] keepingCheckouts = Arrays.copyOf(arguments, arguments.length + 1);
+		keepingCheckouts[arguments.length] = "--keep-workspace";
+		return CliArguments.parse(keepingCheckouts);
 	}
 
 	/** A {@code --repos} file as an operator writes one: a comment, then the URLs. */

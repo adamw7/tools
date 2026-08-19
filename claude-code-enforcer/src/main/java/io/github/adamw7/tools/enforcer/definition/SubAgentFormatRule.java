@@ -61,7 +61,7 @@ public class SubAgentFormatRule extends DefinitionFormatRule {
 		checks.checkModel(allowedModels);
 	}
 
-	void setAgentsDir(File agentsDir) {
+	public void setAgentsDir(File agentsDir) {
 		this.agentsDir = agentsDir;
 	}
 

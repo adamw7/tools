@@ -41,10 +41,33 @@ final class RepositoryPom {
 	String pluginVersion(String artifactId) {
 		for (Element plugin : pom.select("pluginManagement > plugins > plugin")) {
 			if (artifactId.equals(textOf(plugin, "artifactId"))) {
-				return required(textOf(plugin, "version"), artifactId + " has no version in " + file);
+				return resolved(required(textOf(plugin, "version"), artifactId + " has no version in " + file));
 			}
 		}
 		throw new IllegalStateException(artifactId + " is not managed in " + file);
+	}
+
+	/**
+	 * A managed version given as {@code ${a.property}} resolved against the pom's own
+	 * {@code <properties>}, the way Maven resolves it. The harness poms these versions
+	 * are written into inherit nothing from this one, so a property reference copied
+	 * across verbatim reaches Maven as a literal and fails the harness build with
+	 * "must be a valid version".
+	 *
+	 * <p>The properties are walked rather than selected by name because a Maven
+	 * property name carries dots, which a CSS selector reads as class syntax.
+	 */
+	private String resolved(String version) {
+		if (!version.startsWith("${") || !version.endsWith("}")) {
+			return version;
+		}
+		String property = version.substring(2, version.length() - 1);
+		for (Element declared : pom.select("project > properties > *")) {
+			if (declared.tagName().equals(property)) {
+				return declared.text().strip();
+			}
+		}
+		throw new IllegalStateException(file + " declares no property " + property + " for " + version);
 	}
 
 	/**

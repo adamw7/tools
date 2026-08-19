@@ -11,6 +11,7 @@ import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.AdoptionFiles;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.markdown.LineTerminators;
 
 /**
  * Makes the adoption self-consistent: after {@link ClaudeInitStep} generates a

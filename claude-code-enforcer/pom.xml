@@ -17,6 +17,27 @@
 		     See the root pom's pitest.mutationThreshold. -->
 		<pitest.mutationThreshold>88</pitest.mutationThreshold>
 	</properties>
+	<build>
+		<plugins>
+			<!-- The rule jar is also the command line: `java -jar` runs the checks
+			     against a project directory with no Maven build around them, which
+			     is what a pre-commit hook, a Gradle project and anyone evaluating
+			     the rules before wiring them all need. Naming the class in the
+			     manifest costs the jar nothing when it is resolved as a
+			     maven-enforcer dependency instead. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>io.github.adamw7.tools.enforcer.cli.Main</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 	<profiles>
 		<profile>
 			<id>integration-tests</id>

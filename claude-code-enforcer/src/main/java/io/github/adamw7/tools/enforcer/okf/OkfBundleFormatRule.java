@@ -320,7 +320,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 		return relative.isEmpty() ? "The bundle root" : relative;
 	}
 
-	void setBundleDir(File bundleDir) {
+	public void setBundleDir(File bundleDir) {
 		this.bundleDir = bundleDir;
 	}
 

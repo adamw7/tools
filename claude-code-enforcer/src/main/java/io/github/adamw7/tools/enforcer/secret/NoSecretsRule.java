@@ -121,11 +121,11 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 		return patterns;
 	}
 
-	void setFiles(List<File> files) {
+	public void setFiles(List<File> files) {
 		this.files = files;
 	}
 
-	void setDirectories(List<File> directories) {
+	public void setDirectories(List<File> directories) {
 		this.directories = directories;
 	}
 

@@ -1,9 +1,12 @@
 package io.github.adamw7.tools.adopt;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.step.GuardOptions;
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 
 /**
@@ -41,9 +44,22 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  *                        {@link #DEFAULT_RETRIES} and bounded by
  *                        {@link #MAX_RETRIES}; zero adopts exactly as an
  *                        undecorated run does
+ * @param guardRules      how much of the adopted repository's Claude Code
+ *                        configuration the wired guard checks, defaulting to all of
+ *                        it — the adoption installs an {@code AGENTS.md}, and with
+ *                        {@code --assets} a {@code .claude} directory, so a guard
+ *                        that read only {@code CLAUDE.md} left what the run itself
+ *                        wrote unchecked
+ * @param claudeMdSections the headings the guard demands and the reshape conforms
+ *                        to, empty to use the ones the detected build system asks
+ *                        for
+ * @param verifyOnly      whether the run only reports whether each repository is
+ *                        still adopted and its guard still passes, cloning and
+ *                        reading but writing nothing at all
  */
 public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
-		boolean dryRun, Duration commandTimeout, int retries) {
+		boolean dryRun, Duration commandTimeout, int retries, GuardRules guardRules,
+		List<String> claudeMdSections, boolean verifyOnly) {
 
 	/**
 	 * Two further attempts, which is what a transport-level hiccup takes: the failure
@@ -77,6 +93,8 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 
 	public AdoptionOptions {
 		pullRequest = pullRequest == null ? PullRequestOptions.defaults() : pullRequest;
+		guardRules = guardRules == null ? GuardRules.PROJECT : guardRules;
+		claudeMdSections = claudeMdSections == null ? List.of() : List.copyOf(claudeMdSections);
 		ruleVersion = Text.orDefault(ruleVersion, null);
 		commandTimeout = commandTimeout == null ? ProcessCommandRunner.DEFAULT_TIMEOUT
 				: requireWithinBounds(commandTimeout);
@@ -84,11 +102,41 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 	}
 
 	/**
+	 * The options without a guard named, which is every caller that does not care
+	 * which rules the adopted build ends up running: the whole configuration is
+	 * checked, on the sections the detected build system asks for.
+	 */
+	public AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
+			boolean dryRun, Duration commandTimeout, int retries) {
+		this(pullRequest, includeAssets, ruleVersion, dryRun, commandTimeout, retries, GuardRules.PROJECT,
+				List.of(), false);
+	}
+
+	/** The options without a verification asked for, which is every adoption. */
+	public AdoptionOptions(PullRequestOptions pullRequest, boolean includeAssets, String ruleVersion,
+			boolean dryRun, Duration commandTimeout, int retries, GuardRules guardRules,
+			List<String> claudeMdSections) {
+		this(pullRequest, includeAssets, ruleVersion, dryRun, commandTimeout, retries, guardRules,
+				claudeMdSections, false);
+	}
+
+	/**
 	 * The adoption's own pull request, no assets, published for real, at the default
 	 * timeout and retry count.
 	 */
 	public static AdoptionOptions defaults() {
-		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null, DEFAULT_RETRIES);
+		return new AdoptionOptions(PullRequestOptions.defaults(), false, null, false, null, DEFAULT_RETRIES,
+				GuardRules.PROJECT, List.of(), false);
+	}
+
+	/**
+	 * What the guard wired into an adopted project is made of, gathered from the
+	 * options that describe it. The pipeline is assembled from this rather than from
+	 * the three fields separately, so the reshape and the guard it has to satisfy
+	 * cannot be built from different answers.
+	 */
+	public GuardOptions guard() {
+		return new GuardOptions(ruleVersion, guardRules, claudeMdSections);
 	}
 
 	/**

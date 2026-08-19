@@ -32,7 +32,17 @@ public final class BuildSystems {
 	 *                    running the adoption
 	 */
 	public static List<BuildSystem> defaults(Optional<String> ruleVersion) {
-		return List.of(new MavenBuildSystem(ruleVersion), new GradleBuildSystem(), new FallbackBuildSystem());
+		return defaults(GuardOptions.pinning(ruleVersion));
+	}
+
+	/**
+	 * @param guard what the wired guard is made of: its rule set, its pinned rule
+	 *              version, and the {@code CLAUDE.md} sections it demands. Only Maven
+	 *              wires a versioned artifact into the adopted project, so it is the
+	 *              only build system the guard options reach.
+	 */
+	public static List<BuildSystem> defaults(GuardOptions guard) {
+		return List.of(new MavenBuildSystem(guard), new GradleBuildSystem(), new FallbackBuildSystem());
 	}
 
 	public static Optional<BuildSystem> detect(List<BuildSystem> candidates, Path repositoryDirectory) {

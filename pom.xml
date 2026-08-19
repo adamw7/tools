@@ -26,6 +26,13 @@
 		     of the number is a copy that can drift. -->
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- Named rather than written twice: the adopt pipeline wires this same
+		     plugin into other people's poms, and it reads the number from this
+		     property through its filtered build metadata. A literal in both places
+		     is a literal that drifts, and the half that drifts is the one nobody
+		     builds — a stranger's repository, adopted with a version this project
+		     stopped using. -->
+		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
 		<!-- project.build.outputTimestamp — which makes the build reproducible by
 		     having every archive-producing plugin (jar, source, javadoc, assembly,
 		     plugin descriptor, Spring Boot repackage) stamp one fixed instant on
@@ -493,7 +500,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-enforcer-plugin</artifactId>
-					<version>3.6.3</version>
+					<version>${maven-enforcer-plugin.version}</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>

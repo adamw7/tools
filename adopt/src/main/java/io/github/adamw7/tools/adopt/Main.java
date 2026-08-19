@@ -40,8 +40,7 @@ public class Main {
 			return;
 		}
 		AdoptionOptions options = cli.adoptionOptions();
-		runAndReport(cli, checkouts(cli),
-				GitHubRepoAdopter.withDefaultPipeline(CommandRunners.forRun(options), options));
+		runAndReport(cli, checkouts(cli), GitHubRepoAdopter.forRun(CommandRunners.forRun(options), options));
 	}
 
 	/**
@@ -54,7 +53,8 @@ public class Main {
 	 *                           one and why it stopped
 	 */
 	static List<AdoptionRun> runAndReport(CliArguments cli, Checkouts checkouts, GitHubRepoAdopter adopter) {
-		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt).adoptAll(cli.repositoryUrls(), checkouts);
+		List<AdoptionRun> runs = new BatchAdoption(adopter::adopt, cli.checkoutRetention(), cli.parallelism())
+				.adoptAll(cli.repositoryUrls(), checkouts);
 		try {
 			requireEveryAdoptionSucceeded(runs);
 		} catch (RuntimeException e) {

@@ -25,6 +25,7 @@ final class RuleConfiguration {
 								<claudeMdFormat>
 									<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
 									<titleHeading># CLAUDE.md</titleHeading>
+									<requiredReference>AGENTS.md</requiredReference>
 									<requiredSections>
 										<requiredSection>## Project</requiredSection>
 										<requiredSection>## Java version</requiredSection>
@@ -40,6 +41,7 @@ final class RuleConfiguration {
 									<maxLineLength>100</maxLineLength>
 									<validateFileReferences>true</validateFileReferences>
 									<referenceBaseDir>${project.basedir}</referenceBaseDir>
+									<autoFix>false</autoFix>
 								</claudeMdFormat>
 								<agentsMdFormat>
 									<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
@@ -60,6 +62,7 @@ final class RuleConfiguration {
 									<maxLineLength>100</maxLineLength>
 									<validateFileReferences>true</validateFileReferences>
 									<referenceBaseDir>${project.basedir}</referenceBaseDir>
+									<autoFix>false</autoFix>
 								</agentsMdFormat>
 								<crossDocConsistency>
 									<claudeMdFile>${project.basedir}/CLAUDE.md</claudeMdFile>
@@ -249,6 +252,37 @@ final class RuleConfiguration {
 									</requiredKeys>
 									<requireIndex>true</requireIndex>
 								</okfBundleFormat>
+								<!-- The composite checks the same project from its directory
+								     alone. It is configured beside the rules it is made of so
+								     that a build proves both routes bind: the twenty elements
+								     a project may write out, and the one it may write
+								     instead. Its parts run twice here, which costs a
+								     fixture's build nothing and is not how a project would
+								     wire it. -->
+								<claudeCodeProject>
+									<projectDir>${project.basedir}</projectDir>
+									<!-- Both parts are configured above with something this
+									     rule cannot default: an OKF version, and the list of
+									     imports the fixture's CLAUDE.md deliberately names
+									     without providing. Unconfigured they are right to
+									     report what they find, which is not what this fixture
+									     is here to prove. -->
+									<skippedRules>
+										<skippedRule>okfBundleFormat</skippedRule>
+										<skippedRule>memoryImports</skippedRule>
+									</skippedRules>
+									<claudeMdBudgetBytes>32768</claudeMdBudgetBytes>
+									<claudeMdSections>
+										<claudeMdSection>## Project</claudeMdSection>
+										<claudeMdSection>## Java version</claudeMdSection>
+										<claudeMdSection>## Maven</claudeMdSection>
+										<claudeMdSection>## Principles for Java Development</claudeMdSection>
+										<claudeMdSection>## Testing</claudeMdSection>
+										<claudeMdSection>## Dependencies</claudeMdSection>
+									</claudeMdSections>
+									<claudeMdReference>AGENTS.md</claudeMdReference>
+									<autoFix>false</autoFix>
+								</claudeCodeProject>
 			""";
 
 	/** What {@link #COMPLETE} addresses its files through: the project being built. */

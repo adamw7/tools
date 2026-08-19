@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Points every shipped rule at five <em>real</em> repositories, cloned from GitHub
+ * Points every shipped rule at eight <em>real</em> repositories, cloned from GitHub
  * over the network, none of which has ever heard of this enforcer.
  *
  * <p>{@link EnforcerRuleBuildIT} proves the rules bind and fire, and
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
  * they meet a project nobody prepared for them.
  *
  * <p>What is asserted is therefore not that a foreign repository passes: none of
- * these five does, and none should. It is that every rule <em>reaches a verdict</em>
+ * these eight does, and none should. It is that every rule <em>reaches a verdict</em>
  * on every one of them — a pass, or a failure with a message that names what is
  * wrong — rather than failing the build on the rules' own account with an
  * unbindable parameter, an internal error, or an exception escaping from a file it
@@ -39,10 +39,12 @@ import org.junit.jupiter.api.io.TempDir;
  * both leave a red build; only the log tells them apart, which is what
  * {@link EnforcerVerdicts} reads.
  *
- * <p>The five are chosen for the shapes they put in front of the rules — an almost
+ * <p>The eight are chosen for the shapes they put in front of the rules — an almost
  * empty repository, a small one, a very large flat one, a real {@code .claude}
- * directory somebody else wrote, and a real {@code CLAUDE.md} somebody else wrote —
- * and every clone is shallow, so the whole class costs about as much as one of the
+ * directory somebody else wrote, a real {@code CLAUDE.md} somebody else wrote, a real
+ * {@code AGENTS.md} somebody else wrote, a real {@code .mcp.json}, and a real
+ * {@code .claude/agents} directory beside a real {@code .claude/settings.json} — and
+ * every clone is shallow, so the whole class costs about as much as one of the
  * builds it runs. Nothing is written to any of them: the enforcing build runs in a
  * directory of its own and only the rule parameters point at a checkout.
  */
@@ -75,11 +77,18 @@ class ForeignRepositoryEnforcementIT {
 					"a real .claude/commands directory, and a .claude-plugin holding a "
 							+ "marketplace.json rather than the plugin.json a rule looks for"),
 			new RealRepository("https://github.com/anthropics/anthropic-quickstarts.git",
-					"a real CLAUDE.md, written by someone who never heard of these rules"));
+					"a real CLAUDE.md, written by someone who never heard of these rules"),
+			new RealRepository("https://github.com/github/spec-kit.git",
+					"a real AGENTS.md, written by someone who never heard of these rules"),
+			new RealRepository("https://github.com/modelcontextprotocol/servers.git",
+					"a real .mcp.json, so the two optional MCP rules meet a file rather than its absence"),
+			new RealRepository("https://github.com/anthropics/claude-code-action.git",
+					"a real .claude/agents directory and a real .claude/settings.json, neither of them "
+							+ "written for these rules"));
 
 	/**
 	 * The property the harness pom addresses the checkout through. One pom serves all
-	 * five repositories because only this changes between them.
+	 * eight repositories because only this changes between them.
 	 */
 	private static final String REPOSITORY_PROPERTY = "claude.repository";
 
@@ -89,6 +98,13 @@ class ForeignRepositoryEnforcementIT {
 	private static final String HARNESS_ARTIFACT_ID = "foreign-repository-harness";
 	private static final String BASELINE_HARNESS_ARTIFACT_ID = "foreign-repository-baseline-harness";
 
+	private static final String MCP_FILE = ".mcp.json";
+	private static final String SETTINGS_FILE = ".claude/settings.json";
+	private static final String AGENTS_DIRECTORY = ".claude/agents";
+
+	private static final String MCP_SERVERS_VALID = "mcpServersValid";
+	private static final String MCP_CONFIG_FORMAT = "mcpConfigFormat";
+
 	/**
 	 * The rules whose file is optional, which must pass when a project does not ship
 	 * it. Each is paired with the path {@link RuleConfiguration#COMPLETE} points it at,
@@ -97,8 +113,8 @@ class ForeignRepositoryEnforcementIT {
 	 */
 	private static final Map<String, String> OPTIONAL_RULE_TARGETS = Map.of(
 			"pluginFormat", ".claude-plugin/plugin.json",
-			"mcpServersValid", ".mcp.json",
-			"mcpConfigFormat", ".mcp.json",
+			MCP_SERVERS_VALID, MCP_FILE,
+			MCP_CONFIG_FORMAT, MCP_FILE,
 			"okfBundleFormat", "okf");
 
 	/**
@@ -118,6 +134,15 @@ class ForeignRepositoryEnforcementIT {
 
 	private static final String CLAUDE_MD_FORMAT = "claudeMdFormat";
 	private static final String CLAUDE_MD = "CLAUDE.md";
+
+	private static final String AGENTS_MD_FORMAT = "agentsMdFormat";
+	private static final String AGENTS_MD = "AGENTS.md";
+
+	private static final String SUB_AGENT_FORMAT = "subAgentFormat";
+	private static final String ABSENT_AGENTS = "Agents directory does not exist";
+
+	private static final String SETTINGS_JSON_VALID = "settingsJsonValid";
+	private static final String ABSENT_SETTINGS = "settings.json does not exist";
 
 	private static final String COMMAND_FORMAT = "commandFormat";
 	private static final String COMMANDS_DIRECTORY = ".claude/commands";
@@ -166,6 +191,15 @@ class ForeignRepositoryEnforcementIT {
 	/** The repository whose {@code .claude} directory somebody else wrote. */
 	private static final RealRepository WITH_AGENT_CONFIGURATION = named("claude-code");
 
+	/** The repository whose sub-agents and {@code settings.json} somebody else wrote. */
+	private static final RealRepository WITH_FOREIGN_SUB_AGENTS = named("claude-code-action");
+
+	/** The repository whose {@code AGENTS.md} somebody else wrote. */
+	private static final RealRepository WITH_AGENTS_MD = named("spec-kit");
+
+	/** The repository shipping an {@code .mcp.json} the two optional MCP rules can read. */
+	private static final RealRepository WITH_MCP_CONFIGURATION = named("servers");
+
 	/**
 	 * A repository with no agent configuration at all, which is the state a project is
 	 * in on the day it adopts one.
@@ -178,7 +212,7 @@ class ForeignRepositoryEnforcementIT {
 	private static List<Enforcement> enforcements;
 
 	/**
-	 * Class-scoped, because the clones and the five builds over them are what this
+	 * Class-scoped, because the clones and the eight builds over them are what this
 	 * class costs and every test below reads the same results. The two tests that
 	 * change a checkout take a fresh clone of their own, into {@link #adoption} and
 	 * {@link #replay}.
@@ -209,7 +243,7 @@ class ForeignRepositoryEnforcementIT {
 
 	/**
 	 * The claim this class exists for. Every rule the module ships is asked about every
-	 * one of the five, and every one of them has to answer: a rule that reached no
+	 * one of the eight, and every one of them has to answer: a rule that reached no
 	 * verdict either never ran — a misspelled {@code @Named} name, an execution that
 	 * did not fire — or stopped the build before the ones after it could run, and in
 	 * both cases a project that trusted it is guarded by nothing.
@@ -262,7 +296,7 @@ class ForeignRepositoryEnforcementIT {
 
 	/**
 	 * "Says why" is only worth something if the message is about the reader's project,
-	 * so one rule is followed all the way through: none of these five ships a document
+	 * so one rule is followed all the way through: none of these eight ships a document
 	 * titled {@code # CLAUDE.md} carrying the six required sections, so
 	 * {@code claudeMdFormat} fails every one of them, and whether the document is
 	 * absent or merely someone else's, what it failed with has to name it.
@@ -283,7 +317,7 @@ class ForeignRepositoryEnforcementIT {
 	/**
 	 * Four rules target files a project need not have, and the documented behaviour is
 	 * that an absent one is a pass rather than a failure. That is exactly the promise a
-	 * repository adopting the rules one at a time depends on, and these five are where
+	 * repository adopting the rules one at a time depends on, and these eight are where
 	 * it is really tested: the fixture ships all four files, so it can only show what
 	 * happens when they are there.
 	 *
@@ -326,6 +360,115 @@ class ForeignRepositoryEnforcementIT {
 	}
 
 	/**
+	 * The sub-agent rule's counterpart to the command one, on the other repository here
+	 * that ships an agent configuration nobody wrote for these rules. Its five
+	 * definitions declare a {@code tools} key this repository never invented and a
+	 * {@code model} of {@code inherit} that the configuration's {@code allowedModels}
+	 * does not list, which is real foreign front matter of a kind no fixture supplies.
+	 *
+	 * <p>What is pinned is that the rule read those definitions rather than reporting the
+	 * directory absent. Whether it then approves of them is the repository's business and
+	 * may change with any commit; that it looked is the rule's.
+	 */
+	@Test
+	void theRulesReadForeignSubAgentDefinitionsRatherThanReportingThemAbsent() {
+		Enforcement enforcement = enforcementOf(WITH_FOREIGN_SUB_AGENTS);
+		List<Path> agents = markdownIn(enforcement.checkout().resolve(AGENTS_DIRECTORY));
+
+		assertFalse(agents.isEmpty(),
+				() -> WITH_FOREIGN_SUB_AGENTS + " no longer ships sub-agent definitions under " + AGENTS_DIRECTORY
+						+ ", so this test needs a repository that does");
+		assertTrue(enforcement.verdicts().reached(SUB_AGENT_FORMAT),
+				() -> SUB_AGENT_FORMAT + " reached no verdict: " + enforcement.outcome().describe());
+		assertFalse(enforcement.verdicts().messageOf(SUB_AGENT_FORMAT).contains(ABSENT_AGENTS),
+				() -> SUB_AGENT_FORMAT + " reported " + agents.size() + " real sub-agent definition(s) absent: "
+						+ enforcement.outcome().describe());
+	}
+
+	/**
+	 * The same claim for the settings file, which is the one input here a rule reads as
+	 * JSON somebody else wrote rather than as markdown or a directory listing. Four rules
+	 * are pointed at it, and every fixture they are otherwise proved against holds a
+	 * {@code settings.json} written to be read by them.
+	 *
+	 * <p>A rule that fell over on a foreign key would be caught by
+	 * {@link #noRuleFailsARealRepositoryOnItsOwnAccount}; what is pinned here is the
+	 * quieter failure — a rule that reported the file absent while it was sitting in the
+	 * checkout, which reads as a pass on a project that has nothing and tells a project
+	 * that has something nothing at all.
+	 */
+	@Test
+	void aRuleReadsAForeignSettingsFileRatherThanReportingItAbsent() {
+		Enforcement enforcement = enforcementOf(WITH_FOREIGN_SUB_AGENTS);
+
+		assertTrue(Files.isRegularFile(enforcement.checkout().resolve(SETTINGS_FILE)),
+				() -> WITH_FOREIGN_SUB_AGENTS + " no longer ships a " + SETTINGS_FILE
+						+ ", so this test needs a repository that does");
+		assertTrue(enforcement.verdicts().reached(SETTINGS_JSON_VALID),
+				() -> SETTINGS_JSON_VALID + " reached no verdict: " + enforcement.outcome().describe());
+		assertFalse(enforcement.verdicts().passed(SETTINGS_JSON_VALID),
+				() -> SETTINGS_JSON_VALID + " passed a real " + SETTINGS_FILE + " that grants none of the"
+						+ " permissions it requires, so this test needs a repository whose settings the"
+						+ " configuration is not already satisfied by: " + enforcement.outcome().describe());
+		assertFalse(enforcement.verdicts().messageOf(SETTINGS_JSON_VALID).contains(ABSENT_SETTINGS),
+				() -> SETTINGS_JSON_VALID + " reported a real " + SETTINGS_FILE + " absent: "
+						+ enforcement.outcome().describe());
+	}
+
+	/**
+	 * The two MCP rules are optional, and
+	 * {@link #theOptionalRulesPassOnARepositoryThatShipsNoneOfTheirFiles} only ever sees
+	 * them pass over a file that is not there. That pass is indistinguishable, from the
+	 * verdict alone, from a rule that skipped a file it should have read — so one
+	 * repository here ships a real {@code .mcp.json}, and what is pinned is that the
+	 * rules do not pass it over.
+	 *
+	 * <p>The declared server is not the one the configuration requires, so a rule that
+	 * read the file has something to say about it and a rule that skipped it has not.
+	 * That is the only observable difference between the two, which is why the
+	 * repository has to be one whose {@code .mcp.json} the configuration is not already
+	 * satisfied by.
+	 */
+	@Test
+	void theOptionalMcpRulesReadAForeignConfigurationRatherThanPassingItOver() {
+		Enforcement enforcement = enforcementOf(WITH_MCP_CONFIGURATION);
+
+		assertTrue(Files.isRegularFile(enforcement.checkout().resolve(MCP_FILE)),
+				() -> WITH_MCP_CONFIGURATION + " no longer ships an " + MCP_FILE
+						+ ", so this test needs a repository that does");
+		assertTrue(enforcement.verdicts().reached(MCP_CONFIG_FORMAT),
+				() -> MCP_CONFIG_FORMAT + " reached no verdict: " + enforcement.outcome().describe());
+		assertFalse(enforcement.verdicts().passed(MCP_SERVERS_VALID),
+				() -> MCP_SERVERS_VALID + " passed a real " + MCP_FILE + " that declares none of the servers it"
+						+ " requires, so it cannot have read it: " + enforcement.outcome().describe());
+		assertFalse(enforcement.verdicts().messageOf(MCP_SERVERS_VALID).isBlank(),
+				() -> MCP_SERVERS_VALID + " failed without saying why: " + enforcement.outcome().describe());
+	}
+
+	/**
+	 * {@code AGENTS.md} is the companion document, and until now no repository here
+	 * shipped one: the rule met its absence five times over and reported it five times,
+	 * which proves only the build-setup check. One repository now carries a real one —
+	 * sixty sections written for a Python CLI — so the rule reads a foreign document and
+	 * fails it on what it found rather than on what was not there.
+	 */
+	@Test
+	void aForeignAgentsMdIsReadRatherThanReportedAbsent() {
+		Enforcement enforcement = enforcementOf(WITH_AGENTS_MD);
+		String message = enforcement.verdicts().messageOf(AGENTS_MD_FORMAT);
+
+		assertTrue(Files.isRegularFile(enforcement.checkout().resolve(AGENTS_MD)),
+				() -> WITH_AGENTS_MD + " no longer ships an " + AGENTS_MD
+						+ ", so this test needs a repository that does");
+		assertTrue(message.contains(AGENTS_MD),
+				() -> AGENTS_MD_FORMAT + " did not fail " + WITH_AGENTS_MD + " with a message naming " + AGENTS_MD
+						+ ": " + enforcement.outcome().describe());
+		assertFalse(message.contains(AGENTS_MD + " does not exist"),
+				() -> AGENTS_MD_FORMAT + " reported a real " + AGENTS_MD + " absent: "
+						+ enforcement.outcome().describe());
+	}
+
+	/**
 	 * The other half of the claim: the rules are not only survivable but satisfiable
 	 * outside the repository that wrote them. A real checkout is adopted the way a
 	 * project would be — the contract's documents and {@code .claude} configuration
@@ -334,7 +477,7 @@ class ForeignRepositoryEnforcementIT {
 	 * them.
 	 *
 	 * <p>It takes a clone of its own because it is the one test here that writes into a
-	 * checkout, and the five the other tests share are read as {@code git} produced
+	 * checkout, and the eight the other tests share are read as {@code git} produced
 	 * them.
 	 */
 	@Test
@@ -419,9 +562,9 @@ class ForeignRepositoryEnforcementIT {
 	}
 
 	/**
-	 * The listed repository of that name. Two tests are about one repository each and
-	 * say which by name rather than by position, so reordering the list cannot quietly
-	 * point them at a different one.
+	 * The listed repository of that name. The tests about one repository each say which
+	 * by name rather than by position, so reordering the list cannot quietly point them
+	 * at a different one.
 	 */
 	private static RealRepository named(String name) {
 		return REPOSITORIES.stream()

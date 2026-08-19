@@ -35,9 +35,10 @@ outside the class. Work through every step:
    with **every** parameter it accepts; `EnforcerRuleBuildIT` checks that block
    against the compiled classes and fails if a rule or parameter is missing.
 7. **Survive a repository nobody prepared** — `ForeignRepositoryEnforcementIT`
-   points the same configuration at five real clones. The rule must reach a
+   points the same configuration at eight real clones. The rule must reach a
    verdict on a file it did not expect and a directory that is not there, and
-   report both rather than throwing.
+   report both rather than throwing; where one of the eight really ships the file
+   your rule reads, pin that it read it rather than reported it absent.
 8. **Wire it** into the root pom's `claude-md-enforce` profile, one child element
    per parameter. A rule taking a definition directory can only be wired once that
    directory exists — add the directory and the wiring in the same change.

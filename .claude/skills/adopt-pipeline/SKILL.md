@@ -134,18 +134,21 @@ clone URL's credentials come back in the tool's own error text.
 - `MultiRepoAdoptionIT` clones real sample repositories to prove each gets its
   own checkout, and **stops at the branch step** — the `*IT`s never push and
   never open a pull request. Keep that invariant when extending them.
-- `ForeignRepositoryAdoptionIT` adopts five real repositories nobody prepared —
+- `ForeignRepositoryAdoptionIT` adopts seven real repositories nobody prepared —
   `google/gson` (multi-module Maven), `square/okhttp` (Gradle, Kotlin DSL),
+  `JakeWharton/timber` (Gradle, Groovy DSL, developed on `trunk`),
   `anthropics/anthropic-quickstarts` (a real `CLAUDE.md`),
-  `anthropics/claude-code` (a real `.claude`) and `github/gitignore` (a very
+  `anthropics/claude-code` (a real `.claude`), `modelcontextprotocol/servers`
+  (its own files where two starter assets go) and `github/gitignore` (a very
   large flat tree). A step that reads or writes the checkout has to survive them:
-  the guard is only ever an *addition* to a build file somebody else wrote, the
-  commits carry only `AdoptionAssets.WRITTEN_PATHS`, the working tree is left
-  clean, the default branch and the remote are untouched, and a second adoption
-  changes nothing. It installs the starter assets too, so `AssetInstaller`'s
-  "the project's own version wins" is checked against a file somebody else wrote
-  — `claude-code`'s own `.github/workflows/claude.yml`, which no fixture can
-  imitate. Its Maven guard is pinned to a released `--rule-version`,
+  the guard is only ever an *addition* to a build file somebody else wrote and is
+  written in that script's own DSL, the commits carry only
+  `AdoptionAssets.WRITTEN_PATHS`, the working tree is left clean, the default
+  branch — read from the remote, never guessed — and the remote are untouched,
+  and a second adoption changes nothing. It installs the starter assets too, so
+  `AssetInstaller`'s "the project's own version wins" is checked against files
+  somebody else wrote — `claude-code`'s own `.github/workflows/claude.yml` and
+  `servers`' own `.mcp.json`, which no fixture can imitate. Its Maven guard is pinned to a released `--rule-version`,
   because the installer refuses to wire a `-SNAPSHOT` into another project's POM.
 - Run them with `mvn -P integration-tests verify` (the profile is declared in
   `adopt`'s own pom).
@@ -154,6 +157,6 @@ clone URL's credentials come back in the tool's own error text.
 - `CLAUDE.md` / `AGENTS.md` — *Claude Code adoption* (source of truth)
 - `adopt/.../GitHubRepoAdopter.java` — the assembled pipeline
 - `adopt/.../architecture/AdoptArchitectureTest.java` — the rules above, as tests
-- `adopt/.../ForeignRepositoryAdoptionIT.java` — the pipeline against five real
+- `adopt/.../ForeignRepositoryAdoptionIT.java` — the pipeline against seven real
   repositories that never adopted it
 - `adopt/.../mcp/MCP_USAGE.md` — the `adopt_repo` tool

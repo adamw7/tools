@@ -8,6 +8,7 @@ import java.util.Optional;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
+import io.github.adamw7.tools.adopt.command.RateLimits;
 
 /**
  * Base for steps that shell out through a {@link CommandRunner}, sharing the
@@ -61,7 +62,21 @@ public abstract class AbstractCommandStep implements AdoptionStep {
 	 * reported failure.
 	 */
 	private AdoptionException failure(CommandResult result) {
-		return new AdoptionException(name() + " failed (exit " + result.exitCode() + ") running: " + result.describe()
-				+ System.lineSeparator() + result.redactedOutput());
+		return new AdoptionException(rateLimitNotice(result) + name() + " failed (exit " + result.exitCode()
+				+ ") running: " + result.describe() + System.lineSeparator() + result.redactedOutput());
+	}
+
+	/**
+	 * Opens the report with the wait when a rate limit is what stopped the command.
+	 * The wait GitHub named is in the transcript either way, somewhere among the API's
+	 * prose and a link to its documentation, and an operator re-running a
+	 * fifty-repository batch had to find it. A rate limit is still not retried — see
+	 * {@link io.github.adamw7.tools.adopt.command.TransientFailures} — so what changes
+	 * is only what the report says.
+	 */
+	private String rateLimitNotice(CommandResult result) {
+		return RateLimits.describe(result.output())
+				.map(notice -> notice + System.lineSeparator())
+				.orElse("");
 	}
 }

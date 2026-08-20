@@ -19,123 +19,39 @@
 	<url>https://github.com/adamw7/tools</url>
 	<properties>
 		<revision>2.6.0-SNAPSHOT</revision>
-		<!-- The Spring Boot parent derives maven.compiler.release from this, so
-		     javac both targets and validates against the Java 25 API. Setting
-		     maven.compiler.source/target as well would be dead weight: the
-		     compiler plugin ignores them once release is set, and a second copy
-		     of the number is a copy that can drift. -->
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<!-- Named rather than written twice: the adopt pipeline wires this same
-		     plugin into other people's poms, and it reads the number from this
-		     property through its filtered build metadata. A literal in both places
-		     is a literal that drifts, and the half that drifts is the one nobody
-		     builds — a stranger's repository, adopted with a version this project
-		     stopped using. -->
+		<!-- Read back by the adopt pipeline, which wires this same plugin into other poms. -->
 		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
-		<!-- project.build.outputTimestamp — which makes the build reproducible by
-		     having every archive-producing plugin (jar, source, javadoc, assembly,
-		     plugin descriptor, Spring Boot repackage) stamp one fixed instant on
-		     its entries and write them in a stable order — is deliberately *not*
-		     declared here. A literal in the pom is a date somebody has to remember
-		     to bump, and releases here are a `revision` edit rather than a
-		     maven-release-plugin run, so nothing would bump it automatically.
-
-		     The publishing workflows pass it instead, deriving it from the released
-		     commit's own timestamp (`git log -1` with an ISO date format) and
-		     handing it to Maven as a user property, which overrides the pom
-		     cleanly. Pinning it to the commit rather than to the clock is what lets
-		     anyone check out the tag, rebuild, and get artifacts byte-identical to
-		     the published ones — the supply-chain posture in docs/adr/0002. See
-		     "Releasing" in AGENTS.md for the exact command and its local
-		     equivalent. -->
-		<!-- One version for the whole protobuf toolchain: the protobuf-java
-		     runtime below and the protoc that protobuf-maven-plugin runs. Keeping
-		     them apart let the generated code and the runtime it compiles against
-		     drift by two minor versions. -->
+		<!-- One version for the whole toolchain: the protobuf-java runtime and protoc. -->
 		<protobuf.version>4.35.1</protobuf.version>
 		<grpc.version>1.83.1</grpc.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j2.version>2.26.1</log4j2.version>
-		<!-- Named maven.api.version, not maven.version: Maven itself exposes
-		     ${maven.version} as the running Maven's own version. -->
+		<!-- Not maven.version: Maven exposes that as the running Maven's own version. -->
 		<maven.api.version>4.0.0-rc-5</maven.api.version>
 		<argLine/>
-		<!-- Per-test timeout for unit tests (see the surefire plugin config). The
-		     build runs the reactor in parallel (-T1C in .mvn/maven.config), so
-		     several modules' test forks run at once and contend for CPU. That
-		     stretches the one-time cold-JVM/class-loading warmup the first test in
-		     each fork pays: on a dedicated core it is ~0.7s, but under 4-way fork
-		     contention the heaviest first-in-fork test (an MCP server boot in the
-		     small mcp-common module, which amortizes the warmup over nothing) was
-		     measured at up to ~3.9s. The limit is sized above that worst case with
-		     margin yet still low enough to catch a test doing real work. The
-		     coverage profile overrides it to a larger value because the JaCoCo
-		     agent's bytecode instrumentation roughly doubles first-use
-		     class-loading time on top of the contention. -->
+		<!-- Per-test timeout for unit tests, sized above the cold-fork warmup a parallel build pays. -->
 		<unit.test.method.timeout>5 s</unit.test.method.timeout>
-		<!-- Companion limit for lifecycle methods (@BeforeAll/@BeforeEach/@AfterEach/
-		     @AfterAll). Deliberately far looser than the per-test method timeout:
-		     lifecycle methods legitimately do shared, one-time setup that a test
-		     method must not (e.g. DBTest boots an embedded Derby database and loads
-		     fixtures, ~2s on a cold fork). This still fails a fixture that is truly
-		     stuck (deadlock, infinite retry) rather than merely heavy; a total hang
-		     that never returns is caught by forkedProcessTimeoutInSeconds. The
-		     coverage profile raises it because JaCoCo instrumentation slows setup. -->
+		<!-- Lifecycle methods (@BeforeAll and friends) do shared setup a test method must not, so
+		     they get a looser limit. -->
 		<unit.test.lifecycle.timeout>10 s</unit.test.lifecycle.timeout>
-		<!-- Minimum mutation score (percent of mutants killed) the pitest profile
-		     enforces, so the weekly run fails on a regression instead of merely
-		     recording one in an artifact nobody opens. This is the floor, sized on
-		     the weakest module at the time it was introduced (mcp-common, 84%); a
-		     module scoring comfortably above it raises the bar in its own
-		     <properties>, which is what makes the gate mean something module by
-		     module. Each number sits a few points under the measured score, so an
-		     equivalent refactor — or a timed-out mutant, which PIT counts as
-		     killed — cannot turn a green build red on its own. Ratchet a number up
-		     once a module's score has settled above it; never down to make a red
-		     build pass. PIT skips a module with no production code or no tests
-		     entirely, so the threshold never applies to one. -->
+		<!-- Mutation-score floor for the pitest profile; a module scoring higher raises it in its
+		     own <properties>. Ratchet up, never down. -->
 		<pitest.mutationThreshold>80</pitest.mutationThreshold>
-		<!-- Whether the pitest profile skips this module. Mutating code nobody
-		     wrote says nothing about the tests: the two modules that opt out hold
-		     no hand-written production Java at all, only protobuf and gRPC classes
-		     generated from their .proto files, and PIT scored them at 10% and 14%
-		     purely because a generator's output has no unit tests aimed at it. The
-		     plugin that generates those builders is itself mutated, in
-		     protogen-maven-plugin, which is where the logic under test lives. A
-		     module that grows hand-written production code should clear this flag
-		     and take a threshold instead. -->
+		<!-- Set true by the modules holding only generated code, where a mutation score measures a
+		     generator rather than tests. -->
 		<pitest.skip>false</pitest.skip>
-		<!-- Whole-fork wall-clock cap (seconds). JUnit's per-method timeout only
-		     reports after a method returns; it cannot unwedge a thread that never
-		     yields (deadlock, non-daemon thread that never dies). Surefire kills the
-		     forked JVM after this many seconds, so a genuinely hung test still fails
-		     the build. Sized far above a full module's fast unit run. -->
+		<!-- Whole-fork wall-clock cap. The per-method timeout only reports after a method returns,
+		     so a wedged thread needs this. -->
 		<unit.test.fork.timeout>300</unit.test.fork.timeout>
-		<!-- How many test classes one module runs at a time. Unit tests are
-		     class-parallel (see the surefire configurationParameters): the reactor's
-		     -T1C already builds several modules at once, but the dependency graph
-		     starves it whenever a module everything waits on is the only one left,
-		     and that module then ran its whole suite one class after another. This
-		     fills those gaps. It is a small fixed number rather than a per-core one
-		     precisely because -T1C is already per-core: on a 4-core machine the two
-		     multiply out to 4 module threads x this, so a per-core value here would
-		     oversubscribe by the square of the core count and push the slowest
-		     methods into the ${unit.test.method.timeout} limit. Lower it to 1 to
-		     turn class-parallelism off for a run: -Dunit.test.parallelism=1. -->
+		<!-- Test classes one module runs at a time. -T1C already parallelises modules, so keep this
+		     a small fixed number; -Dunit.test.parallelism=1 turns it off. -->
 		<unit.test.parallelism>3</unit.test.parallelism>
-		<!-- Maven Central publishing behavior for the release profile. Defaults
-		     publish on release; overridable so the maven-publish.yml
-		     workflow_dispatch dry run can upload and validate without
-		     publishing: -Dcentral.autoPublish=false -Dcentral.waitUntil=validated. -->
+		<!-- Overridable so maven-publish.yml's dry run can upload and validate without publishing. -->
 		<central.autoPublish>true</central.autoPublish>
 		<central.waitUntil>published</central.waitUntil>
-		<!-- Whether the release profile keeps this module out of the Maven Central
-		     bundle. Modules that are examples, test harnesses or distributions
-		     rather than reusable libraries set it to true in their own
-		     <properties>, which is one line instead of a copy of the
-		     central-publishing plugin declaration inside a copy of the release
-		     profile. -->
+		<!-- Set true by modules that are examples, harnesses or distributions rather than libraries. -->
 		<central.skipPublishing>false</central.skipPublishing>
 	</properties>
 	<licenses>
@@ -201,22 +117,15 @@
 				<version>1.4.2</version>
 				<scope>test</scope>
 			</dependency>
-			<!-- No managed scope, because the two modules that read markup with jsoup
-			     want different ones: adopt parses every pom.xml it edits, so it needs
-			     the parser at runtime, while claude-code-enforcer only reads HTML back
-			     in its own tests. The narrower of the two is declared on the module
-			     that wants it rather than imposed on both from here. -->
+			<!-- No managed scope: adopt parses poms at runtime, claude-code-enforcer only reads HTML
+			     in its tests. -->
 			<dependency>
 				<groupId>org.jsoup</groupId>
 				<artifactId>jsoup</artifactId>
 				<version>1.23.1</version>
 			</dependency>
-			<!-- log4j2.version and derby.version are Spring Boot's own property
-			     names. Setting them (rather than only pinning the artifacts we
-			     declare) is what keeps the rest of each family in step: the
-			     spring-boot-dependencies BOM manages derbyshared and derbynet from
-			     derby.version, so leaving it at Boot's value resolved derbyshared
-			     10.16.1.1 underneath derby 10.17.1.0. -->
+			<!-- Spring Boot's own property names, so the BOM keeps the rest of each family
+			     (derbyshared, derbynet) in step. -->
 			<dependency>
 				<groupId>org.apache.logging.log4j</groupId>
 				<artifactId>log4j-api</artifactId>
@@ -284,12 +193,6 @@
 				<artifactId>reflections</artifactId>
 				<version>0.10.2</version>
 			</dependency>
-			<!-- The adoption command-line parser. Declared here rather than left to
-			     the Spring Boot parent, which does not manage it: the BOM covers the
-			     web and JSON stack the MCP servers are built on, not a CLI library.
-			     snakeyaml, which claude-code-enforcer reads front matter with, needs
-			     no entry for the opposite reason — Boot already pins it, and pinning
-			     it a second time here is a copy that can fall behind the parent. -->
 			<dependency>
 				<groupId>info.picocli</groupId>
 				<artifactId>picocli</artifactId>
@@ -300,9 +203,7 @@
 				<artifactId>grpc-protobuf</artifactId>
 				<version>${grpc.version}</version>
 			</dependency>
-			<!-- The gRPC tree requests error_prone_annotations at two versions
-			     (grpc directly vs. gson transitively). Pin the highest so the
-			     dependencyConvergence enforcer rule is satisfied. -->
+			<!-- Requested at two versions; pin the highest so dependencyConvergence is satisfied. -->
 			<dependency>
 				<groupId>com.google.errorprone</groupId>
 				<artifactId>error_prone_annotations</artifactId>
@@ -336,10 +237,8 @@
 				<artifactId>org.eclipse.jdt.core</artifactId>
 				<version>3.46.0</version>
 			</dependency>
-			<!-- org.eclipse.jdt.core drags in the Eclipse platform tree, whose
-			     internal artifacts resolve to several different versions along
-			     different paths. Pin the highest requested version of each so the
-			     dependencyConvergence enforcer rule is satisfied. -->
+			<!-- The Eclipse platform tree resolves at several versions along different paths; pin
+			     the highest so dependencyConvergence is satisfied. -->
 			<dependency>
 				<groupId>org.eclipse.platform</groupId>
 				<artifactId>org.eclipse.osgi</artifactId>
@@ -369,9 +268,7 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-			<!-- Managed only to attach the exclusion; the version stays the one the
-			     spring-boot-dependencies BOM already supplies, so it cannot fall
-			     behind the parent on the next Spring Boot bump. -->
+			<!-- Managed only to attach the exclusion; the version stays the parent's. -->
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter</artifactId>
@@ -392,46 +289,15 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.5.6</version>
 					<configuration>
-						<!-- Fail any unit test whose testable method runs
-						     ${unit.test.method.timeout} or longer, so a test doing
-						     real work (rather than the unavoidable one-time
-						     JVM/class-loading warmup a cold fork pays, ~0.7s at most)
-						     is caught. Applies to @Test, @ParameterizedTest,
-						     @RepeatedTest, @TestFactory and @TestTemplate methods (not
-						     lifecycle setup/teardown). Only surefire (unit tests)
-						     inherits this; failsafe integration tests are unaffected.
-						     A genuinely heavier test opts out with an explicit
-						     @Timeout. The one module using Mockito pre-loads it as a
-						     -javaagent (see protogen-maven-plugin/pom.xml) so its
-						     byte-buddy self-attach is not billed to the first timed
-						     method. The coverage profile raises the limit because
-						     JaCoCo instrumentation slows the timed methods. -->
 						<forkedProcessTimeoutInSeconds>${unit.test.fork.timeout}</forkedProcessTimeoutInSeconds>
-						<!-- Engage the network kill-switch for every unit test: the
-						     data module registers a NetworkOffExtension via
-						     META-INF/services that turns the network off before any
-						     test runs, so a unit test can never open an outbound
-						     connection. Auto-detection and the guard property are set
-						     only here on surefire, so failsafe integration tests (*IT),
-						     which need real network, keep it. -->
+						<!-- The guard the data module's NetworkOffExtension reads. Set on surefire only,
+						     so failsafe *IT tests keep the network. -->
 						<systemPropertyVariables>
 							<tools.test.network.off>true</tools.test.network.off>
 						</systemPropertyVariables>
-						<!-- Run each module's unit tests a class at a time in parallel
-						     (${unit.test.parallelism} of them at once), but every method
-						     of one class on a single thread. Concurrency between classes
-						     is the mode this suite can actually take: a class already
-						     owns its fixture (79 of them take a @TempDir, which JUnit
-						     makes unique per class), whereas concurrency *within* a class
-						     would interleave methods sharing one @BeforeEach-built
-						     instance, which nothing here was written for. State a class
-						     cannot own alone is guarded at the class that touches it:
-						     @Isolated where a test writes something JVM-wide that others
-						     read (a system property, the allowed base directory), and
-						     @ResourceLock where test classes share one database. Each
-						     module's TestConventionsArchitectureTest holds that line for
-						     new tests, so the next such test fails the build rather than
-						     the suite beside it. -->
+						<!-- Classes in parallel, every method of one class on a single thread. State
+						     a class cannot own alone is guarded at the test with @Isolated or
+						     @ResourceLock. -->
 						<properties>
 							<configurationParameters>
 								junit.jupiter.execution.timeout.testable.method.default = ${unit.test.method.timeout}
@@ -580,16 +446,9 @@
 		</pluginManagement>
 		<plugins>
 			<plugin>
-				<!-- Lint scripts/**/*.sh and .claude/hooks/**/*.sh with shellcheck.
-				     binaryResolutionMethod
-				     "embedded" runs the shellcheck binary bundled inside the plugin
-				     jar (pulled from Maven Central like any other artifact), so the
-				     build needs no shellcheck on the PATH and downloads nothing at
-				     execution time. The previous default fetched the binary from
-				     GitHub releases on first use, which fails in networks that
-				     cannot reach that host (offline builds, Claude Code web/remote
-				     sessions whose proxy scopes GitHub to this repo only), breaking
-				     the root pom with "Input is not in the XZ format". -->
+				<!-- Lints scripts/**/*.sh and .claude/hooks/**/*.sh. The embedded binary ships
+				     inside the plugin jar, so the lint needs no shellcheck on the PATH and no
+				     network. -->
 				<groupId>dev.dimlight</groupId>
 				<artifactId>shellcheck-maven-plugin</artifactId>
 				<inherited>false</inherited>
@@ -601,12 +460,7 @@
 						</goals>
 						<configuration>
 							<binaryResolutionMethod>embedded</binaryResolutionMethod>
-							<!-- The plugin defaults to reporting shellcheck's findings as
-							     build warnings and passing anyway, so the lint ran for a
-							     log nobody reads: a probe script with an unquoted
-							     expansion and an unassigned variable was reported in full
-							     and the build still succeeded. Both source directories are
-							     clean today, so the lint gates from here on. -->
+							<!-- The plugin otherwise reports findings as warnings and passes anyway. -->
 							<failBuildIfWarnings>true</failBuildIfWarnings>
 							<sourceDirs>
 								<sourceDir>
@@ -615,13 +469,6 @@
 										<include>**/*.sh</include>
 									</includes>
 								</sourceDir>
-								<!-- The session-start hook is a shell script the runtime
-								     executes before any tool call, so a mistake in it fails
-								     a session rather than a build and is found by whoever
-								     opened that session. hooksFormat checks the shebang and
-								     the executable bit; only shellcheck reads what the
-								     script does, which is why the hook is linted with the
-								     same binary as scripts/ rather than trusted. -->
 								<sourceDir>
 									<directory>${project.basedir}/.claude/hooks</directory>
 									<includes>
@@ -660,24 +507,16 @@
 								</requirePluginVersions>
 								<dependencyConvergence />
 								<requireNoRepositories />
-								<!-- A profile named on the command line that no pom declares
-								     is silently ignored by Maven, so a typo in -Pcoverage or
-								     -Pintegration-tests looks like a clean run that quietly
-								     skipped the very thing it was asked for. -->
+								<!-- Maven ignores an unknown -P id silently, so a typo looks like a
+								     clean run that skipped the work. -->
 								<requireProfileIdsExist />
 							</rules>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
-			<!-- The root pom uses a CI-friendly ${revision} version, so the
-			     installed/deployed pom of every module would otherwise still
-			     contain the literal ${revision} in its <parent> and in
-			     inter-module dependency versions. Flatten every module (this
-			     execution is inherited by all reactor modules and their
-			     submodules) into a self-contained pom whose versions are
-			     resolved, which is required for Maven Central and for the
-			     claude-code-enforcer module consumed as a plugin dependency. -->
+			<!-- Resolves ${revision} out of every module's installed pom, which Maven Central and
+			     the enforcer-as-plugin-dependency both need. -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>flatten-maven-plugin</artifactId>
@@ -707,27 +546,11 @@
 
 	<profiles>
 		<profile>
-			<!-- Validates that the repository CLAUDE.md exists and is well formed,
-			     using the custom rule from the tools.claude-code-enforcer module.
-			     Opt-in via -DenforceClaudeMd so that only the dedicated CI build
-			     (.github/workflows/maven.yml) runs it; every other Maven build
-			     (other workflows, local) is unaffected and needs no bootstrap.
-			     The rule must be installed into the local repo first (see
-			     AGENTS.md "CLAUDE.md enforcement"). -->
+			<!-- Opt-in documentation checks (-DenforceClaudeMd), run only by
+			     .github/workflows/maven.yml. The rule must be installed first; see AGENTS.md. -->
 			<id>claude-md-enforce</id>
-			<!-- Both conditions must hold, so this activates in the root project
-			     alone: it is the only one with a CLAUDE.md beside its pom. A profile
-			     declared in a parent is inherited, so every module would otherwise
-			     evaluate this one and take on the plugin below — and with it a reactor
-			     edge to claude-code-enforcer, because Maven orders a project after
-			     every plugin dependency it declares. Maven tolerates a cycle whose
-			     closing edge comes from a plugin, which is why an inherited profile
-			     went unnoticed while no reactor module was a real dependency of the
-			     enforcer. markdown-common is one, so the cycle closed through a
-			     dependency edge instead and `mvn -B package -DenforceClaudeMd` could
-			     not sort the reactor at all. Scoping the profile to the project that
-			     owns the documents keeps a module's build order independent of a
-			     profile it never uses. -->
+			<!-- Both conditions hold in the root project alone. Inherited into a module, this would
+			     add a reactor edge to claude-code-enforcer and the reactor could not be sorted. -->
 			<activation>
 				<property>
 					<name>enforceClaudeMd</name>
@@ -741,9 +564,6 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-enforcer-plugin</artifactId>
-						<!-- Belt and braces beside the profile's file activation: even
-						     were this plugin to reach a child module, it would carry no
-						     execution there. -->
 						<inherited>false</inherited>
 						<dependencies>
 							<dependency>
@@ -766,13 +586,9 @@
 										<agentsMdFormat>
 											<agentsMdFile>${project.basedir}/AGENTS.md</agentsMdFile>
 										</agentsMdFormat>
-										<!-- allowedFrontMatterKeys lists the keys Claude Code
-										     accepts in a SKILL.md, not the two this repository
-										     currently uses, so a skill may grow an
-										     `allowed-tools` without touching this pom while a
-										     mistyped `descripton` is still reported. Skills
-										     route by description, so a key that silently does
-										     nothing costs a skill its loading. -->
+										<!-- Every key Claude Code accepts, not only the two used
+										     here, so a skill may grow one without touching this pom
+										     while a typo is still reported. -->
 										<skillFilesExist>
 											<skillsDir>${project.basedir}/.claude/skills</skillsDir>
 											<allowedFrontMatterKeys>
@@ -783,10 +599,6 @@
 												<allowedFrontMatterKey>license</allowedFrontMatterKey>
 											</allowedFrontMatterKeys>
 										</skillFilesExist>
-										<!-- A configured definition directory must exist, so
-										     these two could only be wired once .claude/agents
-										     and .claude/commands did — which is why the
-										     directories and this wiring arrived together. -->
 										<subAgentFormat>
 											<agentsDir>${project.basedir}/.claude/agents</agentsDir>
 											<allowedModels>
@@ -812,10 +624,8 @@
 												<allowedModel>inherit</allowedModel>
 											</allowedModels>
 										</commandFormat>
-										<!-- Both uniqueness rules see all three kinds at once:
-										     a command sharing a name or a description with a
-										     skill shadows it, and neither directory alone would
-										     show that. -->
+										<!-- All three kinds at once: a command sharing a name or
+										     description with a skill shadows it. -->
 										<uniqueNames>
 											<commandsDir>${project.basedir}/.claude/commands</commandsDir>
 											<agentsDir>${project.basedir}/.claude/agents</agentsDir>
@@ -833,13 +643,8 @@
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
 											<projectDir>${project.basedir}</projectDir>
 										</hookCommandsValid>
-										<!-- reportUnreferencedScripts is the half of the
-										     wiring cross-check that catches the silent
-										     direction: a script no hook names never runs, and
-										     nothing about it looks wrong — it has its shebang,
-										     its executable bit and its shellcheck pass. The
-										     other direction (a hook naming a missing script)
-										     is on by default. -->
+										<!-- Also reports a script no hook names; the opposite
+										     direction is on by default. -->
 										<hooksFormat>
 											<hooksDir>${project.basedir}/.claude/hooks</hooksDir>
 											<settingsFile>${project.basedir}/.claude/settings.json</settingsFile>
@@ -852,10 +657,8 @@
 										<mcpConfigFormat>
 											<mcpFile>${project.basedir}/.mcp.json</mcpFile>
 										</mcpConfigFormat>
-										<!-- This repository emits OKF bundles rather than
-										     shipping one, so the bundle root is absent and the
-										     rule passes; it starts enforcing the day a bundle
-										     is committed here. -->
+										<!-- No bundle is committed here, so the rule passes until
+										     one is. -->
 										<okfBundleFormat>
 											<bundleDir>${project.basedir}/okf</bundleDir>
 											<okfVersion>0.2</okfVersion>
@@ -896,7 +699,7 @@
 												<file>${project.basedir}/CLAUDE.md</file>
 											</files>
 											<!-- CLAUDE.md is loaded into every session; keep it a
-											     summary that defers to AGENTS.md rather than a copy. -->
+											     summary that defers to AGENTS.md. -->
 											<maxBytes>32768</maxBytes>
 										</contextBudget>
 										<localSettingsIgnored>
@@ -923,11 +726,7 @@
 		<profile>
 			<id>coverage</id>
 			<properties>
-				<!-- JaCoCo's bytecode instrumentation roughly doubles the time a
-				     timed test method spends loading classes on first use, so give
-				     the per-test timeouts extra headroom under coverage. This stacks
-				     on top of the parallel-reactor (-T1C) fork contention the base
-				     limit already absorbs, so it is set well above the base 5 s. -->
+				<!-- JaCoCo instrumentation slows timed methods, so the limits get extra headroom. -->
 				<unit.test.method.timeout>8 s</unit.test.method.timeout>
 				<unit.test.lifecycle.timeout>15 s</unit.test.lifecycle.timeout>
 			</properties>
@@ -1015,13 +814,8 @@
 			</build>
 		</profile>
 		<profile>
-			<!-- Attaches the javadoc jar to the GitHub Packages deployment that
-			     maven-publish.yml performs on release. The default `mvn deploy`
-			     (maven-deploy-plugin) only publishes the main jar, so without
-			     this the GitHub Packages coordinates would ship no javadoc.
-			     Opt-in via -Pgithub-packages so ordinary `mvn install` builds
-			     stay fast and never generate javadoc. (The Maven Central bundle
-			     gets its javadoc from the separate `release` profile instead.) -->
+			<!-- Attaches the javadoc jar to the GitHub Packages deploy. Opt-in, so ordinary builds
+			     never generate javadoc. -->
 			<id>github-packages</id>
 			<build>
 				<plugins>
@@ -1045,24 +839,12 @@
 			</build>
 		</profile>
 		<profile>
-			<!-- Publishes signed artifacts (sources, javadoc, GPG signatures)
-			     to Maven Central via the Sonatype Central Portal. Opt-in with
-			     -Prelease so ordinary and CI builds never need GPG keys or
-			     Central credentials. The central-publishing-maven-plugin runs
-			     with extensions enabled, so it takes over the deploy phase in
-			     place of the default maven-deploy-plugin (GitHub Packages). -->
+			<!-- Publishes signed artifacts to Maven Central. Opt-in, so ordinary builds need no GPG
+			     keys or Central credentials. -->
 			<id>release</id>
 			<properties>
-				<!-- The data and context modules apply spring-boot:repackage,
-				     which by default replaces the main jar with an executable
-				     Spring Boot bundle (nested BOOT-INF dependencies plus a
-				     launch script from <executable>true</executable>). Maven
-				     Central rejects executable bundles ("Executable bundles are
-				     not supported"), and such a fat jar is not a usable library
-				     dependency anyway. Skip repackaging for the release so the
-				     plain, reusable library jar is what gets published. The
-				     executable jar remains available from ordinary local builds
-				     for running the MCP servers. -->
+				<!-- Central rejects the executable bundle spring-boot:repackage produces, so publish
+				     the plain library jar instead. -->
 				<spring-boot.repackage.skip>true</spring-boot.repackage.skip>
 			</properties>
 			<build>
@@ -1100,13 +882,9 @@
 						<artifactId>central-publishing-maven-plugin</artifactId>
 						<extensions>true</extensions>
 						<configuration>
-							<!-- Server credentials live under this id in settings.xml. -->
 							<publishingServerId>central</publishingServerId>
 							<autoPublish>${central.autoPublish}</autoPublish>
 							<waitUntil>${central.waitUntil}</waitUntil>
-							<!-- Honoured per module, so a module stays out of the bundle by
-							     setting the property rather than redeclaring this plugin
-							     inside a copy of this profile. -->
 							<skipPublishing>${central.skipPublishing}</skipPublishing>
 						</configuration>
 					</plugin>

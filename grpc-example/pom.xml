@@ -12,22 +12,16 @@
 	<name>grpc-example</name>
 	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
 	<properties>
-		<!-- This module only exercises generated protobuf/gRPC classes, so the
-		     instruction-coverage gate is not meaningful here. The mutation gate is
-		     not meaningful for the same reason: with no hand-written production
-		     Java at all, PIT scored the module at 14% — 615 of its 776 mutants
-		     uncovered — measuring protoc's output rather than anybody's tests. -->
+		<!-- Only generated protobuf and gRPC classes here, so the coverage and mutation gates would
+		     measure protoc's output rather than anybody's tests. -->
 		<jacoco.skip>true</jacoco.skip>
 		<pitest.skip>true</pitest.skip>
-		<!-- An example, not a reusable library, so keep it out of both
-		     publications: the GitHub Packages deployment maven-deploy-plugin
-		     performs on `mvn deploy`, and the Maven Central bundle the root pom's
-		     release profile publishes. -->
+		<!-- An example, not a reusable library: keep it out of the GitHub Packages deploy and the
+		     Maven Central bundle. -->
 		<maven.deploy.skip>true</maven.deploy.skip>
 		<central.skipPublishing>true</central.skipPublishing>
-		<!-- Default main class for exec:java. Declared as a property (rather than
-		     hard-coded in the plugin <configuration>) so that -Dexec.mainClass on
-		     the command line can override it to run GreeterClient. -->
+		<!-- A property rather than a literal in the plugin configuration, so -Dexec.mainClass can
+		     override it to run GreeterClient. -->
 		<exec.mainClass>io.github.adamw7.tools.grpc.GreeterServer</exec.mainClass>
 	</properties>
 	<build>
@@ -134,12 +128,8 @@
 			<artifactId>junit-jupiter-engine</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!--
-			This module's src/main carries only .proto: the sole Java that logs is the
-			GreeterClient/GreeterServer pair under src/test, so both artifacts are test
-			scope. At compile scope they were published as dependencies of a jar that
-			cannot use them.
-		-->
+		<!-- src/main carries only .proto; the Java that logs is the test-scoped
+		     GreeterClient/GreeterServer pair. -->
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-api</artifactId>

@@ -17,10 +17,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<!-- The tight heap is the point of this module: it proves the
-					     iterative sources stream rather than buffer. @{argLine} keeps
-					     whatever the build already put there (the JaCoCo agent under
-					     the coverage profile) instead of dropping it. -->
+					<!-- The tight heap is the point of this module: it proves the iterative sources
+					     stream rather than buffer. @{argLine} keeps the JaCoCo agent composed in. -->
 					<argLine>@{argLine} -Xmx16m</argLine>
 				</configuration>
 			</plugin>

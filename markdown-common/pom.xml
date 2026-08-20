@@ -12,20 +12,14 @@
 	<name>Shared Markdown reader</name>
 	<description>Reads a Markdown document into its lines plus the masks marking which of them are code and which sit inside an HTML comment, so a checker and a rewriter agree on what the document says.</description>
 	<properties>
-		<!-- Mutation-score floor for this module, a few points under what it
-		     measures today so an equivalent refactor cannot turn the build red.
-		     See the root pom's pitest.mutationThreshold. -->
+		<!-- Mutation-score floor, a few points under what this module measures today. See the root
+		     pom's pitest.mutationThreshold. -->
 		<pitest.mutationThreshold>91</pitest.mutationThreshold>
 	</properties>
 	<build>
 		<plugins>
-			<!-- This module has no module-info.java, so the JPMS name a consumer's
-			     `requires` resolves against was being derived from the jar filename.
-			     javac warns about publishing such a filename-based automodule,
-			     because renaming the artifact silently renames the module. Pinning
-			     the manifest entry to the name the filename already produced keeps
-			     existing consumers working and makes the name part of the artifact
-			     instead of an accident. See mcp-common, which does the same. -->
+			<!-- No module-info.java here, so pin the JPMS name the jar filename already produced
+			     rather than let it change with the artifactId. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -39,15 +33,9 @@
 			</plugin>
 		</plugins>
 	</build>
-	<!-- Deliberately dependency-free beyond the JDK. Two modules read Markdown the
-	     same way and must keep agreeing about it: claude-code-enforcer's
-	     claudeMdFormat rule judges a CLAUDE.md, and adopt's ClaudeMdConformer
-	     reshapes one so that rule passes. They used to carry a copy of this reader
-	     each, because adopt cannot depend on claude-code-enforcer without putting
-	     the maven-enforcer API and a shipped rule on every consumer's classpath.
-	     Carving the reader out is what lets both depend on the same one instead —
-	     which only works while it stays free of either module's dependencies, so
-	     add nothing here without a very good reason. -->
+	<!-- Deliberately dependency-free beyond the JDK: claude-code-enforcer's claudeMdFormat rule and
+	     adopt's ClaudeMdConformer both read Markdown through this module, and adopt cannot take on
+	     the enforcer's dependencies. Add nothing here. -->
 	<dependencies>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

@@ -12,19 +12,14 @@
 	<name>CLAUDE.md enforcer rule</name>
 	<description>Custom maven-enforcer rule that validates CLAUDE.md documents for structure and naming conventions during the build.</description>
 	<properties>
-		<!-- Mutation-score floor for this module, a few points under the 91% it
-		     measures today so an equivalent refactor cannot turn the build red.
-		     See the root pom's pitest.mutationThreshold. -->
+		<!-- Mutation-score floor, a few points under what this module measures today. See the root
+		     pom's pitest.mutationThreshold. -->
 		<pitest.mutationThreshold>88</pitest.mutationThreshold>
 	</properties>
 	<build>
 		<plugins>
-			<!-- The rule jar is also the command line: `java -jar` runs the checks
-			     against a project directory with no Maven build around them, which
-			     is what a pre-commit hook, a Gradle project and anyone evaluating
-			     the rules before wiring them all need. Naming the class in the
-			     manifest costs the jar nothing when it is resolved as a
-			     maven-enforcer dependency instead. -->
+			<!-- The rule jar is also the command line: java -jar runs the checks against a project
+			     directory with no Maven build around them. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -33,11 +28,8 @@
 						<manifest>
 							<mainClass>io.github.adamw7.tools.enforcer.cli.Main</mainClass>
 						</manifest>
-						<!-- No module-info.java here, so without this the JPMS name would
-						     be derived from the jar filename and would change with the
-						     artifactId or the version scheme. Pinning the name the
-						     filename already produced keeps it stable for a consumer that
-						     puts the rule jar on the module path. See mcp-common. -->
+						<!-- No module-info.java here, so pin the JPMS name the jar filename already
+						     produced rather than let it change with the artifactId. -->
 						<manifestEntries>
 							<Automatic-Module-Name>tools.claude.code.enforcer</Automatic-Module-Name>
 						</manifestEntries>
@@ -63,13 +55,8 @@
 							</execution>
 						</executions>
 						<configuration>
-							<!-- The *IT tests run real Maven builds against the rule jar
-							     this module has just packaged, which a forked test JVM
-							     cannot locate on its own: the local repository may have
-							     been relocated with -Dmaven.repo.local, and the jar's
-							     name comes from the build's finalName. Only the build
-							     knows all of that, so it hands each fact over rather
-							     than letting a test guess. -->
+							<!-- The *IT tests run real Maven builds against the jar just packaged,
+							     which only the build can locate. -->
 							<systemPropertyVariables>
 								<enforcer.it.mavenHome>${maven.home}</enforcer.it.mavenHome>
 								<enforcer.it.localRepository>${settings.localRepository}</enforcer.it.localRepository>
@@ -84,18 +71,11 @@
 			</build>
 		</profile>
 	</profiles>
-	<!-- flatten-maven-plugin is inherited from the root pom, which flattens the
-	     CI-friendly ${revision} out of every module's pom. This module needs it
-	     because it is consumed as a maven-enforcer-plugin dependency resolved
-	     from a repository outside the reactor. -->
+	<!-- Needed here because this module is consumed as a maven-enforcer-plugin dependency resolved
+	     from outside the reactor. -->
 	<dependencies>
-		<!-- Reads a Markdown document into its lines plus the code and HTML-comment
-		     masks every structural check is made against. It is a module of its own
-		     because the adopt pipeline's ClaudeMdConformer reshapes a CLAUDE.md so
-		     the claudeMdFormat rule below passes, and the two have to read the
-		     document identically; adopt cannot depend on this module to get that,
-		     since it would put the maven-enforcer API and a shipped rule on every
-		     consumer's classpath. -->
+		<!-- The Markdown reader adopt's ClaudeMdConformer shares, so the checker and the rewriter
+		     cannot disagree about a document. -->
 		<dependency>
 			<groupId>io.github.adamw7</groupId>
 			<artifactId>tools.markdown-common</artifactId>
@@ -113,13 +93,8 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
-		<!-- Reads the YAML front matter of a skill, sub-agent, command or OKF
-		     concept document. The rules used to scan those lines by hand, which
-		     meant re-deriving where a quoted scalar ends, where a trailing comment
-		     begins, and how a block scalar folds — every one of them a place the
-		     check could disagree with the loader Claude Code itself reads the
-		     document with. FrontMatter now composes the block with SnakeYAML
-		     instead, so the rules validate what the tool acts on. -->
+		<!-- Reads YAML front matter through SnakeYAML, so the rules validate what Claude Code's own
+		     loader acts on. -->
 		<dependency>
 			<groupId>org.yaml</groupId>
 			<artifactId>snakeyaml</artifactId>

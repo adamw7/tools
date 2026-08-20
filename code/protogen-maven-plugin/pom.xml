@@ -12,20 +12,14 @@
 	<name>protogen-maven-plugin</name>
 	<description>Maven plugin that generates fluent, type-safe builders for protobuf-generated message classes during the generate-sources phase.</description>
 	<properties>
-		<!-- Mutation-score floor for this module, a few points under the 87% it
-		     measures today so an equivalent refactor cannot turn the build red.
-		     See the root pom's pitest.mutationThreshold. -->
+		<!-- Mutation-score floor, a few points under what this module measures today. See the root
+		     pom's pitest.mutationThreshold. -->
 		<pitest.mutationThreshold>84</pitest.mutationThreshold>
 	</properties>
 	<build>
 		<plugins>
-			<!-- No module-info.java here, so the JPMS name was being derived from
-			     the jar filename, which changes with the artifactId or the version
-			     scheme. Unlike the library modules this artifactId carries no
-			     `tools.` prefix, so the name is spelled out rather than left to the
-			     filename: a Maven plugin is resolved by coordinates and loaded by
-			     Maven's own classloader, never named in a `requires`, so nothing
-			     depends on the previous filename-derived spelling. See mcp-common. -->
+			<!-- No module-info.java here. A plugin is loaded by coordinates and never named in a
+			     requires, so the JPMS name is spelled out rather than derived from the filename. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -37,8 +31,7 @@
 					</archive>
 				</configuration>
 			</plugin>
-			<!-- Expose the mockito-core jar path so it can be pre-loaded as a Java
-			     agent below, avoiding Mockito's slow runtime self-attach. -->
+			<!-- Path for the Mockito agent below. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -51,13 +44,8 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- Pre-load Mockito as a Java agent at JVM startup. This module is the
-			     only one that uses Mockito; loading the agent up front (instead of
-			     letting Mockito self-attach on first mock creation) both silences the
-			     "Mockito is currently self-attaching" deprecation warning and moves
-			     the ~0.8s byte-buddy attach cost out of the timed test method, so the
-			     surefire per-test timeout can stay tight. @{argLine} keeps the JaCoCo
-			     agent (coverage profile) composed in. -->
+			<!-- Pre-loads Mockito as an agent instead of its slow runtime self-attach, keeping that
+			     cost out of the timed test method. @{argLine} keeps the JaCoCo agent composed in. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -91,8 +79,7 @@
 			<artifactId>junit-jupiter-engine</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- The plugin itself logs through the Mojo log, so log4j2 is narrowed to
-		     the scope the tests need it in and stays out of the plugin's own jar. -->
+		<!-- The plugin logs through the Mojo log, so log4j2 stays out of its jar. -->
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-api</artifactId>

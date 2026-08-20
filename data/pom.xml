@@ -12,16 +12,13 @@
 	<name>Tooling for data</name>
 	<description>Data sources (CSV, GZip, JDBC, Parquet; in-memory and iterative), a uniqueness-checking tool, data structures, and an MCP server exposing the uniqueness checker.</description>
 	<properties>
-		<!-- Mutation-score floor for this module, a few points under the 86% it
-		     measures today so an equivalent refactor cannot turn the build red.
-		     See the root pom's pitest.mutationThreshold. -->
+		<!-- Mutation-score floor, a few points under what this module measures today. See the root
+		     pom's pitest.mutationThreshold. -->
 		<pitest.mutationThreshold>82</pitest.mutationThreshold>
 	</properties>
 	<build>
 		<plugins>
-			<!-- Expose the mockito-core jar path (it arrives transitively through
-			     spring-boot-starter-test) so it can be pre-loaded as a Java agent
-			     below. -->
+			<!-- Path for the Mockito agent below; it arrives through spring-boot-starter-test. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -38,23 +35,11 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<!-- Run unit tests from the classpath, not the module path, so the
-					     NetworkOffExtension registered through META-INF/services is
-					     discovered by JUnit's extension auto-detection. ServiceLoader
-					     ignores META-INF/services for a named module, and surefire
-					     otherwise patches the test classes into the
-					     io.github.adamw7.tools.data module. Running from the classpath
-					     also lets the tests reach the MCP client/SDK types (which live in
-					     the unnamed module) without patching the module open. -->
-					<!-- The enable-native-access flag grants the native access the DuckDB
-					     JDBC driver needs for its System::load call. Without it the JVM
-					     warns on every Parquet test and, as that warning says, will block
-					     the call outright in a future release.
-
-					     Pre-loading Mockito as a Java agent (the Spring Boot test context
-					     mocks beans) replaces its runtime self-attach, which warns today
-					     and stops working once the JDK disallows dynamic agent loading.
-					     @{argLine} keeps the JaCoCo agent (coverage profile) composed in. -->
+					<!-- Classpath, not module path: ServiceLoader ignores META-INF/services in a
+					     named module, so NetworkOffExtension would never be found. -->
+					<!-- enable-native-access covers the DuckDB driver's System::load call, and the
+					     Mockito agent replaces its runtime self-attach. @{argLine} keeps the JaCoCo
+					     agent composed in. -->
 					<argLine>@{argLine} --enable-native-access=ALL-UNNAMED -javaagent:${org.mockito:mockito-core:jar}</argLine>
 					<useModulePath>false</useModulePath>
 				</configuration>
@@ -67,14 +52,9 @@
 					<executable>true</executable>
 					<layout>JAR</layout>
 					<jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
-					<!-- Attach the executable MCP-server jar under a classifier instead of
-					     letting it replace the main artifact. Repackaging in place gives
-					     tools.data a nested BOOT-INF/ layout, which every consumer inherits:
-					     the assembly's jar-with-dependencies then carries SampleApp under
-					     BOOT-INF/classes while its manifest Main-Class points at the flat
-					     name, so `java -jar` fails with ClassNotFoundException. With the
-					     classifier the main artifact stays an ordinary library jar and the
-					     runnable server is tools.data-{version}-boot.jar. -->
+					<!-- Attach the executable server jar under a classifier, so the main artifact
+					     stays an ordinary library jar rather than a nested BOOT-INF layout every
+					     consumer inherits. -->
 					<classifier>boot</classifier>
 				</configuration>
 			</plugin>
@@ -97,10 +77,8 @@
 							</execution>
 						</executions>
 						<configuration>
-							<!-- Run the *IT tests from the classpath, so their MCP
-							     client/SDK types (in the unnamed module) resolve without
-							     patching the module open, and the server runs exactly as it
-							     does in production (a classpath Spring Boot app). -->
+							<!-- Classpath again, so the *IT tests reach the MCP client types and run
+							     the server as production does. -->
 							<useModulePath>false</useModulePath>
 						</configuration>
 					</plugin>

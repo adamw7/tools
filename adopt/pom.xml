@@ -66,7 +66,9 @@
 	<profiles>
 		<!-- Gates the *IT tests, which need real network: MultiRepoAdoptionIT
 		     clones real GitHub repositories to prove a batch gives each one its
-		     own checkout. Mirrors the data and code/context modules. -->
+		     own checkout, and the two MCP *IT tests boot the adoption server on
+		     each HTTP transport and drive adopt_repo across it. Mirrors the data
+		     and code/context modules. -->
 		<profile>
 			<id>integration-tests</id>
 			<build>
@@ -146,6 +148,15 @@
 		<dependency>
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
+		</dependency>
+		<!-- Boots the adoption MCP server on a random port for the transport
+		     integration tests (@SpringBootTest, @LocalServerPort), as the data and
+		     code/context modules do for theirs. The MCP client those tests reach it
+		     with travels with mcp-json-jackson2 above. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

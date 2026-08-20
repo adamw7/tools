@@ -153,6 +153,13 @@ clone URL's credentials come back in the tool's own error text.
   somebody else wrote — `claude-code`'s own `.github/workflows/claude.yml` and
   `servers`' own `.mcp.json`, which no fixture can imitate. Its Maven guard is pinned to a released `--rule-version`,
   because the installer refuses to wire a `-SNAPSHOT` into another project's POM.
+- `McpStreamableHttpIT` and `McpStatelessHttpIT` (over `AbstractAdoptMcpIT`) boot
+  the adoption MCP server on each HTTP transport and drive `adopt_repo` across it
+  with a real client. The payload is a `verify_only` call — it clones
+  `octocat/Hello-World`, finds it was never adopted, and answers with the failed
+  run's JSON report — because a `dry_run` would reach `claude init` and a
+  verification shells out to `git` alone, writing nothing anywhere. Keep any new
+  transport test to that: no test may need a logged-in `claude` or `gh`.
 - Run them with `mvn -P integration-tests verify` (the profile is declared in
   `adopt`'s own pom).
 

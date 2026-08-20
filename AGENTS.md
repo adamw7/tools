@@ -596,7 +596,20 @@ module in `data`, `code/context`, `adopt` and `claude-code-enforcer`, so a new
 module's `*IT`s stay unrun until it gets its own copy. Run them with
 `mvn -P integration-tests verify`. They cover what needs something real:
 
-- `data` and `code/context` exercise their MCP servers over streamable HTTP.
+- All three MCP servers are exercised over streamable HTTP and stateless HTTP:
+  each boots on a random port and a real MCP client lists its tools and calls
+  one, so the definitions and the results are met as a client meets them.
+  `adopt`'s pair — `McpStreamableHttpIT` and `McpStatelessHttpIT` over
+  `AbstractAdoptMcpIT` — calls `adopt_repo` with `verify_only`, which clones
+  `octocat/Hello-World`, finds it was never adopted and answers with the failed
+  run's JSON report. That is the heaviest payload the server can be asked for
+  without credentials: a `dry_run` would reach `claude init`, and a verification
+  shells out to `git` alone and writes nothing, to GitHub or to the checkout.
+  The checkout is asserted on disk under the test's own workspace, so the clone
+  is known to have run on the server rather than the arguments having been
+  echoed back. The streamable test also pins the whole argument set of the
+  schema as it arrives on the wire, an argument lost in translation being
+  invisible from inside the pipeline.
 - `adopt`'s `MultiRepoAdoptionIT` clones GitHub's `octocat/Hello-World` and
   `octocat/Spoon-Knife` with the real `git`, proving a batch gives each
   repository its own checkout, that an uncloneable repository costs only itself,

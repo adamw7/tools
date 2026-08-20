@@ -132,6 +132,29 @@ and a `repositories` array of exactly the documents above:
 }
 ```
 
+## Security
+
+The pipeline writes to real repositories with the host's own credentials, so the
+endpoint in front of it is part of the security boundary:
+
+- **Loopback binding.** The HTTP transports (streamable HTTP and stateless HTTP)
+  bind to `127.0.0.1` by default (`server.address` in
+  `adopt/src/main/resources/application.properties`, which also gives the server
+  port `8083` of its own so all three MCP servers here can run side by side). The
+  `/mcp` endpoint has **no authentication**, and `adopt_repo` clones
+  repositories, runs `claude`, pushes branches and opens pull requests on the
+  `git` and `gh` logins of the machine serving it — so an endpoint on a routable
+  interface hands that reach to whoever can reach the host. Change
+  `server.address` only after putting authentication in front of it.
+
+- **The default branch is never written to.** Every adoption works on the feature
+  branch it names, so the worst a call can do to a repository it was pointed at
+  is push a branch and open a pull request.
+
+- **Credentials are masked.** A clone URL carrying a token is masked in
+  everything the run reports and is never left behind in the checkout's
+  `.git/config`.
+
 ## Configuring MCP Clients
 
 For any MCP client that supports stdio transport:

@@ -210,4 +210,18 @@ public class UniquenessCheckTest extends DBTest {
 		
 	}
 
+	@Test
+	public void allColumnsOnAHeaderlessSourceNamesTheCause() {
+		NoMemoryUniquenessCheck uniqueness = new NoMemoryUniquenessCheck(
+				Utils.createDataSource(Utils.getHouseholdFile()));
+
+		// The source was built without a columnsRow, so it has no columns to check.
+		// The failure used to reach the caller as "Wrong input: null", which named
+		// neither the source nor the header it was created without.
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, uniqueness::execForAllColumns);
+
+		assertEquals("Source was created without a header row, so it has no column names; "
+				+ "pass the 1-based row the header sits on as columnsRow", thrown.getMessage());
+	}
+
 }

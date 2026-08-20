@@ -53,9 +53,34 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;
 	}
 
+	/**
+	 * The header row read by {@link #open()}. A source built without one &mdash;
+	 * {@code new CSVDataSource(fileName)} and the other constructors defaulting
+	 * {@code columnsRow} to {@code -1} &mdash; has no column names to report, so it says
+	 * that here rather than handing back a {@code null} array the caller only finds out
+	 * about further downstream: {@code execForAllColumns()} on such a source used to
+	 * fail with {@code Wrong input: null}, which names neither the source nor the
+	 * missing header.
+	 *
+	 * <p>The header outlives the read: a source closed after a full pass still names its
+	 * columns, since {@link #close()} ends the scan without unlearning the schema. Only
+	 * {@link #reset()} drops them, and it reloads them as it reopens.</p>
+	 */
 	@Override
 	public String[] getColumnNames() {
-		return columns;
+		if (!columnsExist()) {
+			throw new IllegalStateException(
+					"Source was created without a header row, so it has no column names; "
+							+ "pass the 1-based row the header sits on as columnsRow");
+		}
+		if (columnsAreLoaded()) {
+			return columns;
+		}
+		if (!opened) {
+			throw new IllegalStateException("DataSource is not open");
+		}
+		throw new IllegalStateException(
+				"Row " + columnsRow + " holds no header: the file ends before it, or it is a comment");
 	}
 
 	@Override

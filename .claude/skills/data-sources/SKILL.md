@@ -27,6 +27,13 @@ Every format ships in two variants:
   `ColumnarDataSource`, so a schema-less source can never be handed in and answer
   with `null`. Don't widen `IterableDataSource` to "fix" a compile error — reach
   for a columnar source instead.
+- `getColumnNames()` **never returns `null`**: a columnar source that cannot name
+  its columns throws `IllegalStateException` saying why. `IterableSQLDataSource`
+  does it for a source read before `open()`; `CSVDataSource` does it for one built
+  without a `columnsRow` (`new CSVDataSource(fileName)` defaults it to `-1`), which
+  otherwise surfaced two frames away as `execForAllColumns()` failing with
+  `Wrong input: null`. A CSV header survives `close()` and is only dropped —
+  and reloaded — by `reset()`.
 
 ## Source picker
 | Format | In-memory | Iterable | Notes |

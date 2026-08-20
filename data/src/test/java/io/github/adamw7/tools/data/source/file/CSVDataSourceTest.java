@@ -248,6 +248,40 @@ public class CSVDataSourceTest {
 	}
 
 	@Test
+	public void columnNamesWithoutAHeaderRowFailFast() {
+		CSVDataSource source = new CSVDataSource(streamOf("1,Adam\n"));
+		source.open();
+		// columnsRow defaults to -1, so there is no header to name the columns with.
+		// The source must say that instead of answering null, which reached callers
+		// as an unrelated "Wrong input: null" further downstream.
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getColumnNames);
+		Utils.close(source);
+		assertEquals("Source was created without a header row, so it has no column names; "
+				+ "pass the 1-based row the header sits on as columnsRow", thrown.getMessage());
+	}
+
+	@Test
+	public void columnNamesBeforeOpenFailFast() {
+		CSVDataSource source = new CSVDataSource(streamOf("id,name\n1,Adam\n"), ",", COLUMNS_ROW);
+		// The header is only read by open(), so before it the source has nothing to
+		// report and must not pass a null array off as the schema.
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getColumnNames);
+		Utils.close(source);
+		assertEquals("DataSource is not open", thrown.getMessage());
+	}
+
+	@Test
+	public void columnNamesFromAnUnreadableHeaderRowFailFast() {
+		CSVDataSource source = new CSVDataSource(streamOf("# only a comment\n"), ",", COLUMNS_ROW);
+		source.open();
+		// The configured row exists but is a comment, so nextRow() skipped it and left
+		// the columns unloaded; the message names the row rather than the open state.
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getColumnNames);
+		Utils.close(source);
+		assertEquals("Row 1 holds no header: the file ends before it, or it is a comment", thrown.getMessage());
+	}
+
+	@Test
 	public void inMemoryReadAll() {
 		String fileName = Utils.getHouseholdFile();
 		InMemoryCSVDataSource inMemoryDataSource = Utils.createInMemoryDataSource(fileName, 1);

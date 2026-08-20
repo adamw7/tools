@@ -23,6 +23,10 @@ public class InMemoryJSONDataSource extends AbstractInMemoryJacksonDataSource {
 		super(filePath);
 	}
 
+	public InMemoryJSONDataSource(String filePath, AllowedPaths allowedPaths) {
+		super(filePath, allowedPaths);
+	}
+
 	@Override
 	protected ObjectMapper mapper() {
 		return MAPPER;

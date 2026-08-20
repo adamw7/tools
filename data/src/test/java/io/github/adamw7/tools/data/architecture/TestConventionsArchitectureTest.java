@@ -31,11 +31,15 @@ public class TestConventionsArchitectureTest {
 	static final ArchTests commonTestConventions = ArchTests.in(CommonTestConventions.class);
 
 	/**
-	 * The module's own answer to the shared rule on system properties. The allowed
-	 * base directory is the other piece of JVM-wide state a test here can write, and
-	 * it fails the same way: while one class points it at a {@code @TempDir}, every
-	 * concurrently running test that opens a file source is refused the resource it
+	 * The module's own answer to the shared rule on system properties. The deprecated
+	 * process-wide base directory is the other piece of JVM-wide state a test here can
+	 * write, and it fails the same way: while one class points it at a {@code @TempDir},
+	 * every concurrently running test that opens a file source is refused the resource it
 	 * reads, with a {@link SecurityException} that names a directory it never chose.
+	 *
+	 * <p>A test confining a source through an {@link io.github.adamw7.tools.data.source.file.AllowedPaths}
+	 * of its own needs none of this, which is why only the class covering those two
+	 * methods still carries {@code @Isolated}; the rule retires with them.</p>
 	 */
 	@ArchTest
 	static final ArchRule testsConfiningFileAccessAreIsolated = noClasses()

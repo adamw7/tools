@@ -19,6 +19,20 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 		super(fileName, DEFAULT_DELIMITER, -1);
 	}
 
+	public InMemoryCSVDataSource(String fileName, AllowedPaths allowedPaths) throws FileNotFoundException {
+		super(fileName, DEFAULT_DELIMITER, -1, allowedPaths);
+	}
+
+	public InMemoryCSVDataSource(String fileName, int columnsRow, AllowedPaths allowedPaths)
+			throws FileNotFoundException {
+		super(fileName, DEFAULT_DELIMITER, columnsRow, allowedPaths);
+	}
+
+	public InMemoryCSVDataSource(String fileName, String delimiter, int columnsRow, AllowedPaths allowedPaths)
+			throws FileNotFoundException {
+		super(fileName, delimiter, columnsRow, allowedPaths);
+	}
+
 	@Override
 	public List<String[]> readAll() {
 		return super.readAll();

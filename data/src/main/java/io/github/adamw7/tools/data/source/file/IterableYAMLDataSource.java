@@ -20,6 +20,10 @@ public class IterableYAMLDataSource extends AbstractIterableJacksonDataSource {
 		super(fileName);
 	}
 
+	public IterableYAMLDataSource(String fileName, AllowedPaths allowedPaths) {
+		super(fileName, allowedPaths);
+	}
+
 	public IterableYAMLDataSource(InputStream inputStream) {
 		super(inputStream);
 	}

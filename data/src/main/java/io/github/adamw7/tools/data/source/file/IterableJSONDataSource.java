@@ -15,6 +15,10 @@ public class IterableJSONDataSource extends AbstractIterableJacksonDataSource {
 		super(fileName);
 	}
 
+	public IterableJSONDataSource(String fileName, AllowedPaths allowedPaths) {
+		super(fileName, allowedPaths);
+	}
+
 	public IterableJSONDataSource(InputStream inputStream) {
 		super(inputStream);
 	}

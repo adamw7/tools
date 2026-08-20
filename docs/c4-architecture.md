@@ -218,7 +218,7 @@ flowchart TB
             parquetSrc["<b>Parquet sources</b><br/><i>DuckDbParquet — in-process DuckDB</i>"]
             jacksonMem["<b>In-memory JSON · YAML · TOON</b><br/><i>map-backed</i>"]
             jacksonIter["<b>Iterative JSON · YAML · TOON</b><br/><i>forward-only, no schema</i>"]
-            paths["<b>PathValidator</b><br/><i>path checks</i>"]
+            paths["<b>AllowedPaths</b><br/><i>path checks, confined<br/>per source</i>"]
             compression["<b>ZipUtils</b><br/><i>GZip</i>"]
         end
 

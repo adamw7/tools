@@ -53,6 +53,26 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;
 	}
 
+	public CSVDataSource(String fileName, AllowedPaths allowedPaths) throws FileNotFoundException {
+		this(fileName, DEFAULT_DELIMITER, -1, allowedPaths);
+	}
+
+	public CSVDataSource(String fileName, int columnsRow, AllowedPaths allowedPaths) throws FileNotFoundException {
+		this(fileName, DEFAULT_DELIMITER, columnsRow, allowedPaths);
+	}
+
+	/**
+	 * Reads {@code fileName} confined to {@code allowedPaths}, rather than to whatever
+	 * base directory the process happens to have set.
+	 */
+	public CSVDataSource(String fileName, String delimiter, int columnsRow, AllowedPaths allowedPaths)
+			throws FileNotFoundException {
+		super(fileName, allowedPaths);
+		this.delimiter = delimiter;
+		this.columnsRow = columnsRow;
+		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;
+	}
+
 	/**
 	 * The header row read by {@link #open()}. A source built without one &mdash;
 	 * {@code new CSVDataSource(fileName)} and the other constructors defaulting

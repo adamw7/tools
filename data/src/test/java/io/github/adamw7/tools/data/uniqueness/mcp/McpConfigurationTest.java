@@ -10,45 +10,37 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.api.parallel.Isolated;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.adamw7.tools.data.source.file.PathValidator;
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
+import io.github.adamw7.tools.mcp.McpTool;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
 /**
- * Runs alone under the class-parallel unit-test run: {@code tools()} confines file
- * access by setting the JVM-wide {@link PathValidator} base directory, which would
- * otherwise deny a concurrently running test the file it reads.
+ * Runs in the class-parallel unit suite: the base directory {@code tools()} confines its
+ * tools to is theirs alone, so pointing it at a {@code @TempDir} here denies a
+ * concurrently running test nothing.
  */
-@Isolated
 public class McpConfigurationTest {
 
 	private final McpConfiguration config = new McpConfiguration();
-
-	@AfterEach
-	public void clearBaseDir() {
-		// tools() confines file access through global PathValidator state; reset it
-		// so the restriction does not leak into other tests.
-		PathValidator.clearAllowedBaseDir();
-	}
 
 	@Test
 	public void confinesFileAccessToConfiguredBaseDir(@TempDir Path baseDir) throws IOException {
 		Path insideFile = Files.createFile(baseDir.resolve("data.csv"));
 		config.allowedBaseDir = baseDir.toString();
 
-		config.tools();
+		AllowedPaths confinement = config.confinement();
 
-		assertThrows(SecurityException.class, () -> PathValidator.validate(outsideBase(baseDir)));
-		assertDoesNotThrow(() -> PathValidator.validate(insideFile.toRealPath().toString()));
+		assertThrows(SecurityException.class, () -> confinement.validate(outsideBase(baseDir)));
+		assertDoesNotThrow(() -> confinement.validate(insideFile.toRealPath().toString()));
 	}
 
 	@Test
@@ -56,11 +48,28 @@ public class McpConfigurationTest {
 		Path outsideFile = Files.createFile(outsideDir.resolve("data.csv"));
 		config.allowedBaseDir = "   ";
 
-		config.tools();
+		AllowedPaths confinement = config.confinement();
 
 		// The JUnit temp dir lives outside the module's working directory, so a file
 		// there must be rejected once access is confined to the default base.
-		assertThrows(SecurityException.class, () -> PathValidator.validate(outsideFile.toRealPath().toString()));
+		assertThrows(SecurityException.class, () -> confinement.validate(outsideFile.toRealPath().toString()));
+	}
+
+	/**
+	 * The tools the server registers are the ones carrying that boundary: a client
+	 * naming a file outside it is refused rather than served.
+	 */
+	@Test
+	public void toolsAreBuiltConfinedToThatBaseDir(@TempDir Path baseDir, @TempDir Path outsideDir) throws IOException {
+		Path outsideFile = Files.writeString(outsideDir.resolve("outside.csv"), "id\n1\n");
+		config.allowedBaseDir = baseDir.toString();
+
+		McpTool tool = config.tools().get(0);
+
+		assertThrows(SecurityException.class, () -> tool.apply(Map.of(
+				"file", outsideFile.toRealPath().toString(),
+				"columns_row", "1",
+				"columns_name", "id")));
 	}
 
 	@Test

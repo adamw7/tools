@@ -8,6 +8,7 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
 import io.github.adamw7.tools.data.source.file.InMemoryCSVDataSource;
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.uniqueness.InMemoryUniquenessCheck;
@@ -22,6 +23,8 @@ public class UniquenessTool implements McpTool {
 
 	private static final Logger log = LogManager.getLogger(UniquenessTool.class.getName());
 
+	private final AllowedPaths allowedPaths;
+
     private final ToolDefinition toolDefinition = new ToolDefinition("uniqueness_check",
             "Check if a given set of columns is unique in a given data set",
                     Map.of(
@@ -34,8 +37,15 @@ public class UniquenessTool implements McpTool {
                         "required", List.of("file", "columns_row", "columns_name")
                     ));
 
-	public UniquenessTool() {
-    }
+	/**
+	 * Reads only files under {@code allowedPaths}, the boundary the server wiring this
+	 * tool confined it to. A client naming anything outside it &mdash; {@code /etc/passwd},
+	 * or a symlink in the base directory pointing there &mdash; is refused when the source
+	 * is built.
+	 */
+	public UniquenessTool(AllowedPaths allowedPaths) {
+		this.allowedPaths = allowedPaths;
+	}
 
 	public ToolDefinition getToolDefinition() {
 		return toolDefinition;
@@ -53,7 +63,7 @@ public class UniquenessTool implements McpTool {
 		String fileName = ToolArguments.requiredString(arguments, "file");
 		String columnName = ToolArguments.requiredString(arguments, "columns_name");
 		int columnsRow = ToolArguments.requiredInt(arguments, "columns_row");
-		try (InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow)) {
+		try (InMemoryDataSource source = new InMemoryCSVDataSource(fileName, columnsRow, allowedPaths)) {
 			Uniqueness check = new InMemoryUniquenessCheck(source);
 			Result result = check.exec(columnName);
 			logResult(result, columnName);

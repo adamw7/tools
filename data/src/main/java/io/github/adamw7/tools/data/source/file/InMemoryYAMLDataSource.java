@@ -24,6 +24,10 @@ public class InMemoryYAMLDataSource extends AbstractInMemoryJacksonDataSource {
 		super(filePath);
 	}
 
+	public InMemoryYAMLDataSource(String filePath, AllowedPaths allowedPaths) {
+		super(filePath, allowedPaths);
+	}
+
 	@Override
 	protected ObjectMapper mapper() {
 		return MAPPER;

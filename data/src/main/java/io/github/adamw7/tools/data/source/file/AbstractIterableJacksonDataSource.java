@@ -28,6 +28,10 @@ public abstract class AbstractIterableJacksonDataSource extends AbstractIterable
 		super(fileName);
 	}
 
+	protected AbstractIterableJacksonDataSource(String fileName, AllowedPaths allowedPaths) {
+		super(fileName, allowedPaths);
+	}
+
 	protected AbstractIterableJacksonDataSource(InputStream inputStream) {
 		super(inputStream);
 	}

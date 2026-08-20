@@ -32,6 +32,11 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 		parse();
 	}
 
+	protected AbstractInMemoryMapDataSource(String filePath, AllowedPaths allowedPaths) {
+		super(filePath, allowedPaths);
+		parse();
+	}
+
 	/** Parses the open {@link #scanner} into {@link #fieldsMap}. */
 	protected abstract void parse();
 

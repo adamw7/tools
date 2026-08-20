@@ -290,10 +290,15 @@ Then register it in `McpConfiguration`:
 ```java
 @Override
 protected List<McpTool> tools() {
-    confineFileAccess();
-    return List.of(new UniquenessTool(), new MyNewTool());
+    AllowedPaths allowedPaths = confinement();
+    return List.of(new UniquenessTool(allowedPaths), new MyNewTool(allowedPaths));
 }
 ```
+
+A tool that opens files takes the `AllowedPaths` and hands it to every data source
+it builds, so the boundary confines this server's tools and nothing else in the
+JVM. `PathValidator.setAllowedBaseDir`, which set one boundary for the whole
+process, is deprecated for removal.
 
 A `RuntimeException` thrown out of `apply` already becomes an error result, so
 there is no need to catch one just to report it over the protocol.

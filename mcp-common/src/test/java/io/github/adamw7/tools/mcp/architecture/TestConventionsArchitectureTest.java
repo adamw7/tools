@@ -14,10 +14,14 @@ import io.github.adamw7.tools.test.architecture.CommonTestConventions;
  * rules, this class analyses only the test classes via
  * {@link ImportOption.OnlyIncludeTests}.
  */
-@AnalyzeClasses(packages = TestConventionsArchitectureTest.TEST_PACKAGE, importOptions = ImportOption.OnlyIncludeTests.class)
+@AnalyzeClasses(
+		packages = { TestConventionsArchitectureTest.TEST_PACKAGE, TestConventionsArchitectureTest.SECRET_TEST_PACKAGE },
+		importOptions = ImportOption.OnlyIncludeTests.class)
 public class TestConventionsArchitectureTest {
 
 	static final String TEST_PACKAGE = "io.github.adamw7.tools.mcp";
+
+	static final String SECRET_TEST_PACKAGE = "io.github.adamw7.tools.secret";
 
 	@ArchTest
 	static final ArchTests commonTestConventions = ArchTests.in(CommonTestConventions.class);

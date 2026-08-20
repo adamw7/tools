@@ -45,7 +45,8 @@ The server uses:
 - **Transport**: stdio (default), streamable HTTP
   (`--transport.mode=streamable-http`), which serves the MCP endpoint at `/mcp`,
   or stateless HTTP (`--transport.mode=stateless-http`), which serves the same
-  `/mcp` endpoint without keeping a session.
+  `/mcp` endpoint without keeping a session. Any other value is refused at
+  startup with a message naming the three.
 - **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)

@@ -679,6 +679,7 @@ It contains:
     - `stdio` (default) — JSON-RPC over stdin/stdout (Spring Boot, no HTTP server started)
     - `streamable-http` — the modern HTTP transport served at `/mcp`
     - `stateless-http` — the same HTTP transport served at `/mcp`, but session-less: each JSON-RPC request is answered in isolation, which suits load-balanced or serverless deployments
+    - any other value is refused at startup with a message naming the three
   - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
   - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`
   - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for client configuration (Claude Desktop, Cline) and usage examples

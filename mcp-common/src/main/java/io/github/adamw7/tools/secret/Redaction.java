@@ -1,13 +1,23 @@
-package io.github.adamw7.tools.adopt;
+package io.github.adamw7.tools.secret;
 
 import java.util.regex.Pattern;
 
 /**
- * Masks the credentials a clone URL can carry before the text reaches somewhere it
- * outlives the run. An adoption driven by CI is handed
- * {@code https://x-access-token:TOKEN@github.com/owner/repo.git}, and puts that URL
- * in three places a secret must not reach: the log, a failing command's
- * {@link AdoptionException}, and the JSON report's {@code failure} field.
+ * Masks the credentials a URL can carry before the text reaches somewhere it outlives
+ * the request that carried it. An adoption driven by CI is handed
+ * {@code https://x-access-token:TOKEN@github.com/owner/repo.git}, and puts that URL in
+ * three places a secret must not reach: the log, a failing command's
+ * {@code AdoptionException}, and the JSON report's {@code failure} field. The MCP
+ * servers are handed the same URL as a tool argument, and a JDBC URL carries a
+ * password the same way.
+ *
+ * <p>It lives in {@code mcp-common} because that is the lowest module both users
+ * share — the adoption pipeline and the shared MCP failure path — and one masking
+ * rule is the point: a second implementation is a second reading of where a
+ * credential ends, and the half that reads it differently is the half that logs the
+ * token. It is deliberately outside {@code io.github.adamw7.tools.mcp}, since masking
+ * a secret is not MCP scaffolding and the adoption's own layering rule keeps that
+ * scaffolding to its delivery package.
  *
  * <p>Only the user information of a URL with a scheme is masked, so the scp-like
  * {@code git@host:owner/repo} — whose {@code git@} is a well-known user, not a

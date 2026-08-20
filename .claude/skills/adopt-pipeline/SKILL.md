@@ -73,8 +73,9 @@ pull request's URL.
   `--no-write-fetch-head`. Do not reach for `-c remote.origin.url` or a
   positional URL — git treats the first as another value of a multi-valued key
   and resolves the configured one instead, and writes the second into the reflog
-  of every ref the fetch updates. `Redaction` masks credentials in every log,
-  message and report — keep it that way.
+  of every ref the fetch updates. `Redaction` (in `mcp-common`, package
+  `io.github.adamw7.tools.secret`, so the MCP failure path masks with the same
+  rule) masks credentials in every log, message and report — keep it that way.
 - Register the step in `GitHubRepoAdopter.defaultSteps` (or the optional list it
   belongs to), and unit-test it with a fake `CommandRunner`.
 

@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.Elapsed;
-import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.secret.Redaction;
 
 /**
  * {@link CommandRunner} backed by {@link ProcessBuilder}. Standard error is

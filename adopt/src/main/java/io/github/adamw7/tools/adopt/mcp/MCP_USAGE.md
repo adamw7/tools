@@ -39,6 +39,7 @@ be installed and authenticated on the machine running the MCP server.
 The server supports the same transports as the repository's other MCP servers:
 stdio (default), streamable HTTP (`--transport.mode=streamable-http`, served at
 `/mcp`), and stateless HTTP (`--transport.mode=stateless-http`, also at `/mcp`).
+Any other value is refused at startup with a message naming the three.
 
 ## Building the Server
 

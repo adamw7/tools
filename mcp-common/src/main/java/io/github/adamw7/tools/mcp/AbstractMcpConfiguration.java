@@ -55,14 +55,15 @@ public abstract class AbstractMcpConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stdio", matchIfMissing = true)
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STDIO,
+			matchIfMissing = true)
 	public StdioServerTransportProvider stdioServerTransport() {
 		log.info("Creating StdioServerTransport");
 		return new StdioServerTransportProvider(new JacksonMcpJsonMapper(objectMapper()));
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "streamable-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STREAMABLE_HTTP)
 	public HttpServletStreamableServerTransportProvider streamableServerTransport() {
 		log.info("Creating HttpServletStreamableServerTransport");
 		return HttpServletStreamableServerTransportProvider.builder()
@@ -72,14 +73,14 @@ public abstract class AbstractMcpConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "streamable-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STREAMABLE_HTTP)
 	public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> streamableServletRegistration(
 			HttpServletStreamableServerTransportProvider transport) {
 		return asyncRegistration(transport, MCP_ENDPOINT);
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STATELESS_HTTP)
 	public HttpServletStatelessServerTransport statelessServerTransport() {
 		log.info("Creating HttpServletStatelessServerTransport");
 		return HttpServletStatelessServerTransport.builder()
@@ -89,7 +90,7 @@ public abstract class AbstractMcpConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STATELESS_HTTP)
 	public ServletRegistrationBean<HttpServletStatelessServerTransport> statelessServletRegistration(
 			HttpServletStatelessServerTransport transport) {
 		return asyncRegistration(transport, MCP_ENDPOINT);
@@ -113,14 +114,14 @@ public abstract class AbstractMcpConfiguration {
 	}
 
 	@Bean(destroyMethod = "close")
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "streamable-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STREAMABLE_HTTP)
 	public McpSyncServer mcpSyncServerStreamable(McpStreamableServerTransportProvider transport) {
 		log.info("Initializing McpSyncServer with streamable transport: {}", transport);
 		return buildServer(McpServer.sync(transport));
 	}
 
 	@Bean(destroyMethod = "close")
-	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "stateless-http")
+	@ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = TransportMode.Value.STATELESS_HTTP)
 	public McpStatelessSyncServer mcpStatelessSyncServer(HttpServletStatelessServerTransport transport) {
 		log.info("Initializing McpStatelessSyncServer with stateless transport: {}", transport);
 		McpStatelessSyncServer statelessServer = McpServer.sync(transport)
@@ -162,17 +163,20 @@ public abstract class AbstractMcpConfiguration {
 	/**
 	 * Invokes a tool and turns any thrown exception into an error {@link ToolResult}
 	 * rather than letting it surface as a protocol-level failure, so a bad argument or a
-	 * denied path reaches the client as a clear, actionable tool error. Package-private so
-	 * the behaviour can be exercised directly in tests.
+	 * denied path reaches the client as a clear, actionable tool error. Both what is
+	 * logged and what is answered go through {@link FailureMessage}, since this one
+	 * handler carries every tool's failure on every transport: the arguments a call
+	 * failed on can name a clone URL or a JDBC URL, and the exception behind it can name
+	 * where on disk the server keeps its files. Package-private so the behaviour can be
+	 * exercised directly in tests.
 	 */
 	ToolResult safeApply(McpTool tool, Map<String, Object> arguments) {
 		String name = tool.getToolDefinition().name();
 		try {
 			return tool.apply(arguments);
 		} catch (RuntimeException e) {
-			log.warn("MCP tool {} failed for {}", name, arguments, e);
-			String message = e.getMessage() == null ? e.toString() : e.getMessage();
-			return ToolResult.error(name + " failed: " + message);
+			log.warn("MCP tool {} failed for {}", name, FailureMessage.forLog(arguments), e);
+			return ToolResult.error(name + " failed: " + FailureMessage.forClient(e));
 		}
 	}
 

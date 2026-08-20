@@ -41,6 +41,11 @@ public class MyTool implements McpTool {   // Function<Map<String,Object>, ToolR
   turns any thrown `RuntimeException` into an error `ToolResult` naming the
   tool, so a bad argument reaches the client as an actionable tool error. Throw
   a clear exception; return `ToolResult.error` when the failure is expected.
+- **The failure path masks both channels** (`FailureMessage`): the arguments it
+  logs lose their credentials, and the message the client reads loses both those
+  and any absolute path, keeping only the file's name. Write exception messages
+  that stay useful under that — name what was wrong with the argument, not where
+  on the server's disk it resolved to.
 
 ## The server
 ```java
@@ -58,6 +63,12 @@ with `--transport.mode`:
 | stdio (default) | `stdio` | — |
 | streamable HTTP | `streamable-http` | `/mcp` |
 | stateless HTTP | `stateless-http` | `/mcp`, no session kept |
+
+`TransportConfigurer.configure(args)` reads the argument through `TransportMode`,
+so anything but those three values is refused at startup with a message naming
+them. Write the conditions with `TransportMode.Value.*` rather than a literal:
+an unmatched `havingValue` registers no transport, and outside stdio it also
+leaves the web server on — a server that binds its port and serves no `/mcp`.
 
 A `Main.java` Spring Boot entry point sits next to the configuration
 (`entryPointsAreNamedMain` is an ArchUnit rule in `adopt`).

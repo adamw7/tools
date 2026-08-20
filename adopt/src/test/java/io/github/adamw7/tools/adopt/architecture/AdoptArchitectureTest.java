@@ -75,7 +75,10 @@ public class AdoptArchitectureTest {
 	static final ArchRule onlyTheMcpAdapterKnowsTheScaffolding = noClasses()
 			.that().resideOutsideOfPackage(MCP_PACKAGE)
 			.should().dependOnClassesThat().resideInAPackage(MCP_COMMON_PACKAGE)
-			.because("only the mcp delivery package builds on the shared MCP scaffolding");
+			.because("only the mcp delivery package builds on the shared MCP scaffolding. The masking the "
+					+ "pipeline shares with it ships in the same module but outside that package — "
+					+ "io.github.adamw7.tools.secret — precisely so one rule can mask a credential for both "
+					+ "without the pipeline taking on the scaffolding");
 
 	@ArchTest
 	static final ArchRule onlyTheMcpAdapterKnowsSpring = noClasses()

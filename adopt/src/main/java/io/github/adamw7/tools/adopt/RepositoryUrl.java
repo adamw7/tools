@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import io.github.adamw7.tools.secret.Redaction;
+
 /**
  * A repository clone URL, parsed once into the two facts the adoption needs from
  * it: the repository name the checkout directory is created under, and the

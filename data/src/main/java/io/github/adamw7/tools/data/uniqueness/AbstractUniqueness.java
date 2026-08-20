@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.uniqueness;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -37,21 +38,37 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 		checkIfCandidatesExistIn(keyCandidates, allColumns);
 		return IntStream.range(0, allColumns.length)
 				.flatMap(index -> Arrays.stream(keyCandidates)
-						.filter(candidate -> allColumns[index].equalsIgnoreCase(candidate))
+						.filter(candidate -> Objects.equals(normalized(allColumns[index]), normalized(candidate)))
 						.mapToInt(candidate -> index))
 				.toArray();
 	}
 
 	private void checkIfCandidatesExistIn(String[] keyCandidates, String[] allColumns) {
 		Set<String> all = Arrays.stream(allColumns)
-				.map(column -> column == null ? null : column.toLowerCase())
+				.map(AbstractUniqueness::normalized)
 				.collect(Collectors.toCollection(HashSet::new));
 
 		for (String candidate : keyCandidates) {
-			if (!all.contains(candidate.toLowerCase())) {
+			if (!all.contains(normalized(candidate))) {
 				throw new ColumnNotFoundException(candidate + " cannot be found in " + Arrays.toString(allColumns));
 			}
 		}
+	}
+
+	/**
+	 * The one rule every question about a column name is answered by: a fold to
+	 * {@link Locale#ROOT} lower case. Does the source declare this name, which position
+	 * does it sit at, was it asked for twice — all three must read a name the same way.
+	 * When they did not, {@code exec("id", "ID")} passed the duplicate check and then
+	 * collapsed to a single index in {@link #indicesOf}, so the check ran against a
+	 * narrower key than the caller named and could only report more duplicates than the
+	 * real one has. The fold is anchored to {@code Locale.ROOT} because the default one
+	 * is not a property of the data: in a Turkish locale {@code "ID".toLowerCase()} is
+	 * {@code "\u0131d"}, which matches no column on that machine and every column on the
+	 * next.
+	 */
+	private static String normalized(String column) {
+		return column == null ? null : column.toLowerCase(Locale.ROOT);
 	}
 
 
@@ -72,7 +89,7 @@ public abstract class AbstractUniqueness<T extends ColumnarDataSource> implement
 	private void handleDuplicates(String[] keyCandidates) {
 		Set<String> set = new HashSet<>();
 		for (String candidate : keyCandidates) {
-			if (!set.add(candidate)) {
+			if (!set.add(normalized(candidate))) {
 				throw new IllegalArgumentException("Duplicate in input: " + candidate);
 			}
 		}

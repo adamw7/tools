@@ -15,7 +15,7 @@ The implementation consists of three main components:
 3. **UniquenessTool.java** - Implements the uniqueness checking tool
 
 The server uses:
-- **Transport**: stdio (default), streamable-http (`--transport.mode=streamable-http`, served at `/mcp`), or stateless-http (`--transport.mode=stateless-http`, session-less, also served at `/mcp`)
+- **Transport**: stdio (default), streamable-http (`--transport.mode=streamable-http`, served at `/mcp`), or stateless-http (`--transport.mode=stateless-http`, session-less, also served at `/mcp`). Any other value is refused at startup, naming the three
 - **MCP SDK**: io.modelcontextprotocol.sdk v2.0.0
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)

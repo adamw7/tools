@@ -19,6 +19,22 @@
 	</properties>
 	<build>
 		<plugins>
+			<!-- No module-info.java here, so the JPMS name was being derived from
+			     the jar filename, which changes with the artifactId or the version
+			     scheme and takes a consumer's `requires` clause down with it.
+			     Pinning the name the filename already produced makes it part of the
+			     artifact. See mcp-common, which does the same. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Automatic-Module-Name>tools.code.context</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

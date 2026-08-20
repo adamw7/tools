@@ -34,6 +34,28 @@ profile, is the most common source of avoidable build friction here.
   one.** If approved, declare it (with version) in root `<dependencyManagement>`,
   then reference it version-free in the module.
 
+### Name the module of every published jar
+- A published jar states its JPMS module name instead of letting the JVM derive
+  one from the filename, which changes with the artifactId or the version scheme
+  and breaks a consumer's `requires`.
+- `data` and `data-test` state it in `module-info.java`. Every other published
+  module states it in the jar manifest, via `maven-jar-plugin`:
+  ```xml
+  <archive>
+  	<manifestEntries>
+  		<Automatic-Module-Name>tools.markdown.common</Automatic-Module-Name>
+  	</manifestEntries>
+  </archive>
+  ```
+- The name is the artifactId with every non-alphanumeric run collapsed to a dot
+  (`tools.markdown-common` → `tools.markdown.common`), so pinning it changes
+  nothing for a consumer already reading the derived name.
+  `protogen-maven-plugin` is the exception: no `tools.` prefix in its artifactId,
+  and nothing `requires` a Maven plugin, so it takes `tools.protogen.maven.plugin`.
+- **A new published module needs this too.** The unpublished ones
+  (`grpc-example`, `assembly`, `*-test`, anything with
+  `central.skipPublishing`) need nothing.
+
 ### Clean after removing a code-generation source
 - Run `clean` after deleting a codegen input, so stale generated builders in
   `target/` cannot mask the change.

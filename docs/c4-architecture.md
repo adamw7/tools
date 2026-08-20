@@ -100,7 +100,7 @@ flowchart TB
             enforcer["<b>claude-code-enforcer</b><br/><i>maven-enforcer rules</i><br/>Fails the build on malformed<br/>CLAUDE.md / AGENTS.md / README /<br/>skills / settings / .mcp.json"]
             markdownCommon["<b>markdown-common</b><br/><i>Shared library</i><br/>MarkdownDocument · MarkdownText:<br/>lines plus the code and comment masks"]
             testCommon["<b>test-common</b><br/><i>test-jar</i><br/>Shared ArchUnit rule libraries:<br/>coding · naming · test conventions"]
-            mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · ToolDefinition · TransportConfigurer"]
+            mcpCommon["<b>mcp-common</b><br/><i>Shared library</i><br/>MCP scaffolding: AbstractMcpConfiguration ·<br/>McpTool · ToolDefinition · TransportConfigurer ·<br/>TransportMode · FailureMessage · Redaction"]
         end
 
         subgraph codegen ["Code generation"]
@@ -435,7 +435,7 @@ flowchart TB
             adopter["<b>GitHubRepoAdopter</b><br/><i>runs the ordered pipeline</i>"]
             ctx["<b>AdoptionContext / Checkouts /<br/>Workspaces / RepositoryUrl</b>"]
             report["<b>AdoptionReport /<br/>AdoptionReportWriter</b><br/><i>steps completed + PR URL → JSON</i>"]
-            redaction["<b>Redaction</b><br/><i>masks clone-URL credentials<br/>in every log &amp; report</i>"]
+            redaction["<b>Redaction</b><br/><i>from mcp-common: masks URL credentials<br/>in every log &amp; report</i>"]
         end
 
         subgraph steps ["Pipeline steps"]
@@ -775,8 +775,12 @@ flowchart TB
   Spring Boot apps whose entry point is `Main.java` and which support stdio
   (default), streamable HTTP, or stateless HTTP. All three build on the shared
   **`mcp-common`** module (`AbstractMcpConfiguration`, `McpTool`,
-  `ToolDefinition`, `ToolArguments`, `ToolResult`, `TransportConfigurer`), and
-  each ships an `MCP_USAGE.md` next to its `mcp` package.
+  `ToolDefinition`, `ToolArguments`, `ToolResult`, `TransportConfigurer`,
+  `TransportMode`), and each ships an `MCP_USAGE.md` next to its `mcp` package.
+  A mode `TransportMode` does not know is refused before Spring starts, and
+  every tool's failure is masked on both channels by `FailureMessage` —
+  credentials out of the logged arguments through `Redaction`, credentials and
+  filesystem locations out of the message the client reads.
 - **Build:** Java 25 + Maven 3.9.x; `mvn clean install` from the root. CI runs
   `mvn -B package -DenforceClaudeMd`, which also runs the `claude-code-enforcer`
   rules — those need a two-phase build, since a maven-enforcer rule must be

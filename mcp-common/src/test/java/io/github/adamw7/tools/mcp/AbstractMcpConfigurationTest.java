@@ -163,6 +163,39 @@ public class AbstractMcpConfigurationTest {
 		assertEquals("boom failed: bad argument", result.text());
 	}
 
+	/**
+	 * Every tool of every server fails through this one handler, so it is where a
+	 * credential-bearing argument reaches the client if anywhere does: a failing clone
+	 * quotes the URL it was handed back in its own message.
+	 */
+	@Test
+	public void safeApplyAnswersWithoutTheCredentialsTheCallCarried() {
+		ToolResult result = new TestMcpConfiguration().safeApply(new CredentialQuotingTool(),
+				Map.of("repository_url", "https://x-access-token:s3cr3t@github.com/owner/repo.git"));
+
+		assertTrue(result.isError());
+		assertFalse(result.text().contains("s3cr3t"), result.text());
+		assertEquals("clone failed: fatal: could not read Username for 'https://***@github.com/owner/repo.git'",
+				result.text());
+	}
+
+	private static final class CredentialQuotingTool implements McpTool {
+
+		private final ToolDefinition toolDefinition = new ToolDefinition("clone", "Quotes what it was given",
+				Map.of("type", "object", "properties", Map.of()));
+
+		@Override
+		public ToolDefinition getToolDefinition() {
+			return toolDefinition;
+		}
+
+		@Override
+		public ToolResult apply(Map<String, Object> arguments) {
+			throw new IllegalStateException("fatal: could not read Username for "
+					+ "'https://x-access-token:s3cr3t@github.com/owner/repo.git'");
+		}
+	}
+
 	private static final class ThrowingTool implements McpTool {
 
 		private final ToolDefinition toolDefinition = new ToolDefinition("boom", "Always fails",

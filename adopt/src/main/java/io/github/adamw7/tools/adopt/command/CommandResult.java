@@ -2,7 +2,7 @@ package io.github.adamw7.tools.adopt.command;
 
 import java.util.List;
 
-import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.secret.Redaction;
 
 /**
  * Outcome of running an external command: the exit code and the combined

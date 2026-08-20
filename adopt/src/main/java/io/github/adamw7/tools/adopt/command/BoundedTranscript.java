@@ -14,7 +14,7 @@ package io.github.adamw7.tools.adopt.command;
  * unbounded transcript is an unbounded response.
  *
  * <p>A transcript that fits is answered verbatim. Only one that overflowed is cut,
- * and then <em>only at line boundaries</em>: {@link io.github.adamw7.tools.adopt.Redaction}
+ * and then <em>only at line boundaries</em>: {@link io.github.adamw7.tools.secret.Redaction}
  * masks a clone URL's credentials by matching the user information after a
  * {@code ://}, so a cut through the middle of one would leave the token with nothing
  * to recognise it by. A region carrying no line feed is dropped whole.

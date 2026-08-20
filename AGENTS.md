@@ -149,7 +149,9 @@ What is worth knowing before changing any of it:
   run therefore needs no GitHub credentials at all, and `completedSteps` ends at
   `verify`.
 - **Credentials never outlive the run.** Every log line, failure message and
-  report field goes through `Redaction`, which masks the user information of a
+  report field goes through `Redaction` — which lives in `mcp-common`
+  (`io.github.adamw7.tools.secret`), the lowest module this pipeline and the
+  shared MCP failure path both build on — and it masks the user information of a
   URL carrying a scheme, so a CI runner's
   `https://x-access-token:TOKEN@github.com/...` never reaches disk or an MCP
   client. `git` is still handed the URL as given, but only per invocation: the
@@ -277,7 +279,8 @@ tools (root pom, packaging=pom)
 ├── claude-code-enforcer        # custom maven-enforcer rules validating CLAUDE.md,
 │                               #   AGENTS.md, README.md and the .claude config
 ├── test-common                 # shared ArchUnit rule libraries and assertions (test-jar)
-├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI)
+├── mcp-common                  # shared MCP server scaffolding (transport wiring, tool SPI,
+│                               #   credential masking shared with adopt)
 ├── data                        # data sources, uniqueness checks, structures, MCP server
 ├── code
 │   ├── protogen-maven-plugin       # the builder-generating Maven plugin
@@ -312,7 +315,9 @@ module, `io.github.adamw7.tools.*` elsewhere).
 Three MCP servers ship here, each a Spring Boot app whose entry point is
 `Main.java` and which supports stdio (default), streamable HTTP
 (`--transport.mode=streamable-http`, served at `/mcp`) or stateless HTTP
-(`--transport.mode=stateless-http`, session-less, also `/mcp`). Each has an
+(`--transport.mode=stateless-http`, session-less, also `/mcp`). Any other value
+is refused at startup, naming the three, since a mode no transport matches used
+to leave a server bound to its port with no `/mcp` endpoint at all. Each has an
 `MCP_USAGE.md` next to its `mcp` package:
 
 | Server | Package | Tools |

@@ -20,7 +20,7 @@ import io.github.adamw7.tools.adopt.BatchAdoption;
 import io.github.adamw7.tools.adopt.CheckoutRetention;
 import io.github.adamw7.tools.adopt.Checkouts;
 import io.github.adamw7.tools.adopt.GitHubRepoAdopter;
-import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.secret.Redaction;
 import io.github.adamw7.tools.adopt.RepositoryUrls;
 import io.github.adamw7.tools.adopt.Workspaces;
 import io.github.adamw7.tools.adopt.command.CommandRunners;

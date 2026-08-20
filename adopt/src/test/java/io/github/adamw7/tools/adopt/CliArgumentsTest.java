@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
+import io.github.adamw7.tools.secret.Redaction;
 
 class CliArgumentsTest {
 

@@ -109,6 +109,31 @@ public class UniquenessCheckTest extends DBTest {
 		assertEquals("Duplicate in input: year1", thrown.getMessage());
 	}
 
+	/**
+	 * A column is matched by name case-insensitively, so ("year1", "YEAR1") names one
+	 * column twice. Folded case-sensitively the pair passed this check and then
+	 * collapsed to a single index, so the run checked a one-column key the caller never
+	 * asked for — and a narrower key can only report duplicates the named one has not.
+	 */
+	@ParameterizedTest
+	@MethodSource("happyPath")
+	void negativeDuplicatesDifferingOnlyInCase(Uniqueness uniqueness) throws Exception {
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+				() -> uniqueness.exec("year1", "YEAR1"), "Expected exec method to throw, but it didn't");
+
+		assertEquals("Duplicate in input: YEAR1", thrown.getMessage());
+	}
+
+	/**
+	 * The counterpart of the rejection above: two genuinely different columns named in
+	 * a case the source does not use are still the key the caller asked for.
+	 */
+	@ParameterizedTest
+	@MethodSource("happyPath")
+	void uniqueKeyNamedInADifferentCase(Uniqueness uniqueness) throws Exception {
+		assertTrue(uniqueness.exec("YEAR1", "HLPI_NAME").isUnique());
+	}
+
 	@Test
 	public void notUniquePathClosesDataSource() throws Exception {
 		ClosingSpyDataSource source = new ClosingSpyDataSource(

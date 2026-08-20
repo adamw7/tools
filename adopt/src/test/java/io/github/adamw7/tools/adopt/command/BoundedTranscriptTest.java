@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.secret.Redaction;
 
 class BoundedTranscriptTest {
 

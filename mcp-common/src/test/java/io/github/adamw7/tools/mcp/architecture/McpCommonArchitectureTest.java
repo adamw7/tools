@@ -20,10 +20,19 @@ import io.github.adamw7.tools.test.architecture.CommonNamingConventions;
  * production classes are analysed; test classes are excluded via
  * {@link ImportOption}.
  */
-@AnalyzeClasses(packages = McpCommonArchitectureTest.MCP_PACKAGE, importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = { McpCommonArchitectureTest.MCP_PACKAGE, McpCommonArchitectureTest.SECRET_PACKAGE },
+		importOptions = ImportOption.DoNotIncludeTests.class)
 public class McpCommonArchitectureTest {
 
 	static final String MCP_PACKAGE = "io.github.adamw7.tools.mcp";
+
+	/**
+	 * The masking this module shares with the adoption pipeline. It ships here but
+	 * deliberately outside {@link #MCP_PACKAGE}, so the pipeline can depend on it
+	 * without depending on the MCP scaffolding its own layering rule keeps to its
+	 * delivery package.
+	 */
+	static final String SECRET_PACKAGE = "io.github.adamw7.tools.secret";
 
 	@ArchTest
 	static final ArchTests commonCodingConventions = ArchTests.in(CommonCodingConventions.class);

@@ -2,6 +2,9 @@ package io.github.adamw7.tools.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,29 +35,60 @@ public class TransportConfigurerTest {
 
 	@Test
 	public void defaultsToStdioWhenNoArguments() {
-		assertEquals("stdio", TransportConfigurer.resolveTransportMode(new String[] {}));
+		assertSame(TransportMode.STDIO, TransportConfigurer.resolveTransportMode(new String[] {}));
 	}
 
 	@Test
 	public void defaultsToStdioWhenPrefixAbsent() {
-		assertEquals("stdio", TransportConfigurer.resolveTransportMode(new String[] { "--server.port=8080", "--other" }));
+		assertSame(TransportMode.STDIO,
+				TransportConfigurer.resolveTransportMode(new String[] { "--server.port=8080", "--other" }));
 	}
 
 	@Test
 	public void readsExplicitTransportMode() {
-		assertEquals("stateless-http",
+		assertSame(TransportMode.STATELESS_HTTP,
 				TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=stateless-http" }));
 	}
 
 	@Test
 	public void findsTransportModeAmongOtherArguments() {
 		String[] args = { "--server.port=8080", "--transport.mode=streamable-http" };
-		assertEquals("streamable-http", TransportConfigurer.resolveTransportMode(args));
+		assertSame(TransportMode.STREAMABLE_HTTP, TransportConfigurer.resolveTransportMode(args));
+	}
+
+	/**
+	 * A mode nothing recognises is the argument that used to start a healthy-looking
+	 * server serving no endpoint: it is not stdio, so the web server stayed on, and it
+	 * matched no transport condition, so nothing was ever registered at /mcp. It is
+	 * refused at the argument instead, and the message names what may be written there.
+	 */
+	@Test
+	public void refusesAnUnknownTransportMode() {
+		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+				() -> TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=streamablehttp" }));
+
+		assertTrue(thrown.getMessage().contains("streamablehttp"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("stdio, streamable-http, stateless-http"), thrown.getMessage());
 	}
 
 	@Test
-	public void supportsEmptyTransportModeValue() {
-		assertEquals("", TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=" }));
+	public void refusesAnEmptyTransportModeValue() {
+		assertThrows(IllegalArgumentException.class,
+				() -> TransportConfigurer.resolveTransportMode(new String[] { "--transport.mode=" }));
+	}
+
+	/**
+	 * Nothing is primed for a run that cannot start, so a refused mode leaves the JVM
+	 * exactly as it found it rather than half-configured for a server that never runs.
+	 */
+	@Test
+	public void refusedModeSetsNoRuntimeProperty() {
+		assertThrows(IllegalArgumentException.class,
+				() -> TransportConfigurer.configure(new String[] { "--transport.mode=streamable_http" }));
+
+		assertNull(System.getProperty(TRANSPORT_MODE));
+		assertNull(System.getProperty(WEB_APPLICATION_TYPE));
+		assertNull(System.getProperty(BANNER_MODE));
 	}
 
 	@Test

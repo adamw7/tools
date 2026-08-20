@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
+import io.github.adamw7.tools.secret.Redaction;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;

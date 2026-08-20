@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
 import io.github.adamw7.tools.adopt.AdoptionReport;
-import io.github.adamw7.tools.adopt.Redaction;
+import io.github.adamw7.tools.secret.Redaction;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 

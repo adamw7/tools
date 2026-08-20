@@ -106,6 +106,16 @@ public abstract class AbstractMcpConfiguration {
 		return registration;
 	}
 
+	/**
+	 * Built for the session-based transports, which is stdio here. Its condition and
+	 * {@link #mcpSyncServerStreamable(McpStreamableServerTransportProvider)}'s are
+	 * mutually exclusive — {@link McpStreamableServerTransportProvider} extends
+	 * {@code McpServerTransportProviderBase}, not {@link McpServerTransportProvider},
+	 * so this one cannot match in {@code streamable-http} mode — and the two carry
+	 * different bean names regardless. Exactly one {@link McpSyncServer} is therefore
+	 * ever defined, and no server needs
+	 * {@code spring.main.allow-bean-definition-overriding}.
+	 */
 	@Bean(destroyMethod = "close")
 	@ConditionalOnBean(McpServerTransportProvider.class)
 	public McpSyncServer mcpSyncServer(McpServerTransportProvider transport) {

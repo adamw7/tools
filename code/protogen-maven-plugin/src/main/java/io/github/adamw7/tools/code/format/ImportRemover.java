@@ -1,6 +1,6 @@
 package io.github.adamw7.tools.code.format;
 
-public interface ImportRemoverIfc {
+public interface ImportRemover {
 
 	String removeUnused(String code);
 }

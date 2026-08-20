@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 public class UnusedImportsRemoverTest {
 
-	private final ImportRemoverIfc remover = new UnusedImportsRemover();
+	private final ImportRemover remover = new UnusedImportsRemover();
 
 	@Test
 	public void removesSingleUnusedImport() {

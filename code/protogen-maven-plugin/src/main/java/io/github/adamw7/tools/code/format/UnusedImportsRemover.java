@@ -13,7 +13,7 @@ import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 
-public class UnusedImportsRemover implements ImportRemoverIfc {
+public class UnusedImportsRemover implements ImportRemover {
 
 	@Override
 	public String removeUnused(String code) {

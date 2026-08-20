@@ -375,7 +375,7 @@ flowchart TB
         end
 
         subgraph fmt ["Formatting"]
-            formatter["<b>Formatter /<br/>UnusedImportsRemover</b>"]
+            formatter["<b>EclipseFormatter /<br/>UnusedImportsRemover</b>"]
         end
     end
 

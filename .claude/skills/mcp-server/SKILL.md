@@ -94,6 +94,12 @@ A `Main.java` Spring Boot entry point sits next to the configuration
   declared **per module** (`data`, `code/context`, `adopt`,
   `claude-code-enforcer`) — a new module's `*IT`s do not run until that module
   gets its own copy.
+- Each server's transport tests follow one shape: an abstract fixture holding the
+  client, the helpers and whatever both transports must assert, plus a
+  `McpStreamableHttpIT` and a `McpStatelessHttpIT` that supply only the transport
+  and the client name. Copy it for a new server, and pick a payload the
+  integration runner can actually serve — `adopt`'s pair *verifies* a repository
+  rather than adopting one, because no runner has a logged-in `claude`.
 - Unit-test the tool directly as a function: build the argument map, assert on
   the `ToolResult` text and `isError`.
 

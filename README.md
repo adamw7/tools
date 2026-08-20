@@ -1273,14 +1273,28 @@ PR build is therefore not proof that this suite passes.
 
 ### MCP servers over a real transport
 
-`data` and `code/context` start their MCP servers as Spring Boot applications on a
-random port and talk to them through a real MCP client, so the tool listing, the
-argument schemas and the results are exercised as a client meets them rather than
-through a direct method call. Both cover **streamable HTTP and stateless HTTP**;
-only the transport differs between the subclasses, so the fixture and the helpers
-live in an abstract parent and each subclass supplies the transport and the calls
-it is there to assert. `code/context` adds an **HTTPS** run against a throwaway
-self-signed keystore, which is where
+All three servers — `data`, `code/context` and `adopt` — start as Spring Boot
+applications on a random port and are talked to through a real MCP client, so the
+tool listing, the argument schemas and the results are exercised as a client meets
+them rather than through a direct method call. Each covers **streamable HTTP and
+stateless HTTP**; only the transport differs between the subclasses, so the
+fixture and the helpers live in an abstract parent and each subclass supplies the
+transport and the calls it is there to assert.
+
+[`adopt`'s pair](adopt/src/test/java/io/github/adamw7/tools/adopt/mcp) is the one
+whose tool does real work over the wire: `adopt_repo` is called with
+`verify_only`, so the server clones `octocat/Hello-World`, finds it was never
+adopted, and answers with the failed run's whole JSON report — the steps that
+completed, the verdict that stopped it, and the checkout it really made under the
+test's own workspace, which is then asserted on disk. A verification shells out to
+`git` alone and writes nothing, to GitHub or to the checkout, so it is the
+heaviest payload these transports can carry without a logged-in `claude` or `gh`;
+a `dry_run` would reach `claude init`. The streamable test also pins the tool's
+**whole argument set as it arrives on the wire**, an argument lost between the
+tool definition and the client being invisible from inside the pipeline.
+
+`code/context` adds an **HTTPS** run against a throwaway self-signed keystore,
+which is where
 [`McpStreamableHttpsIT`](code/context/src/test/java/io/github/adamw7/context/mcp/McpStreamableHttpsIT.java)
 asserts the server's TLS hardening end to end: a tool call succeeds over the secure channel,
 the negotiated protocol is TLS 1.3, a client offering only TLS 1.2 is refused,

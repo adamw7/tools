@@ -52,6 +52,27 @@ Add the output directory as a source root (e.g. `build-helper-maven-plugin`'s
 `add-source` / `add-test-source`) so the builders are compiled with the rest of
 the module.
 
+## How the goal talks to its user
+This module is the one place in the repository whose production code does not
+log through log4j2, and `ProtogenArchitectureTest.pluginLogsThroughTheMojoLog`
+holds it to that:
+
+- **Output** goes through `AbstractMojo.getLog()`, which honours `-q` and `-X`
+  and attributes each line to the plugin in the reactor output. `MessagesFinder`
+  and `Code` take that `Log` as their first constructor argument rather than
+  reaching for a static logger of their own. log4j2 is test-scoped here, so it
+  cannot come back through the plugin jar.
+- **Failures** leave `execute()` as a `MojoExecutionException` naming the output
+  package, with the original failure as its cause, so a mistake in a consumer's
+  pom reads as an attributed build failure. The generator packages stay free of
+  the Maven API and throw `MojoException` (message plus cause); `CodeMojo` is
+  where it is translated. Never let a `RuntimeException` escape the goal — Maven
+  prints one as "this is likely a bug in the plugin".
+- **The classpath** the scan runs through is a `List<URL>` in the order Maven
+  resolved it — never a `Set`, whose hashing resolves the host and reorders the
+  scan — and the `URLClassLoader` built from it is closed by `execute()`, which
+  is what releases the jar handles Windows would otherwise keep locked.
+
 ## What the generated chain guarantees
 For a message with `required` fields, the plugin emits a chain of single-method
 interfaces so each required setter returns the interface exposing only the

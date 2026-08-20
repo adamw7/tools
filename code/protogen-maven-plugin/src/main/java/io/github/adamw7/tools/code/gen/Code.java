@@ -15,8 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.maven.plugin.logging.Log;
 
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
@@ -26,14 +25,14 @@ import io.github.adamw7.tools.code.MojoException;
 
 public class Code {
 
-	private static final Logger log = LogManager.getLogger(Code.class.getName());
-	
+	private final Log log;
 	private final String generatedSourcesDir;
 	private TypeMappings typeMappings;
 	private final String outputPkg;
 	private final Path outputDir;
 
-	public Code(String generatedSourcesDir, String outputPkg) {
+	public Code(Log log, String generatedSourcesDir, String outputPkg) {
+		this.log = log;
 		this.generatedSourcesDir = generatedSourcesDir;
 		this.outputPkg = outputPkg;
 		this.outputDir = createPkg(outputPkg);
@@ -49,7 +48,7 @@ public class Code {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		log.info("{} created", directory);
+		log.info(directory + " created");
 		return dir;
 	}
 
@@ -78,7 +77,7 @@ public class Code {
 					write(container.format());
 				}
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-				throw new MojoException(e);
+				throw new MojoException("Cannot generate a builder for " + c.getName(), e);
 			}
 		}
 	}
@@ -86,7 +85,7 @@ public class Code {
 	private void write(ClassContainer container) {
 		Path file = outputDir.resolve(container.name() + ".java");
 		try (FileWriter myWriter = new FileWriter(file.toFile(), StandardCharsets.UTF_8)) {
-			log.info("Writing {}", file);
+			log.info("Writing " + file);
 			myWriter.write(container.codeAsString());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

@@ -4,8 +4,7 @@ import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.maven.plugin.logging.Log;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 
@@ -13,10 +12,11 @@ import com.google.protobuf.GeneratedMessage;
 
 public class MessagesFinder {
 
-	private static final Logger log = LogManager.getLogger(MessagesFinder.class.getName());
+	private final Log log;
 	private final String[] pkg;
 
-	public MessagesFinder(String... pkg) {
+	public MessagesFinder(Log log, String... pkg) {
+		this.log = log;
 		this.pkg = pkg;
 	}
 
@@ -24,7 +24,7 @@ public class MessagesFinder {
 		Reflections reflections = new Reflections(new ConfigurationBuilder().forPackages(pkg));
 		Set<Class<? extends GeneratedMessage>> classes = reflections.getSubTypesOf(GeneratedMessage.class);
 		Set<Class<? extends GeneratedMessage>> messages = onlyConcreteMessages(classes);
-		log.info("Found {} concrete proto class(es): {}", messages::size, () -> messages);
+		log.info("Found " + messages.size() + " concrete proto class(es): " + messages);
 		return messages;
 	}
 

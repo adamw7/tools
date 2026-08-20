@@ -23,6 +23,15 @@ import io.github.adamw7.tools.test.architecture.CommonNamingConventions;
  * one-directional dependency, and pin the conventions the plugin already
  * follows. Only production classes are analysed; test classes are excluded via
  * {@link ImportOption}.
+ *
+ * <p>This is the one module whose production code does not log through log4j2.
+ * It is a Maven plugin, so its output belongs on {@code AbstractMojo.getLog()},
+ * which is what honours {@code -q} and {@code -X} and attributes a line to the
+ * plugin in the reactor output. The shared
+ * {@link CommonCodingConventions} rule bans {@code java.util.logging} and
+ * {@code System.Logger} rather than requiring log4j2, so the Mojo log does not
+ * weaken it; {@link #pluginLogsThroughTheMojoLog} states the narrower rule this
+ * module follows instead, so log4j2 cannot creep back into the plugin jar.
  */
 @AnalyzeClasses(packages = ProtogenArchitectureTest.CODE_PACKAGE, importOptions = ImportOption.DoNotIncludeTests.class)
 public class ProtogenArchitectureTest {
@@ -48,6 +57,12 @@ public class ProtogenArchitectureTest {
 	static final ArchRule packagesAreFreeOfCycles = slices()
 			.matching("io.github.adamw7.tools.code.(*)..")
 			.should().beFreeOfCycles();
+
+	@ArchTest
+	static final ArchRule pluginLogsThroughTheMojoLog = noClasses()
+			.should().dependOnClassesThat().resideInAPackage("org.apache.logging.log4j..")
+			.because("a Maven plugin reports through org.apache.maven.plugin.logging.Log, which honours -q and -X "
+					+ "and attributes its output to the plugin; log4j2 from inside a plugin ignores all of that");
 
 	@ArchTest
 	static final ArchRule mojosImplementTheMojoContract = classes()

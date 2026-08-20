@@ -3,7 +3,7 @@ package io.github.adamw7.tools.code;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -44,9 +45,9 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 // Every test here runs the Mojo end to end: it generates builders and compiles
-// the result with the JDK compiler, which can exceed the global 1-second
-// per-test timeout on a cold or loaded CI runner. Grant a generous bound that
-// still catches a genuine hang in code generation or compilation.
+// the result with the JDK compiler, which can exceed the global per-test timeout
+// on a cold or loaded CI runner. Grant a generous bound that still catches a
+// genuine hang in code generation or compilation.
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class MojoTest {
 	
@@ -69,7 +70,7 @@ public class MojoTest {
 	}
 
 	@Test
-	public void happyPath() {
+	public void happyPath() throws MojoExecutionException {
 		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
 
 		mojo.execute();
@@ -90,7 +91,7 @@ public class MojoTest {
 	 * required field missing — the failure the plugin shifts to compile time.
 	 */
 	@Test
-	public void requiredSettersChainThroughEveryRequiredFieldBeforeBuild() throws IOException {
+	public void requiredSettersChainThroughEveryRequiredFieldBeforeBuild() throws IOException, MojoExecutionException {
 		mojoFor(PROTO2_PKG, PROTO2_OUTPUT).execute();
 
 		assertDeclares("AddressBuilder", "public class AddressBuilder implements AddressStreetIfc {");
@@ -105,7 +106,7 @@ public class MojoTest {
 	 * as a whole rather than left to the compiler.
 	 */
 	@Test
-	public void generatesAnInterfaceAndAnImplementationForEveryRequiredField() throws IOException {
+	public void generatesAnInterfaceAndAnImplementationForEveryRequiredField() throws IOException, MojoExecutionException {
 		mojoFor(PROTO2_PKG, PROTO2_OUTPUT).execute();
 
 		assertEquals(
@@ -115,7 +116,7 @@ public class MojoTest {
 	}
 
 	@Test
-	public void generatesOneofAccessorsOnTheOptionalInterface() throws IOException {
+	public void generatesOneofAccessorsOnTheOptionalInterface() throws IOException, MojoExecutionException {
 		mojoFor(PROTO2_PKG, PROTO2_OUTPUT).execute();
 
 		assertDeclares("SampleMessageOptionalIfc", "SampleMessage.TestOneofCase getTestOneofCase();");
@@ -123,7 +124,7 @@ public class MojoTest {
 	}
 
 	@Test
-	public void proto3GeneratesAndCompiles() {
+	public void proto3GeneratesAndCompiles() throws MojoExecutionException {
 		CodeMojo mojo = mojoFor(PROTO3_PKG, PROTO3_OUTPUT);
 
 		mojo.execute();
@@ -140,7 +141,7 @@ public class MojoTest {
 	 * fields that must not get a has-accessor.
 	 */
 	@Test
-	public void proto3ChainsPresencelessFieldsAndDeclaresNoHasAccessorForThem() throws IOException {
+	public void proto3ChainsPresencelessFieldsAndDeclaresNoHasAccessorForThem() throws IOException, MojoExecutionException {
 		mojoFor(PROTO3_PKG, PROTO3_OUTPUT).execute();
 
 		assertDeclares(PROTO3_OUTPUT, "Proto3SampleBuilder",
@@ -152,7 +153,7 @@ public class MojoTest {
 	}
 
 	@Test
-	public void restoresContextClassLoader() {
+	public void restoresContextClassLoader() throws MojoExecutionException {
 		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
 
 		ClassLoader beforeExecution = Thread.currentThread().getContextClassLoader();
@@ -164,17 +165,34 @@ public class MojoTest {
 
 	@Test
 	public void restoresContextClassLoaderWhenGenerationFails(@TempDir Path tempDir) throws IOException {
-		// A regular file where the output directory should go makes generation blow up
-		// after the classloader has already been swapped in.
-		Path blockingFile = Files.createFile(tempDir.resolve("not-a-directory"));
 		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
-		mojo.generatedSourcesDir = blockingFile.toString();
+		mojo.generatedSourcesDir = blockedOutputDir(tempDir);
 
 		ClassLoader beforeExecution = Thread.currentThread().getContextClassLoader();
-		assertThrows(UncheckedIOException.class, mojo::execute);
+		assertThrows(MojoExecutionException.class, mojo::execute);
 
 		assertSame(beforeExecution, Thread.currentThread().getContextClassLoader(),
 				"A failing execution must restore the build thread's classloader too");
+	}
+
+	/**
+	 * Maven prints an escaping {@link RuntimeException} as an internal error —
+	 * "this is likely a bug in the plugin" plus a stack trace — which is the wrong
+	 * story to tell someone whose own pom names a package the generator cannot
+	 * write to. Every failure leaves the goal as a {@link MojoExecutionException}
+	 * naming the output package, with the original failure kept as its cause.
+	 */
+	@Test
+	public void reportsAFailureAsAnAttributedBuildFailure(@TempDir Path tempDir) throws IOException {
+		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
+		mojo.generatedSourcesDir = blockedOutputDir(tempDir);
+
+		MojoExecutionException failure = assertThrows(MojoExecutionException.class, mojo::execute);
+
+		assertTrue(failure.getMessage().contains(PROTO2_OUTPUT),
+				"the failure names what could not be generated; was: " + failure.getMessage());
+		assertInstanceOf(UncheckedIOException.class, failure.getCause(),
+				"the original failure must survive as the cause");
 	}
 
 	/**
@@ -185,18 +203,16 @@ public class MojoTest {
 	 * only place the result can be observed.
 	 */
 	@Test
-	public void extendsTheContextClassPathWithTheRuntimeElements(@TempDir Path classpathElement) {
+	public void extendsTheContextClassPathWithTheRuntimeElements(@TempDir Path classpathElement) throws IOException {
 		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
 		// A null element is what a Maven project with an unresolved artifact hands over.
 		mojo.runtimeClasspathElements = Arrays.asList(classpathElement.toString(), null);
 
 		ClassLoader beforeExtension = Thread.currentThread().getContextClassLoader();
-		try {
-			mojo.extendClassPath();
-
-			ClassLoader extended = Thread.currentThread().getContextClassLoader();
-			assertNotSame(beforeExtension, extended, "the scan must run through the extended classpath");
-			URL[] urls = assertInstanceOf(URLClassLoader.class, extended).getURLs();
+		try (URLClassLoader extended = mojo.extendClassPath()) {
+			assertSame(extended, Thread.currentThread().getContextClassLoader(),
+					"the loader the goal hands back is the one the scan runs through");
+			URL[] urls = extended.getURLs();
 			assertEquals(1, urls.length, "the null element must be skipped rather than turned into a URL");
 			assertTrue(urls[0].getPath().contains(classpathElement.getFileName().toString()),
 					"the runtime classpath element must be on the classloader; was: " + urls[0]);
@@ -205,8 +221,70 @@ public class MojoTest {
 		}
 	}
 
+	/**
+	 * The generator scans through this classpath, so its order decides the order
+	 * classes are found in. Hashing the elements — which is what a {@code Set<URL>}
+	 * would do, and it resolves the host to do it — would leave that order to
+	 * differ from one run to the next.
+	 */
+	@Test
+	public void keepsTheRuntimeClassPathInTheOrderMavenResolvedIt(@TempDir Path tempDir) throws IOException {
+		List<String> elements = List.of(Files.createDirectory(tempDir.resolve("c")).toString(),
+				Files.createDirectory(tempDir.resolve("a")).toString(),
+				Files.createDirectory(tempDir.resolve("b")).toString());
+		CodeMojo mojo = mojoFor(PROTO2_PKG, PROTO2_OUTPUT);
+		mojo.runtimeClasspathElements = elements;
+
+		ClassLoader beforeExtension = Thread.currentThread().getContextClassLoader();
+		try (URLClassLoader extended = mojo.extendClassPath()) {
+			List<String> expected = elements.stream().map(element -> new File(element).toURI().toString()).toList();
+			List<String> onTheLoader = Arrays.stream(extended.getURLs()).map(URL::toString).toList();
+
+			assertEquals(expected, onTheLoader);
+		} finally {
+			Thread.currentThread().setContextClassLoader(beforeExtension);
+		}
+	}
+
+	/**
+	 * A {@link URLClassLoader} holds an open handle on every jar it opened, and on
+	 * Windows that keeps those files locked for the rest of the reactor build. The
+	 * goal owns the loader it builds, so it closes it once generation is done.
+	 */
+	@Test
+	public void closesTheClassLoaderItBuilt(@TempDir Path classpathElement) throws IOException, MojoExecutionException {
+		Files.writeString(classpathElement.resolve("marker.txt"), "on the extended classpath");
+		LoaderCapturingMojo mojo = configure(new LoaderCapturingMojo(), PROTO2_PKG, PROTO2_OUTPUT);
+		mojo.runtimeClasspathElements = List.of(classpathElement.toString());
+
+		mojo.execute();
+
+		assertNull(mojo.built.findResource("marker.txt"),
+				"a closed loader serves nothing from its own classpath any more");
+	}
+
+	/** Hands back the loader the goal built, which is otherwise unreachable once {@code execute()} returns. */
+	private static final class LoaderCapturingMojo extends CodeMojo {
+
+		private URLClassLoader built;
+
+		@Override
+		URLClassLoader extendClassPath() {
+			built = super.extendClassPath();
+			return built;
+		}
+	}
+
+	/** A regular file where the output directory should go makes generation blow up. */
+	private static String blockedOutputDir(Path tempDir) throws IOException {
+		return Files.createFile(tempDir.resolve("not-a-directory")).toString();
+	}
+
 	private CodeMojo mojoFor(String inputPkg, String outputPkg) {
-		CodeMojo mojo = new CodeMojo();
+		return configure(new CodeMojo(), inputPkg, outputPkg);
+	}
+
+	private <T extends CodeMojo> T configure(T mojo, String inputPkg, String outputPkg) {
 		mojo.generatedSourcesDir = GENERATED_SOURCES;
 		mojo.pkgs = new String[] { inputPkg };
 		mojo.outputpackage = outputPkg;

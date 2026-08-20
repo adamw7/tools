@@ -1188,6 +1188,11 @@ A set of conventions is shared across modules:
   generic exceptions, and using `java.util.logging`; libraries additionally must
   never call `System.exit`. The `data` module tightens this further, also
   rejecting the JDK's own `System.Logger` so all logging stays on log4j2.
+  `protogen-maven-plugin` is the one exemption, and it has a rule of its own
+  saying so: a Maven plugin reports through `AbstractMojo.getLog()`, which is
+  what honours `-q` and `-X` and attributes a line to the plugin in the reactor
+  output, so `pluginLogsThroughTheMojoLog` keeps log4j2 out of its production
+  code and out of the plugin jar.
 - **No raw stack traces** — no class may call any `Throwable.printStackTrace`
   overload, because a failure must be reported through log4j2 rather than dumped
   to the console.

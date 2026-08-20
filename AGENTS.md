@@ -521,7 +521,11 @@ Repo-wide rules (declared once in `test-common` and imported with
   date and time use `java.time`, never `Date`/`Calendar`; production code logs
   through log4j2 — no `System.out`/`err`, `java.util.logging`,
   `java.lang.System.Logger`, `printStackTrace` or `System.exit`; no generic
-  exceptions; no Joda Time; packages free of cycles.
+  exceptions; no Joda Time; packages free of cycles. The rule bans the JDK's own
+  logging rather than requiring log4j2 by name, which is what lets
+  `protogen-maven-plugin` log through `AbstractMojo.getLog()` instead; its own
+  `pluginLogsThroughTheMojoLog` states that narrower rule, so the exemption is
+  visible in the module rather than a hole in the shared one.
 - `CommonNamingConventions` — abstract types carry an `Abstract` prefix. Kept
   separate because `claude-code-enforcer` is exempt: its abstract rule bases are
   public API that poms configure by name.

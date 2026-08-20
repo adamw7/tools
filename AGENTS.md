@@ -265,7 +265,8 @@ unwrapped.
   standing choices (the foundational record, the security and supply-chain
   posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
   dependency-update bots, DuckDB as the Parquet engine, log4j2, MCP on Spring
-  Boot, documentation as an enforced contract). A record is immutable once
+  Boot, documentation as an enforced contract, path confinement scoped per data
+  source). A record is immutable once
   accepted: revisiting a decision means a new ADR that supersedes it, never an
   edit to the old one. [docs/adr/README.md](docs/adr/README.md) has the
   numbering, template and status vocabulary.
@@ -486,7 +487,7 @@ cannot own it alone:
 | State | Guard | Where |
 | --- | --- | --- |
 | a system property the whole JVM reads | `@Isolated` | `TransportConfigurerTest`, `TlsConfigurationTest`, `MainTest`, `ClaudeCodeEnforcerRuleConfigurationTest` |
-| `PathValidator`'s allowed base directory | `@Isolated` | `PathValidatorTest`, `McpConfigurationTest` |
+| `PathValidator`'s deprecated process-wide base directory | `@Isolated` | `PathValidatorTest` |
 | the one embedded Derby database | `@ResourceLock("derby-testDB")` on `DBTest` | inherited by `UniquenessCheckTest`, `SQLDataSourceTest` |
 
 The Derby lock is what the suite most depends on: its subclasses share a static
@@ -539,9 +540,10 @@ Per-module rules:
   depend on its MCP adapter; the `structure` collections stay decoupled from data
   sources; JDBC (`java.sql`) stays confined to `source.db`. Its
   `TestConventionsArchitectureTest` adds the module's counterpart to the shared
-  system-property rule: a `*Test` that sets or clears `PathValidator`'s allowed
-  base directory is `@Isolated`, that field being the other JVM-wide state a test
-  here can write.
+  system-property rule: a `*Test` that sets or clears `PathValidator`'s deprecated
+  process-wide base directory is `@Isolated`, that field being the other JVM-wide
+  state a test here can write. It retires with those two methods — a test confining
+  a source through its own `AllowedPaths` writes nothing the JVM shares.
 - **`adopt`** (`AdoptArchitectureTest`) — the `command` package is the only place
   a process is spawned, and a step knows only the `CommandRunner` contract, never
   `ProcessCommandRunner`; a step never reaches back to `GitHubRepoAdopter`,

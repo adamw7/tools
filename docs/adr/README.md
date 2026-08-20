@@ -62,6 +62,7 @@ decision, add a new ADR that supersedes it and set both records' `Supersedes` /
 | [0009](0009-mcp-servers-on-spring-boot.md) | MCP servers built on Spring Boot | Accepted | 2026-07-16 |
 | [0010](0010-documentation-as-enforced-contract.md) | Documentation as a build-enforced contract | Accepted | 2026-07-16 |
 | [0011](0011-hybrid-post-quantum-key-exchange.md) | Prefer the X25519MLKEM768 hybrid key exchange for TLS 1.3 | Accepted | 2026-07-19 |
+| [0012](0012-per-source-path-confinement.md) | Path confinement scoped to the data source, not the JVM | Accepted | 2026-08-20 |
 
 ## Related documents
 

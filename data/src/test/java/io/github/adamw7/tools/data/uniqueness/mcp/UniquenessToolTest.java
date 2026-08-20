@@ -17,8 +17,10 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.data.Utils;
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
 import io.github.adamw7.tools.data.uniqueness.ColumnNotFoundException;
 import io.github.adamw7.tools.mcp.ToolResult;
 
@@ -26,7 +28,7 @@ public class UniquenessToolTest {
 
 	@Test
 	public void happyPath() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		assertNotNull(tool.getToolDefinition());
 		Map<String, Object> input = new HashMap<>();
 		input.put("file", Utils.getHouseholdFile());
@@ -39,7 +41,7 @@ public class UniquenessToolTest {
 
 	@Test
 	public void uniqueColumn() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		Map<String, Object> input = new HashMap<>();
 		input.put("file", Utils.getHouseholdFile());
 		input.put("columns_row", "1");
@@ -50,8 +52,22 @@ public class UniquenessToolTest {
 	}
 
 	@Test
+	public void refusesFileOutsideItsOwnBoundary(@TempDir Path baseDir) throws IOException {
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.under(baseDir));
+		Map<String, Object> input = new HashMap<>();
+		input.put("file", Utils.getHouseholdFile());
+		input.put("columns_row", "1");
+		input.put("columns_name", "income");
+
+		// The boundary belongs to this tool, so an unconfined tool built beside it still
+		// reads the same file.
+		assertThrows(SecurityException.class, () -> tool.apply(input));
+		assertFalse(new UniquenessTool(AllowedPaths.anywhere()).apply(input).isError());
+	}
+
+	@Test
 	public void missingFile() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		Map<String, Object> input = new HashMap<>();
 		input.put("file", "nonExistentFile.csv");
 		input.put("columns_row", "1");
@@ -61,7 +77,7 @@ public class UniquenessToolTest {
 
 	@Test
 	public void invalidColumn() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		Map<String, Object> input = new HashMap<>();
 		input.put("file", Utils.getHouseholdFile());
 		input.put("columns_row", "1");
@@ -71,14 +87,14 @@ public class UniquenessToolTest {
 
 	@Test
 	public void toolDefinitionName() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		assertTrue("uniqueness_check".equals(tool.getToolDefinition().name()));
 	}
 
 	@Test
 	@SuppressWarnings("unchecked")
 	public void toolDefinitionRequiredFields() {
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		List<String> required = (List<String>) tool.getToolDefinition().inputSchema().get("required");
 		assertTrue(required.contains("file"));
 		assertTrue(required.contains("columns_row"));
@@ -90,7 +106,7 @@ public class UniquenessToolTest {
 		Path fdDir = Paths.get("/proc/self/fd");
 		assumeTrue(Files.isDirectory(fdDir), "file-descriptor probing is only available on Linux");
 
-		UniquenessTool tool = new UniquenessTool();
+		UniquenessTool tool = new UniquenessTool(AllowedPaths.anywhere());
 		warmUp(tool);
 
 		long before = openFileDescriptors(fdDir);

@@ -50,6 +50,25 @@ Every format ships in two variants:
 - JSON/YAML flatten nested objects to dotted keys, e.g.
   `people[0].address.city`.
 
+### Confining a source to a directory
+Every path a source is given is canonicalised and refused if it climbs out with
+`..`. To also **hold one source inside one directory** — always do this when the
+path comes from outside the process, as an MCP tool's does — pass it an
+`AllowedPaths`:
+
+```java
+AllowedPaths uploads = AllowedPaths.under(Path.of("/data/uploads"));   // throws if absent
+new InMemoryCSVDataSource(fileName, 1, uploads);                       // SecurityException outside it
+new InMemoryCSVDataSource(fileName, 1, AllowedPaths.anywhere());       // unrestricted
+```
+
+The boundary belongs to the source it was handed to, so two sources can hold two
+different roots, and symlinks are followed before the check so one inside the
+root cannot point out of it. Every file source has a constructor taking one; the
+constructors without it fall back to the process-wide base directory of
+`PathValidator`, deprecated for removal because it is one boundary for the whole
+JVM that any caller can move or clear.
+
 ## Uniqueness check
 ```java
 AbstractUniqueness check = new InMemoryUniquenessCheck();   // or NoMemoryUniquenessCheck

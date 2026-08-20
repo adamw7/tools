@@ -76,8 +76,11 @@ A `Main.java` Spring Boot entry point sits next to the configuration
 ## Rules that bite
 - **Confine file access.** A server that reads paths from a client must clamp
   them to a configured base directory before returning any tool — the uniqueness
-  server does this in `tools()` via `PathValidator.setAllowedBaseDir`, defaulting
-  to the working directory, so a client cannot steer it at `/etc/passwd`.
+  server builds an `AllowedPaths.under(baseDir)` in `tools()` and hands it to the
+  tool, defaulting to the working directory, so a client cannot steer it at
+  `/etc/passwd`. Give the boundary to the thing being confined, never to the JVM:
+  a process-wide setter confines every other source in the host too, and the
+  second server to start silently moves the first one's boundary.
 - **The core must not depend on its MCP adapter.** ArchUnit pins this in every
   module: the uniqueness/context/adoption logic knows nothing about `mcp`, and
   only the `mcp` package may see Spring or the scaffolding. Put the adapter in

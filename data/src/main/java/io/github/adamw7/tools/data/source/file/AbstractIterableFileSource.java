@@ -21,8 +21,22 @@ public abstract class AbstractIterableFileSource implements IterableDataSource {
 	protected boolean opened = false;
 	private String[] lookahead;
 
+	/**
+	 * Reads {@code fileName} under the process-wide base directory, if one was set through
+	 * the deprecated {@code PathValidator} entry points, and unrestricted otherwise. Prefer
+	 * {@link #AbstractIterableFileSource(String, AllowedPaths)}, which confines this source
+	 * alone.
+	 */
 	protected AbstractIterableFileSource(String fileName) {
-		this.fileName = PathValidator.validate(fileName);
+		this(fileName, PathValidator.shared());
+	}
+
+	/**
+	 * Reads {@code fileName} after checking it against {@code allowedPaths}, the boundary
+	 * this source is confined to.
+	 */
+	protected AbstractIterableFileSource(String fileName, AllowedPaths allowedPaths) {
+		this.fileName = allowedPaths.validate(fileName);
 		this.providedStream = null;
 	}
 

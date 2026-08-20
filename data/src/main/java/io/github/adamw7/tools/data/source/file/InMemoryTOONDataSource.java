@@ -26,6 +26,10 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 		super(filePath);
 	}
 
+	public InMemoryTOONDataSource(String filePath, AllowedPaths allowedPaths) {
+		super(filePath, allowedPaths);
+	}
+
 	@Override
 	protected void parse() {
 		ToonFlattener flattener = new ToonFlattener(fieldsMap::put);

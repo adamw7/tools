@@ -172,9 +172,11 @@ Skill: `testing-conventions`.
 - **Unit tests run a class at a time in parallel**, `unit.test.parallelism`
   (default **3**) classes at once per module, with the methods of one class still
   on a single thread. Set `-Dunit.test.parallelism=1` to turn it off for a run.
-  A test that writes something the whole JVM reads — a system property, or
-  `PathValidator`'s allowed base directory — carries `@Isolated` so it runs
-  alone; test classes sharing the embedded Derby database carry `@ResourceLock`.
+  A test that writes something the whole JVM reads — a system property, or the
+  deprecated process-wide base directory of `PathValidator` — carries `@Isolated`
+  so it runs alone; test classes sharing the embedded Derby database carry
+  `@ResourceLock`. A source confined through an `AllowedPaths` of its own needs
+  neither.
   Each module's `TestConventionsArchitectureTest` fails the build on a new test
   that writes such state without isolating, so it cannot break the suite beside
   it instead.

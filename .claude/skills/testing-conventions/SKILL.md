@@ -30,9 +30,11 @@ fails the build, not just review.
 - A `@TempDir` is unique per class, so an ordinary test needs nothing extra.
 - **Writing process-global state needs a guard**, or the test corrupts whatever
   runs beside it:
-  - a system property, or `PathValidator.setAllowedBaseDir` → annotate the class
-    `@Isolated` (`org.junit.jupiter.api.parallel.Isolated`); it then runs alone.
-    ArchUnit fails the build if you forget.
+  - a system property, or the deprecated `PathValidator.setAllowedBaseDir` →
+    annotate the class `@Isolated` (`org.junit.jupiter.api.parallel.Isolated`); it
+    then runs alone. ArchUnit fails the build if you forget. Confining a source
+    with an `AllowedPaths` of its own writes nothing shared, and needs no
+    annotation.
   - a fixture genuinely shared between classes (the embedded Derby database) →
     `@ResourceLock("<name>")`, which serialises just those classes. Put it on the
     shared base class; subclasses inherit it.

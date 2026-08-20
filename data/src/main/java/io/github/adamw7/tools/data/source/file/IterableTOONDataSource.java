@@ -25,6 +25,10 @@ public class IterableTOONDataSource extends AbstractIterableFileSource {
 		super(fileName);
 	}
 
+	public IterableTOONDataSource(String fileName, AllowedPaths allowedPaths) {
+		super(fileName, allowedPaths);
+	}
+
 	public IterableTOONDataSource(InputStream inputStream) {
 		super(inputStream);
 	}

@@ -28,6 +28,10 @@ public abstract class AbstractInMemoryJacksonDataSource extends AbstractInMemory
 		super(filePath);
 	}
 
+	protected AbstractInMemoryJacksonDataSource(String filePath, AllowedPaths allowedPaths) {
+		super(filePath, allowedPaths);
+	}
+
 	/**
 	 * The mapper for this source's syntax. It is asked for while the base constructor
 	 * parses, so it must answer from a constant rather than from instance state the

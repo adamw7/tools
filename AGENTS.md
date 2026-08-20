@@ -781,7 +781,26 @@ not proof the whole matrix passes.
 | `maven-publish.yml` | on release | Deploys to **GitHub Packages** (`-P github-packages`). |
 | `central-publish.yml` | on release; manual | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. |
 
-Every workflow builds on JDK 25 (Temurin) and passes `-ntp`.
+Every workflow builds on JDK 25 (Temurin) and passes `-ntp`. Three things hold
+across all nine, and a new workflow is expected to keep them:
+
+- **A stated `permissions:` scope.** No workflow inherits the repository's
+  default `GITHUB_TOKEN` scope. Seven need nothing but `contents: read`;
+  `docker.yml` and `maven-publish.yml` add `packages: write` for the registry
+  push, and `codeql.yml` adds `actions: read` and `security-events: write` to
+  upload its results.
+- **A `concurrency:` group.** `maven.yml` alone sets `cancel-in-progress: true`:
+  a second push to a pull request supersedes the first, and a build that caps
+  itself at 120 s has no business finishing an answer nobody is waiting for.
+  Everywhere else it is `false` — a scheduled run is not superseded by a newer
+  commit, and a publish interrupted half-way can leave a partial release behind.
+- **Actions pinned to a commit SHA**, with the tag kept in a trailing comment
+  (`uses: actions/checkout@d23441a… # v6`). A tag is mutable, so an unpinned
+  action is a third party's ability to change what CI runs without a commit
+  here — and CI is what produces the released artifacts the supply-chain posture
+  of [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md) rests
+  on. `assembly/Dockerfile` pins its `eclipse-temurin` base images by digest for
+  the same reason. Renovate refreshes both.
 
 ### Dependency updates
 
@@ -804,6 +823,9 @@ configuration is `.github/renovate.json`:
   once already.
 - This project's own `io.github.adamw7:**` modules are **disabled**: they resolve
   inside the reactor at `${revision}`.
+- `pinDigests` is on for the **github-actions** and **dockerfile** managers, so
+  the SHA pins above are refreshed rather than left to rot; the action bumps
+  arrive as one grouped PR.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
   dashboard approval — a Maven 4 API is wired in on purpose while the build is
   pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.

@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended",
     ":semanticCommits",
-    ":dependencyDashboard"
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests"
   ],
   "timezone": "UTC",
   "schedule": [
@@ -17,6 +18,21 @@
   },
   "osvVulnerabilityAlerts": false,
   "packageRules": [
+    {
+      "description": "The workflows pin every action to a commit SHA, so a floating tag cannot change what CI runs; keep those digests fresh in one PR.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github actions",
+      "pinDigests": true
+    },
+    {
+      "description": "assembly/Dockerfile pins its base images by digest for the same reason, and a Temurin rebuild is what carries the base OS's security fixes in.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "pinDigests": true
+    },
     {
       "description": "This project's own modules resolve inside the reactor at ${revision}; there is no released version for Renovate to raise.",
       "matchPackageNames": [

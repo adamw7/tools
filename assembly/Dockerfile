@@ -16,7 +16,12 @@
 # Pinned to BUILDPLATFORM: repacking a jar produces the same bytes on any
 # architecture, so there is no reason to run this stage under QEMU emulation
 # during the multi-arch build.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS trim
+#
+# Base images are pinned by digest, with the tag kept alongside so it stays
+# readable: a tag is mutable, and ADR 0002 commits this project to a build
+# anyone can reproduce byte for byte from a commit. Renovate refreshes both the
+# digest and the tag.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk@sha256:32861ec22e54af9597a3875c69001f57c0954648f5e3fcb6be601b4e35290ab5 AS trim
 WORKDIR /work
 COPY assembly/target/tools.assembly-*-dist/ ./dist/
 RUN set -eux; \
@@ -29,7 +34,7 @@ RUN set -eux; \
     jar cfm "${driver}" MANIFEST.MF -C unpacked .
 
 # Use the slimmer JRE variant since we only need to run the app, not compile.
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:7c1c6297dc3a3ff947922f3ab14ecd326e29083b9edaa8dbff3b94fef1688311
 
 # Build metadata, supplied by docker.yml; the defaults keep a local
 # `docker build` working without --build-arg.

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.apache.maven.plugin.logging.Log;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -165,7 +167,8 @@ public class CodeTest {
 	}
 
 	private void generate(Path generatedSources, Class<? extends GeneratedMessage> message) {
-		new Code(generatedSources.toString(), OUTPUT_PKG.replace('/', '.')).genBuilders(Set.of(message));
+		new Code(mock(Log.class), generatedSources.toString(), OUTPUT_PKG.replace('/', '.'))
+				.genBuilders(Set.of(message));
 	}
 
 	private List<String> generatedFileNames(Path generatedSources) throws IOException {

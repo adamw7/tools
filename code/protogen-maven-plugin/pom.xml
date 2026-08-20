@@ -19,6 +19,24 @@
 	</properties>
 	<build>
 		<plugins>
+			<!-- No module-info.java here, so the JPMS name was being derived from
+			     the jar filename, which changes with the artifactId or the version
+			     scheme. Unlike the library modules this artifactId carries no
+			     `tools.` prefix, so the name is spelled out rather than left to the
+			     filename: a Maven plugin is resolved by coordinates and loaded by
+			     Maven's own classloader, never named in a `requires`, so nothing
+			     depends on the previous filename-derived spelling. See mcp-common. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Automatic-Module-Name>tools.protogen.maven.plugin</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
 			<!-- Expose the mockito-core jar path so it can be pre-loaded as a Java
 			     agent below, avoiding Mockito's slow runtime self-attach. -->
 			<plugin>

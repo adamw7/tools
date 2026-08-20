@@ -33,6 +33,14 @@
 						<manifest>
 							<mainClass>io.github.adamw7.tools.enforcer.cli.Main</mainClass>
 						</manifest>
+						<!-- No module-info.java here, so without this the JPMS name would
+						     be derived from the jar filename and would change with the
+						     artifactId or the version scheme. Pinning the name the
+						     filename already produced keeps it stable for a consumer that
+						     puts the rule jar on the module path. See mcp-common. -->
+						<manifestEntries>
+							<Automatic-Module-Name>tools.claude.code.enforcer</Automatic-Module-Name>
+						</manifestEntries>
 					</archive>
 				</configuration>
 			</plugin>

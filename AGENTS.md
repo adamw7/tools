@@ -1215,6 +1215,56 @@ Skill: `maven-conventions`.
   satisfied when *any* project in the reactor declares the id, which is what lets
   the per-module `integration-tests` profile be requested from the root.
 
+#### Java module names
+
+Every **published** jar states its JPMS module name, so a consumer on the module
+path gets a name that belongs to the artifact rather than one the JVM guessed
+from the filename — a guess that changes with the artifactId or the version
+scheme and takes the consumer's `requires` clause down with it.
+
+Two ways to state it, and the module descriptor wins where a module has one:
+
+| Module | Name | Stated in |
+|---|---|---|
+| `data` | `io.github.adamw7.tools.data` | `module-info.java` |
+| `data-test` | `io.github.adamw7.tools.data.test` | `module-info.java` |
+| `markdown-common` | `tools.markdown.common` | jar manifest |
+| `claude-code-enforcer` | `tools.claude.code.enforcer` | jar manifest |
+| `mcp-common` | `tools.mcp.common` | jar manifest |
+| `code/context` | `tools.code.context` | jar manifest |
+| `code/protogen-maven-plugin` | `tools.protogen.maven.plugin` | jar manifest |
+| `adopt` | `tools.adopt` | jar manifest |
+
+A module without a `module-info.java` configures `maven-jar-plugin` with an
+`Automatic-Module-Name` manifest entry — three lines, and it locks the name in
+without the far larger change a full descriptor is:
+
+```xml
+<plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-jar-plugin</artifactId>
+	<configuration>
+		<archive>
+			<manifestEntries>
+				<Automatic-Module-Name>tools.markdown.common</Automatic-Module-Name>
+			</manifestEntries>
+		</archive>
+	</configuration>
+</plugin>
+```
+
+The name is the one the filename already produced — the artifactId with every
+non-alphanumeric run collapsed to a dot — so pinning it breaks no consumer who
+was already reading the guess. `protogen-maven-plugin` is the one exception: its
+artifactId carries no `tools.` prefix, and a Maven plugin is resolved by
+coordinates and loaded by Maven's own classloader, never named in a `requires`,
+so it takes the `tools.` name the rest of the repository uses.
+
+**A new published module picks this up too.** `grpc-example`, `assembly` and the
+`*-test` harnesses are not published (`central.skipPublishing`) and need nothing.
+Spring Boot's `repackage` preserves the entry, so `code/context` and `adopt` keep
+their name in the executable jar as well as the plain one.
+
 #### Reproducible builds
 
 Setting `project.build.outputTimestamp` makes every archive-producing plugin

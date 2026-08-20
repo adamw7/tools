@@ -36,6 +36,22 @@
 			</resource>
 		</resources>
 		<plugins>
+			<!-- No module-info.java here, so the JPMS name was being derived from
+			     the jar filename, which changes with the artifactId or the version
+			     scheme and takes a consumer's `requires` clause down with it.
+			     Pinning the name the filename already produced makes it part of the
+			     artifact. See mcp-common, which does the same. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Automatic-Module-Name>tools.adopt</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
 			<!-- Lets the pipeline be launched with `mvn -pl adopt exec:java`, which
 			     resolves the full runtime classpath (log4j2 and the rest) from the
 			     module's dependencies. Running the Main class with a bare

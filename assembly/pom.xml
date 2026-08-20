@@ -12,21 +12,16 @@
 	<name>assembly</name>
 	<description>Builds a runnable SampleApp distribution: a launcher jar plus a lib/ of dependency jars (mainClass: io.github.adamw7.tools.data.SampleApp).</description>
 	<properties>
-		<!-- This module only assembles a runnable SampleApp distribution (a
-		     launcher jar plus its lib/ of dependencies), not a reusable library,
-		     so keep it out of both publications: the GitHub Packages deployment
-		     maven-deploy-plugin performs on `mvn deploy`, and the Maven Central
-		     bundle the root pom's release profile publishes. -->
+		<!-- A runnable distribution, not a reusable library: keep it out of the GitHub Packages
+		     deploy and the Maven Central bundle. -->
 		<maven.deploy.skip>true</maven.deploy.skip>
 		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<build>
 		<plugins>
 			<plugin>
-				<!-- The module has no sources of its own; its jar exists to be the
-				     distribution's launcher. Main-Class plus a lib/-prefixed Class-Path
-				     make `java -jar tools.assembly-<version>.jar` work straight out of
-				     the assembled directory, in the container images and outside them. -->
+				<!-- The module has no sources of its own; its jar launches the distribution, so
+				     Main-Class plus a lib/-prefixed Class-Path make java -jar work. -->
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>

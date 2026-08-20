@@ -12,21 +12,15 @@
 	<name>Shared test scaffolding</name>
 	<description>Shared ArchUnit rule libraries and test assertions reused by every module's tests.</description>
 	<properties>
-		<!-- This module carries no production code, only the rule libraries and
-		     assertions the other modules' tests import, so keep it out of both
-		     publications: the GitHub Packages deployment maven-deploy-plugin
-		     performs on `mvn deploy`, and the Maven Central bundle the root pom's
-		     release profile publishes. -->
+		<!-- Test rule libraries and assertions only, no production code: keep it out of the GitHub
+		     Packages deploy and the Maven Central bundle. -->
 		<maven.deploy.skip>true</maven.deploy.skip>
 		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<build>
 		<plugins>
-			<!-- The rules live in src/test/java so archunit-junit5 can stay
-			     test-scoped as the root pom declares it. Attaching a test-jar is
-			     what makes them reachable from the other modules' test
-			     classpaths. The main jar this module also produces is empty by
-			     design; nothing depends on it and it is never published. -->
+			<!-- The rules live in src/test/java so archunit-junit5 stays test-scoped; the test-jar
+			     is what the other modules' tests import. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

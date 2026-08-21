@@ -24,10 +24,17 @@ import org.apache.logging.log4j.Logger;
  * {@code SelectorProvider} are the one remaining gap: the provider cannot be
  * replaced once the JVM has loaded it, so a library that opens raw channels is
  * not blocked by this switch.
+ * <p>
+ * Callers race only over the one-shot installation, which is serialized on a
+ * private monitor rather than on {@code Switch.class}: the class object is
+ * reachable from anything on the classpath, so locking it would let unrelated
+ * code contend with — and delay — the kill-switch.
  */
 public class Switch {
 
 	private static final Logger log = LogManager.getLogger(Switch.class.getName());
+
+	private static final Object LOCK = new Object();
 
 	private static volatile boolean isOff = false;
 
@@ -56,16 +63,18 @@ public class Switch {
 	 *
 	 * @return true if this execution has turned off the network
 	 */
-	public static synchronized boolean off() {
-		if (isOff) {
-			log.warn("Network is already off. Nothing changed");
-			return false;
+	public static boolean off() {
+		synchronized (LOCK) {
+			if (isOff) {
+				log.warn("Network is already off. Nothing changed");
+				return false;
+			}
+			ProxySelector.setDefault(new BlockingProxySelector());
+			blockClientSockets();
+			isOff = true;
+			log.info("Network is off now");
+			return true;
 		}
-		ProxySelector.setDefault(new BlockingProxySelector());
-		blockClientSockets();
-		isOff = true;
-		log.info("Network is off now");
-		return true;
 	}
 
 	/**

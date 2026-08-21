@@ -3,7 +3,6 @@ package io.github.adamw7.tools.data.architecture;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
@@ -102,12 +101,22 @@ public class DataArchitectureTest {
 					+ "dependency would misleadingly suggest they are safe to share across threads");
 
 	@ArchTest
-	static final ArchRule networkSwitchGuardsWithSynchronization = methods()
-			.that().haveName("off")
-			.and().areDeclaredInClassesThat().resideInAPackage(NETWORK_PACKAGE)
+	static final ArchRule networkSwitchDeclaresNoSynchronizedMethods = noMethods()
+			.that().areDeclaredInClassesThat().resideInAPackage(NETWORK_PACKAGE)
 			.should().haveModifier(JavaModifier.SYNCHRONIZED)
-			.because("Switch.off() is documented as synchronized so concurrent callers cannot race "
-					+ "while installing the blocking proxy selector");
+			.because("a static synchronized method would lock Switch.class, a monitor anything on the "
+					+ "classpath can take, letting unrelated code contend with the kill-switch; the "
+					+ "one-shot installation is serialized on a private monitor instead");
+
+	@ArchTest
+	static final ArchRule networkSwitchLocksAPrivateMonitor = fields()
+			.that().haveName("LOCK")
+			.and().areDeclaredInClassesThat().resideInAPackage(NETWORK_PACKAGE)
+			.should().haveModifier(JavaModifier.PRIVATE)
+			.andShould().haveModifier(JavaModifier.STATIC)
+			.andShould().haveModifier(JavaModifier.FINAL)
+			.because("the monitor Switch.off() locks must be unreachable and unswappable from outside "
+					+ "the class, so no caller can contend for it or replace it");
 
 	@ArchTest
 	static final ArchRule networkSwitchFlagIsVolatile = fields()

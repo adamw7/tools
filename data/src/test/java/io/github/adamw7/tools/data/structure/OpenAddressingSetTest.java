@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -180,6 +181,29 @@ public class OpenAddressingSetTest {
 
 	@Test
 	public void nullElementIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new OpenAddressingSet<Integer>().add(null));
+		assertThrows(NullPointerException.class, () -> new OpenAddressingSet<Integer>().add(null));
+	}
+
+	@Test
+	public void nullElementIsAbsentRatherThanAnErrorForLookups() {
+		Set<Integer> set = new OpenAddressingSet<>();
+		set.add(1);
+
+		assertFalse(set.contains(null));
+		assertFalse(set.remove(null));
+		assertEquals(1, set.size());
+	}
+
+	@ParameterizedTest
+	@MethodSource("implementations")
+	public void iteratorFailsFastWhenTheSetChanges(Set<Integer> set) {
+		set.add(1);
+		set.add(2);
+		Iterator<Integer> iterator = set.iterator();
+		iterator.next();
+
+		set.add(3);
+
+		assertThrows(ConcurrentModificationException.class, iterator::next);
 	}
 }

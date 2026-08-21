@@ -3,6 +3,7 @@ package io.github.adamw7.tools.data.structure;
 import static io.github.adamw7.tools.data.Utils.named;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,7 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -345,10 +348,23 @@ public class MapTest {
 	}
 
 	@Test
-	public void nullKey() {
-		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new OpenAddressingMap<>(2).put(null, null), "Expected put method to throw, but it didn't");
+	public void nullKeyIsRejectedByPut() {
+		NullPointerException thrown = assertThrows(NullPointerException.class, () -> new OpenAddressingMap<>(2).put(null, null), "Expected put method to throw, but it didn't");
 
 		assertEquals("Key is null",thrown.getMessage());
+	}
+
+	@Test
+	public void nullKeyIsAbsentRatherThanAnErrorForLookups() {
+		// A map that cannot hold a null key must report it missing, not throw:
+		// Map.containsKey/get/remove specify that for the key types they reject.
+		Map<Integer, String> map = new OpenAddressingMap<>();
+		map.put(1, "A");
+
+		assertFalse(map.containsKey(null));
+		assertNull(map.get(null));
+		assertNull(map.remove(null));
+		assertEquals(1, map.size());
 	}
 	
 	@ParameterizedTest
@@ -502,5 +518,154 @@ public class MapTest {
 		map.clear();
 		assertEquals(0, map.size());
 		assertEquals(3, map.capacity());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void equalsAndHashCodeAreDefinedByTheEntries(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Map<Integer, String> expected = Map.of(1, "A", 2, "B");
+
+		assertEquals(expected, map);
+		assertEquals(map, expected);
+		assertEquals(expected.hashCode(), map.hashCode());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void equalsIgnoresRemovedEntries(Map<Integer, String> map) {
+		// The tombstone a removal leaves behind is not an entry, so it must not make
+		// the map differ from one that never held the key.
+		map.put(1, "A");
+		map.put(2, "B");
+		map.remove(1);
+
+		assertEquals(Map.of(2, "B"), map);
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void twoEmptyMapsAreEqual(Map<Integer, String> map) {
+		assertEquals(Map.of(), map);
+		assertEquals(map, Map.of());
+		assertEquals(Map.of().hashCode(), map.hashCode());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void mapsWithDifferentEntriesAreNotEqual(Map<Integer, String> map) {
+		map.put(1, "A");
+
+		assertNotEquals(map, Map.of(1, "B"));
+		assertNotEquals(Map.of(1, "B"), map);
+		assertNotEquals(map, Map.of(2, "A"));
+		assertNotEquals(map, Map.of(1, "A", 2, "B"));
+		assertNotEquals(map, "not a map");
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void toStringListsTheEntries(Map<Integer, String> map) {
+		assertEquals("{}", map.toString());
+
+		map.put(1, "A");
+		assertEquals("{1=A}", map.toString());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void anEntryPrintsAsKeyEqualsValue(Map<Integer, String> map) {
+		map.put(1, "A");
+
+		assertEquals("1=A", map.entrySet().iterator().next().toString());
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void iteratorFailsFastWhenAKeyIsAdded(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Iterator<Integer> iterator = map.keySet().iterator();
+		iterator.next();
+
+		map.put(3, "C");
+
+		assertThrows(ConcurrentModificationException.class, iterator::next);
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void iteratorFailsFastWhenAKeyIsRemoved(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Iterator<String> iterator = map.values().iterator();
+		iterator.next();
+
+		map.remove(1);
+
+		assertThrows(ConcurrentModificationException.class, iterator::next);
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void iteratorFailsFastAfterClear(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Iterator<Entry<Integer, String>> iterator = map.entrySet().iterator();
+		iterator.next();
+
+		map.clear();
+
+		assertThrows(ConcurrentModificationException.class, iterator::next);
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void iteratorRemoveFailsFastWhenTheMapChangedUnderneathIt(Map<Integer, String> map) {
+		map.put(1, "A");
+		map.put(2, "B");
+		Iterator<Integer> iterator = map.keySet().iterator();
+		iterator.next();
+
+		map.put(3, "C");
+
+		assertThrows(ConcurrentModificationException.class, iterator::remove);
+	}
+
+	@ParameterizedTest
+	@MethodSource("allImplementations")
+	public void iteratorOwnRemoveDoesNotFailFast(Map<Integer, String> map) {
+		for (int i = 0; i < 10; ++i) {
+			map.put(i, "v" + i);
+		}
+
+		Iterator<Integer> iterator = map.keySet().iterator();
+		while (iterator.hasNext()) {
+			if (iterator.next() % 2 == 0) {
+				iterator.remove();
+			}
+		}
+
+		assertEquals(5, map.size());
+		assertFalse(map.containsKey(0));
+		assertTrue(map.containsKey(1));
+	}
+
+	@Test
+	public void aGrowingPutFailsTheIteratorEvenWhenItOnlyOverwrites() {
+		// The rehash replaces the array the iterator walks, so it is a structural
+		// modification in its own right even though no entry was added.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		for (int i = 0; i < 7; ++i) {
+			map.put(i, "v" + i);
+		}
+		Iterator<Integer> iterator = map.keySet().iterator();
+		iterator.next();
+
+		map.put(0, "overwritten"); // the table is one put away from growing
+
+		assertEquals(7, map.size());
+		assertThrows(ConcurrentModificationException.class, iterator::next);
 	}
 }

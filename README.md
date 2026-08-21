@@ -762,13 +762,21 @@ How it works:
   `new OpenAddressingMap<>(size)` (minimum effective size is 3); a
   non-positive size is rejected with `IllegalArgumentException`.
 
+It extends `java.util.AbstractMap`, so `equals`, `hashCode` and `toString` are
+the ones `Map` specifies over the entry set — a map holding the same entries as a
+`HashMap` compares equal to it, and prints as `{a=1, b=2}`.
+
 Caveats:
 
-- **Null keys are not supported** — `put`/`get` with a `null` key throw
-  `IllegalArgumentException`.
-- **Null values are not distinguishable from absence**: `get` returns `null`
-  for a missing key and `containsKey` is defined as `get(key) != null`, so a key
-  mapped to a `null` value is reported as absent. Avoid storing `null` values.
+- **Null keys are not supported** — `put` rejects one with a
+  `NullPointerException`. As the `Map` contract requires of a map that cannot
+  hold such a key, `containsKey`/`get`/`remove` report it absent (`false`/`null`)
+  rather than throwing.
+- **Null values are stored faithfully** and reported by `containsKey`; only
+  `get` cannot tell a stored `null` from a missing key.
+- The iterators of `keySet`, `values` and `entrySet` are **fail-fast**: a
+  structural modification made through anything but the iterator's own `remove()`
+  makes the next `next()`/`remove()` throw `ConcurrentModificationException`.
 - It is **not thread-safe**; guard external synchronization if shared across
   threads.
 
@@ -788,8 +796,9 @@ set.contains("a");     // true
 set.remove("a");       // true
 ```
 
-It inherits the map's caveats: **null elements are not supported** (they are
-rejected with `IllegalArgumentException`) and it is **not thread-safe**. The
+It inherits the map's caveats: **null elements are not supported** (`add`
+rejects one with a `NullPointerException`, while `contains`/`remove` report it
+absent), its iterator is **fail-fast**, and it is **not thread-safe**. The
 initial capacity can be set via `new OpenAddressingSet<>(size)`.
 
 ### Primitive int-keyed map

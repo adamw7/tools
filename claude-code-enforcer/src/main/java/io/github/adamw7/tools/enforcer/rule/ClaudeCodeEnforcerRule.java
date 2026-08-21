@@ -44,13 +44,16 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * <p>
  * A rule's configuration parameters are its <em>fields</em>: Plexus binds a
  * {@code <claudeMdFile>} element to a field of that name and never sees the
- * package-private setters here, because it looks only at public methods. So every
- * concrete rule declares a field named exactly as its pom element, and a base that
- * needs it reads it back through an abstract accessor —
- * {@link MarkdownFormatRule#documentFile()}, {@link JsonFileRule#jsonFile()}.
- * Hoisting those fields into a base under one shared name compiles, unit-tests
- * green, then fails every real build with "Cannot find 'claudeMdFile' in class";
- * the {@code *IT}s are what catch it.
+ * package-private setters here, because it looks only at public methods. So the
+ * field is declared under exactly the name its pom element uses — on the concrete
+ * rule, or on a base only rules that spell it identically share, as the three
+ * {@code settings.json} rules share {@link
+ * io.github.adamw7.tools.enforcer.settings.SettingsJsonRule}'s {@code settingsFile}
+ * — and a base that needs a differently-named one reads it back through an
+ * abstract accessor: {@link MarkdownFormatRule#documentFile()},
+ * {@link JsonFileRule#jsonFile()}. Hoisting those fields into a base under one
+ * <em>shared</em> name compiles, unit-tests green, then fails every real build with
+ * "Cannot find 'claudeMdFile' in class"; the {@code *IT}s are what catch it.
  */
 public abstract class ClaudeCodeEnforcerRule extends AbstractEnforcerRule {
 

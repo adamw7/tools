@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.enforcer.settings;
 
-import java.io.File;
 import java.util.List;
 import java.util.Set;
 
@@ -8,7 +7,6 @@ import javax.inject.Named;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 import io.github.adamw7.tools.enforcer.rule.Violations;
 
@@ -25,25 +23,13 @@ import io.github.adamw7.tools.enforcer.rule.Violations;
  * reported together.
  */
 @Named("settingsJsonValid")
-public class SettingsJsonValidRule extends JsonFileRule {
-
-	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
-	private File settingsFile;
+public class SettingsJsonValidRule extends SettingsJsonRule {
 
 	/** Permission entries that must appear in {@code permissions.allow}. */
 	private List<String> requiredPermissions;
 
 	/** Permission entries that must not appear in {@code permissions.allow}. */
 	private List<String> forbiddenPermissions;
-
-	public SettingsJsonValidRule() {
-		super("settingsFile", "settings.json");
-	}
-
-	@Override
-	protected File jsonFile() {
-		return settingsFile;
-	}
 
 	@Override
 	protected void collectViolations(JsonNode settings, List<String> violations) {
@@ -61,10 +47,6 @@ public class SettingsJsonValidRule extends JsonFileRule {
 	private Set<String> allowList(JsonNode settings) {
 		JsonNode permissions = JsonNodes.objectAt(settings, Permissions.SECTION_KEY);
 		return permissions != null ? Permissions.entriesIn(permissions, Permissions.ALLOW_KEY) : Set.of();
-	}
-
-	public void setSettingsFile(File settingsFile) {
-		this.settingsFile = settingsFile;
 	}
 
 	void setRequiredPermissions(List<String> requiredPermissions) {

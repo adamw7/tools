@@ -17,69 +17,32 @@ import java.util.stream.Stream;
  * construction, lets the structural checks share them instead of each rebuilding
  * them.
  * <p>
- * Two kinds of caller read a document through this class, and they must agree
- * about it: one that <em>judges</em> a document — the {@code claudeMdFormat}
- * enforcer rule asking whether a {@code CLAUDE.md} carries a required section —
- * and one that <em>reshapes</em> a document so that judgement passes, which is
- * what the adoption pipeline's {@code ClaudeMdConformer} does before it commits a
- * generated {@code CLAUDE.md}. Every reading below was at some point spelled out
- * twice, once for each, and every way the two spellings drifted apart produced the
- * same shape of bug: the rewriter acted on lines the rule holds to be code, or
- * concluded a section was missing that the rule reads as present, and the adoption
- * then failed the very check it exists to satisfy — after committing and pushing
- * the file. That is why the reader is one class in a module of its own rather than
- * a copy on each side.
+ * Two kinds of caller read a document through this class and must agree about it:
+ * one that <em>judges</em> a document — the {@code claudeMdFormat} enforcer rule
+ * asking whether a {@code CLAUDE.md} carries a required section — and one that
+ * <em>reshapes</em> a document so that judgement passes, which is what the
+ * adoption pipeline's {@code ClaudeMdConformer} does before it commits a generated
+ * {@code CLAUDE.md}. Two spellings of these readings drifted apart in every way
+ * they could, each time producing the same bug: the rewriter acted on lines the
+ * rule holds to be code, or concluded a section was missing that the rule reads as
+ * present, and the adoption then failed the very check it exists to satisfy —
+ * after committing and pushing the file. That is why the reader is one class in a
+ * module of its own rather than a copy on each side.
  * <p>
- * Headings are recognised on whole lines outside code, so a heading mentioned in a
- * sample or in prose is not treated as document structure. The mask includes a
- * fence's opening and closing delimiters themselves, so heading and body detection
- * agree on what is code. A heading is an ATX one — one to six {@code #}
- * characters followed by whitespace or nothing else — so a line that merely starts
- * with a hash, such as {@code #1 rule: run mvn install}, stays prose. Counting it
- * as a heading would end the section it sits in and report that section as empty.
+ * Structure — a heading — is only ever recognised outside code and outside an HTML
+ * comment, so a heading shown in a sample or commented out is not structure. Code
+ * is quoted both ways Markdown allows, and the two are read in a single pass
+ * because each decides what the other may read: a fence shown inside an indented
+ * block is the delimiter that block illustrates rather than one this document
+ * opens. A fence closes only on a run of the same character, at least as long, and
+ * carrying no info string, so the nested fences documentation about Markdown
+ * writes stay content. An indented block opens only where one may, after a blank
+ * line, and its four columns are measured from the enclosing list item rather than
+ * from the margin, so a paragraph continuing a list item is prose however deep the
+ * item is nested.
  * <p>
- * A heading is also recognised only outside an HTML comment block. A section
- * commented out with {@code <!-- ... -->} is inert text, not structure, so counting
- * it would let a document satisfy a required-section check with the very heading its
- * author had removed. The delimiters that open and close such a block are read only
- * where a document writes one rather than illustrates one — see {@link #asRead}.
- * <p>
- * A fence is closed only by a run of the <em>same</em> character, at least as long
- * as the one that opened it, carrying no info string. All three conditions matter,
- * because documentation about Markdown nests one fence inside another: a
- * {@code ~~~} line inside a {@code ```} block, the {@code ```java} line of an
- * example inside a {@code ````} wrapper, and a {@code ```} example inside a
- * {@code ````} wrapper all stay content. Closing on the first character alone would
- * end the block early and then treat the real closing delimiter as a fresh opening
- * one, silently masking the rest of the document as code.
- * <p>
- * Code is also quoted the other way Markdown allows — by indenting it four columns,
- * a tab counting on to the next four-column stop — and those lines are masked
- * alike. Such a block opens only where one may, after a blank line, because an
- * indented line below a paragraph is a lazy continuation of that paragraph rather
- * than code; it then runs on through indented and blank lines until the next line
- * that is neither. Reading an indented sample as prose let a {@code ## Testing}
- * shown as an example satisfy the very check that demands that section, and
- * reported the sample's own {@code TODO} and its {@code [link](sample.md)} as the
- * document's own — while the identical text inside a fence was correctly ignored.
- * <p>
- * Where that indent is measured from is the enclosing list item, not the margin. A
- * list item indents its own continuation paragraphs to the column its content
- * starts at, so the four columns that quote code are four columns past
- * <em>that</em> — a paragraph continuing a {@code -} item is prose however deep the
- * item is nested. Measuring from the margin read every such paragraph as code: a
- * module named only in one went unmentioned as far as
- * {@link #containsInProse} was concerned, and a token a document forbids could be
- * written there without the check that forbids it ever seeing it.
- * <p>
- * The two ways are read in a single pass, because each decides what the other may
- * read. A fence inside an indented block is the delimiter that block illustrates,
- * not one this document opens: a lone {@code ```} shown four columns in is exactly
- * how a document explains what a fence looks like. Marking the fences first and the
- * indents afterwards left that lone delimiter opening a block nothing closed, and
- * so masked every line below it — the document's remaining headings included — as
- * code. The indent speaks for the line wherever it sits, whether a code block may
- * open at it or it merely continues the paragraph above.
+ * Each of those readings is stated where it is implemented, together with what
+ * misreading it silently reclassified.
  */
 public final class MarkdownDocument {
 
@@ -245,14 +208,7 @@ public final class MarkdownDocument {
 		return headingTexts().collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 
-	/**
-	 * The heading each structural line declares, in document order, canonical rather
-	 * than verbatim. A heading is matched by the text it carries, so the closing
-	 * {@code #} run Markdown lets an author balance a heading with — {@code ## Testing
-	 * ##} — and the tab a heading may be separated by are not part of it. Comparing
-	 * the raw line reported a document that has {@code ## Testing} written that way as
-	 * missing the section, and attributed the section's content to the one above it.
-	 */
+	/** The heading each structural line declares, canonicalised by {@link #headingOf}. */
 	private Stream<String> headingTexts() {
 		return structuralLines()
 				.mapToObj(index -> lines.get(index))
@@ -268,11 +224,9 @@ public final class MarkdownDocument {
 	 * spurious out-of-order failure.
 	 * <p>
 	 * Only a heading answers, which is what keeps this in step with
-	 * {@link #headings()}. Reading every structural line let an entry of
-	 * {@code wanted} that is not a heading at all — a section configured as
-	 * {@code Testing} rather than {@code ## Testing} — be answered by a line of prose,
-	 * so the same document was reported both as missing that section and as having it
-	 * out of order.
+	 * {@link #headings()}: reading every structural line let an entry of
+	 * {@code wanted} that is no heading — {@code Testing} rather than
+	 * {@code ## Testing} — be answered by a line of prose.
 	 */
 	public List<String> headingsInOrder(List<String> wanted) {
 		Set<String> required = new LinkedHashSet<>(wanted);
@@ -282,10 +236,8 @@ public final class MarkdownDocument {
 	/**
 	 * @return the index of the first line declaring {@code section}, outside code and
 	 *         comments, or {@code -1} when the document declares it nowhere. The
-	 *         <em>first</em> is what answers, because that is the one every other
-	 *         reading here takes when a document carries the section twice — a
-	 *         rewriter that stubbed a later copy would be editing a section no check
-	 *         is judging.
+	 *         <em>first</em> answers, because that is the copy every other reading
+	 *         here takes when a document carries the section twice.
 	 */
 	public int headingIndex(String section) {
 		return headingIndices(section).findFirst().orElse(-1);
@@ -346,21 +298,16 @@ public final class MarkdownDocument {
 	/**
 	 * The heading {@code line} declares, written canonically — its {@code #} run,
 	 * then a single space and the text it carries, or the run alone when it carries
-	 * none — or empty when the line declares no heading at all.
-	 * <p>
-	 * A heading is the text it names, not the line it was typed on, so the
-	 * surrounding whitespace, the separator between the run and the text (a tab
-	 * counts), and the closing {@code #} run Markdown lets an author balance a
-	 * heading with are spelling rather than content. Comparing raw lines instead
-	 * made a checker and a rewriter disagree about which lines are the required
-	 * sections: a {@code ##  Testing} this reads as {@code ## Testing} was reported
-	 * as no section at all, so a second, stubbed copy of it was appended to a file
-	 * the adoption went on to commit and push.
+	 * none — or empty when the line declares no heading at all. A heading is the text
+	 * it names, not the line it was typed on, so the surrounding whitespace, the
+	 * separator (a tab counts) and the closing {@code #} run an author may balance a
+	 * heading with are spelling rather than content; comparing raw lines instead made
+	 * a checker and a rewriter disagree about which lines are the required sections.
 	 * <p>
 	 * Whether the line is <em>structure</em> is a separate question this does not
 	 * answer — a {@code ## Testing} inside a code sample still reads as a heading
-	 * here. Callers pair this with {@link #structuralLines} rather than asking it of
-	 * an arbitrary line, which is what {@link #headingIndices} does.
+	 * here. Callers pair this with {@link #structuralLines}, as {@link #headingIndices}
+	 * does.
 	 */
 	public static Optional<String> headingOf(String line) {
 		String stripped = line.strip();
@@ -459,10 +406,8 @@ public final class MarkdownDocument {
 	/**
 	 * Marks the lines an HTML comment spans, so a commented-out section is not read
 	 * as document structure. A comment that opens and closes on one line masks
-	 * nothing — {@code <!-- ## Testing -->} is not a heading to begin with — while a
-	 * block comment hid a required section from the check that exists to demand it
-	 * and satisfied it at the same time. A comment inside code is sample text, so
-	 * the code wins.
+	 * nothing — {@code <!-- ## Testing -->} is not a heading to begin with. A comment
+	 * inside code is sample text, so the code wins.
 	 */
 	private static CommentScan commentScan(List<String> lines, boolean[] insideCode) {
 		boolean[] mask = new boolean[lines.size()];
@@ -497,10 +442,8 @@ public final class MarkdownDocument {
 	 * {@link #containsUnquoted} takes, and the reading a fence already gets from
 	 * being matched on whole lines. Documentation about Markdown writes
 	 * {@code `<!--`} in prose precisely because it is an example, and taking it for a
-	 * real delimiter opened a comment nothing closed: every line below it was masked
-	 * as inert, so {@link #headingIndex} reported sections the document plainly carries
-	 * as missing and every check that reads the document's own text stopped seeing
-	 * it — the same silent reclassification a mis-read fence produces.
+	 * real delimiter opened a comment nothing closed, masking the rest of the
+	 * document as inert.
 	 * <p>
 	 * Inside a comment there are no code spans to honour: the text is already inert,
 	 * so its backticks are ordinary characters and a {@code -->} among them closes
@@ -521,13 +464,11 @@ public final class MarkdownDocument {
 	 * a closed one for the next {@code <!--}.
 	 * <p>
 	 * The delimiters are followed in a loop rather than by recursing on the rest of
-	 * the line, because the line is content this reader does not control: a document
-	 * carrying a few thousand delimiters on one line — a generated or minified line
-	 * is all it takes — recursed once per delimiter and overflowed the stack. A
-	 * {@link StackOverflowError} is no kind of verdict: it aborts the Maven build as
-	 * an internal error rather than as the violation a rule exists to report, and it
-	 * is not a {@code RuntimeException}, so the adoption's batch loop — which keeps
-	 * one repository's failure from stopping the rest — does not catch it either.
+	 * the line, because the line is content this reader does not control: a generated
+	 * or minified line carrying a few thousand delimiters recursed once per delimiter
+	 * and overflowed the stack. A {@link StackOverflowError} is no kind of verdict —
+	 * it aborts the Maven build as an internal error, and being no
+	 * {@code RuntimeException} it escapes the adoption's batch loop as well.
 	 */
 	private static boolean remainsOpen(String line, boolean open) {
 		boolean inside = open;
@@ -590,12 +531,8 @@ public final class MarkdownDocument {
 		 * That it is not a fence delimiter is the point. A fence opener may be indented
 		 * at most three columns past its container, so a {@code ```} shown four columns
 		 * in below a paragraph opens nothing. Falling through to {@link #atDelimiter}
-		 * read one as a fence the document opened and never closed, and every line
-		 * below it — the document's remaining headings included — was masked as code:
-		 * {@link #headingIndex} then reported sections the document plainly carries as
-		 * missing, and every check that reads the document's own text stopped seeing it.
-		 * The blank-line case was already answered here; only a paragraph directly
-		 * above the indent reached the delimiter reading.
+		 * read one as a fence the document opened and never closed, masking the rest of
+		 * the document — its remaining headings included — as code.
 		 */
 		private Scan atIndent(boolean[] mask, int index) {
 			mask[index] = mayIndent;

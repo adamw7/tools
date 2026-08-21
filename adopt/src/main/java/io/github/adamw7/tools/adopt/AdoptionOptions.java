@@ -30,7 +30,7 @@ import io.github.adamw7.tools.adopt.step.PullRequestOptions;
  * @param ruleVersion     the released {@code claude-code-enforcer} version to pin
  *                        into an adopted Maven project, or {@code null} to resolve
  *                        the running build's — read through
- *                        {@link #pinnedRuleVersion()}, which says so in its type
+ *                        {@link #pinnedRuleVersion()}
  * @param dryRun          whether the run stops after the verification, committing
  *                        the adoption locally but pushing nothing and opening no
  *                        pull request
@@ -128,12 +128,7 @@ public record AdoptionOptions(PullRequestOptions pullRequest, boolean includeAss
 		return new GuardOptions(ruleVersion, guardRules, claudeMdSections);
 	}
 
-	/**
-	 * @return the released rule version to pin, or empty to resolve the version of
-	 *         the {@code tools} build running the adoption. Preferred over the
-	 *         record's own {@link #ruleVersion()}, which answers {@code null} for
-	 *         the same case.
-	 */
+	/** As {@link GuardOptions#pinnedRuleVersion()}, and preferred over {@link #ruleVersion()} for the same reason. */
 	public Optional<String> pinnedRuleVersion() {
 		return Optional.ofNullable(ruleVersion);
 	}

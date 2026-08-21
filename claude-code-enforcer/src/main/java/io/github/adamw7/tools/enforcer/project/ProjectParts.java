@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import io.github.adamw7.tools.enforcer.definition.CommandFormatRule;
@@ -199,30 +200,33 @@ final class ProjectParts {
 	/** Adds the part, configured, when the file it reads is there. */
 	private <R extends ClaudeCodeEnforcerRule> void ifFile(List<ClaudeCodeEnforcerRule> parts, File file,
 			Supplier<R> part, Consumer<R> configure) {
-		if (file.isFile()) {
-			parts.add(configured(part, configure));
-		}
+		ifPresent(parts, file, File::isFile, part, configure);
 	}
 
 	/** Adds the part, configured, when the directory it scans is there. */
 	private <R extends ClaudeCodeEnforcerRule> void ifDirectory(List<ClaudeCodeEnforcerRule> parts, File directory,
 			Supplier<R> part, Consumer<R> configure) {
-		if (directory.isDirectory()) {
-			parts.add(configured(part, configure));
+		ifPresent(parts, directory, File::isDirectory, part, configure);
+	}
+
+	private <R extends ClaudeCodeEnforcerRule> void ifPresent(List<ClaudeCodeEnforcerRule> parts, File input,
+			Predicate<File> present, Supplier<R> part, Consumer<R> configure) {
+		if (present.test(input)) {
+			R rule = part.get();
+			configure.accept(rule);
+			parts.add(rule);
 		}
 	}
 
-	private <R extends ClaudeCodeEnforcerRule> R configured(Supplier<R> part, Consumer<R> configure) {
-		R rule = part.get();
-		configure.accept(rule);
-		return rule;
-	}
-
 	private List<File> presentOf(File... candidates) {
-		return Arrays.stream(candidates).filter(File::isFile).toList();
+		return presentOf(File::isFile, candidates);
 	}
 
 	private List<File> presentDirectoriesOf(File... candidates) {
-		return Arrays.stream(candidates).filter(File::isDirectory).toList();
+		return presentOf(File::isDirectory, candidates);
+	}
+
+	private List<File> presentOf(Predicate<File> present, File... candidates) {
+		return Arrays.stream(candidates).filter(present).toList();
 	}
 }

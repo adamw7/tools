@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import static io.github.adamw7.tools.enforcer.rule.HtmlPage.escape;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +42,11 @@ final class ReportIndex {
 	static final String SIDECAR_FILE = ".claude-code-enforcer-index";
 
 	private static final String SEPARATOR = "\t";
+
+	private static final String TITLE = "Claude Code Enforcer reports";
+
+	private static final String CSS = "table{margin:1rem 0;}"
+			+ "td.ok{color:#1e7e34;}td.bad{color:#b3261e;font-weight:600;}";
 
 	private ReportIndex() {
 	}
@@ -104,18 +111,10 @@ final class ReportIndex {
 
 	static String render(Map<String, Integer> outcomes) {
 		Map<String, Integer> ordered = new TreeMap<>(outcomes);
-		StringBuilder html = new StringBuilder();
-		html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
-		html.append("<meta charset=\"utf-8\">\n");
-		html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
-		html.append("<title>Claude Code Enforcer reports</title>\n");
-		html.append("<style>").append(css()).append("</style>\n");
-		html.append("</head>\n<body>\n<main>\n");
-		html.append("<h1>Claude Code Enforcer reports</h1>\n");
-		appendSummary(html, ordered);
-		appendTable(html, ordered);
-		html.append("</main>\n</body>\n</html>\n");
-		return html.toString();
+		HtmlPage page = new HtmlPage(TITLE, CSS);
+		appendSummary(page.body(), ordered);
+		appendTable(page.body(), ordered);
+		return page.render();
 	}
 
 	private static void appendSummary(StringBuilder html, Map<String, Integer> outcomes) {
@@ -137,29 +136,5 @@ final class ReportIndex {
 				: "<td class=\"bad\">" + violations + "</td>";
 		html.append("<tr><td><a href=\"").append(escape(rule)).append(".html\">").append(escape(rule))
 				.append("</a></td>").append(cell).append("</tr>\n");
-	}
-
-	private static String css() {
-		return "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;"
-				+ "line-height:1.5;color:#1a1a1a;background:#f6f7f9;margin:0;padding:2rem;}"
-				+ "main{max-width:52rem;margin:0 auto;background:#fff;padding:1.5rem 2rem;"
-				+ "border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);}"
-				+ "h1{font-size:1.5rem;margin:0 0 .5rem;}"
-				+ ".status{display:inline-block;font-weight:600;padding:.25rem .75rem;border-radius:999px;}"
-				+ ".status.failed{background:#fdecea;color:#b3261e;}"
-				+ ".status.passed{background:#e6f4ea;color:#1e7e34;}"
-				+ "table{border-collapse:collapse;width:100%;margin:1rem 0;}"
-				+ "th,td{border:1px solid #e0e0e0;padding:.5rem .75rem;text-align:left;}"
-				+ "thead th{background:#f0f1f3;font-weight:600;}"
-				+ "td.ok{color:#1e7e34;}td.bad{color:#b3261e;font-weight:600;}";
-	}
-
-	/** Escapes the five characters that are significant in HTML text and attributes. */
-	private static String escape(String text) {
-		return text.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;")
-				.replace("\"", "&quot;")
-				.replace("'", "&#39;");
 	}
 }

@@ -26,11 +26,8 @@ import java.util.stream.Collectors;
  *
  * <p>How the document is <em>read</em> — which lines are code, which sit inside an
  * HTML comment, and what heading a line declares — is {@link MarkdownDocument}'s
- * to decide, the same reader the checks judge the result with. Spelling those
- * readings out separately made the two drift apart, and every drift produced one
- * shape of bug: the reshape acted on lines the check holds to be code, or appended
- * a section the check already reads as present, and the document failed the very
- * check the reshape exists to satisfy.
+ * to decide, the same reader the checks judge the result with, for the reasons
+ * that class gives.
  */
 public class MarkdownConformer {
 
@@ -61,17 +58,12 @@ public class MarkdownConformer {
 	 * Reshapes until the document stops changing, which is the only way one pass can
 	 * be trusted: an edit made part-way through a pass changes how the lines below it
 	 * are read, so a question the pass had already answered can stop being true before
-	 * the pass ends. Every edit here is one of those. Inserting the {@code AGENTS.md}
-	 * reference puts a blank line above what followed the title, and a blank line is
-	 * what lets the line below it open an indented code block, so a {@code ## Testing}
-	 * that had been a lazy continuation of a paragraph became code. Inserting a stub
-	 * puts a line at the margin, which ends an open list and lowers the column at
-	 * which the lines below quote code, so a fence delimiter indented inside that list
-	 * stopped being one — and the terminator already appended for it then
-	 * <em>opened</em> a block that swallowed everything after it. Renaming a near-miss
-	 * heading moves it to the margin and ends a list the same way. Each of those left
-	 * the reshape reporting work it had done on a document that no longer existed, and
-	 * the caller's own check failing on the document the reshape had just produced.
+	 * the pass ends. Every edit here is one of those — an inserted reference or stub
+	 * puts a blank line or a margin line where the reading of the lines below turns on
+	 * one, and a renamed heading moves to the margin the same way. Each left the
+	 * reshape reporting work it had done on a document that no longer existed, and the
+	 * caller's own check failing on the document the reshape had just produced;
+	 * {@link #ensureRequiredSections} works one such case through.
 	 *
 	 * <p>What makes repeating the pass an answer rather than a retry is that a pass
 	 * which changes nothing is exactly a document the check accepts: the pass leaves a
@@ -151,14 +143,12 @@ public class MarkdownConformer {
 	 * reshape being idempotent means running it again never clears it.
 	 *
 	 * <p>A document that already opens with the title is not left alone either: it
-	 * needs no title <em>added</em>, but a second one lower down is the same duplicate
-	 * by another route, and returning on the first line alone left it there for good —
-	 * a check never looks past that line, so nothing downstream reported it, and the
-	 * reshape being idempotent meant running it again never cleared it.
+	 * needs no title <em>added</em>, but a second one lower down is that same
+	 * duplicate by another route, and returning on the first line alone left it there
+	 * for good.
 	 *
-	 * <p>The titles are removed latest first, so removing one cannot shift the index
-	 * of the next. Only structural lines are offered: a {@code # CLAUDE.md} inside a
-	 * code sample is the sample's, not the document's.
+	 * <p>Only structural lines are offered: a {@code # CLAUDE.md} inside a code sample
+	 * is the sample's, not the document's.
 	 */
 	private void ensureTitle(List<String> lines) {
 		MarkdownDocument document = MarkdownDocument.of(lines);
@@ -275,12 +265,10 @@ public class MarkdownConformer {
 	 * fence delimiter indented inside that list stops being one. The terminator
 	 * {@link #closeUnterminatedBlocks} had already appended for it then <em>opened</em>
 	 * a block instead of closing one, and every section appended afterwards landed
-	 * inside it, where a check reads it as code: the reshape answered with a document
-	 * still missing the sections it had just written.
-	 * Interleaving the two passes has the same flaw one step further on, since a stub
-	 * inserted after a section was appended can bury that section the same way.
-	 * Appending, by contrast, only ever adds below every line that has been read, so
-	 * it can invalidate nothing.
+	 * inside it, where a check reads it as code. Interleaving the two passes has the
+	 * same flaw one step further on, since a stub inserted after a section was
+	 * appended can bury that section the same way. Appending, by contrast, only ever
+	 * adds below every line that has been read, so it can invalidate nothing.
 	 */
 	private void ensureRequiredSections(List<String> lines) {
 		contract.requiredSections().forEach(required -> stubBareSection(lines, required));
@@ -317,10 +305,10 @@ public class MarkdownConformer {
 	 *
 	 * <p>An existing mention only counts where the rule counts one: its
 	 * {@code containsInProse} reads the lines that carry document structure, so a
-	 * mention inside a code sample or an HTML comment satisfies it no more than a
-	 * commented-out heading satisfies a required section. Asking the looser question
-	 * let a document whose only {@code AGENTS.md} sat in a comment keep a reference it
-	 * never had. A document with no title line at all takes the reference at the top.
+	 * mention inside a code sample or an HTML comment does not satisfy it. Asking the
+	 * looser question let a document whose only {@code AGENTS.md} sat in a comment
+	 * keep a reference it never had. A document with no title line at all takes the
+	 * reference at the top.
 	 */
 	private void ensureReference(List<String> lines) {
 		MarkdownDocument document = MarkdownDocument.of(lines);

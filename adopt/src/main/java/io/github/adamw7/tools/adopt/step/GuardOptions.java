@@ -41,8 +41,7 @@ public record GuardOptions(String ruleVersion, GuardRules rules, List<String> cl
 	/**
 	 * @return the released rule version to pin, or empty to resolve the version of the
 	 *         {@code tools} build running the adoption. Preferred over the record's
-	 *         own {@link #ruleVersion()}, which answers {@code null} for the same case:
-	 *         a field holds the value, and the {@link Optional} is how it is read.
+	 *         own {@link #ruleVersion()}, which answers {@code null} for the same case.
 	 */
 	public Optional<String> pinnedRuleVersion() {
 		return Optional.ofNullable(ruleVersion);

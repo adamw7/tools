@@ -26,10 +26,6 @@ public record ProjectLayout(File projectDir) {
 		return new File(projectDir, "AGENTS.md");
 	}
 
-	public File readme() {
-		return new File(projectDir, "README.md");
-	}
-
 	public File pom() {
 		return new File(projectDir, "pom.xml");
 	}

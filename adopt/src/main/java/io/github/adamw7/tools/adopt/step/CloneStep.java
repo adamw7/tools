@@ -33,17 +33,11 @@ import io.github.adamw7.tools.adopt.command.CommandRunner;
  *
  * <p>A reused checkout must also be free of uncommitted work that is not the
  * adoption's own, since {@link CommitStep} stages the whole tree and would push a
- * contributor's work in progress as part of the adoption.
- *
- * <p>The checkout is then refreshed with {@code git fetch}, because every later
- * decision about the feature branch is taken against the remote-tracking refs a
- * stale checkout has out of date. That fetch carries the credentials the run was
- * given rather than the credential-free {@code origin} left behind for it — see
- * {@link #fetchCommand}.
- *
- * <p>A freshly cloned checkout records the credential-free form of the URL as its
- * {@code origin}, so the token an adoption is driven with does not outlive the run
- * in {@code .git/config} — see {@link #forgetCredentials}.
+ * contributor's work in progress as part of the adoption. It is then refreshed
+ * with {@code git fetch}, because every later decision about the feature branch is
+ * taken against remote-tracking refs a stale checkout has out of date — see
+ * {@link #fetchCommand} for the credentials that fetch carries, and
+ * {@link #forgetCredentials} for why a fresh clone's {@code origin} carries none.
  */
 public class CloneStep extends AbstractCommandStep {
 

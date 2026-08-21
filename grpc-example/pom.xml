@@ -12,10 +12,11 @@
 	<name>grpc-example</name>
 	<description>End-to-end gRPC example demonstrating the protogen-generated, compile-time-safe protobuf builders in a working service.</description>
 	<properties>
-		<!-- Only generated protobuf and gRPC classes here, so the coverage and mutation gates would
-		     measure protoc's output rather than anybody's tests. -->
+		<!-- Only generated protobuf and gRPC classes here, so the coverage, mutation and static-
+		     analysis gates would measure protoc's output rather than anybody's tests. -->
 		<jacoco.skip>true</jacoco.skip>
 		<pitest.skip>true</pitest.skip>
+		<spotbugs.skip>true</spotbugs.skip>
 		<!-- An example, not a reusable library: keep it out of the GitHub Packages deploy and the
 		     Maven Central bundle. -->
 		<maven.deploy.skip>true</maven.deploy.skip>

@@ -734,7 +734,7 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   repository or that jar are, so the profile passes each in as an
   `enforcer.it.*` system property that `BuildEnvironment` reads.
 
-### Coverage and mutation testing
+### Coverage, mutation testing and static analysis
 
 - **Coverage** — `mvn -Pcoverage verify` (JaCoCo) writes reports to
   `**/target/site/jacoco/` and **fails** if a bundle's instruction **or** branch
@@ -768,6 +768,18 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `test`-only reactor build never packages `mcp-common`, so `data`'s
   `requires tools.mcp.common` — an automatic module name derived from that
   **jar**'s file name — cannot resolve against an exploded `target/classes`.
+- **Static analysis** — `mvn -Pspotbugs verify -DskipTests` (SpotBugs) writes
+  `target/spotbugsXml.xml` and `target/spotbugsSarif.json` per module. It runs at
+  `Max` effort and a `Low` threshold, so nothing is filtered out before a human
+  has read it, and it is **report-only**: the tree carries findings today, so a
+  `check` goal would fail every build instead of surfacing them. `spotbugs.yml`
+  publishes the SARIF to the code-scanning tab, which is where the findings are
+  meant to be triaged. The same two generated-code modules opt out with
+  `spotbugs.skip`, for the same reason they set `jacoco.skip` and `pitest.skip`.
+
+  Run it through `verify` rather than the bare `spotbugs:spotbugs` goal: on its
+  own the goal cannot resolve the sibling `-SNAPSHOT` test-jars, which only a
+  reactor run supplies.
 
 ## Continuous integration
 
@@ -781,6 +793,7 @@ not proof the whole matrix passes.
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify`. |
 | `codeql.yml` | weekly (Sat) | CodeQL security/static analysis for Java (autobuild). |
 | `coverage.yml` | weekly (Sat) | `mvn verify -Pcoverage`, uploads the JaCoCo reports. |
+| `spotbugs.yml` | weekly (Sun); manual | `mvn verify -Pspotbugs -DskipTests`, publishes the SARIF to the code-scanning tab and uploads the reports. Report-only — it does not gate pull requests. |
 | `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads the PIT reports. |
 | `maven-windows.yml` | weekly (Sun); manual | `mvn install` on `windows-latest` — keep path, line-ending and file-locking assumptions platform-neutral. |
 | `docker.yml` | weekly (Sat); on release; manual | Builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR with SBOM and provenance. Deliberately not on pull requests — dispatch it by hand after touching `assembly` or the Dockerfile. |
@@ -788,13 +801,14 @@ not proof the whole matrix passes.
 | `central-publish.yml` | on release; manual | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. |
 
 Every workflow builds on JDK 25 (Temurin) and passes `-ntp`. Three things hold
-across all nine, and a new workflow is expected to keep them:
+across all ten, and a new workflow is expected to keep them:
 
 - **A stated `permissions:` scope.** No workflow inherits the repository's
-  default `GITHUB_TOKEN` scope. Seven need nothing but `contents: read`;
+  default `GITHUB_TOKEN` scope. Six need nothing but `contents: read`;
   `docker.yml` and `maven-publish.yml` add `packages: write` for the registry
-  push, and `codeql.yml` adds `actions: read` and `security-events: write` to
-  upload its results.
+  push, `codeql.yml` adds `actions: read` and `security-events: write` to
+  upload its results, and `spotbugs.yml` adds `security-events: write` to
+  publish its SARIF.
 - **A `concurrency:` group.** `maven.yml` alone sets `cancel-in-progress: true`:
   a second push to a pull request supersedes the first, and a build that caps
   itself at 120 s has no business finishing an answer nobody is waiting for.
@@ -1411,8 +1425,9 @@ numeric `USER`. Pick the column with the `COLUMN` env var (Linux/macOS) or
   [SECURITY.md](SECURITY.md); do not open a public issue for them.
 - [SECURITY.md](SECURITY.md) also lists which released versions receive security
   fixes (only the latest line).
-- `codeql.yml` runs CodeQL analysis weekly (it does not gate pull requests); keep
-  new code free of the issues it flags.
+- `codeql.yml` runs CodeQL analysis weekly and `spotbugs.yml` runs SpotBugs
+  weekly (neither gates pull requests); both publish to the code-scanning tab.
+  Keep new code free of the issues they flag.
 
 ## Pull requests & commits
 

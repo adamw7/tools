@@ -42,6 +42,9 @@
 		<!-- Set true by the modules holding only generated code, where a mutation score measures a
 		     generator rather than tests. -->
 		<pitest.skip>false</pitest.skip>
+		<!-- Set true by those same generated-code modules, where SpotBugs reports on protoc's output
+		     and the plugin's own generated builders rather than on code anybody wrote. -->
+		<spotbugs.skip>false</spotbugs.skip>
 		<!-- Whole-fork wall-clock cap. The per-method timeout only reports after a method returns,
 		     so a wedged thread needs this. -->
 		<unit.test.fork.timeout>300</unit.test.fork.timeout>
@@ -428,6 +431,11 @@
 					</dependencies>
 				</plugin>
 				<plugin>
+					<groupId>com.github.spotbugs</groupId>
+					<artifactId>spotbugs-maven-plugin</artifactId>
+					<version>4.10.4.0</version>
+				</plugin>
+				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-source-plugin</artifactId>
 					<version>3.4.0</version>
@@ -806,6 +814,42 @@
 								<phase>test</phase>
 								<goals>
 									<goal>mutationCoverage</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<!-- Static analysis over the compiled bytecode. Opt-in and report-only: the repository
+			     carries findings SpotBugs reports today, so a `check` goal here would fail every build
+			     rather than surface them. spotbugs.yml runs it and publishes the SARIF, which is what
+			     makes the findings visible and reviewable. -->
+			<id>spotbugs</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>com.github.spotbugs</groupId>
+						<artifactId>spotbugs-maven-plugin</artifactId>
+						<configuration>
+							<skip>${spotbugs.skip}</skip>
+							<!-- Report everything: filtering by threshold or effort hides findings before
+							     anyone has looked at them once. -->
+							<effort>Max</effort>
+							<threshold>Low</threshold>
+							<!-- SARIF is what GitHub's code-scanning tab reads. sarifFullPath emits paths
+							     relative to the repository root, so a finding in a module lands on the right
+							     file instead of a path GitHub cannot resolve. -->
+							<sarifOutput>true</sarifOutput>
+							<sarifFullPath>true</sarifFullPath>
+						</configuration>
+						<executions>
+							<execution>
+								<id>spotbugs-analyze</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>spotbugs</goal>
 								</goals>
 							</execution>
 						</executions>

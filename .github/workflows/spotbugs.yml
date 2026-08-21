@@ -1,11 +1,13 @@
 name: SpotBugs
 
-# Weekly, alongside the other scheduled analysis jobs, plus on demand. SpotBugs
-# is deliberately not part of the pull-request build: maven.yml caps itself at
-# 120 seconds and a full-reactor analysis does not fit in that budget.
+# Weekly on Sunday, plus on demand. 03:00 rather than midnight, where pitest.yml
+# and maven-windows.yml already both start, so the three do not contend for
+# runners. SpotBugs is deliberately not part of the pull-request build:
+# maven.yml caps itself at 120 seconds and a full-reactor analysis does not fit
+# in that budget.
 on:
   schedule:
-    - cron: '0 3 * * 6'
+    - cron: '0 3 * * 0'
   workflow_dispatch:
 
 # Least privilege plus the one write this job needs: security-events lets it

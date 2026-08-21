@@ -793,7 +793,7 @@ not proof the whole matrix passes.
 | `integration-tests.yml` | daily | `mvn -P integration-tests verify`. |
 | `codeql.yml` | weekly (Sat) | CodeQL security/static analysis for Java (autobuild). |
 | `coverage.yml` | weekly (Sat) | `mvn verify -Pcoverage`, uploads the JaCoCo reports. |
-| `spotbugs.yml` | weekly (Sat); manual | `mvn verify -Pspotbugs -DskipTests`, publishes the SARIF to the code-scanning tab and uploads the reports. Report-only — it does not gate pull requests. |
+| `spotbugs.yml` | weekly (Sun); manual | `mvn verify -Pspotbugs -DskipTests`, publishes the SARIF to the code-scanning tab and uploads the reports. Report-only — it does not gate pull requests. |
 | `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads the PIT reports. |
 | `maven-windows.yml` | weekly (Sun); manual | `mvn install` on `windows-latest` — keep path, line-ending and file-locking assumptions platform-neutral. |
 | `docker.yml` | weekly (Sat); on release; manual | Builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR with SBOM and provenance. Deliberately not on pull requests — dispatch it by hand after touching `assembly` or the Dockerfile. |

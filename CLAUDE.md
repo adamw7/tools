@@ -226,9 +226,9 @@ that slows the build down red-flags the PR; profile it rather than raising the
 cap. Everything else runs on a schedule or a release, so a green PR is not proof
 the whole matrix passes:
 
-- **Scheduled** — `integration-tests.yml` daily; `codeql.yml`, `coverage.yml`,
-  `spotbugs.yml` and `docker.yml` Saturdays; `pitest.yml` and
-  `maven-windows.yml` Sundays. Keep
+- **Scheduled** — `integration-tests.yml` daily; `codeql.yml`, `coverage.yml`
+  and `docker.yml` Saturdays; `pitest.yml`, `maven-windows.yml` and
+  `spotbugs.yml` Sundays. Keep
   path, line-ending and file-locking assumptions platform-neutral for the Windows
   build, and dispatch `docker.yml` by hand after changing the assembly or the
   Dockerfile rather than waiting for the weekly run.

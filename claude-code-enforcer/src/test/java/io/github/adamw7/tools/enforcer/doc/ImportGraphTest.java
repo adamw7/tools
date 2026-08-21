@@ -27,6 +27,31 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 class ImportGraphTest {
 
 	private static final Predicate<String> NOTHING_IGNORED = imported -> false;
+
+	/**
+	 * The root comes from the importing document, so an absolute import resolves the
+	 * same way wherever the build was launched from — on Windows {@code new File("/x.md")}
+	 * would otherwise pick whichever drive that happened to be.
+	 */
+	@Test
+	void anAbsoluteImportStartsAtTheImportingDocumentsRoot() {
+		Path importing = ProjectFiles.normalized(tempDir.resolve("CLAUDE.md"));
+
+		File resolved = ImportGraph.rootedAt(importing, "/docs/shared.md");
+
+		assertEquals(importing.getRoot().resolve(Path.of("docs", "shared.md")).toFile(), resolved);
+	}
+
+	/**
+	 * An importing path that names no root has no drive to lend — {@link Path#getRoot}
+	 * answers {@code null} for it — so the import is left to be read as the platform
+	 * reads it, rather than dereferenced into an NPE.
+	 */
+	@Test
+	void anImportingPathWithNoRootLeavesTheImportAsThePlatformReadsIt() {
+		assertEquals(new File("/docs/shared.md"), ImportGraph.rootedAt(Path.of("CLAUDE.md"), "/docs/shared.md"));
+	}
+
 	private static final List<String> EXTENSIONS = List.of("md", "markdown", "txt");
 
 	@TempDir

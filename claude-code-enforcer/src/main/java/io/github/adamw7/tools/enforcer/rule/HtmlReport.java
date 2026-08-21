@@ -47,12 +47,17 @@ final class HtmlReport {
 	/**
 	 * Writes the rendered report to {@code file}, failing the build if it cannot be
 	 * written. Missing parent directories are created first: a report under
-	 * {@code target/} is written at {@code validate}, before any plugin created it.
+	 * {@code target/} is written at {@code validate}, before any plugin created it. A
+	 * path with no parent to create — which {@link Path#getParent} answers {@code null}
+	 * for at a filesystem root — simply has nothing to make before the write.
 	 */
 	void writeTo(File file) throws EnforcerRuleException {
 		try {
 			Path path = file.toPath().toAbsolutePath();
-			Files.createDirectories(path.getParent());
+			Path parent = path.getParent();
+			if (parent != null) {
+				Files.createDirectories(parent);
+			}
 			Files.writeString(path, render(), StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new EnforcerRuleException("Could not write HTML report to " + file, e);

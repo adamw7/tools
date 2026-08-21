@@ -204,9 +204,17 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		}
 	}
 
+	/**
+	 * The path is absolutised before its parent is taken, so a memory file named relative
+	 * to the working directory — which {@link Path#getParent} answers {@code null} for —
+	 * still names the directory the move will land in instead of being dereferenced.
+	 */
 	private void restore(Path backup, Path memory) {
 		try {
-			Files.createDirectories(memory.getParent());
+			Path directory = memory.toAbsolutePath().getParent();
+			if (directory != null) {
+				Files.createDirectories(directory);
+			}
 			Files.move(backup, memory, StandardCopyOption.REPLACE_EXISTING);
 			log.info("Restored existing {}", memory);
 		} catch (IOException e) {

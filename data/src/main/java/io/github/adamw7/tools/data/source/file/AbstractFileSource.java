@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -129,11 +130,22 @@ public abstract class AbstractFileSource implements IterableDataSource {
 		}
 	}
 	
+	/**
+	 * The last element of the path this source reads, which a caller naming its columns
+	 * after the file it came from asks for. A path that names no file — a filesystem root
+	 * such as {@code /} or {@code C:\} — is refused in the same terms as a raw stream,
+	 * rather than dereferencing the {@code null} {@link Path#getFileName}
+	 * answers for it.
+	 */
 	public String getFileName() {
 		if (fileName == null) {
 			throw new IllegalStateException("Source is backed by a raw input stream, not a file");
 		}
-		return Paths.get(fileName).getFileName().toString();
+		Path name = Paths.get(fileName).getFileName();
+		if (name == null) {
+			throw new IllegalStateException("Source path names no file: " + fileName);
+		}
+		return name.toString();
 	}
 	
 	protected List<String[]> readAll() {

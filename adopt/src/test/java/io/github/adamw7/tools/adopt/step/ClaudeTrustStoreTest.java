@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,21 @@ class ClaudeTrustStoreTest {
 	@BeforeAll
 	static void warmUpJackson(@TempDir Path dir) {
 		new ClaudeTrustStore(dir.resolve(".claude.json")).trust(dir.resolve("repo"));
+	}
+
+	/**
+	 * The store resolves its lock file, its temporary file and its move against the
+	 * configuration's directory, and a filesystem root has none — {@link Path#getParent}
+	 * answers {@code null} for it. Refusing it in those terms, before the update has
+	 * touched anything, beats an NPE from the first write to dereference that {@code null}.
+	 */
+	@Test
+	void aConfigPathThatNamesNoFileIsRefusedRatherThanDereferenced(@TempDir Path dir) {
+		ClaudeTrustStore store = new ClaudeTrustStore(Path.of(File.separator));
+
+		AdoptionException thrown = assertThrows(AdoptionException.class, () -> store.trust(dir));
+
+		assertTrue(thrown.getMessage().contains("names no file"), thrown.getMessage());
 	}
 
 	private JsonNode read(Path config) throws IOException {

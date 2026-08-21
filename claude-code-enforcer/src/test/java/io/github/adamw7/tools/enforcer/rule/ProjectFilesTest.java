@@ -144,6 +144,16 @@ class ProjectFilesTest {
 		assertFalse(ProjectFiles.isMarkdown(tempDir.resolve("settings.json")));
 	}
 
+	/**
+	 * A path with no name element — a filesystem root, which {@link Path#getFileName}
+	 * answers {@code null} for — is no Markdown document, and saying so is what keeps a
+	 * rule scanning a tree that reaches one from failing on an NPE instead of a verdict.
+	 */
+	@Test
+	void isMarkdownRejectsAPathThatNamesNoFile() {
+		assertFalse(ProjectFiles.isMarkdown(Path.of(File.separator)));
+	}
+
 	@Test
 	void markdownBaseNameStripsTheMarkdownSuffix() {
 		assertEquals("git-commit", ProjectFiles.markdownBaseName(tempDir.resolve("git-commit.md").toFile()));

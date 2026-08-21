@@ -5,6 +5,7 @@ import io.github.adamw7.context.Context;
 import io.github.adamw7.context.ContextFactory;
 import io.github.adamw7.context.Finder;
 import io.github.adamw7.context.Language;
+import io.github.adamw7.context.PathNames;
 import io.github.adamw7.context.ProjectSources;
 
 import java.io.IOException;
@@ -98,8 +99,12 @@ public class ProjectTreeBuilder {
 		}
 	}
 
+	/**
+	 * Directories first, then by name — {@link PathNames} being what keeps that second
+	 * key total, so a child with no name of its own cannot fail the ordering.
+	 */
 	private Comparator<Path> childOrdering() {
 		return Comparator.comparing((Path path) -> Files.isDirectory(path) ? 0 : 1)
-				.thenComparing(path -> path.getFileName().toString());
+				.thenComparing(PathNames::of);
 	}
 }

@@ -93,12 +93,17 @@ final class Baseline {
 	/**
 	 * Writes {@code violations} as a fresh baseline, replacing any previous content.
 	 * Signatures are normalised against {@code baseDir}, de-duplicated and sorted so
-	 * the file stays diffable. Missing parent directories are created first.
+	 * the file stays diffable. Missing parent directories are created first, unless the
+	 * absolutised path has no parent to create — which {@link Path#getParent} answers
+	 * {@code null} for at a filesystem root — leaving nothing to make before the write.
 	 */
 	static void write(File file, List<String> violations, File baseDir) throws EnforcerRuleException {
 		try {
 			Path path = file.toPath().toAbsolutePath();
-			Files.createDirectories(path.getParent());
+			Path parent = path.getParent();
+			if (parent != null) {
+				Files.createDirectories(parent);
+			}
 			Files.writeString(path, render(violations, Signatures.rootedAt(baseDir)), StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new EnforcerRuleException("Could not write baseline file " + file, e);

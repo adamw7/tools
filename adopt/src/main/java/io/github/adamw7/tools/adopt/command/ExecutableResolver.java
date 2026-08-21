@@ -79,7 +79,7 @@ final class ExecutableResolver {
 	 * for {@link ProcessBuilder} to start as it was given.
 	 */
 	private Optional<Path> given(String program) {
-		return toPath(program).filter(Files::isRegularFile).filter(this::isBatchScript);
+		return toPath(program).filter(Files::isRegularFile).filter(ExecutableResolver::isBatchScript);
 	}
 
 	private Optional<Path> locate(String program) {
@@ -107,8 +107,16 @@ final class ExecutableResolver {
 				.toList();
 	}
 
-	private boolean isBatchScript(Path executable) {
-		String name = executable.getFileName().toString().toLowerCase(Locale.ROOT);
+	/**
+	 * A path naming no file — a filesystem root, which {@link Path#getFileName} answers
+	 * {@code null} for — is not a batch script, so it is answered rather than dereferenced.
+	 */
+	static boolean isBatchScript(Path executable) {
+		Path fileName = executable.getFileName();
+		if (fileName == null) {
+			return false;
+		}
+		String name = fileName.toString().toLowerCase(Locale.ROOT);
 		return BATCH_EXTENSIONS.stream().anyMatch(name::endsWith);
 	}
 

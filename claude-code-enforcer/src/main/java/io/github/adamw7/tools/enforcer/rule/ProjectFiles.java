@@ -62,7 +62,8 @@ public final class ProjectFiles {
 	 * that budget or scan a tree of documents select theirs.
 	 */
 	public static boolean isMarkdown(Path path) {
-		return path.getFileName().toString().endsWith(MARKDOWN_SUFFIX);
+		Path fileName = path.getFileName();
+		return fileName != null && fileName.toString().endsWith(MARKDOWN_SUFFIX);
 	}
 
 	/** The file name with the {@code .md} suffix stripped. */

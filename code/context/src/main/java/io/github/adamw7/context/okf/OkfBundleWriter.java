@@ -33,13 +33,26 @@ public class OkfBundleWriter {
 		return target;
 	}
 
+	/**
+	 * The path is absolutised before its parent is taken, so a document written under an
+	 * empty target — which {@link Path#getParent} answers {@code null} for, the resolved
+	 * path being a bare file name — still names the directory it lands in instead of
+	 * being dereferenced as {@code null}.
+	 */
 	private void writeDocument(OkfDocument document, Path target) {
 		Path file = target.resolve(document.path());
 		try {
-			Files.createDirectories(file.getParent());
+			createParentDirectories(file);
 			Files.writeString(file, document.content(), StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Failed to write the OKF document " + file, e);
+		}
+	}
+
+	private static void createParentDirectories(Path file) throws IOException {
+		Path directory = file.toAbsolutePath().getParent();
+		if (directory != null) {
+			Files.createDirectories(directory);
 		}
 	}
 }

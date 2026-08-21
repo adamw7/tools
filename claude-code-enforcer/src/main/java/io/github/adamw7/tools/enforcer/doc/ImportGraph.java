@@ -191,7 +191,7 @@ final class ImportGraph {
 
 	private File resolve(File file, String imported) {
 		if (imported.startsWith("/")) {
-			return rootedAt(file, imported);
+			return rootedAt(ProjectFiles.normalized(file), imported);
 		}
 		return new File(file.getParentFile(), imported);
 	}
@@ -200,10 +200,18 @@ final class ImportGraph {
 	 * A leading slash starts the path at a file system root. Which root comes from
 	 * the importing file, so a document resolves the same way wherever the build was
 	 * launched from — on Windows {@code new File("/docs.md")} would otherwise pick
-	 * whichever drive the build started on.
+	 * whichever drive the build started on. An importing path that names no root —
+	 * which {@link Path#getRoot} reports as {@code null} — has no drive to lend, so the
+	 * import is left to be read as the platform reads it.
+	 *
+	 * @param importingFile the normalised path of the document the import was read from
 	 */
-	private File rootedAt(File file, String imported) {
-		return ProjectFiles.normalized(file).getRoot().resolve(imported.substring(1)).toFile();
+	static File rootedAt(Path importingFile, String imported) {
+		Path root = importingFile.getRoot();
+		if (root == null) {
+			return new File(imported);
+		}
+		return root.resolve(imported.substring(1)).toFile();
 	}
 
 	/**

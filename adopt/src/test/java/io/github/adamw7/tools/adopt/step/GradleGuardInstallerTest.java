@@ -2,9 +2,11 @@ package io.github.adamw7.tools.adopt.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +19,25 @@ import io.github.adamw7.tools.adopt.AdoptionException;
 class GradleGuardInstallerTest {
 
 	private final GradleGuardInstaller installer = new GradleGuardInstaller();
+
+	@Test
+	void theKotlinBlockIsChosenByTheScriptsExtension() {
+		assertEquals(GradleGuardInstaller.blockFor(Path.of("build.gradle.kts")),
+				GradleGuardInstaller.blockFor(Path.of("nested", "build.gradle.kts")));
+		assertNotEquals(GradleGuardInstaller.blockFor(Path.of("build.gradle")),
+				GradleGuardInstaller.blockFor(Path.of("build.gradle.kts")));
+	}
+
+	/**
+	 * Only a name ending in {@code .kts} selects the Kotlin block, and a filesystem root
+	 * has no name for {@link Path#getFileName} to answer with, so it takes the Groovy one
+	 * rather than throwing NPE on the way to the question.
+	 */
+	@Test
+	void aPathThatNamesNoFileTakesTheGroovyBlock() {
+		assertEquals(GradleGuardInstaller.blockFor(Path.of("build.gradle")),
+				GradleGuardInstaller.blockFor(Path.of(File.separator)));
+	}
 
 	/**
 	 * Gradle's configuration cache — on by default from Gradle 9 — rejects a task

@@ -80,6 +80,21 @@ public class ClaudeTrustStore {
 		this.configFile = configFile.toAbsolutePath();
 	}
 
+	/**
+	 * The directory holding the configuration, the lock file beside it and the temporary
+	 * file the write moves from. A filesystem root names no configuration file and has no
+	 * directory to hold one, so it is refused in those terms — the update having touched
+	 * nothing yet — rather than as an NPE from the first write to dereference the
+	 * {@code null} {@link Path#getParent} answers for it.
+	 */
+	private Path configDirectory() {
+		Path directory = configFile.getParent();
+		if (directory == null) {
+			throw new AdoptionException("The Claude config path names no file: " + configFile);
+		}
+		return directory;
+	}
+
 	private static Path defaultConfigFile() {
 		return Path.of(System.getProperty("user.home"), ".claude.json");
 	}
@@ -237,7 +252,7 @@ public class ClaudeTrustStore {
 
 	/** Created before the lock file is opened beside it, and so before anything is read. */
 	private void createConfigDirectory() {
-		Path directory = configFile.getParent();
+		Path directory = configDirectory();
 		try {
 			Files.createDirectories(directory);
 		} catch (IOException e) {
@@ -247,7 +262,7 @@ public class ClaudeTrustStore {
 
 	/** A sibling, so the move stays within one filesystem and can be atomic. */
 	private Path temporaryBeside() throws IOException {
-		return Files.createTempFile(configFile.getParent(), ".claude-adopt-", ".json");
+		return Files.createTempFile(configDirectory(), ".claude-adopt-", ".json");
 	}
 
 	/**

@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.adopt.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +17,27 @@ import org.junit.jupiter.api.io.TempDir;
 class ExecutableResolverTest {
 
 	private static final List<String> EXTENSIONS = List.of(".com", ".exe", ".bat", ".cmd");
+
+	@Test
+	void aScriptIsRecognisedByItsExtensionWhateverItsCase() {
+		assertTrue(ExecutableResolver.isBatchScript(Path.of("mvn.cmd")));
+		assertTrue(ExecutableResolver.isBatchScript(Path.of("GRADLEW.BAT")));
+	}
+
+	@Test
+	void aRealExecutableIsNotAScript() {
+		assertFalse(ExecutableResolver.isBatchScript(Path.of("git.exe")));
+	}
+
+	/**
+	 * A path naming no file — a filesystem root, which {@link Path#getFileName} answers
+	 * {@code null} for — is not a script, and answering so is what keeps the question
+	 * from being an NPE for whoever named a program by a path of their own.
+	 */
+	@Test
+	void aPathThatNamesNoFileIsNotAScript() {
+		assertFalse(ExecutableResolver.isBatchScript(Path.of(File.separator)));
+	}
 
 	@Test
 	void posixReturnsTheCommandUnchanged(@TempDir Path dir) throws IOException {

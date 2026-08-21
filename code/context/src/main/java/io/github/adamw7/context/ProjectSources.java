@@ -34,10 +34,10 @@ public class ProjectSources {
 	}
 
 	private boolean isSourceFile(Path path) {
-		return Files.isRegularFile(path) && path.getFileName().toString().endsWith(language.extension());
+		return Files.isRegularFile(path) && PathNames.of(path).endsWith(language.extension());
 	}
 
 	private ClassContainer toContainer(Path path) {
-		return ClassContainer.load(path, path.getFileName().toString());
+		return ClassContainer.load(path, PathNames.of(path));
 	}
 }

@@ -189,8 +189,14 @@ public class GradleGuardInstaller {
 		return character == SINGLE_QUOTE || character == DOUBLE_QUOTE ? character : 0;
 	}
 
-	private String blockFor(Path buildFile) {
-		return buildFile.getFileName().toString().endsWith(KOTLIN_SUFFIX) ? KOTLIN_BLOCK : GROOVY_BLOCK;
+	/**
+	 * Groovy is the block a path naming no file gets, since only a name ending in
+	 * {@value #KOTLIN_SUFFIX} selects the Kotlin one and a filesystem root has no name
+	 * for {@link Path#getFileName} to answer with.
+	 */
+	static String blockFor(Path buildFile) {
+		Path fileName = buildFile.getFileName();
+		return fileName != null && fileName.toString().endsWith(KOTLIN_SUFFIX) ? KOTLIN_BLOCK : GROOVY_BLOCK;
 	}
 
 	/** The block's LF terminators are rewritten to the script's own, so a CRLF file stays CRLF throughout. */

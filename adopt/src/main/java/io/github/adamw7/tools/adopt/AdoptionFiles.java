@@ -34,8 +34,10 @@ public final class AdoptionFiles {
 	}
 
 	/**
-	 * The path is absolutised first so a relative file name — which has no parent
-	 * of its own — still resolves to the directory it will be written into.
+	 * The path is absolutised first so a relative file name — which {@link Path#getParent}
+	 * answers {@code null} for, having no parent of its own — still resolves to the
+	 * directory it will be written into, and a path that has no parent even then is left
+	 * alone rather than dereferenced.
 	 */
 	private static void createParentDirectories(Path file) throws IOException {
 		Path parent = file.toAbsolutePath().getParent();

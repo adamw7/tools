@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -30,7 +31,8 @@ import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
  * without the check in {@link AbstractFileSource#hasNextLine()} a truncated transfer,
  * a corrupt GZip member or a disk error reads as a short but successful file. The same
  * corrupt GZip member is what leaks a descriptor when the wrapping fails before any
- * Scanner owns the opened file, which the last test pins.
+ * Scanner owns the opened file, which one test pins. The name a source answers for the
+ * file it reads is pinned here too, that being the other thing every one of them shares.
  */
 public class AbstractFileSourceTest {
 
@@ -101,6 +103,34 @@ public class AbstractFileSourceTest {
 		// No Scanner was built, so nothing else owns the descriptor: createScanner had to
 		// close it itself. A closed FileInputStream refuses to read.
 		assertThrows(IOException.class, () -> source.openedStream.read());
+	}
+
+	@Test
+	public void theFileNameIsTheLastElementOfThePath() {
+		RecordingSource source = new RecordingSource(Path.of("data", "rows.csv").toString());
+
+		assertEquals("rows.csv", source.getFileName());
+	}
+
+	@Test
+	public void aPathThatNamesNoFileIsRefusedRatherThanDereferenced() {
+		// A filesystem root has no last element, so getFileName() answers null and the
+		// lookup would throw NPE two lines after the method took care to say what was
+		// wrong. File.separator is that root on both POSIX and Windows.
+		RecordingSource source = new RecordingSource(File.separator);
+
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getFileName);
+
+		assertTrue(thrown.getMessage().contains("names no file"), thrown.getMessage());
+	}
+
+	@Test
+	public void aSourceBackedByARawStreamStillSaysSoRatherThanNamingAFile() {
+		CSVDataSource source = new CSVDataSource(stream(HEADER), ",", 1);
+
+		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getFileName);
+
+		assertTrue(thrown.getMessage().contains("raw input stream"), thrown.getMessage());
 	}
 
 	private static int readAll(CSVDataSource source) {

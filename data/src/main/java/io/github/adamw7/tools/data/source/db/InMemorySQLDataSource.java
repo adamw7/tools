@@ -42,9 +42,10 @@ public class InMemorySQLDataSource extends IterableSQLDataSource implements InMe
 	public List<String[]> readAll() {
 		try (Statement statement = connection.createStatement()) {
 			ResultSet resultSet = statement.executeQuery(query);
+			int columnCount = columnCountOf(resultSet);
 			List<String[]> allData = new ArrayList<>();
 			while (resultSet.next()) {
-				allData.add(getNextFrom(resultSet));
+				allData.add(getNextFrom(resultSet, columnCount));
 			}
 			log.info("Loaded {} rows into memory", allData::size);
 			return allData;

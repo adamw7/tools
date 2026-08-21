@@ -33,6 +33,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	private ResultSet resultSet;
 	private Statement statement;
+	private int columnCount;
 	protected boolean hasMoreData = true;
 	protected final String query;
 	protected final Connection connection;
@@ -58,16 +59,57 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		} finally {
 			resultSet = null;
 			statement = null;
+			columnCount = 0;
 		}
 	}
 
+	/**
+	 * Closes both resources whichever of them fails. A {@link ResultSet#close()} that
+	 * throws must not skip the statement: {@link #closeQueryResources()} nulls both
+	 * fields either way, so a statement left open here — and the server-side cursor it
+	 * holds on a connection the caller keeps using — is unreachable and can never be
+	 * closed. Both failures are reported as one, the statement's suppressed by the
+	 * result set's.
+	 */
 	private void closeOpenResources() throws SQLException {
-		if (resultSet != null) {
-			resultSet.close();
+		SQLException resultSetFailure = closeResultSet();
+		SQLException statementFailure = closeStatement();
+		SQLException failure = firstOf(resultSetFailure, statementFailure);
+		if (failure != null) {
+			throw failure;
 		}
-		if (statement != null) {
-			statement.close();
+	}
+
+	private SQLException closeResultSet() {
+		return resultSet == null ? null : failureFrom(resultSet::close);
+	}
+
+	private SQLException closeStatement() {
+		return statement == null ? null : failureFrom(statement::close);
+	}
+
+	/** @return what {@code call} failed with, or {@code null} if it succeeded */
+	private static SQLException failureFrom(Sql.Call call) {
+		try {
+			call.run();
+			return null;
+		} catch (SQLException e) {
+			return e;
 		}
+	}
+
+	/**
+	 * @return {@code first}, carrying {@code second} as a suppressed exception, or
+	 *         whichever of the two is not {@code null}
+	 */
+	private static SQLException firstOf(SQLException first, SQLException second) {
+		if (first == null) {
+			return second;
+		}
+		if (second != null) {
+			first.addSuppressed(second);
+		}
+		return first;
 	}
 
 	@Override
@@ -96,6 +138,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		statement = connection.createStatement();
 		log.info("Executing query: {}", query);
 		resultSet = statement.executeQuery(query);
+		columnCount = columnCountOf(resultSet);
 	}
 
 	@Override
@@ -106,7 +149,7 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 
 	private String[] readRow() throws SQLException {
 		hasMoreData = resultSet.next();
-		return hasMoreData ? getNextFrom(resultSet) : null;
+		return hasMoreData ? getNextFrom(resultSet, columnCount) : null;
 	}
 
 	@Override
@@ -141,8 +184,17 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		open();
 	}
 
-	protected static String[] getNextFrom(ResultSet resultSet) throws SQLException {
-		return byColumn(resultSet.getMetaData().getColumnCount(), resultSet::getString);
+	/**
+	 * Reads one row, taking the column count the caller read once at the start of the
+	 * result set rather than asking for the metadata again — a round trip to the server
+	 * on some drivers, and the row count is what it would be multiplied by.
+	 */
+	protected static String[] getNextFrom(ResultSet resultSet, int columnCount) throws SQLException {
+		return byColumn(columnCount, resultSet::getString);
+	}
+
+	protected static int columnCountOf(ResultSet resultSet) throws SQLException {
+		return resultSet.getMetaData().getColumnCount();
 	}
 
 	protected static String[] getColumnsFrom(ResultSet resultSet) throws SQLException {

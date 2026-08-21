@@ -534,9 +534,10 @@ Repo-wide rules (declared once in `test-common` and imported with
   separate because `claude-code-enforcer` is exempt: its abstract rule bases are
   public API that poms configure by name.
 - `CommonTestConventions` — every `@Testable` method lives in a `*Test`/`*IT`
-  class; no `@Disabled`; JUnit 5 only; no `System.out`/`err`; no `Thread.sleep`;
-  a `*Test` that writes a system property is `@Isolated`, since the unit run is
-  class-parallel (the `*IT`s failsafe runs one after another are exempt).
+  class; no `@Disabled`; JUnit Jupiter only; no `System.out`/`err`; no
+  `Thread.sleep`; a `*Test` that writes a system property is `@Isolated`, since
+  the unit run is class-parallel (the `*IT`s failsafe runs one after another are
+  exempt).
 
 Adding a repository-wide convention means editing one library, not six tests; an
 exemption means a module not importing a library, which stays visible.
@@ -744,7 +745,7 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `**/target/site/jacoco/` and **fails** if a bundle's instruction **or** branch
   coverage drops below **80%**. The profile also raises the per-test timeout to
   8 s, because instrumentation slows first-use class-loading.
-- **Mutation testing** — `mvn -Ppitest install` (PIT + JUnit 5) writes reports to
+- **Mutation testing** — `mvn -Ppitest install` (PIT + Jupiter) writes reports to
   `**/target/pit-reports/` and **fails** when a module's mutation score drops
   below its `pitest.mutationThreshold`:
 
@@ -889,7 +890,7 @@ which is why they, not `CLAUDE.md`, are where detail belongs.
 | `enforcer-rules` | writing, testing and wiring a `claude-code-enforcer` rule, including `severity`/`reportFile`/`baselineFile` |
 | `doc-contract` | keeping `CLAUDE.md`, `AGENTS.md` and `README.md` inside the enforced documentation contract |
 | `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
-| `testing-conventions` | the surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit 5 only |
+| `testing-conventions` | the surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit Jupiter only |
 | `java-code-review` | review led by the rules the build fails on, then the defect shapes this repository ships fixes for |
 | `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy, the SnakeYAML-backed `FrontMatter` — and the input that has broken each |
 | `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
@@ -1232,6 +1233,16 @@ Skill: `maven-conventions`.
   `derby.version` and `log4j2.version` are Spring Boot's own property names on
   purpose — the BOM manages the rest of each family from them, so pinning only
   the artifacts declared here would leave the siblings on Boot's older version.
+- The root pom's parent is `spring-boot-starter-parent`, so its
+  `<dependencyManagement>` and `<pluginManagement>` reach every module. Two of
+  its entries are deliberately neutralised in the root pom rather than lived
+  with: the `generate` execution it binds on `protobuf-maven-plugin` (for its
+  gRPC starter) would look for a `src/main/proto` the plugin module has none of,
+  and the `protoc-gen-grpc-java` it adds to that plugin's `<plugins>` would reach
+  the modules that generate plain protobuf. `grpc-example` names the gRPC
+  generator in its own execution instead. The parent also decides which JUnit
+  generation the tests run on — Boot 4 brings **JUnit 6** (Jupiter), which is why
+  `data-test` needs a slightly larger heap than it did under Boot 3.
 - A module that is an example, a test harness or a distribution opts out of
   publication with `maven.deploy.skip` (GitHub Packages) and
   `central.skipPublishing` (Maven Central) — not by redeclaring the `release`

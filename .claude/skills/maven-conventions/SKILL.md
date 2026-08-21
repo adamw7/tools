@@ -28,6 +28,13 @@ profile, is the most common source of avoidable build friction here.
   are Spring Boot's own property names, so overriding them also moves the
   siblings the `spring-boot-dependencies` BOM manages (derbyshared, the other
   log4j2 artifacts) instead of leaving them on Boot's older version.
+- **The Spring Boot parent manages plugins too.** It binds a `generate`
+  execution on `protobuf-maven-plugin` and adds `protoc-gen-grpc-java` to it for
+  its gRPC starter; the root pom unbinds that execution (`<phase>none</phase>`)
+  and clears the generator list (`<plugins combine.self="override"/>`), because
+  the modules here declare the protobuf executions they want. Leave both in
+  place — without them `protogen-maven-plugin` fails at `generate-sources`
+  looking for a `src/main/proto` it does not have.
 
 ### Ask before adding a dependency
 - Use the existing Maven dependencies. **Always ask the user before adding a new

@@ -1165,7 +1165,7 @@ transcript.
 ## Architecture tests (ArchUnit)
 
 Every production module guards its own package structure with
-[ArchUnit](https://www.archunit.org/) rules that run as ordinary JUnit 5 tests,
+[ArchUnit](https://www.archunit.org/) rules that run as ordinary JUnit tests,
 so an accidental dependency or a broken naming convention **fails the build**
 instead of quietly eroding the design. Each module keeps its rules in a single
 `*ArchitectureTest` under an `architecture` package, annotated with
@@ -1249,12 +1249,12 @@ Alongside the production rules, each module carries a companion
 `TestConventionsArchitectureTest` that analyses only the *test* classes (via
 `ImportOption.OnlyIncludeTests`) and pins conventions on the tests themselves:
 every `@Testable` method must live in a `*Test` or `*IT` class so surefire or
-failsafe actually runs it, no test is `@Disabled`, tests use JUnit 5 only (no
+failsafe actually runs it, no test is `@Disabled`, tests use JUnit Jupiter only (no
 JUnit 4 `org.junit` API), and no test calls `Thread.sleep` or `TimeUnit.sleep`
 (sleeping is slow and flaky — wait on a condition instead). A few rules guard
 against tests that silently never run: a `@Testable` method must not be
-`private` or `static` (JUnit 5 quietly ignores both), and a `@BeforeAll`/
-`@AfterAll` method must be `static` (JUnit 5 requires it unless the class opts
+`private` or `static` (Jupiter quietly ignores both), and a `@BeforeAll`/
+`@AfterAll` method must be `static` (Jupiter requires it unless the class opts
 into the `PER_CLASS` lifecycle).
 
 Run them for a single module with, for example:

@@ -199,7 +199,7 @@ Skill: `testing-conventions`.
   package, every enforcer rule is a public `@Named` type that neither spawns a
   process nor reaches the network). A companion `TestConventionsArchitectureTest`
   pins the tests themselves: methods only in `*Test`/`*IT` classes, no
-  `@Disabled`, JUnit 5 only, no `System.out`/`err`, no `Thread.sleep`. The
+  `@Disabled`, JUnit Jupiter only, no `System.out`/`err`, no `Thread.sleep`. The
   repo-wide rules live once in `test-common` and are imported with
   `ArchTests.in(...)`.
 - **Integration tests** (`*IT`) are gated behind the `integration-tests` profile

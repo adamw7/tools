@@ -52,7 +52,7 @@ public class CommonTestConventions {
 	@ArchTest
 	static final ArchRule testsUseJunit5 = noClasses()
 			.should().dependOnClassesThat().resideInAPackage("org.junit")
-			.because("tests use JUnit 5 (org.junit.jupiter); the JUnit 4 API must not creep back in");
+			.because("tests use JUnit Jupiter (org.junit.jupiter); the JUnit 4 API must not creep back in");
 
 	@ArchTest
 	static final ArchRule testsDoNotSleep = noClasses()
@@ -73,7 +73,7 @@ public class CommonTestConventions {
 			.that().areAnnotatedWith(BeforeAll.class)
 			.or().areAnnotatedWith(AfterAll.class)
 			.should().beStatic()
-			.because("JUnit 5 runs @BeforeAll/@AfterAll once per class only when they are static; "
+			.because("Jupiter runs @BeforeAll/@AfterAll once per class only when they are static; "
 					+ "a non-static one fails at runtime unless the class opts into the PER_CLASS lifecycle")
 			.allowEmptyShould(true);
 
@@ -95,5 +95,5 @@ public class CommonTestConventions {
 			.that().areMetaAnnotatedWith(TESTABLE_ANNOTATION)
 			.should().notBePrivate()
 			.andShould().notBeStatic()
-			.because("JUnit 5 silently ignores a private or static test method, so it never runs");
+			.because("Jupiter silently ignores a private or static test method, so it never runs");
 }

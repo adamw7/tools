@@ -1,6 +1,6 @@
 ---
 name: testing-conventions
-description: Write tests that pass this repo's enforced testing rules (Surefire 5s timeout, network-off unit tests, ArchUnit conventions, JUnit 5 only). Use when adding or changing tests, when a test times out or opens a network connection, or when the user says "write a test", "add tests", or "fix the failing test".
+description: Write tests that pass this repo's enforced testing rules (Surefire 5s timeout, network-off unit tests, ArchUnit conventions, JUnit Jupiter only). Use when adding or changing tests, when a test times out or opens a network connection, or when the user says "write a test", "add tests", or "fix the failing test".
 ---
 
 # Testing Conventions Skill
@@ -48,7 +48,7 @@ fails the build, not just review.
 
 ### Test conventions pinned by `TestConventionsArchitectureTest`
 - Test methods live only in `*Test` / `*IT` classes.
-- **JUnit 5 only** (`org.junit.jupiter`). No JUnit 4.
+- **JUnit Jupiter only** (`org.junit.jupiter`). No JUnit 4.
 - No `@Disabled`.
 - No `System.out` / `System.err` in tests.
 - No `Thread.sleep` in tests.
@@ -81,7 +81,7 @@ fails the build, not just review.
 | Per-unit-test time | 5 s (opt out with commented `@Timeout`) |
 | `@BeforeAll` etc. | 10 s (15 s under coverage) |
 | Network in unit test | Blocked by `NetworkOffExtension` — use `*IT` |
-| Test framework | JUnit 5 only |
+| Test framework | JUnit Jupiter only |
 | Disabled tests | Not allowed (`@Disabled` banned) |
 | `Thread.sleep` in test | Banned |
 | `System.out`/`err` in test | Banned |

@@ -12,6 +12,21 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
+/**
+ * A {@link ColumnarDataSource} over a JDBC query, read a row at a time.
+ *
+ * <p><strong>The query is executed verbatim.</strong> This source hands the SQL it was
+ * given to a plain {@link Statement}, binding nothing and rewriting nothing, so the
+ * caller owns the statement's safety: assemble it from constants and values you
+ * control, and never from input that arrived from outside the program. A query built
+ * by concatenating untrusted text is a SQL injection here, exactly as it would be at
+ * the {@code Statement} call this class makes on the caller's behalf.</p>
+ *
+ * <p>Running caller-supplied SQL is the contract, not an oversight, so SpotBugs'
+ * {@code SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE} is excluded for the two methods
+ * that execute it &mdash; see {@code data/spotbugs-exclude.xml}, which names those
+ * methods alone so a genuine concatenation elsewhere in this package still fails.</p>
+ */
 public class IterableSQLDataSource implements ColumnarDataSource {
 
 	private static final Logger log = LogManager.getLogger(IterableSQLDataSource.class.getName());
@@ -22,6 +37,11 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 	protected final String query;
 	protected final Connection connection;
 
+	/**
+	 * @param connection the JDBC connection to run the query on
+	 * @param query the SQL to execute, run verbatim &mdash; see the class javadoc for what
+	 *        the caller must guarantee about how it was built
+	 */
 	public IterableSQLDataSource(Connection connection, String query) {
 		this.connection = connection;
 		this.query = query;
@@ -62,6 +82,10 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		}
 	}
 
+	/**
+	 * Executes the query given to the constructor, verbatim and unparameterised, and
+	 * positions this source before its first row.
+	 */
 	@Override
 	public void open() {
 		closeQueryResources();

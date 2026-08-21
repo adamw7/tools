@@ -49,6 +49,10 @@ Every format ships in two variants:
   transparently **decompress `.gz`** with no extra config.
 - JSON/YAML flatten nested objects to dotted keys, e.g.
   `people[0].address.city`.
+- The **JDBC sources run the query verbatim** through a plain `Statement`: they
+  bind nothing, so a query built from untrusted input is an injection at the
+  caller's keyboard. Their javadoc says so, and `data/spotbugs-exclude.xml`
+  accepts `SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE` for those two methods only.
 - A **read that breaks part-way through fails**, rather than reading as a short
   file. The `Scanner`-backed sources (`CSVDataSource` and the map-backed
   in-memory JSON/YAML/TOON ones) go through `AbstractFileSource.hasNextLine()`,

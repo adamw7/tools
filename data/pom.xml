@@ -44,6 +44,15 @@
 					<useModulePath>false</useModulePath>
 				</configuration>
 			</plugin>
+			<!-- Narrows the SpotBugs run configured in the root pom's `spotbugs` profile; the
+			     plugin runs only when that profile is active, this just supplies the filter. -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<configuration>
+					<excludeFilterFile>${project.basedir}/spotbugs-exclude.xml</excludeFilterFile>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

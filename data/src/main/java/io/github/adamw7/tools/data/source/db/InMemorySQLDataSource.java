@@ -14,15 +14,30 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 
+/**
+ * An {@link IterableSQLDataSource} that reads the whole result set into memory in one
+ * call. The query is executed verbatim and unparameterised, on the same terms as the
+ * superclass: see {@link IterableSQLDataSource} for what the caller must guarantee
+ * about the SQL it hands over.
+ */
 public class InMemorySQLDataSource extends IterableSQLDataSource implements InMemoryDataSource {
 	
 	private static final Logger log = LogManager.getLogger(InMemorySQLDataSource.class.getName());
 
 	
+	/**
+	 * @param connection the JDBC connection to run the query on
+	 * @param query the SQL to execute, run verbatim &mdash; see {@link IterableSQLDataSource}
+	 *        for what the caller must guarantee about how it was built
+	 */
 	public InMemorySQLDataSource(Connection connection, String query) {
 		super(connection, query);
 	}
 	
+	/**
+	 * Executes the query given to the constructor, verbatim and unparameterised, and
+	 * returns every row it produced.
+	 */
 	@Override
 	public List<String[]> readAll() {
 		try (Statement statement = connection.createStatement()) {

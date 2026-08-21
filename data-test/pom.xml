@@ -18,8 +18,9 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<!-- The tight heap is the point of this module: it proves the iterative sources
-					     stream rather than buffer. @{argLine} keeps the JaCoCo agent composed in. -->
-					<argLine>@{argLine} -Xmx16m</argLine>
+					     stream rather than buffer, and an in-memory read of this document still runs
+					     out of memory at 24m. @{argLine} keeps the JaCoCo agent composed in. -->
+					<argLine>@{argLine} -Xmx24m</argLine>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -65,7 +65,7 @@ Production code is `io.github.adamw7.*` (Java 25). Flag any violation as
 | **`java.time` only** | Any use of legacy `java.util.Date` / `Calendar`. |
 | **Abstract types prefixed `Abstract`, public fields `final`** | Except `claude-code-enforcer`, whose rule bases are named for the poms. |
 | **No package cycles / layering breaks** | Data-source contracts depending on their impls, uniqueness core depending on its MCP adapter, JDBC outside `source.db`, a step spawning a process outside `command`. |
-| **Test conventions** | Tests only in `*Test`/`*IT`; JUnit 5 only; no `@Disabled`; no `Thread.sleep`; no `System.out`/`err`. See `testing-conventions`. |
+| **Test conventions** | Tests only in `*Test`/`*IT`; JUnit Jupiter only; no `@Disabled`; no `Thread.sleep`; no `System.out`/`err`. See `testing-conventions`. |
 | **Surefire 5 s/unit test** | A unit test doing real work without a justified `@Timeout`. |
 
 ---

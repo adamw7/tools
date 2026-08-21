@@ -49,7 +49,7 @@ public class MemoryLeakTest {
 	/**
 	 * The iterable JSON, YAML and TOON sources emit one row at a time without holding the
 	 * document in memory. To prove that, each generated document has far more fields than
-	 * could be buffered under the tight surefire heap (-Xmx16m): a non-iterable reader
+	 * could be buffered under the tight surefire heap (-Xmx24m): a non-iterable reader
 	 * would run out of memory, while a single pass stays flat.
 	 */
 	private static final int ITERABLE_FIELDS = 100_000;

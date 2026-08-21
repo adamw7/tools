@@ -208,7 +208,7 @@ in its column before calling it done.
   `claude-code-enforcer` holds an 88% threshold:
   `mvn -Ppitest install -pl claude-code-enforcer -am`. A surviving mutant on a
   boundary condition in a mask is very often a real gap.
-- Standard rules still apply — 5 s per unit test, JUnit 5, no `Thread.sleep`.
+- Standard rules still apply — 5 s per unit test, Jupiter, no `Thread.sleep`.
   See `testing-conventions`.
 
 ## Common mistakes

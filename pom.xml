@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.16</version>
+		<version>4.1.1</version>
 		<relativePath/>
 	</parent>
 	
@@ -331,7 +331,17 @@
 					<version>5.1.8</version>
 					<configuration>
 						<protoc>${protobuf.version}</protoc>
+						<!-- Boot's parent adds protoc-gen-grpc-java here; grpc-example names it in
+						     its own execution instead. -->
+						<plugins combine.self="override"/>
 					</configuration>
+					<executions>
+						<!-- Boot's parent binds this over src/main/proto, which no module here has. -->
+						<execution>
+							<id>generate</id>
+							<phase>none</phase>
+						</execution>
+					</executions>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>

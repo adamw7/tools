@@ -8,7 +8,7 @@
 
 Helps Claude write tests that satisfy the `tools` repo's enforced testing rules:
 the 5 s Surefire per-test timeout, network-off unit tests, ArchUnit test
-conventions, and JUnit 5 only.
+conventions, and JUnit Jupiter only.
 
 ---
 

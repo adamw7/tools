@@ -33,8 +33,20 @@ public class WorkflowGuardInstaller {
 
 	private static final String MARKER = "Added by claude-code-adopt";
 
+	/**
+	 * The marker and the script's path, substituted into the two templates rather than
+	 * formatted in so both files are written with LF on every platform. The script is
+	 * run by {@code sh}, which reads a CRLF shebang line as an interpreter named
+	 * {@code /bin/sh\r} and refuses to run it, so LF here is the guard working rather
+	 * than a line-ending preference; the workflow beside it is written the same way, so
+	 * the pair a run adds is identical wherever the run happened.
+	 */
+	private static final String MARKER_TOKEN = "@marker@";
+
+	private static final String SCRIPT_FILE_TOKEN = "@scriptFile@";
+
 	private static final String WORKFLOW = """
-			# %s: fail CI when CLAUDE.md is missing or empty.
+			# @marker@: fail CI when CLAUDE.md is missing or empty.
 			name: CLAUDE.md guard
 			on: [push, pull_request]
 			jobs:
@@ -43,17 +55,17 @@ public class WorkflowGuardInstaller {
 			    steps:
 			      - uses: actions/checkout@v4
 			      - name: Enforce CLAUDE.md
-			        run: sh %s
-			""".formatted(MARKER, SCRIPT_FILE);
+			        run: sh @scriptFile@
+			""".replace(MARKER_TOKEN, MARKER).replace(SCRIPT_FILE_TOKEN, SCRIPT_FILE);
 
 	private static final String SCRIPT = """
 			#!/bin/sh
-			# %s: fail when CLAUDE.md is missing or empty.
+			# @marker@: fail when CLAUDE.md is missing or empty.
 			if [ ! -f CLAUDE.md ] || ! grep -q '[^[:space:]]' CLAUDE.md; then
 			  echo "CLAUDE.md is missing or empty" >&2
 			  exit 1
 			fi
-			""".formatted(MARKER);
+			""".replace(MARKER_TOKEN, MARKER);
 
 	private final AssetInstaller workflowInstaller = new AssetInstaller(WORKFLOW_FILE, WORKFLOW);
 	private final AssetInstaller scriptInstaller = new AssetInstaller(SCRIPT_FILE, SCRIPT);

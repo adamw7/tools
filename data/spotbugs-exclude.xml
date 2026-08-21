@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs findings this module has decided about, scoped to the exact method each one
+  was accepted for. Nothing here disables a detector: every Match names a class, a
+  method and a bug pattern, so the same pattern anywhere else in the module still
+  fails. Wired in from data/pom.xml; SpotBugsExcludeFilterTest pins the scoping.
+-->
+<FindBugsFilter>
+	<!--
+	  Both sources run the SQL the caller handed them, verbatim and unparameterised.
+	  That is the published contract of these classes rather than a concatenation bug —
+	  the module runs a query you give it, it never builds one from fragments — and the
+	  javadoc on both says so and tells the caller what they own as a result.
+	-->
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.db.IterableSQLDataSource" />
+		<Method name="executeQuery" />
+		<Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE" />
+	</Match>
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.db.InMemorySQLDataSource" />
+		<Method name="readAll" />
+		<Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE" />
+	</Match>
+</FindBugsFilter>

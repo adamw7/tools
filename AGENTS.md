@@ -781,6 +781,14 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   meant to be triaged. The same two generated-code modules opt out with
   `spotbugs.skip`, for the same reason they set `jacoco.skip` and `pitest.skip`.
 
+  A finding that has been decided about rather than fixed is excluded in the
+  module's own filter file, wired in from the module pom — today only
+  `data/spotbugs-exclude.xml`, which accepts
+  `SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE` on the two JDBC sources that run the
+  caller's query by contract. Every `Match` there names a class, a method and a
+  pattern, so the detector still fires anywhere else in the module;
+  `SpotBugsExcludeFilterTest` fails the build if one grows broader than that.
+
   Run it through `verify` rather than the bare `spotbugs:spotbugs` goal: on its
   own the goal cannot resolve the sibling `-SNAPSHOT` test-jars, which only a
   reactor run supplies.

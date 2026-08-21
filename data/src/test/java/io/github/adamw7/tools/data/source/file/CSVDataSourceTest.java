@@ -3,7 +3,10 @@ package io.github.adamw7.tools.data.source.file;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.io.ByteArrayInputStream;
@@ -279,6 +282,49 @@ public class CSVDataSourceTest {
 		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getColumnNames);
 		Utils.close(source);
 		assertEquals("Row 1 holds no header: the file ends before it, or it is a comment", thrown.getMessage());
+	}
+
+	@Test
+	public void aCommentRowIsNullWithoutEndingTheData() throws IOException {
+		try (InputStream stream = streamOf("id,name\n# skipped\n1,Adam\n")) {
+			CSVDataSource source = new CSVDataSource(stream, ",", COLUMNS_ROW);
+			source.open();
+
+			String[] comment = source.nextRow();
+
+			// null is "this line produced no row", not "the file is over": hasMoreData()
+			// is what tells the two apart, so a caller stopping at the first null would
+			// stop at the comment and never see the row behind it.
+			assertNull(comment);
+			assertTrue(source.hasMoreData());
+			assertArrayEquals(new String[] { "1", "Adam" }, source.nextRow());
+		}
+	}
+
+	@Test
+	public void anEmptyRowIsARowRatherThanTheEndOfTheData() throws IOException {
+		try (InputStream stream = streamOf("id,name\n\n1,Adam\n")) {
+			CSVDataSource source = new CSVDataSource(stream, ",", COLUMNS_ROW);
+			source.open();
+
+			// A blank line splits to one empty column, so a zero-length array could not
+			// stand in for null here: an empty array is already a value rows take.
+			assertArrayEquals(new String[] { "" }, source.nextRow());
+			assertTrue(source.hasMoreData());
+			assertArrayEquals(new String[] { "1", "Adam" }, source.nextRow());
+		}
+	}
+
+	@Test
+	public void nextRowIsNullAndHasMoreDataIsFalseOnceTheFileEnds() throws IOException {
+		try (InputStream stream = streamOf("id,name\n1,Adam\n")) {
+			CSVDataSource source = new CSVDataSource(stream, ",", COLUMNS_ROW);
+			source.open();
+			source.nextRow();
+
+			assertNull(source.nextRow());
+			assertFalse(source.hasMoreData());
+		}
 	}
 
 	@Test

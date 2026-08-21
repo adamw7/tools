@@ -147,6 +147,14 @@ public class IterableSQLDataSource implements ColumnarDataSource {
 		return Sql.answering(this::readRow);
 	}
 
+	/**
+	 * Advances the result set and reads the row it landed on, or {@code null} once it is
+	 * past the last one &mdash; the end-of-data answer
+	 * {@link io.github.adamw7.tools.data.source.interfaces.IterableDataSource#nextRow()}
+	 * defines, and the same value {@link #hasMoreData()} starts reporting from here. A
+	 * zero-length array is not free to mean it: a query selecting no columns produces
+	 * rows of exactly that shape.
+	 */
 	private String[] readRow() throws SQLException {
 		hasMoreData = resultSet.next();
 		return hasMoreData ? getNextFrom(resultSet, columnCount) : null;

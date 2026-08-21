@@ -2,6 +2,7 @@ package io.github.adamw7.tools.data.structure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
@@ -23,6 +24,14 @@ public class OpenAddressingSetTest {
 	static Stream<Arguments> implementations() {
 		return Stream.of(of(new HashSet<Integer>()), of(new OpenAddressingSet<Integer>()),
 				of(new OpenAddressingSet<Integer>(16)));
+	}
+
+	@Test
+	public void theSetIsStillASetWithoutDeclaringTheInterface() {
+		// AbstractSet already implements Set, so declaring it again here only added noise
+		// to the signature. Dropping it must not drop the type callers depend on.
+		assertInstanceOf(Set.class, new OpenAddressingSet<Integer>());
+		assertTrue(Set.class.isAssignableFrom(OpenAddressingSet.class));
 	}
 
 	@ParameterizedTest

@@ -1,6 +1,8 @@
 package io.github.adamw7.tools.data.source.file;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,6 +14,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +26,7 @@ import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
 import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
 
 /**
@@ -32,7 +37,9 @@ import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
  * a corrupt GZip member or a disk error reads as a short but successful file. The same
  * corrupt GZip member is what leaks a descriptor when the wrapping fails before any
  * Scanner owns the opened file, which one test pins. The name a source answers for the
- * file it reads is pinned here too, that being the other thing every one of them shares.
+ * file it reads is pinned here too, that being the other thing every one of them shares,
+ * along with where the shared read-everything helper is allowed to show up: publicly on
+ * the in-memory sources that promise it, nowhere else.
  */
 public class AbstractFileSourceTest {
 
@@ -131,6 +138,34 @@ public class AbstractFileSourceTest {
 		IllegalStateException thrown = assertThrows(IllegalStateException.class, source::getFileName);
 
 		assertTrue(thrown.getMessage().contains("raw input stream"), thrown.getMessage());
+	}
+
+	@Test
+	public void theSharedReadEverythingHelperStaysProtected() throws NoSuchMethodException {
+		Method helper = AbstractFileSource.class.getDeclaredMethod("readAllRows");
+
+		// Named readAllRows rather than readAll so that implementing InMemoryDataSource
+		// never widens it: a subclass publishes the operation by writing readAll itself.
+		assertTrue(Modifier.isProtected(helper.getModifiers()), "readAllRows must stay protected");
+		assertFalse(Modifier.isPublic(helper.getModifiers()), "readAllRows must not be public");
+	}
+
+	@Test
+	public void onlyInMemorySourcesPublishReadAll() {
+		assertThrows(NoSuchMethodException.class, () -> CSVDataSource.class.getMethod("readAll"),
+				"readAll must stay off the surface of the forward-only CSV source");
+		assertThrows(NoSuchMethodException.class, () -> AbstractFileSource.class.getMethod("readAll"),
+				"readAll must stay off the surface of the file-source base class");
+
+		assertDeclaresPublicReadAll(InMemoryCSVDataSource.class);
+		assertDeclaresPublicReadAll(AbstractInMemoryMapDataSource.class);
+	}
+
+	private static void assertDeclaresPublicReadAll(Class<? extends InMemoryDataSource> source) {
+		Method readAll = assertDoesNotThrow(() -> source.getMethod("readAll"), source.getSimpleName());
+		assertTrue(Modifier.isPublic(readAll.getModifiers()), source.getSimpleName() + "#readAll must be public");
+		assertEquals(source, readAll.getDeclaringClass(),
+				source.getSimpleName() + " must declare readAll rather than inherit a widened one");
 	}
 
 	private static int readAll(CSVDataSource source) {

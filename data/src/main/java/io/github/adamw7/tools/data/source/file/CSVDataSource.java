@@ -126,6 +126,14 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 		return columnsRow != -1;
 	}
 
+	/**
+	 * The next row, or {@code null} for a line that produced none &mdash; a comment, or
+	 * the end of the file. The two are told apart by {@link #hasMoreData()}, which only
+	 * the second turns off, so a caller that stops at the first {@code null} stops at the
+	 * first comment instead of the end of the data. {@code null} rather than a zero-length
+	 * array because an empty array is a real row here: a blank line splits to one empty
+	 * column, and {@code ",,"} to three.
+	 */
 	@Override
 	public String[] nextRow() {
 		if (hasNextLine()) {

@@ -49,6 +49,12 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 		opened = true;
 	}
 
+	/**
+	 * The next {@code {key, value}} pair, or {@code null} once the map is exhausted, as
+	 * {@link io.github.adamw7.tools.data.source.interfaces.IterableDataSource#nextRow()}
+	 * defines. Here the two answers line up exactly with {@link #hasMoreData()}: every
+	 * entry yields a row, so {@code null} only ever means the end.
+	 */
 	@Override
 	public String[] nextRow() {
 		checkIfOpen();

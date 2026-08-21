@@ -33,9 +33,16 @@ public class InMemoryCSVDataSource extends CSVDataSource implements InMemoryData
 		super(fileName, delimiter, columnsRow, allowedPaths);
 	}
 
+	/**
+	 * Reads every row of the file at once, as
+	 * {@link io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource} promises.
+	 * The work is {@link #readAllRows()}, inherited from the file-source base class; this
+	 * method is what publishes it, so {@code readAll()} stays off the surface of the
+	 * forward-only {@link CSVDataSource} it extends.
+	 */
 	@Override
 	public List<String[]> readAll() {
-		return super.readAll();
+		return readAllRows();
 	}
 
 }

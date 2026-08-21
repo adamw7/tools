@@ -56,6 +56,13 @@ public abstract class AbstractIterableJacksonDataSource extends AbstractIterable
 		return row;
 	}
 
+	/**
+	 * Folds one token into the frame stack and returns the row it completed, or
+	 * {@code null} for the container tokens and field names that only move the stack on.
+	 * {@link #readNextRow()} pulls tokens until this answers with a row, so {@code null}
+	 * is "keep reading" &mdash; a zero-length array could not say that, since a row of no
+	 * columns is a value this method is entitled to build.
+	 */
 	private String[] consume(JsonToken token) throws IOException {
 		if (token == JsonToken.START_OBJECT) {
 			frames.push(Frame.object());

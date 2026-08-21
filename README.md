@@ -832,9 +832,12 @@ any subsequent attempt to open an outbound connection fails fast. The method is:
 
 - **One-way** — there is no `on()`; once off, the JVM stays offline. Apply it
   early, only when you really mean to seal the process.
-- **Idempotent and thread-safe** — it is `synchronized` and guarded by a
-  `volatile` flag; calling it again is a no-op that logs a warning and returns
-  `false`.
+- **Idempotent and thread-safe** — the one-shot installation is serialized on a
+  private monitor and the state is guarded by a `volatile` flag; calling it again
+  is a no-op that logs a warning and returns `false`. The monitor is deliberately
+  not `Switch.class`: that object is reachable from anything on the classpath, so
+  a `static synchronized` method would let unrelated code contend with — and
+  delay — the kill-switch.
   
 The switch is wired into the `data` module's unit-test run for exactly this
 reason: a `NetworkOffExtension` (a JUnit `BeforeAllCallback` discovered through
@@ -1215,8 +1218,11 @@ design:
   structures honest about their documented lack of thread-safety: no method in
   `structure` may be `synchronized`, and `structure` may not depend on
   `java.util.concurrent`, so neither can silently suggest the collections are safe
-  to share. Two more pin the `network` kill-switch to its documented shape:
-  `Switch.off()` must be `synchronized` and its `isOff` flag must be `volatile`.
+  to share. Three more pin the `network` kill-switch to its documented shape: no
+  method there may be `synchronized`, since a `static synchronized` method would
+  lock the publicly reachable `Switch.class`; the `LOCK` it synchronizes on
+  instead must be `private static final`; and its `isOff` flag must be
+  `volatile`.
 - **[`code/context`](code/context/src/test/java/io/github/adamw7/context/architecture/ContextArchitectureTest.java)** — the finder/tree core must not depend on the `mcp`
   delivery package, and only that `mcp` package may build on the shared MCP
   scaffolding; every concrete `*Serializer` must honour the

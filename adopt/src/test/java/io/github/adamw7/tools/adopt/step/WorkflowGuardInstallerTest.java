@@ -36,6 +36,24 @@ class WorkflowGuardInstallerTest {
 	}
 
 	/**
+	 * Both files are written verbatim, so their terminators are whatever the templates
+	 * carry — nothing re-terminates them against a file already in the checkout. LF is
+	 * the answer on every platform: {@code sh} reads a CRLF shebang as an interpreter
+	 * named {@code /bin/sh\r} and refuses the script, which would fail the guard the
+	 * adoption just installed on the run's own machine.
+	 */
+	@Test
+	void writesBothGuardFilesWithLfEndingsAndTheAdoptionMarker(@TempDir Path directory) throws IOException {
+		assertTrue(installer.install(directory));
+		String workflow = Files.readString(directory.resolve(WorkflowGuardInstaller.WORKFLOW_FILE));
+		String script = Files.readString(directory.resolve(WorkflowGuardInstaller.SCRIPT_FILE));
+		assertFalse(workflow.contains("\r"), "the workflow must be LF, whatever platform the adoption ran on");
+		assertFalse(script.contains("\r"), "the script must be LF; sh refuses a CRLF shebang line");
+		assertTrue(workflow.contains("# Added by claude-code-adopt:"), "the workflow must name its author");
+		assertTrue(script.contains("# Added by claude-code-adopt:"), "the script must name its author");
+	}
+
+	/**
 	 * The fallback guard is the only thing standing between a build-less repository
 	 * and an unchecked CLAUDE.md, so a checkout it cannot be written into must fail
 	 * the adoption rather than pass silently guarded by nothing.

@@ -71,10 +71,23 @@ public class GradleGuardInstaller {
 	/** The lifecycle task the guard is hung from, and the one created when the project has none. */
 	static final String LIFECYCLE_TASK = "check";
 
+	/**
+	 * The two task names the blocks below are stamped with. They are substituted rather
+	 * than formatted in, so the templates stay LF wherever the adoption runs — the
+	 * shape {@link #append} re-terminates from when it matches the script's own
+	 * endings. A {@code %n} would make the constant CRLF on a Windows run without
+	 * changing a byte of the appended block, so the platform's separator has nothing to
+	 * offer here.
+	 */
+	private static final String GUARD_TASK_TOKEN = "@guardTask@";
+
+	private static final String LIFECYCLE_TASK_TOKEN = "@lifecycleTask@";
+
+	/** The Groovy guard, its {@value #GUARD_TASK_TOKEN} and {@value #LIFECYCLE_TASK_TOKEN} filled in. */
 	private static final String GROOVY_BLOCK = """
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
-			tasks.register('%1$s') {
+			tasks.register('@guardTask@') {
 			    def claudeMd = project.file('CLAUDE.md')
 			    doLast {
 			        if (!claudeMd.isFile() || claudeMd.text.trim().isEmpty()) {
@@ -82,18 +95,19 @@ public class GradleGuardInstaller {
 			        }
 			    }
 			}
-			tasks.matching { it.name == '%2$s' }.configureEach { it.dependsOn('%1$s') }
+			tasks.matching { it.name == '@lifecycleTask@' }.configureEach { it.dependsOn('@guardTask@') }
 			project.afterEvaluate {
-			    if (!tasks.names.contains('%2$s')) {
-			        tasks.register('%2$s') { it.dependsOn('%1$s') }
+			    if (!tasks.names.contains('@lifecycleTask@')) {
+			        tasks.register('@lifecycleTask@') { it.dependsOn('@guardTask@') }
 			    }
 			}
-			""".formatted(GUARD_TASK, LIFECYCLE_TASK);
+			""".replace(GUARD_TASK_TOKEN, GUARD_TASK).replace(LIFECYCLE_TASK_TOKEN, LIFECYCLE_TASK);
 
+	/** The Kotlin guard, filled in and terminated exactly as {@link #GROOVY_BLOCK} is. */
 	private static final String KOTLIN_BLOCK = """
 
 			// Added by claude-code-adopt: fail the build when CLAUDE.md is missing or empty.
-			tasks.register("%1$s") {
+			tasks.register("@guardTask@") {
 			    val claudeMd = project.file("CLAUDE.md")
 			    doLast {
 			        if (!claudeMd.isFile || claudeMd.readText().trim().isEmpty()) {
@@ -101,13 +115,13 @@ public class GradleGuardInstaller {
 			        }
 			    }
 			}
-			tasks.matching { it.name == "%2$s" }.configureEach { dependsOn("%1$s") }
+			tasks.matching { it.name == "@lifecycleTask@" }.configureEach { dependsOn("@guardTask@") }
 			project.afterEvaluate {
-			    if (!tasks.names.contains("%2$s")) {
-			        tasks.register("%2$s") { dependsOn("%1$s") }
+			    if (!tasks.names.contains("@lifecycleTask@")) {
+			        tasks.register("@lifecycleTask@") { dependsOn("@guardTask@") }
 			    }
 			}
-			""".formatted(GUARD_TASK, LIFECYCLE_TASK);
+			""".replace(GUARD_TASK_TOKEN, GUARD_TASK).replace(LIFECYCLE_TASK_TOKEN, LIFECYCLE_TASK);
 
 	/**
 	 * @return {@code true} when the guard was appended, {@code false} when the

@@ -87,6 +87,15 @@ public class PomEnforcerInstaller {
 	private static final String PROJECT_DIR = "${project.basedir}";
 
 	/**
+	 * Where the rule element is substituted into {@link #EXECUTION}. Substituted rather
+	 * than formatted in, so the execution reaches {@link PomDocument} in LF, the shape
+	 * it documents its fragments in and re-indents from. A {@code %n} would make the
+	 * same template CRLF on a Windows run for nothing: the POM's own terminator is what
+	 * the written block ends up on either way.
+	 */
+	private static final String RULES_TOKEN = "@rules@";
+
+	/**
 	 * The execution that runs the guard, bound to {@code validate} and not inherited
 	 * because the documents live only at the repository root.
 	 */
@@ -100,7 +109,7 @@ public class PomEnforcerInstaller {
 			  </goals>
 			  <configuration>
 			    <rules>
-			%s
+			@rules@
 			    </rules>
 			  </configuration>
 			</execution>""";
@@ -174,7 +183,7 @@ public class PomEnforcerInstaller {
 		if (alreadyRunsTheRule(pom)) {
 			return false;
 		}
-		String execution = EXECUTION.formatted(ruleConfiguration(requiredSections));
+		String execution = EXECUTION.replace(RULES_TOKEN, ruleConfiguration(requiredSections));
 		enforcerPluginOfTheBuild(pom).ifPresentOrElse(
 				plugin -> augment(pom, plugin, execution),
 				() -> pom.insertUnder(pom.root(), BUILD_PLUGINS, plugin(execution)));

@@ -1,0 +1,66 @@
+name: SpotBugs
+
+# Weekly, alongside the other scheduled analysis jobs, plus on demand. SpotBugs
+# is deliberately not part of the pull-request build: maven.yml caps itself at
+# 120 seconds and a full-reactor analysis does not fit in that budget.
+on:
+  schedule:
+    - cron: '0 3 * * 6'
+  workflow_dispatch:
+
+# Least privilege plus the one write this job needs: security-events lets it
+# publish the SARIF to the code-scanning tab. Nothing here writes to the
+# repository or comments on a pull request.
+permissions:
+  contents: read
+  security-events: write
+
+# One run of this weekly job at a time. Unlike a pull-request build it is never
+# superseded by a newer commit, so an in-flight run is left to finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  spotbugs:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+    - name: Set up JDK 25
+      uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Analyze with SpotBugs
+      # verify rather than the bare spotbugs goal: the goal on its own cannot
+      # resolve the sibling -SNAPSHOT test-jars, which are only supplied by a
+      # reactor run. -DskipTests because SpotBugs reads the main classes, so
+      # running the suite here would only duplicate what maven.yml already did.
+      run: mvn -B -ntp verify -Pspotbugs -DskipTests --file pom.xml
+    - name: Collect SARIF reports
+      # Each module writes its own target/spotbugsSarif.json. upload-sarif reads
+      # a directory only for files named *.sarif, so they are gathered under one
+      # directory and renamed per module to keep the findings attributable.
+      run: |
+        mkdir -p target/sarif
+        find . -path '*/target/spotbugsSarif.json' -print0 | while IFS= read -r -d '' report; do
+          module=$(echo "${report}" | sed -e 's|^\./||' -e 's|/target/spotbugsSarif\.json$||' -e 's|/|-|g')
+          cp "${report}" "target/sarif/${module}.sarif"
+        done
+        echo "Collected $(find target/sarif -name '*.sarif' | wc -l) SARIF reports."
+    - name: Publish SARIF to code scanning
+      uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4
+      with:
+        sarif_file: target/sarif
+        category: spotbugs
+    - name: Upload SpotBugs reports
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: spotbugs-reports
+        path: |
+          **/target/spotbugsXml.xml
+          **/target/spotbugsSarif.json
+        retention-days: 30

@@ -12,11 +12,12 @@
 	<name>protogen-maven-plugin-test</name>
 	<description>Integration test module that exercises the protogen-maven-plugin by generating and compiling protobuf builders end to end.</description>
 	<properties>
-		<!-- Only generated protobuf classes here, so the coverage and mutation gates would measure a
-		     generator rather than anybody's tests. The generator itself is mutated in protogen-
-		     maven-plugin. -->
+		<!-- Only generated protobuf classes here, so the coverage, mutation and static-analysis gates
+		     would measure a generator rather than anybody's tests. The generator itself is mutated
+		     and analysed in protogen-maven-plugin. -->
 		<jacoco.skip>true</jacoco.skip>
 		<pitest.skip>true</pitest.skip>
+		<spotbugs.skip>true</spotbugs.skip>
 		<!-- A test harness with no main Java sources, so its -sources.jar is empty and Central
 		     rejects it: keep it out of both publications. -->
 		<maven.deploy.skip>true</maven.deploy.skip>

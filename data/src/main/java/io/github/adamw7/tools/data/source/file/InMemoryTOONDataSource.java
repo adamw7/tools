@@ -33,7 +33,7 @@ public class InMemoryTOONDataSource extends AbstractInMemoryMapDataSource {
 	@Override
 	protected void parse() {
 		ToonFlattener flattener = new ToonFlattener(fieldsMap::put);
-		while (scanner.hasNextLine()) {
+		while (hasNextLine()) {
 			flattener.accept(scanner.nextLine());
 		}
 		flattener.finish();

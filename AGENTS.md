@@ -36,11 +36,15 @@ skill carries the reasoning and the worked example.
   JDBC-backed source. Sources that know their columns up front implement
   `ColumnarDataSource`, a narrower contract than `IterableDataSource`, so a
   caller that needs the schema — such as the uniqueness check — cannot be handed
-  a forward-only source (JSON/YAML/TOON) that would only answer `null`. Also a
-  uniqueness checker (does a subset of columns form a key, and is there a smaller
-  one), open-addressing collections (`OpenAddressingMap`, `OpenAddressingSet`,
-  the primitive `IntKeyOpenAddressingMap`), and an **MCP server** exposing the
-  uniqueness checker. Skill: `data-sources`.
+  a forward-only source (JSON/YAML/TOON) that would only answer `null`. A read
+  that breaks part-way through fails instead of reading as a short file: the
+  `Scanner`-backed sources check `Scanner.ioException()` before reporting the end
+  of the data, so a truncated transfer or a corrupt GZip member cannot pass for a
+  clean end and leave the uniqueness check calling a column unique on half a
+  file. Also a uniqueness checker (does a subset of columns form a key, and is
+  there a smaller one), open-addressing collections (`OpenAddressingMap`,
+  `OpenAddressingSet`, the primitive `IntKeyOpenAddressingMap`), and an **MCP
+  server** exposing the uniqueness checker. Skill: `data-sources`.
 - **Claude Code adoption** (`adopt`) — an ordered pipeline that adopts Claude
   Code into a GitHub repository. Skill: `adopt-pipeline`. Summarised below.
 

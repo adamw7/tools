@@ -42,7 +42,7 @@ public abstract class AbstractInMemoryJacksonDataSource extends AbstractInMemory
 	@Override
 	protected void parse() {
 		StringBuilder content = new StringBuilder();
-		while (scanner.hasNextLine()) {
+		while (hasNextLine()) {
 			content.append(scanner.nextLine()).append('\n');
 		}
 		flatten("", read(content.toString()));

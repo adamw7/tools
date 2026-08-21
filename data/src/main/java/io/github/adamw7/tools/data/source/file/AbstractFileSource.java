@@ -75,6 +75,31 @@ public abstract class AbstractFileSource implements IterableDataSource {
 		return createScanner(new FileInputStream(fileName));
 	}
 	
+	/**
+	 * Answers whether the scan has another line, failing rather than reporting a clean end
+	 * of data when the read behind it broke. {@link Scanner} never throws
+	 * {@link IOException}: it swallows a read failure, stops producing tokens, and keeps
+	 * the cause in {@link Scanner#ioException()}. Left unread, that turns a truncated
+	 * transfer, a corrupt GZip member or a disk error into an ordinary end of file, and a
+	 * caller such as the uniqueness check then answers "this column is unique" having seen
+	 * only the rows that arrived.
+	 */
+	protected boolean hasNextLine() {
+		if (scanner.hasNextLine()) {
+			return true;
+		}
+		IOException failure = scanner.ioException();
+		if (failure != null) {
+			throw new UncheckedIOException("Reading " + describeSource() + " failed before the end of the data",
+					failure);
+		}
+		return false;
+	}
+
+	private String describeSource() {
+		return fileName != null ? fileName : "the input stream";
+	}
+
 	protected void checkIfOpen() {
 		if (!opened) {
 			throw new IllegalStateException("DataSource is not open");

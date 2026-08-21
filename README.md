@@ -727,6 +727,8 @@ Notes:
 in memory checks are using in memory sources that load all the data once and run multiple recursive checks to find better options.
 Iterative (no memory) checks are keeping only one row at the time so they require very tiny heap size but for the recursive checks need to read the source many times. 
 
+A row holding fewer columns than the key reads — a CSV line with a delimiter missing — is reported as a fault in the data: `RaggedRowException` names the 1-based position of the row among the data rows (the header and any skipped comment line excluded), the arity the key needs and the arity the row has. Columns the key does not read are never touched, so a short row only fails a key that reaches past its end.
+
 ### Open-addressing map
 
 `OpenAddressingMap<K, V>` is a `java.util.Map` implementation that is **simpler

@@ -97,6 +97,14 @@ The checker consumes a `ColumnarDataSource`, asks whether the given columns form
 a key, and searches for a smaller one. `InMemory…` runs recursive passes over a
 single load; `NoMemory…` re-reads the source per pass for a tiny heap.
 
+A **row with fewer columns than the key reads** — a CSV line with a delimiter
+missing — fails with `RaggedRowException`, naming the data row's 1-based position
+(the header and any skipped comment line excluded), the arity the key needs and
+the one the row has. It replaces the `ArrayIndexOutOfBoundsException` the
+projection used to throw, which named neither the row nor the column. Columns the
+key does not read are never touched, so a short row only fails a key that reaches
+past its end.
+
 ## Data structures (`data.structure`)
 Open-addressing collections with double hashing, for when `HashMap`'s per-entry
 node allocation is what hurts:

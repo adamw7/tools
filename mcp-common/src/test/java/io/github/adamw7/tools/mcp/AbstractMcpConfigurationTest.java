@@ -2,6 +2,7 @@ package io.github.adamw7.tools.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import io.modelcontextprotocol.spec.McpServerTransportProvider;
 
 public class AbstractMcpConfigurationTest {
 
@@ -147,6 +149,24 @@ public class AbstractMcpConfigurationTest {
 		McpStatelessSyncServer server = config.mcpStatelessSyncServer(transport);
 		assertTrue(server.listTools().stream().anyMatch(tool -> "test_tool".equals(tool.name())));
 		server.close();
+	}
+
+	/**
+	 * {@link AbstractMcpConfiguration#mcpSyncServer(McpServerTransportProvider)} is
+	 * conditional on an {@link McpServerTransportProvider} bean, so it can only match
+	 * where the transport implements that interface. The streamable provider does not
+	 * — it extends {@code McpServerTransportProviderBase} directly — which is why
+	 * exactly one {@link McpSyncServer} is defined in every mode and no server sets
+	 * {@code spring.main.allow-bean-definition-overriding}. Pinned here because the
+	 * hierarchy belongs to the MCP SDK: an SDK release that widened it would silently
+	 * give {@code streamable-http} two sync servers to choose between.
+	 */
+	@Test
+	public void onlyTheStdioTransportSatisfiesTheSessionBasedServerCondition() {
+		TestMcpConfiguration config = new TestMcpConfiguration();
+
+		assertInstanceOf(McpServerTransportProvider.class, config.stdioServerTransport());
+		assertFalse(config.streamableServerTransport() instanceof McpServerTransportProvider);
 	}
 
 	@Test

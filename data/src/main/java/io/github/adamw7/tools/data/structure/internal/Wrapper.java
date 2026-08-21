@@ -56,4 +56,10 @@ public class Wrapper<K, V> implements Entry<K, V>{
 		return Objects.hashCode(key) ^ Objects.hashCode(value);
 	}
 
+	/** The {@code key=value} form every {@link Entry} implementation prints. */
+	@Override
+	public String toString() {
+		return key + "=" + value;
+	}
+
 }

@@ -11,9 +11,10 @@ import java.util.Set;
  * all of the open-addressing behaviour (double hashing, tombstone removal and
  * automatic resizing) is reused rather than re-implemented.
  *
- * <p>Like the underlying map this set does not support {@code null} elements
- * (they are rejected with {@link IllegalArgumentException}) and is not
- * thread-safe.
+ * <p>Like the underlying map this set does not support {@code null} elements:
+ * {@link #add} rejects one with a {@link NullPointerException}, while
+ * {@link #contains} and {@link #remove} answer {@code false} for an element the
+ * set cannot hold. Its iterator is fail-fast, and it is not thread-safe.
  */
 public class OpenAddressingSet<E> extends AbstractSet<E> implements Set<E> {
 

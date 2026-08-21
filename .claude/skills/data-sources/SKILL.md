@@ -100,7 +100,10 @@ single load; `NoMemory…` re-reads the source per pass for a tiny heap.
 ## Data structures (`data.structure`)
 Open-addressing collections with double hashing, for when `HashMap`'s per-entry
 node allocation is what hurts:
-- `OpenAddressingMap<K, V>` / `OpenAddressingSet<E>` — implement `Map` / `Set`.
+- `OpenAddressingMap<K, V>` / `OpenAddressingSet<E>` — extend `AbstractMap` /
+  `AbstractSet`, so `equals`/`hashCode`/`toString` are the contract's. A `null`
+  key or element is refused by `put`/`add` with a `NullPointerException` and
+  reported absent by the lookups; the view iterators are fail-fast.
 - `IntKeyOpenAddressingMap<V>` — primitive `int[]` keys, so lookups and inserts
   never box. It deliberately does **not** implement `Map` (that contract is
   defined over `Object` keys and would reintroduce the boxing it exists to

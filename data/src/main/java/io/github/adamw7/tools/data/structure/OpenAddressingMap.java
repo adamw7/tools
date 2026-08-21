@@ -1,11 +1,14 @@
 package io.github.adamw7.tools.data.structure;
 
 import java.util.AbstractCollection;
+import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -13,13 +16,42 @@ import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 import io.github.adamw7.tools.data.structure.internal.Primes;
 import io.github.adamw7.tools.data.structure.internal.Wrapper;
 
-public class OpenAddressingMap<K, V> implements Map<K, V> {
+/**
+ * A {@link Map} using open addressing with double hashing: entries live directly
+ * in one array, a removal leaves a tombstone behind, and the table grows while a
+ * slot is still free so every probe chain ends on an empty one.
+ *
+ * <p>It extends {@link AbstractMap}, so {@code equals}, {@code hashCode} and
+ * {@code toString} are the ones {@link Map} specifies over {@link #entrySet()} —
+ * a map holding the same entries as a {@link java.util.HashMap} compares equal
+ * to it.
+ *
+ * <p>{@code null} values are stored faithfully; {@code null} <em>keys</em> are
+ * not supported. Per the {@code Map} contract {@link #put} rejects one with a
+ * {@link NullPointerException}, while {@link #containsKey}, {@link #get} and
+ * {@link #remove} simply answer {@code false}/{@code null} for a key the map
+ * cannot hold.
+ *
+ * <p>The iterators of all three views are <em>fail-fast</em>: a structural
+ * modification made through anything but the iterator's own {@code remove()}
+ * makes the next {@code next()} or {@code remove()} throw
+ * {@link ConcurrentModificationException}. That is a best-effort check, so it
+ * must not be relied on for correctness. Not thread-safe.
+ */
+public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 
 	static final int DEFAULT_SIZE = DoubleHashing.DEFAULT_SIZE;
 	int prime;
 
 	protected Wrapper<K, V>[] array;
 	protected int size;
+
+	/**
+	 * Counts the structural modifications — an insertion, a removal, a rehash or a
+	 * clear, but not the overwrite of an existing key — so the view iterators can
+	 * tell that the table changed underneath them.
+	 */
+	private int modCount;
 
 	public OpenAddressingMap(int size) {
 		initArray(size);
@@ -73,8 +105,15 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	 * ends the search: {@link #put} always fills the first such slot, so the key
 	 * cannot lie beyond it. Tombstones ({@code removed}) are skipped rather than
 	 * treated as terminal, because live entries may sit past them.
+	 *
+	 * <p>A {@code null} key never reaches the probe: the map cannot hold one, so
+	 * it is absent by definition and the lookups built on this method answer
+	 * {@code false}/{@code null} instead of throwing, as {@link Map} requires.
 	 */
 	private Wrapper<K, V> find(Object key) {
+		if (key == null) {
+			return null;
+		}
 		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < array.length; ++i) {
 			Wrapper<K, V> wrapper = array[probe.slot(i)];
@@ -89,14 +128,12 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	}
 
 	private DoubleHashing.Probe probe(Object key) {
-		if (key == null) {
-			throw new IllegalArgumentException("Key is null");
-		}
 		return DoubleHashing.sequence(key.hashCode(), prime, array.length);
 	}
 
 	@Override
 	public V put(K key, V value) {
+		Objects.requireNonNull(key, "Key is null");
 		checkIfResizeNeeded();
 		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < array.length; ++i) {
@@ -115,6 +152,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	private V insert(int hash, K key, V value) {
 		array[hash] = new Wrapper<>(key, value);
 		size++;
+		modCount++;
 		return null;
 	}
 
@@ -130,7 +168,13 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		}
 	}
 
+	/**
+	 * Rehashes into a larger table. It counts as a structural modification in its
+	 * own right, because it replaces the array an iterator is walking even when the
+	 * put that triggered it only overwrote an existing key.
+	 */
 	private void resize() {
+		modCount++;
 		Wrapper<K, V>[] old = array;
 		initArray(newSize());
 		size = 0;
@@ -149,6 +193,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 		}
 		wrapper.markRemoved();
 		size--;
+		modCount++;
 		return wrapper.getValue();
 	}
 
@@ -161,6 +206,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	public void clear() {
 		initArray(size >= array.length ? newSize() : Math.max(size, 1));
 		size = 0;
+		modCount++;
 	}
 
 	private int newSize() {
@@ -235,16 +281,21 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 	 * view's element type. {@code remove()} retires the entry returned last, so
 	 * the views are writable and the bulk operations inherited from
 	 * {@code AbstractCollection} (removeAll, retainAll, removeIf) really mutate
-	 * the map instead of a throwaway copy.
+	 * the map instead of a throwaway copy. Any other structural modification made
+	 * while the walk is in progress is refused with a
+	 * {@link ConcurrentModificationException} rather than silently yielding
+	 * entries from a stale table.
 	 */
 	private final class LiveEntryIterator<T> implements Iterator<T> {
 
 		private final Function<Wrapper<K, V>, T> mapper;
 		private int nextIndex;
 		private Wrapper<K, V> lastReturned;
+		private int expectedModCount;
 
 		private LiveEntryIterator(Function<Wrapper<K, V>, T> mapper) {
 			this.mapper = mapper;
+			this.expectedModCount = modCount;
 			this.nextIndex = nextValidFrom(0);
 		}
 
@@ -255,6 +306,7 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 
 		@Override
 		public T next() {
+			checkForComodification();
 			if (!hasNext()) {
 				throw new NoSuchElementException();
 			}
@@ -268,9 +320,18 @@ public class OpenAddressingMap<K, V> implements Map<K, V> {
 			if (lastReturned == null) {
 				throw new IllegalStateException("next() has not been called since the last remove()");
 			}
+			checkForComodification();
 			lastReturned.markRemoved();
 			size--;
+			modCount++;
+			expectedModCount = modCount;
 			lastReturned = null;
+		}
+
+		private void checkForComodification() {
+			if (modCount != expectedModCount) {
+				throw new ConcurrentModificationException();
+			}
 		}
 
 		private int nextValidFrom(int index) {

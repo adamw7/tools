@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.zip.GZIPOutputStream;
 
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,9 @@ import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
  * that fails part-way through must be reported, not mistaken for the end of the data.
  * Scanner swallows the {@link IOException} and simply stops producing tokens, so
  * without the check in {@link AbstractFileSource#hasNextLine()} a truncated transfer,
- * a corrupt GZip member or a disk error reads as a short but successful file.
+ * a corrupt GZip member or a disk error reads as a short but successful file. The same
+ * corrupt GZip member is what leaks a descriptor when the wrapping fails before any
+ * Scanner owns the opened file, which the last test pins.
  */
 public class AbstractFileSourceTest {
 
@@ -88,6 +91,18 @@ public class AbstractFileSourceTest {
 		assertEquals(2, readAll(source));
 	}
 
+	@Test
+	public void theOpenedFileIsClosedWhenTheGZipWrappingFails(@TempDir Path directory) throws IOException {
+		Path file = gzipMagicWithoutAMember(directory);
+		RecordingSource source = new RecordingSource(file.toString());
+
+		assertThrows(UncheckedIOException.class, () -> source.createScanner(file.toString()));
+
+		// No Scanner was built, so nothing else owns the descriptor: createScanner had to
+		// close it itself. A closed FileInputStream refuses to read.
+		assertThrows(IOException.class, () -> source.openedStream.read());
+	}
+
 	private static int readAll(CSVDataSource source) {
 		int rows = 0;
 		while (source.hasMoreData()) {
@@ -109,6 +124,15 @@ public class AbstractFileSourceTest {
 		// Everything but the trailer: the magic number still says GZip, so the source
 		// starts reading and only discovers the member is cut short part-way through.
 		Files.write(file, Arrays.copyOf(complete, complete.length - 8));
+		return file;
+	}
+
+	private static Path gzipMagicWithoutAMember(Path directory) throws IOException {
+		Path file = directory.resolve("header-only.csv.gz");
+		// The magic number alone: enough for the source to decide the file is GZipped, and
+		// too little for GZIPInputStream to read a header, so the wrapping fails with the
+		// file already open.
+		Files.write(file, new byte[] { (byte) 0x1f, (byte) 0x8b });
 		return file;
 	}
 
@@ -138,5 +162,48 @@ public class AbstractFileSourceTest {
 				return read;
 			}
 		};
+	}
+
+	/**
+	 * Keeps the stream {@link AbstractFileSource#createScanner(String)} opened, so a test can
+	 * ask whether it was closed. The stream constructor opens nothing itself, which leaves
+	 * {@code createScanner(String)} to be called on its own rather than from a constructor
+	 * that throws before handing back the source.
+	 */
+	private static final class RecordingSource extends AbstractFileSource {
+
+		private InputStream openedStream;
+
+		private RecordingSource(String fileName) {
+			super(InputStream.nullInputStream());
+			// What ZipUtils reads the magic number from.
+			this.fileName = fileName;
+		}
+
+		@Override
+		protected Scanner createScanner(InputStream inputStream) {
+			openedStream = inputStream;
+			return super.createScanner(inputStream);
+		}
+
+		@Override
+		public void open() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public String[] nextRow() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean hasMoreData() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void reset() {
+			throw new UnsupportedOperationException();
+		}
 	}
 }

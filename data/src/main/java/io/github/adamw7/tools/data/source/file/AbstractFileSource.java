@@ -72,7 +72,30 @@ public abstract class AbstractFileSource implements IterableDataSource {
 	}
 
 	protected Scanner createScanner(String fileName) throws FileNotFoundException {
-		return createScanner(new FileInputStream(fileName));
+		FileInputStream stream = new FileInputStream(fileName);
+		try {
+			return createScanner(stream);
+		} catch (RuntimeException e) {
+			closeAfterFailure(stream, e);
+			throw e;
+		}
+	}
+
+	/**
+	 * Releases {@code stream} on the failure path of {@link #createScanner(String)}, where no
+	 * {@link Scanner} was built to take ownership of it and nothing else holds a reference to
+	 * it. A GZip member whose magic number promises more than the file delivers is the way in:
+	 * {@link ZipUtils#unzipIfNeeded(InputStream, String)} reads the header to wrap the stream,
+	 * so it fails with the descriptor already open. A failure to close is attached to
+	 * {@code failure} rather than replacing it, since the reason the wrapping failed is the one
+	 * worth reporting.
+	 */
+	private static void closeAfterFailure(InputStream stream, RuntimeException failure) {
+		try {
+			stream.close();
+		} catch (IOException e) {
+			failure.addSuppressed(e);
+		}
 	}
 	
 	/**

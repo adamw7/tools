@@ -67,6 +67,37 @@ public class UniquenessCheckTest extends DBTest {
 		assertEquals(0, result.getBetterOptions().size());
 	}
 
+	static Stream<Arguments> raggedSources() {
+		String raggedFile = Utils.getFileName("ragged.csv");
+
+		return Stream.of(of(new NoMemoryUniquenessCheck(Utils.createDataSource(raggedFile, COLUMNS_ROW))),
+				of(new InMemoryUniquenessCheck(Utils.createInMemoryDataSource(raggedFile, COLUMNS_ROW))));
+	}
+
+	/**
+	 * A CSV line with a delimiter missing is split into an array shorter than the header,
+	 * and projecting the key out of it used to fail with a bare
+	 * "ArrayIndexOutOfBoundsException: Index 2 out of bounds for length 2", which named
+	 * neither the row nor the column. A ragged row is expected input for a library reading
+	 * somebody else's file, so it is reported as a fault in the data, positioned.
+	 */
+	@ParameterizedTest
+	@MethodSource("raggedSources")
+	void raggedRowNamesItsPositionAndArity(Uniqueness uniqueness) {
+		RaggedRowException thrown = assertThrows(RaggedRowException.class, () -> uniqueness.exec("city"),
+				"Expected exec method to throw, but it didn't");
+
+		assertEquals("Data row 2 is ragged: the key reads at least 3 columns but the row has 2: [2, Bob]",
+				thrown.getMessage());
+	}
+
+	/** A key read entirely out of the columns every row does have is unaffected by the short one. */
+	@ParameterizedTest
+	@MethodSource("raggedSources")
+	void raggedRowIsReadWhereverTheKeyFitsIt(Uniqueness uniqueness) {
+		assertTrue(uniqueness.exec("id").isUnique());
+	}
+
 	@ParameterizedTest
 	@MethodSource("happyPath")
 	void negativeWrongColumn(Uniqueness uniqueness) throws Exception {

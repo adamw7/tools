@@ -1,7 +1,6 @@
 package io.github.adamw7.context.mcp;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

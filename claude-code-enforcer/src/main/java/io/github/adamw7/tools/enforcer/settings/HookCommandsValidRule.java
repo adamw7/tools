@@ -7,7 +7,6 @@ import javax.inject.Named;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 
 /**
@@ -29,16 +28,13 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * that is present and is not an object is reported rather than skipped.
  */
 @Named("hookCommandsValid")
-public class HookCommandsValidRule extends JsonFileRule {
+public class HookCommandsValidRule extends SettingsJsonRule {
 
 	/** The keys of the hooks section, named once in {@link HookCommands} and read the same way here. */
 	private static final String HOOKS_KEY = HookCommands.HOOKS_KEY;
 	private static final String TYPE_KEY = HookCommands.TYPE_KEY;
 	private static final String COMMAND_KEY = HookCommands.COMMAND_KEY;
 	private static final String COMMAND_TYPE = HookCommands.COMMAND_TYPE;
-
-	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
-	private File settingsFile;
 
 	/** Base directory that {@code $CLAUDE_PROJECT_DIR} resolves to. Defaults to the settings file's grandparent. */
 	private File projectDir;
@@ -48,15 +44,6 @@ public class HookCommandsValidRule extends JsonFileRule {
 
 	/** When true (default), a {@code $CLAUDE_PROJECT_DIR} script reference must resolve to an existing file. */
 	private boolean validateScriptReferences = true;
-
-	public HookCommandsValidRule() {
-		super("settingsFile", "settings.json");
-	}
-
-	@Override
-	protected File jsonFile() {
-		return settingsFile;
-	}
 
 	@Override
 	protected String header() {
@@ -157,11 +144,7 @@ public class HookCommandsValidRule extends JsonFileRule {
 		if (!validateScriptReferences) {
 			return List.of();
 		}
-		return new ClaudeProjectDir(projectDir, settingsFile).scriptsIn(command);
-	}
-
-	public void setSettingsFile(File settingsFile) {
-		this.settingsFile = settingsFile;
+		return new ClaudeProjectDir(projectDir, jsonFile()).scriptsIn(command);
 	}
 
 	public void setProjectDir(File projectDir) {

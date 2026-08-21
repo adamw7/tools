@@ -1,6 +1,5 @@
 package io.github.adamw7.tools.enforcer.settings;
 
-import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -12,7 +11,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import io.github.adamw7.tools.enforcer.rule.JsonFileRule;
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 import io.github.adamw7.tools.enforcer.rule.Patterns;
 
@@ -34,7 +32,7 @@ import io.github.adamw7.tools.enforcer.rule.Patterns;
  * by shape rather than spelling. A file without a {@code permissions} section passes.
  */
 @Named("permissionsFormat")
-public class PermissionsFormatRule extends JsonFileRule {
+public class PermissionsFormatRule extends SettingsJsonRule {
 
 	/** The keys of the permissions section, named once in {@link Permissions} and read the same way here. */
 	private static final String PERMISSIONS_KEY = Permissions.SECTION_KEY;
@@ -52,23 +50,11 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private static final String MCP_TOOL_PREFIX = "mcp__";
 	private static final String FORBIDDEN_PATTERN_PARAMETER = "forbiddenEntryPattern";
 
-	/** The {@code .claude/settings.json} file to validate. Injected from the rule configuration. */
-	private File settingsFile;
-
 	/** Optional whitelist of tool names an entry may reference. When set, unknown tools are reported. */
 	private List<String> allowedTools;
 
 	/** Optional regular expressions no {@code allow} entry may match, e.g. {@code Bash\(\*\)}. */
 	private List<String> forbiddenEntryPatterns;
-
-	public PermissionsFormatRule() {
-		super("settingsFile", "settings.json");
-	}
-
-	@Override
-	protected File jsonFile() {
-		return settingsFile;
-	}
 
 	@Override
 	protected String header() {
@@ -179,10 +165,6 @@ public class PermissionsFormatRule extends JsonFileRule {
 	private String toolNameOf(String value) {
 		int open = value.indexOf('(');
 		return open < 0 ? value : value.substring(0, open);
-	}
-
-	public void setSettingsFile(File settingsFile) {
-		this.settingsFile = settingsFile;
 	}
 
 	void setAllowedTools(List<String> allowedTools) {

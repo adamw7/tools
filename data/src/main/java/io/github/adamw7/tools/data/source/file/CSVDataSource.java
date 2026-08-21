@@ -128,7 +128,7 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 
 	@Override
 	public String[] nextRow() {
-		if (scanner.hasNextLine()) {
+		if (hasNextLine()) {
 			String line = scanner.nextLine();
 			if (line.trim().startsWith("#")) {
 				return null;

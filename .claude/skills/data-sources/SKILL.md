@@ -49,6 +49,15 @@ Every format ships in two variants:
   transparently **decompress `.gz`** with no extra config.
 - JSON/YAML flatten nested objects to dotted keys, e.g.
   `people[0].address.city`.
+- A **read that breaks part-way through fails**, rather than reading as a short
+  file. The `Scanner`-backed sources (`CSVDataSource` and the map-backed
+  in-memory JSON/YAML/TOON ones) go through `AbstractFileSource.hasNextLine()`,
+  which raises `UncheckedIOException` when `Scanner.ioException()` is set —
+  `Scanner` swallows the failure by design and just stops producing tokens, so a
+  truncated transfer, a corrupt GZip member or a disk error would otherwise look
+  like the end of the data and let the uniqueness check call a column unique on
+  half a file. The forward-only sources on `AbstractIterableFileSource` already
+  propagate. A new source must do one or the other.
 
 ### Confining a source to a directory
 Every path a source is given is canonicalised and refused if it climbs out with

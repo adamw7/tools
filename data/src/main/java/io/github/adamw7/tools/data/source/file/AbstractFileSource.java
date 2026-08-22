@@ -148,7 +148,17 @@ public abstract class AbstractFileSource implements IterableDataSource {
 		return name.toString();
 	}
 	
-	protected List<String[]> readAll() {
+	/**
+	 * Opens this source and drains it into a list, skipping the rows {@link #nextRow()}
+	 * declines to produce. It is the shared machinery behind {@code readAll()} on the
+	 * in-memory sources built on this class, and deliberately not called that: only a
+	 * {@link io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource} publishes
+	 * a read-everything operation, and naming this one {@code readAll} would have every
+	 * forward-only source built here widen it to public just by implementing that
+	 * interface &mdash; putting the operation on the public surface of sources whose
+	 * whole point is that they do not offer it.
+	 */
+	protected List<String[]> readAllRows() {
 		open();
 		List<String[]> data = new ArrayList<>();
 		while (hasMoreData()) {

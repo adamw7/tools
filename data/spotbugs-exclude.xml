@@ -22,4 +22,33 @@
 		<Method name="readAll" />
 		<Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE" />
 	</Match>
+	<!--
+	  The forward-only read methods answer null for "no row", which is the published
+	  contract of IterableDataSource#nextRow rather than a missing empty array: an empty
+	  array is a row these sources really do produce (a blank CSV line, a query over no
+	  columns), so only null is free to mean the absence of one. hasMoreData() is what
+	  tells the two null meanings apart. Each method's javadoc says so; the detector is
+	  excluded for those methods alone, so a new null-returning array elsewhere in the
+	  module still fails.
+	-->
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.db.IterableSQLDataSource" />
+		<Method name="readRow" />
+		<Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
+	</Match>
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.file.AbstractInMemoryMapDataSource" />
+		<Method name="nextRow" />
+		<Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
+	</Match>
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.file.AbstractIterableJacksonDataSource" />
+		<Method name="consume" />
+		<Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
+	</Match>
+	<Match>
+		<Class name="io.github.adamw7.tools.data.source.file.CSVDataSource" />
+		<Method name="nextRow" />
+		<Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
+	</Match>
 </FindBugsFilter>

@@ -25,14 +25,18 @@ import org.xml.sax.SAXException;
 /**
  * Pins the scope of the module's SpotBugs exclude filter. The two JDBC sources run the
  * caller's query on purpose, so {@code SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE} is
- * accepted there — but only there. A filter that grew a Match without a class, a method
- * or a pattern would silently stop the detector reporting a genuine concatenation
- * elsewhere in the module, which is what these assertions exist to catch.
+ * accepted there — but only there; the forward-only read methods answer {@code null} for
+ * "no row" on purpose, so {@code PZLA_PREFER_ZERO_LENGTH_ARRAYS} is accepted for those
+ * four methods — and only those. A filter that grew a Match without a class, a method or
+ * a pattern would silently stop either detector reporting a genuine finding elsewhere in
+ * the module, which is what these assertions exist to catch.
  */
 public class SpotBugsExcludeFilterTest {
 
 	private static final Path FILTER = Path.of("spotbugs-exclude.xml");
 	private static final String SQL_INJECTION = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE";
+	private static final String NULL_ARRAY = "PZLA_PREFER_ZERO_LENGTH_ARRAYS";
+	private static final String SOURCE_FILE_PACKAGE = "io.github.adamw7.tools.data.source.file.";
 
 	private static List<Element> matches;
 
@@ -69,11 +73,15 @@ public class SpotBugsExcludeFilterTest {
 	}
 
 	@Test
-	public void onlyTheTwoJdbcQueryExecutionsAreExcluded() {
+	public void onlyTheDecidedMethodsAreExcluded() {
 		List<String> excluded = matches.stream().map(SpotBugsExcludeFilterTest::describe).toList();
 		assertEquals(List.of(
 				IterableSQLDataSource.class.getName() + "#executeQuery:" + SQL_INJECTION,
-				InMemorySQLDataSource.class.getName() + "#readAll:" + SQL_INJECTION),
+				InMemorySQLDataSource.class.getName() + "#readAll:" + SQL_INJECTION,
+				IterableSQLDataSource.class.getName() + "#readRow:" + NULL_ARRAY,
+				SOURCE_FILE_PACKAGE + "AbstractInMemoryMapDataSource#nextRow:" + NULL_ARRAY,
+				SOURCE_FILE_PACKAGE + "AbstractIterableJacksonDataSource#consume:" + NULL_ARRAY,
+				SOURCE_FILE_PACKAGE + "CSVDataSource#nextRow:" + NULL_ARRAY),
 				excluded);
 	}
 

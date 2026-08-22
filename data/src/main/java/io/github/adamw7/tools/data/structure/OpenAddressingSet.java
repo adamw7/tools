@@ -16,7 +16,7 @@ import java.util.Set;
  * {@link #contains} and {@link #remove} answer {@code false} for an element the
  * set cannot hold. Its iterator is fail-fast, and it is not thread-safe.
  */
-public class OpenAddressingSet<E> extends AbstractSet<E> implements Set<E> {
+public class OpenAddressingSet<E> extends AbstractSet<E> {
 
 	private static final Object PRESENT = new Object();
 

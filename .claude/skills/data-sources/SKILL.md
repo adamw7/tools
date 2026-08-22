@@ -124,7 +124,13 @@ node allocation is what hurts:
 Implement `IterableDataSource` (five methods; `nextRows` is a default). If it can
 report its columns, also implement `ColumnarDataSource` so schema-dependent
 callers can use it. Add `readAll()` via `InMemoryDataSource` for an in-memory
-variant. Keep JDBC specifics in `source.db` (ArchUnit enforces this).
+variant — declare it `public` on that source itself and delegate to the
+`protected readAllRows()` on `AbstractFileSource`, rather than widening a
+`protected` base method, so `readAll()` stays off the surface of the
+forward-only sources. Return `null` from `nextRow()` for "no row" (an empty
+array is a real row) and keep `hasMoreData()` the thing that says whether the
+source is exhausted. Keep JDBC specifics in `source.db` (ArchUnit enforces
+this).
 
 ## References
 - `README.md` — *Data* (worked uniqueness example, source list, interfaces)

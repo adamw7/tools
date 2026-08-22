@@ -714,6 +714,8 @@ public interface IterableDataSource extends AutoCloseable, Closeable {
 	public List<String[]> nextRows(int batchSize);
 }
 ```
+`nextRow()` answers `null` when a call produced no row, and `hasMoreData()` is what says which of the two reasons it was: the source is exhausted, or that particular line yielded nothing and a further call may still return a row (a CSV comment does this). `null` rather than an empty array because an empty array is a row these sources really produce — a blank CSV line splits to one empty column, and a query over no columns gives rows of exactly that shape.
+
 `nextRows(int batchSize)` lets callers decide how much data is pulled from the source at once instead of reading row by row. It is a default method built on `hasMoreData()`/`nextRow()`, so every source gets it for free; an empty list signals the source is exhausted. The SQL source additionally applies `batchSize` as the JDBC fetch size so the rows are fetched in a single round-trip.
 If you need an in memory source you need to implement one more method:
 ```java
@@ -721,6 +723,7 @@ public interface InMemoryDataSource extends IterableDataSource {
 	public List<String[]> readAll();
 }
 ```
+`readAll()` belongs to this interface alone, so a forward-only source never carries it: the file sources share the drain-the-whole-source machinery as a `protected readAllRows()` on their base class, and each in-memory source publishes it by writing `readAll()` itself.
 
 Notes:
 

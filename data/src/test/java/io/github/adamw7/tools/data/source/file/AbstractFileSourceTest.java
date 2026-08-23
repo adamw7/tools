@@ -59,15 +59,19 @@ public class AbstractFileSourceTest {
 	@Test
 	public void csvSourceNamesTheFileItFailedToRead(@TempDir Path directory) throws IOException {
 		Path file = truncatedGzip(directory);
-		CSVDataSource source = new CSVDataSource(file.toString(), ",", 1, AllowedPaths.under(directory));
-		source.open();
+		// Closed even though the read failed: the failure leaves the descriptor open, and
+		// Windows refuses to delete a file some handle still holds, so an unclosed source
+		// fails @TempDir's cleanup rather than the assertions below.
+		try (CSVDataSource source = new CSVDataSource(file.toString(), ",", 1, AllowedPaths.under(directory))) {
+			source.open();
 
-		UncheckedIOException thrown = assertThrows(UncheckedIOException.class, () -> readAll(source));
+			UncheckedIOException thrown = assertThrows(UncheckedIOException.class, () -> readAll(source));
 
-		// A GZip member cut short ends with an unexpected EOF rather than a clean end of
-		// data; the message must name the file so the failure can be traced to it.
-		assertInstanceOf(EOFException.class, thrown.getCause());
-		assertTrue(thrown.getMessage().contains(file.toString()), thrown.getMessage());
+			// A GZip member cut short ends with an unexpected EOF rather than a clean end of
+			// data; the message must name the file so the failure can be traced to it.
+			assertInstanceOf(EOFException.class, thrown.getCause());
+			assertTrue(thrown.getMessage().contains(file.toString()), thrown.getMessage());
+		}
 	}
 
 	@Test

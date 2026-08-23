@@ -1017,6 +1017,89 @@ class MarkdownDocumentTest {
 		assertEquals("-->", document.openCommentTerminator().orElseThrow());
 	}
 
+	/** The line as it was typed, indent and all: a caller that rewrites the document edits that. */
+	@Test
+	void readsALineWithoutTrimmingIt() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				    int x;
+				""");
+
+		assertEquals("    int x;", document.line(2));
+	}
+
+	@Test
+	void readsTheFirstNonBlankLineStrippedOfItsWhitespace() {
+		MarkdownDocument document = MarkdownDocument.parse("\n\n   # Title\n\nBody.\n");
+
+		assertEquals("# Title", document.firstNonBlankLine());
+	}
+
+	/**
+	 * A fence inside a comment is a sample the comment carries, so reading it leaves the
+	 * comment exactly as open as it was: the lines below the sample are commented out
+	 * too, up to the delimiter that closes it.
+	 */
+	@Test
+	void keepsACommentOpenAcrossAFencedBlockInsideIt() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				<!-- note
+
+				```
+				int x;
+				```
+
+				still commented
+				-->
+
+				## Section
+				""");
+
+		assertEquals(List.of(2, 3, 7, 8, 9), commentedLines(document));
+		assertEquals(Set.of("# Title", "## Section"), document.headings());
+	}
+
+	/**
+	 * A continuation indented exactly to the item's content keeps the list open, so the
+	 * four columns below it are still measured from the item rather than from the margin
+	 * and quote nothing.
+	 */
+	@Test
+	void aContinuationIndentedToTheItemsContentKeepsTheListOpen() {
+		MarkdownDocument document = MarkdownDocument.parse("""
+				# Title
+
+				- item
+				  continuation
+
+				    four columns in
+				""");
+
+		assertEquals(List.of(), codeLines(document));
+	}
+
+	/** A tab counts on to the next four-column stop, so a space and a tab reach the code indent. */
+	@Test
+	void readsASpaceAndATabAsFourColumns() {
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n \tint x;\n");
+
+		assertEquals(List.of(2), codeLines(document));
+	}
+
+	/**
+	 * The same four columns inside a list item are the item's content rather than code,
+	 * which needs four past it — the tab stop is what keeps the two apart.
+	 */
+	@Test
+	void readsASpaceAndATabInsideAListItemAsThatItemsProse() {
+		MarkdownDocument document = MarkdownDocument.parse("# Title\n\n- item\n\n \tstill the item\n");
+
+		assertEquals(List.of(), codeLines(document));
+	}
+
 	private static String terminatorOf(String content) {
 		return MarkdownDocument.parse(content).openFenceTerminator().orElseThrow();
 	}

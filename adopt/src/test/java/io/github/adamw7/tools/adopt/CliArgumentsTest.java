@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.adamw7.tools.adopt.command.ProcessCommandRunner;
+import io.github.adamw7.tools.adopt.step.GuardRules;
 import io.github.adamw7.tools.adopt.step.PullRequestOptions;
 import io.github.adamw7.tools.secret.Redaction;
 
@@ -603,6 +604,60 @@ class CliArgumentsTest {
 	void acceptsFreeFormProseThatLooksLikeAFlag() {
 		CliArguments cli = CliArguments.parse(new String[] { REPO_URL, "--body", "--wip: do not merge" });
 		assertEquals("--wip: do not merge", cli.pullRequestOptions().body());
+	}
+
+	@Test
+	void readsHowManyRepositoriesToAdoptAtOnce() {
+		assertEquals(4, CliArguments.parse(new String[] { REPO_URL, "--parallel", "4" }).parallelism());
+	}
+
+	@Test
+	void adoptsOneRepositoryAtATimeWhenNoCountIsNamed() {
+		assertEquals(BatchAdoption.SEQUENTIAL, CliArguments.parse(new String[] { REPO_URL }).parallelism());
+		assertEquals(BatchAdoption.SEQUENTIAL,
+				CliArguments.parse(new String[] { REPO_URL, "--parallel", "  " }).parallelism());
+	}
+
+	/**
+	 * Both ends of the bound are a count the batch may actually run at, so both are
+	 * accepted here and only what lies outside them is refused — while the operator is
+	 * still reading the command line, rather than at the first clone.
+	 */
+	@Test
+	void acceptsAParallelismAtEitherBound() {
+		assertEquals(BatchAdoption.SEQUENTIAL, parallelismOf(String.valueOf(BatchAdoption.SEQUENTIAL)));
+		assertEquals(BatchAdoption.MAX_PARALLELISM, parallelismOf(String.valueOf(BatchAdoption.MAX_PARALLELISM)));
+	}
+
+	@Test
+	void refusesAParallelismThatIsNotAWholeNumberWithinTheBounds() {
+		assertParallelismRefused("0");
+		assertParallelismRefused("-1");
+		assertParallelismRefused("many");
+		assertParallelismRefused(String.valueOf(BatchAdoption.MAX_PARALLELISM + 1));
+	}
+
+	@Test
+	void readsTheGuardRuleSetNamed() {
+		assertEquals(GuardRules.MINIMAL,
+				CliArguments.parse(new String[] { REPO_URL, "--rules", "minimal" }).adoptionOptions().guardRules());
+	}
+
+	/** A blank value is a rule set nobody named, which is the whole-project guard. */
+	@Test
+	void guardsTheWholeProjectWhenNoRuleSetIsNamed() {
+		assertEquals(GuardRules.PROJECT,
+				CliArguments.parse(new String[] { REPO_URL }).adoptionOptions().guardRules());
+		assertEquals(GuardRules.PROJECT,
+				CliArguments.parse(new String[] { REPO_URL, "--rules", "  " }).adoptionOptions().guardRules());
+	}
+
+	private static int parallelismOf(String count) {
+		return CliArguments.parse(new String[] { REPO_URL, "--parallel", count }).parallelism();
+	}
+
+	private void assertParallelismRefused(String count) {
+		assertFailure(IllegalArgumentException.class, () -> parallelismOf(count), "--parallel");
 	}
 
 	private void assertUsageFailure(String[] args) {

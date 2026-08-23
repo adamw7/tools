@@ -101,4 +101,39 @@ class WorkflowGuardInstallerTest {
 		assertTrue(installer.install(directory));
 		assertTrue(Files.isRegularFile(scriptFile));
 	}
+
+	/** The verification reads both files, because the workflow runs the script and either alone guards nothing. */
+	@Test
+	void readsACheckoutCarryingBothGuardFilesAsGuarded(@TempDir Path directory) {
+		installer.install(directory);
+
+		assertTrue(installer.isInstalled(directory));
+	}
+
+	@Test
+	void readsACheckoutCarryingNeitherGuardFileAsUnguarded(@TempDir Path directory) {
+		assertFalse(installer.isInstalled(directory));
+	}
+
+	@Test
+	void readsACheckoutThatLostTheGuardScriptAsUnguarded(@TempDir Path directory) throws IOException {
+		installer.install(directory);
+		Files.delete(directory.resolve(WorkflowGuardInstaller.SCRIPT_FILE));
+
+		assertFalse(installer.isInstalled(directory));
+	}
+
+	/**
+	 * A workflow the adoption did not write is kept but is unlikely to run the script,
+	 * so it does not stand in for the guard: the marker is what tells the two apart.
+	 */
+	@Test
+	void readsTheProjectsOwnWorkflowAsNoGuardOfTheAdoptionsOwn(@TempDir Path directory) throws IOException {
+		Path workflowFile = directory.resolve(WorkflowGuardInstaller.WORKFLOW_FILE);
+		Files.createDirectories(workflowFile.getParent());
+		Files.writeString(workflowFile, "name: my own guard\non: [push]\njobs: {}\n");
+		installer.install(directory);
+
+		assertFalse(installer.isInstalled(directory));
+	}
 }

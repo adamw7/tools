@@ -71,7 +71,11 @@ public class AllowedPathsTest {
 
 		String validated = AllowedPaths.under(baseDir).validate(dotted.toString());
 
-		assertEquals(dotted.toRealPath().toString(), validated);
+		// Compared against the canonicalisation validate() documents -- absolute and
+		// normalised -- rather than the real path: on Windows the temporary directory is
+		// handed over in its short 8.3 form (RUNNER~1), which toRealPath() spells out and
+		// validate() leaves exactly as it was given.
+		assertEquals(dotted.toAbsolutePath().normalize().toString(), validated);
 	}
 
 	@Test

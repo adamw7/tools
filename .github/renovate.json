@@ -11,7 +11,7 @@
     "before 06:00 on monday"
   ],
   "prConcurrentLimit": 5,
-  "prHourlyLimit": 2,
+  "prHourlyLimit": 0,
   "rebaseWhen": "conflicted",
   "vulnerabilityAlerts": {
     "enabled": false

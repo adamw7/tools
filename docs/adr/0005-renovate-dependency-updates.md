@@ -51,8 +51,15 @@ arrived ungrouped and unscheduled.
 The committed configuration extends `config:recommended` and adds only what this
 repository's shape calls for:
 
-- **`schedule` (Monday before 06:00 UTC) with concurrency limits** — batches the
-  noise the *Consequences* section anticipates into one weekly window.
+- **`schedule` (Monday before 06:00 UTC) with `prConcurrentLimit: 5`** — batches
+  the noise the *Consequences* section anticipates into one weekly window, capped
+  at five open pull requests. The hourly limit is deliberately off
+  (`prHourlyLimit: 0`): Renovate scans the repository about once a day, so only a
+  single scan falls inside the weekly window, and an hourly cap of two meant that
+  one scan opened two pull requests and rate-limited the rest until the *next*
+  week. A grouped update that keeps losing that race is never reviewed at all —
+  the GitHub Actions group sat rate-limited behind two Maven bumps — so the
+  concurrent limit alone now sets the ceiling.
 - **`vulnerabilityAlerts: { enabled: false }` and `osvVulnerabilityAlerts: false`**
   — the division of labour above, expressed as configuration rather than
   convention: Renovate declines security-driven bumps so Dependabot

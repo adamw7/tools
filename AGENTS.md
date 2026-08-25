@@ -779,8 +779,12 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   has read it, and it is **report-only**: the tree carries findings today, so a
   `check` goal would fail every build instead of surfacing them. `spotbugs.yml`
   publishes the SARIF to the code-scanning tab, which is where the findings are
-  meant to be triaged. The same two generated-code modules opt out with
-  `spotbugs.skip`, for the same reason they set `jacoco.skip` and `pitest.skip`.
+  meant to be triaged. It publishes each module's report under its own category,
+  `spotbugs/<module>/`, written into the run's `automationDetails.id` before the
+  upload: every module's run names the same SpotBugs driver, and code scanning
+  rejects a delivery holding two runs it cannot tell apart. The same two
+  generated-code modules opt out with `spotbugs.skip`, for the same reason they
+  set `jacoco.skip` and `pitest.skip`.
 
   A finding that has been decided about rather than fixed is excluded in the
   module's own filter file, wired in from the module pom — today only

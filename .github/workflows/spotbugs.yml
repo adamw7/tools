@@ -46,18 +46,29 @@ jobs:
       # Each module writes its own target/spotbugsSarif.json. upload-sarif reads
       # a directory only for files named *.sarif, so they are gathered under one
       # directory and renamed per module to keep the findings attributable.
+      #
+      # Every module's run carries the same SpotBugs tool driver, so code
+      # scanning would see seven indistinguishable runs in one delivery and
+      # reject the upload ("multiple SARIF runs with the same category"). The
+      # run's category is its automationDetails.id, so each file gets the
+      # module's own — which upload-sarif then leaves alone, since it only fills
+      # in an id where none is set. One category per module, one run per
+      # category.
       run: |
         mkdir -p target/sarif
         find . -path '*/target/spotbugsSarif.json' -print0 | while IFS= read -r -d '' report; do
           module=$(echo "${report}" | sed -e 's|^\./||' -e 's|/target/spotbugsSarif\.json$||' -e 's|/|-|g')
-          cp "${report}" "target/sarif/${module}.sarif"
+          jq --arg id "spotbugs/${module}/" '.runs[].automationDetails.id = $id' \
+            "${report}" > "target/sarif/${module}.sarif"
         done
         echo "Collected $(find target/sarif -name '*.sarif' | wc -l) SARIF reports."
     - name: Publish SARIF to code scanning
+      # No category input: it would only apply to runs that have no
+      # automationDetails.id of their own, and the step above gives every run
+      # the per-module id that keeps the delivery's runs distinct.
       uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4
       with:
         sarif_file: target/sarif
-        category: spotbugs
     - name: Upload SpotBugs reports
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:

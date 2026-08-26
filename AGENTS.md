@@ -831,13 +831,24 @@ across all ten, and a new workflow is expected to keep them:
   itself at 120 s has no business finishing an answer nobody is waiting for.
   Everywhere else it is `false` — a scheduled run is not superseded by a newer
   commit, and a publish interrupted half-way can leave a partial release behind.
-- **Actions pinned to a commit SHA**, with the tag kept in a trailing comment
-  (`uses: actions/checkout@d23441a… # v6`). A tag is mutable, so an unpinned
-  action is a third party's ability to change what CI runs without a commit
-  here — and CI is what produces the released artifacts the supply-chain posture
-  of [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md) rests
-  on. `assembly/Dockerfile` pins its `eclipse-temurin` base images by digest for
-  the same reason. Renovate refreshes both.
+- **Actions referenced by their major tag alone** — `uses: actions/setup-java@v6`,
+  never a commit SHA and never `@v6.0.0`. The major tag is the one each action's
+  maintainers move, so a patch or a security fix inside an action reaches CI
+  without a commit here, and the workflow says in the line itself what it runs
+  rather than hiding it behind a digest. The trade is deliberate: a tag is
+  mutable, so this trusts each action's owner not to re-point it — see the
+  trade-off recorded in
+  [ADR 0005](docs/adr/0005-renovate-dependency-updates.md).
+  `aquasecurity/trivy-action` is the one action that cannot follow the rule: it
+  publishes no major tag at all — every one of its 75 tags is an exact `v0.x.y`
+  release — so `docker.yml` names `@v0.36.0` and Renovate bumps it like any other
+  dependency.
+- **`assembly/Dockerfile` is the opposite case and stays pinned by digest.** An
+  image tag is re-pushed in place by whoever owns it, and those `eclipse-temurin`
+  base images end up *inside* the released artifacts, which is the part of the
+  supply-chain posture of
+  [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md) that a
+  mutable base image would undo. Renovate keeps those digests fresh.
 
 ### Dependency updates
 
@@ -860,9 +871,12 @@ configuration is `.github/renovate.json`:
   once already.
 - This project's own `io.github.adamw7:**` modules are **disabled**: they resolve
   inside the reactor at `${revision}`.
-- `pinDigests` is on for the **github-actions** and **dockerfile** managers, so
-  the SHA pins above are refreshed rather than left to rot; the action bumps
-  arrive as one grouped PR.
+- `pinDigests` is **off** for the **github-actions** manager and **on** for
+  **dockerfile**, matching the two conventions above: the workflows track major
+  tags, so there is no action digest to refresh, while the Dockerfile's base
+  images stay pinned and current. What Renovate still raises for actions is the
+  major move — `@v7` to `@v8` — as one grouped PR, and that is the one to read
+  release notes for.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
   dashboard approval — a Maven 4 API is wired in on purpose while the build is
   pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.

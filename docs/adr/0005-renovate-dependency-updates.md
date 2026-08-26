@@ -74,6 +74,16 @@ repository's shape calls for:
   dashboard rather than arriving unannounced.
 - **This project's own `io.github.adamw7` modules disabled** — they resolve inside
   the reactor at `${revision}`, so there is no release for Renovate to raise.
+- **`pinDigests` off for github-actions, on for dockerfile.** The workflows
+  reference each action by its major tag (`actions/setup-java@v6`), so the tag is
+  what moves and there is no digest for Renovate to refresh; what it raises is
+  the major bump, `@v6` to `@v7`, in the grouped actions pull request — the one
+  place release notes are worth reading. The Dockerfile is the opposite case and
+  stays pinned: an image tag is re-pushed in place by whoever owns it, and those
+  base images end up inside the released artifacts.
+  `aquasecurity/trivy-action` publishes no major tag at all — every one of its 75
+  tags is an exact `v0.x.y` release — so it is referenced exactly and Renovate
+  raises its minor bumps like any other dependency.
 
 Validate a change to that file with
 `npx --package renovate renovate-config-validator` before committing it.
@@ -93,3 +103,11 @@ Validate a change to that file with
 - Requires the Renovate App to be installed and configured on the repository.
 - Care is needed so Renovate and Dependabot do not both open a PR for the same
   security-driven bump; the role split in ADR 0002 exists to prevent that.
+- Referencing actions by a major tag rather than a commit SHA means a tag that is
+  re-pointed — by a compromised account or by its owner — changes what CI runs
+  without a commit in this repository. That is accepted knowingly: it is what
+  lets an action's own patch and security releases reach CI unattended, the
+  actions in use are first-party GitHub and Docker ones plus Trivy, and the
+  artifacts a release actually ships are protected at the layer that survives
+  this — `assembly/Dockerfile`'s digest-pinned base images. Revisit it if an
+  action in use changes hands.

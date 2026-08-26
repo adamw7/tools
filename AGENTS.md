@@ -838,6 +838,16 @@ across all ten, and a new workflow is expected to keep them:
   of [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md) rests
   on. `assembly/Dockerfile` pins its `eclipse-temurin` base images by digest for
   the same reason. Renovate refreshes both.
+- **That trailing comment names the major alone** — `# v7`, never `# v7.0.1`.
+  The SHA is what pins the action, so the comment exists only to say which line
+  the pin belongs to, and Renovate reads it as the current version: a new `v7.x`
+  release is then a digest refresh that leaves the comment untouched, and only a
+  genuine `v8` rewrites it. That makes the version text in a diff the signal that
+  release notes need reading, instead of churning on every patch. Pin the digest
+  the **moving major tag** resolves to and the two never disagree, since that tag
+  tracks the newest release in its line. `aquasecurity/trivy-action` is the one
+  exception: it publishes no moving major tag — all 75 of its tags are exact
+  `v0.x.y` releases — so it keeps `# v0.36.0`.
 
 ### Dependency updates
 
@@ -862,7 +872,9 @@ configuration is `.github/renovate.json`:
   inside the reactor at `${revision}`.
 - `pinDigests` is on for the **github-actions** and **dockerfile** managers, so
   the SHA pins above are refreshed rather than left to rot; the action bumps
-  arrive as one grouped PR.
+  arrive as one grouped PR. Because those pins comment the major alone, most of
+  that PR is digest churn; a comment that changes from `# v7` to `# v8` is the
+  part to stop and read.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
   dashboard approval — a Maven 4 API is wired in on purpose while the build is
   pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.

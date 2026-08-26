@@ -74,6 +74,17 @@ repository's shape calls for:
   dashboard rather than arriving unannounced.
 - **This project's own `io.github.adamw7` modules disabled** — they resolve inside
   the reactor at `${revision}`, so there is no release for Renovate to raise.
+- **`pinDigests` on the github-actions and dockerfile managers, with action
+  comments naming the major alone** (`# v7`, not `# v7.0.1`). The digest is the
+  real pin; Renovate reads the comment as the current version, so a major-only
+  comment turns every patch and minor release into a digest refresh and reserves
+  a comment change for an actual major. Reviewing the grouped actions PR is then
+  a matter of looking for a changed `# vN`, rather than re-reading nine version
+  strings that moved for no behavioural reason. The digest pinned is the one the
+  moving major tag resolves to, which is also the newest release in that line.
+  `aquasecurity/trivy-action` cannot follow this: it ships no moving major tag,
+  only exact `v0.x.y` releases, so it stays pinned with an exact comment and
+  Renovate raises its minor bumps normally.
 
 Validate a change to that file with
 `npx --package renovate renovate-config-validator` before committing it.

@@ -832,7 +832,7 @@ across all ten, and a new workflow is expected to keep them:
   Everywhere else it is `false` — a scheduled run is not superseded by a newer
   commit, and a publish interrupted half-way can leave a partial release behind.
 - **Actions pinned to a commit SHA**, with the tag kept in a trailing comment
-  (`uses: actions/checkout@d23441a… # v6`). A tag is mutable, so an unpinned
+  (`uses: actions/checkout@3d3c42e… # v7`). A tag is mutable, so an unpinned
   action is a third party's ability to change what CI runs without a commit
   here — and CI is what produces the released artifacts the supply-chain posture
   of [ADR 0002](docs/adr/0002-security-policy-and-supply-chain-posture.md) rests

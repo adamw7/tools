@@ -62,7 +62,7 @@ jobs:
           fi
           echo "All required Maven Central secrets are present."
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
 
       - name: Derive the reproducible-build timestamp
         # The pom declares no project.build.outputTimestamp on purpose, so that no
@@ -80,7 +80,7 @@ jobs:
           echo "BUILD_OUTPUT_TIMESTAMP=${timestamp}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 25
-        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'

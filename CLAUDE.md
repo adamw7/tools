@@ -236,10 +236,11 @@ the whole matrix passes:
   GHCR; `maven-publish.yml` (GitHub Packages); `central-publish.yml` (Maven
   Central).
 
-Every workflow builds on JDK 25 (Temurin). Every action is pinned to a commit
-SHA whose trailing comment names the **major only** (`# v7`, never `# v7.0.1`):
-pin the digest the moving major tag resolves to. `aquasecurity/trivy-action`
-publishes no such tag and is the documented exception.
+Every workflow builds on JDK 25 (Temurin). Actions are referenced by their
+**major tag alone** (`uses: actions/setup-java@v6`) — not a commit SHA, not
+`@v6.0.0` — so an action's own patches reach CI without a commit here.
+`aquasecurity/trivy-action` publishes no major tag and is the exception, at
+`@v0.36.0`. `assembly/Dockerfile` still pins its base images by digest.
 
 Use clear, conventional commit messages — the `git-commit` skill writes them with
 this repository's real module scopes — keep changes focused, and add or update

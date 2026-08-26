@@ -3,8 +3,7 @@
   "extends": [
     "config:recommended",
     ":semanticCommits",
-    ":dependencyDashboard",
-    "helpers:pinGitHubActionDigests"
+    ":dependencyDashboard"
   ],
   "timezone": "UTC",
   "schedule": [
@@ -19,15 +18,15 @@
   "osvVulnerabilityAlerts": false,
   "packageRules": [
     {
-      "description": "The workflows pin every action to a commit SHA, so a floating tag cannot change what CI runs; keep those digests fresh in one PR.",
+      "description": "The workflows reference actions by their major tag (v7), so the tag itself is what moves and there is no digest to refresh; raise the major bumps in one PR.",
       "matchManagers": [
         "github-actions"
       ],
       "groupName": "github actions",
-      "pinDigests": true
+      "pinDigests": false
     },
     {
-      "description": "assembly/Dockerfile pins its base images by digest for the same reason, and a Temurin rebuild is what carries the base OS's security fixes in.",
+      "description": "assembly/Dockerfile pins its base images by digest, because an image tag is re-pushed in place and the released artifacts are built from it; a Temurin rebuild is what carries the base OS's security fixes in.",
       "matchManagers": [
         "dockerfile"
       ],

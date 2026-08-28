@@ -63,9 +63,25 @@ jobs:
         # and leaves data-test out for the same reason the build does — it is
         # not in the reactor.
         run: |
-          group_id="$(sed -e '/<parent>/,/<\/parent>/d' pom.xml \
-            | grep -o '<groupId>[^<]*</groupId>' | head -n 1 \
-            | sed -e 's|.*<groupId>||' -e 's|</groupId>||')"
+          # A pom's own groupId is the first <groupId> once the <parent> block is
+          # dropped, but only when it precedes the <artifactId>: further down a
+          # pom, <groupId> belongs to a dependency or a plugin, not the project.
+          # A module that declares none inherits the root's.
+          group_id_of() {
+            stripped="$(sed -e '/<parent>/,/<\/parent>/d' "$1")"
+            g="$(printf '%s\n' "$stripped" | grep -n -m1 '<groupId>' | cut -d: -f1)"
+            a="$(printf '%s\n' "$stripped" | grep -n -m1 '<artifactId>' | cut -d: -f1)"
+            if [ -n "$g" ] && [ -n "$a" ] && [ "$g" -lt "$a" ]; then
+              printf '%s\n' "$stripped" | grep -o '<groupId>[^<]*</groupId>' | head -n 1 \
+                | sed -e 's|.*<groupId>||' -e 's|</groupId>||'
+            else
+              printf '%s\n' "${root_group_id}"
+            fi
+          }
+
+          root_group_id=""
+          root_group_id="$(group_id_of pom.xml)"
+          group_id="${root_group_id}"
 
           artifact_id_of() {
             sed -e '/<parent>/,/<\/parent>/d' "$1" \
@@ -84,7 +100,7 @@ jobs:
             pom="${dir}/pom.xml"
             pom="${pom#./}"
             if ! grep -q '<maven.deploy.skip>true</maven.deploy.skip>' "$pom"; then
-              packages="${packages}${group_id}.$(artifact_id_of "$pom")"$'\n'
+              packages="${packages}$(group_id_of "$pom").$(artifact_id_of "$pom")"$'\n'
             fi
             for module in $(modules_of "$pom"); do
               collect "${dir}/${module}"

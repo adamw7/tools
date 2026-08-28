@@ -814,16 +814,19 @@ not proof the whole matrix passes.
 | `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads the PIT reports. |
 | `maven-windows.yml` | weekly (Sun); manual | `mvn install` on `windows-latest` — keep path, line-ending and file-locking assumptions platform-neutral. |
 | `docker.yml` | weekly (Sat); on release; manual | Builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR with SBOM and provenance. Deliberately not on pull requests — dispatch it by hand after touching `assembly` or the Dockerfile. |
+| `packages-cleanup.yml` | monthly; manual | Prunes the GitHub Packages Maven registry, keeping the newest `min-versions-to-keep` (3 by default, overridable on a manual dispatch) versions of each published package. The package list is derived from the poms at run time, so it follows the reactor. The GHCR image is left alone on purpose — see the workflow header. |
 | `maven-publish.yml` | on release | Deploys to **GitHub Packages** (`-P github-packages`). |
 | `central-publish.yml` | on release; manual | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. |
 
 Every workflow builds on JDK 25 (Temurin) and passes `-ntp`. Three things hold
-across all ten, and a new workflow is expected to keep them:
+across all eleven, and a new workflow is expected to keep them:
 
 - **A stated `permissions:` scope.** No workflow inherits the repository's
   default `GITHUB_TOKEN` scope. Six need nothing but `contents: read`;
   `docker.yml` and `maven-publish.yml` add `packages: write` for the registry
-  push, `codeql.yml` adds `actions: read` and `security-events: write` to
+  push, `packages-cleanup.yml` adds it on its pruning job alone (its discovery
+  job reads the poms and needs `contents: read` only), `codeql.yml` adds
+  `actions: read` and `security-events: write` to
   upload its results, and `spotbugs.yml` adds `security-events: write` to
   publish its SARIF.
 - **A `concurrency:` group.** `maven.yml` alone sets `cancel-in-progress: true`:
@@ -1394,6 +1397,12 @@ exclusion holds with or without the workflow's `-pl` filter. (The
 `protogen-maven-plugin-test` harness has no main sources, so it would also fail
 Central validation with an empty `-sources.jar`.) The same modules set
 `maven.deploy.skip` to stay out of GitHub Packages.
+
+Nothing has to be cleaned up by hand afterwards: `packages-cleanup.yml` sweeps
+the GitHub Packages Maven registry monthly and keeps the newest three versions
+of each package. Maven Central keeps every released version permanently, so a
+pruned GitHub Packages version is a second copy going away, never the release
+itself.
 
 To publish from a workstation:
 `mvn -P release deploy -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"`

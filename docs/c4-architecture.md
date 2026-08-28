@@ -734,6 +734,7 @@ flowchart TB
         pitWf["<b>pitest.yml</b><br/><i>Sundays · mutation testing</i>"]
         winWf["<b>maven-windows.yml</b><br/><i>Sundays · the build on Windows</i>"]
         dockerWf["<b>docker.yml</b><br/><i>Saturdays · builds, smoke-runs<br/>and scans the image; on a release,<br/>also pushes it to GHCR</i>"]
+        pkgCleanWf["<b>packages-cleanup.yml</b><br/><i>monthly · prunes the GitHub Packages<br/>Maven registry to the newest<br/>three versions per package</i>"]
     end
 
     subgraph publish ["On a release"]
@@ -748,9 +749,11 @@ flowchart TB
     sched --> pitWf
     sched --> winWf
     sched --> dockerWf
+    sched --> pkgCleanWf
     manual --> pitWf
     manual --> winWf
     manual --> dockerWf
+    manual --> pkgCleanWf
     manual --> central
     rel --> dockerWf
     rel --> ghPkg
@@ -758,7 +761,7 @@ flowchart TB
 
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class mavenWf,dockerWf,codeqlWf,itWf,covWf,pitWf,winWf,ghPkg,central comp
+    class mavenWf,dockerWf,codeqlWf,itWf,covWf,pitWf,winWf,pkgCleanWf,ghPkg,central comp
     class pr,sched,manual,rel ext
     style gate fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
     style scheduled fill:#fff7ec,stroke:#d59a43,color:#7a5418

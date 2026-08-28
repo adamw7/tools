@@ -1,0 +1,128 @@
+# Prunes old versions from the GitHub Packages Maven registry.
+#
+# Every release publishes nine Maven packages here as well as to Maven Central,
+# so the version list grows by nine entries per release and never shrinks on its
+# own. Storage costs nothing — this repository is public, and public packages
+# are free — so this is housekeeping, not a bill: it keeps the package pages
+# readable and the registry a working set rather than an archive.
+#
+# Pruning here can never make a release unobtainable. Maven Central is the
+# canonical registry and keeps every published version permanently and
+# immutably; GitHub Packages is the second copy. `min-versions-to-keep` is also
+# a floor the action refuses to delete past, so the newest N versions of each
+# package survive every run.
+#
+# The container image in GHCR is deliberately NOT pruned. `docker.yml` pushes a
+# `linux/amd64,linux/arm64` image, and a multi-arch push stores the per-platform
+# manifests (plus the SBOM and provenance attestations) as *untagged versions of
+# the same package* that the tagged index points at. Deleting versions by count
+# or by "untagged" would happily orphan the layers of an image whose tag is
+# kept, leaving a tag that no longer pulls. Images are pushed on release only,
+# so the growth is slow; prune them by hand from the package settings page.
+
+name: Packages Cleanup
+
+on:
+  # Monthly: releases are far rarer than this, so a monthly sweep is never
+  # more than one release behind.
+  schedule:
+    - cron: '0 5 1 * *'
+  workflow_dispatch:
+    inputs:
+      min-versions-to-keep:
+        description: "How many of the newest versions of each package to keep."
+        required: false
+        default: "3"
+
+# A prune is never cancelled half-way: an interrupted run can leave the
+# packages pruned unevenly, some at the new floor and some untouched.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    # Derives the package list from the poms rather than hard-coding it, so a
+    # module added to the reactor is pruned without a change here, and a module
+    # that opts out of publishing with maven.deploy.skip is never named.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      packages: ${{ steps.poms.outputs.packages }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Derive the published Maven package names
+        id: poms
+        # A GitHub Packages Maven package is named "<groupId>.<artifactId>".
+        # Every module inherits the root groupId, so only the artifactId has to
+        # be read per pom: the first <artifactId> once the <parent> block is
+        # dropped. Walking <module> lists covers the nested code/ aggregator,
+        # and leaves data-test out for the same reason the build does — it is
+        # not in the reactor.
+        run: |
+          group_id="$(sed -e '/<parent>/,/<\/parent>/d' pom.xml \
+            | grep -o '<groupId>[^<]*</groupId>' | head -n 1 \
+            | sed -e 's|.*<groupId>||' -e 's|</groupId>||')"
+
+          artifact_id_of() {
+            sed -e '/<parent>/,/<\/parent>/d' "$1" \
+              | grep -o '<artifactId>[^<]*</artifactId>' | head -n 1 \
+              | sed -e 's|.*<artifactId>||' -e 's|</artifactId>||'
+          }
+
+          modules_of() {
+            grep -o '<module>[^<]*</module>' "$1" \
+              | sed -e 's|.*<module>||' -e 's|</module>||'
+          }
+
+          packages=""
+          collect() {
+            local dir="$1" pom module
+            pom="${dir}/pom.xml"
+            pom="${pom#./}"
+            if ! grep -q '<maven.deploy.skip>true</maven.deploy.skip>' "$pom"; then
+              packages="${packages}${group_id}.$(artifact_id_of "$pom")"$'\n'
+            fi
+            for module in $(modules_of "$pom"); do
+              collect "${dir}/${module}"
+            done
+          }
+          collect "."
+
+          json="$(printf '%s' "$packages" | sed '/^$/d' | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          if [ "$json" = "[]" ]; then
+            echo "::error::Found no publishable Maven modules, so the poms are not being read as expected."
+            exit 1
+          fi
+          echo "Pruning these packages: ${json}"
+          echo "packages=${json}" >> "$GITHUB_OUTPUT"
+
+  prune:
+    needs: discover
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      # One package missing from the registry — a module released for the first
+      # time in the next release, say — must not stop the other eight being
+      # pruned.
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.packages) }}
+
+    steps:
+      - name: Prune ${{ matrix.package }}
+        # Maven packages inherit their permissions from this repository, so the
+        # built-in token with `packages: write` is enough and no PAT secret is
+        # needed. Only min-versions-to-keep is set: num-old-versions-to-delete
+        # would count from the other end and delete a fixed number however few
+        # versions are left.
+        uses: actions/delete-package-versions@v5
+        with:
+          owner: ${{ github.repository_owner }}
+          package-name: ${{ matrix.package }}
+          package-type: maven
+          min-versions-to-keep: ${{ github.event.inputs.min-versions-to-keep || '3' }}

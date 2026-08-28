@@ -228,7 +228,8 @@ the whole matrix passes:
 
 - **Scheduled** — `integration-tests.yml` daily; `codeql.yml`, `coverage.yml`
   and `docker.yml` Saturdays; `pitest.yml`, `maven-windows.yml` and
-  `spotbugs.yml` Sundays. Keep
+  `spotbugs.yml` Sundays; `packages-cleanup.yml` monthly, pruning the GitHub
+  Packages Maven registry to the newest three versions per package. Keep
   path, line-ending and file-locking assumptions platform-neutral for the Windows
   build, and dispatch `docker.yml` by hand after changing the assembly or the
   Dockerfile rather than waiting for the weekly run.

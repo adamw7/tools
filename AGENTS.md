@@ -814,7 +814,7 @@ not proof the whole matrix passes.
 | `pitest.yml` | weekly (Sun); manual | `mvn install -Ppitest`, uploads the PIT reports. |
 | `maven-windows.yml` | weekly (Sun); manual | `mvn install` on `windows-latest` — keep path, line-ending and file-locking assumptions platform-neutral. |
 | `docker.yml` | weekly (Sat); on release; manual | Builds `assembly/Dockerfile` for `linux/amd64`, **runs** it against a sample CSV to prove `SampleApp` launches and logs, and scans it with Trivy (failing on fixable HIGH/CRITICAL). Only on a release does it push a `linux/amd64,linux/arm64` image to GHCR with SBOM and provenance. Deliberately not on pull requests — dispatch it by hand after touching `assembly` or the Dockerfile. |
-| `packages-cleanup.yml` | monthly; manual | Prunes the GitHub Packages Maven registry, keeping the newest `min-versions-to-keep` (10 by default, overridable on a manual dispatch) versions of each published package. The package list is derived from the poms at run time, so it follows the reactor. The GHCR image is left alone on purpose — see the workflow header. |
+| `packages-cleanup.yml` | monthly; manual | Prunes the GitHub Packages Maven registry, keeping the newest `min-versions-to-keep` (3 by default, overridable on a manual dispatch) versions of each published package. The package list is derived from the poms at run time, so it follows the reactor. The GHCR image is left alone on purpose — see the workflow header. |
 | `maven-publish.yml` | on release | Deploys to **GitHub Packages** (`-P github-packages`). |
 | `central-publish.yml` | on release; manual | Deploys to **Maven Central** (`-P release`), or a staged-only dry run on manual dispatch. |
 
@@ -1399,8 +1399,8 @@ Central validation with an empty `-sources.jar`.) The same modules set
 `maven.deploy.skip` to stay out of GitHub Packages.
 
 Nothing has to be cleaned up by hand afterwards: `packages-cleanup.yml` sweeps
-the GitHub Packages Maven registry monthly and keeps the newest ten versions of
-each package. Maven Central keeps every released version permanently, so a
+the GitHub Packages Maven registry monthly and keeps the newest three versions
+of each package. Maven Central keeps every released version permanently, so a
 pruned GitHub Packages version is a second copy going away, never the release
 itself.
 

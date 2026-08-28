@@ -734,7 +734,7 @@ flowchart TB
         pitWf["<b>pitest.yml</b><br/><i>Sundays · mutation testing</i>"]
         winWf["<b>maven-windows.yml</b><br/><i>Sundays · the build on Windows</i>"]
         dockerWf["<b>docker.yml</b><br/><i>Saturdays · builds, smoke-runs<br/>and scans the image; on a release,<br/>also pushes it to GHCR</i>"]
-        pkgCleanWf["<b>packages-cleanup.yml</b><br/><i>monthly · prunes the GitHub Packages<br/>Maven registry to the newest<br/>ten versions per package</i>"]
+        pkgCleanWf["<b>packages-cleanup.yml</b><br/><i>monthly · prunes the GitHub Packages<br/>Maven registry to the newest<br/>three versions per package</i>"]
     end
 
     subgraph publish ["On a release"]

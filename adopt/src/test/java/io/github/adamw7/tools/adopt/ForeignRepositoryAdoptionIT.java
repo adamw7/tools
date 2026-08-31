@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,6 +40,8 @@ import io.github.adamw7.tools.adopt.step.ClaudeMdConformer;
 import io.github.adamw7.tools.adopt.step.CloneStep;
 import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
+import io.github.adamw7.tools.adopt.step.SkillsStep;
+import io.github.adamw7.tools.adopt.step.StarterSkills;
 import io.github.adamw7.tools.adopt.step.ToolchainStep;
 import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
 
@@ -67,7 +70,8 @@ import io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule;
  * for, the commits carry only paths {@link AdoptionAssets#WRITTEN_PATHS} names,
  * nothing the project already declared is removed to make room for it, the starter
  * assets installed are the ones the repository was missing and the files it already
- * keeps at their paths are left exactly as they were cloned, the default branch — read
+ * keeps at their paths are left exactly as they were cloned, the starter skills name
+ * the guard that checkout's own build system got and no other, the default branch — read
  * from the remote rather than assumed — is where the clone left it, the repository on
  * GitHub is asked directly and has no branch of the adoption's, and adopting the same
  * repository a second time changes nothing.
@@ -210,13 +214,19 @@ class ForeignRepositoryAdoptionIT {
 
 	/** The steps this run is given, in order, as each reports itself to the report. */
 	private static final List<String> PIPELINE = List.of(
-			"toolchain", "clone", "branch", "enforcer", "commit:guard", "assets", "commit:assets");
+			"toolchain", "clone", "branch", "enforcer", "commit:guard", "assets", "skills", "commit:assets");
 
 	/** The checkout-relative paths {@link AssetsStep} installs, sorted as git reports them. */
 	private static final List<String> ASSET_PATHS = AdoptionAssets.DEFAULTS.stream()
 			.map(AssetInstaller::relativePath)
 			.sorted()
 			.toList();
+
+	/** The directory a skill's name is its own; see {@link #definitionNamesIn}. */
+	private static final String SKILLS_DIRECTORY = ".claude/skills/";
+
+	/** The two directories where the {@code *.md} file name is the definition's. */
+	private static final List<String> DEFINITION_DIRECTORIES = List.of(".claude/commands/", ".claude/agents/");
 
 	/**
 	 * Generous next to the second or two a clone of these repositories costs, and short
@@ -379,10 +389,36 @@ class ForeignRepositoryAdoptionIT {
 	void theStarterAssetsInstalledAreTheOnesTheRepositoryDidNotAlreadyHave() {
 		for (RealRepository repository : REPOSITORIES) {
 			List<String> alreadyThere = assetsAlreadyIn(repository);
-			List<String> missing = ASSET_PATHS.stream().filter(path -> !alreadyThere.contains(path)).toList();
-			assertEquals(missing, pathsIn(repository, GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE),
+			List<String> expected = Stream.concat(
+					ASSET_PATHS.stream().filter(path -> !alreadyThere.contains(path)),
+					unclaimedSkillPathsIn(repository).stream())
+					.sorted()
+					.toList();
+			assertEquals(expected, pathsIn(repository, GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE),
 					() -> "adopting " + repository + " did not install exactly the assets it was missing;"
 							+ " it already had " + alreadyThere);
+		}
+	}
+
+	/**
+	 * The starter skills describe the guard the checkout's own build system was given,
+	 * so the command each one tells a contributor to run has to be the command that
+	 * repository's guard is actually run with — a Gradle task in the Gradle projects, a
+	 * shell script in the ones with no build file. A skill naming the wrong tool would
+	 * be committed to somebody else's repository and read as an instruction.
+	 */
+	@Test
+	void theStarterSkillsNameTheGuardTheCheckoutActuallyGot() {
+		for (RealRepository repository : REPOSITORIES) {
+			unclaimedSkillPathsIn(repository).forEach(path -> {
+				String skill = readString(checkoutOf(repository).resolve(path));
+				assertTrue(skill.contains(guardCommandOf(repository)),
+						() -> "the skill at " + path + " in " + repository + " does not name the "
+								+ repository.buildSystem() + " guard the run wired in:\n" + skill);
+				otherGuardCommands(repository).forEach(other -> assertFalse(skill.contains(other),
+						() -> "the skill at " + path + " in " + repository + " names " + other
+								+ ", which is another build system's guard:\n" + skill));
+			});
 		}
 	}
 
@@ -509,6 +545,7 @@ class ForeignRepositoryAdoptionIT {
 				new EnforcerStep(BUILD_SYSTEMS),
 				new CommitStep(GitHubRepoAdopter.GUARD_COMMIT_MESSAGE, "guard"),
 				new AssetsStep(),
+				new SkillsStep(BUILD_SYSTEMS),
 				new CommitStep(GitHubRepoAdopter.ASSETS_COMMIT_MESSAGE, "assets"));
 		return new GitHubRepoAdopter(RUNNER, steps);
 	}
@@ -630,6 +667,79 @@ class ForeignRepositoryAdoptionIT {
 				.filter(line -> !line.isBlank())
 				.distinct()
 				.sorted()
+				.toList();
+	}
+
+	/**
+	 * The starter skills this repository had room for: one whose name the project's own
+	 * commands, sub-agents or skills already claim is not installed, the guard failing a
+	 * repository where two definitions answer to one name. Computed from what was
+	 * cloned rather than written out here, so the claim survives whatever these seven
+	 * repositories put under {@code .claude} next.
+	 */
+	private static List<String> unclaimedSkillPathsIn(RealRepository repository) {
+		Set<String> claimed = definitionNamesIn(repository);
+		return StarterSkills.WRITTEN_PATHS.stream()
+				.filter(path -> !claimed.contains(skillNameIn(path)))
+				.toList();
+	}
+
+	/**
+	 * Every Claude Code definition name the repository was cloned already carrying: a
+	 * command's and a sub-agent's is its {@code *.md} file name, a skill's is its
+	 * directory name. Read from the default branch's tree, which is the state the
+	 * adoption found rather than the one it left.
+	 */
+	private static Set<String> definitionNamesIn(RealRepository repository) {
+		Path checkout = checkoutOf(repository);
+		return git(checkout, "ls-tree", "-r", "--name-only", defaultBranchOf(checkout), "--", ".claude").lines()
+				.map(ForeignRepositoryAdoptionIT::definitionName)
+				.flatMap(Optional::stream)
+				.collect(Collectors.toSet());
+	}
+
+	/** @return the definition the tracked path names, or empty when it names none */
+	private static Optional<String> definitionName(String path) {
+		if (path.startsWith(SKILLS_DIRECTORY)) {
+			return Optional.of(skillNameIn(path));
+		}
+		return DEFINITION_DIRECTORIES.stream()
+				.filter(directory -> path.startsWith(directory) && path.endsWith(".md"))
+				.map(directory -> path.substring(directory.length(), path.length() - ".md".length()))
+				.filter(name -> !name.contains("/"))
+				.findFirst();
+	}
+
+	/** The skill directory's own name, the segment straight under {@link #SKILLS_DIRECTORY}. */
+	private static String skillNameIn(String path) {
+		String withinSkills = path.substring(SKILLS_DIRECTORY.length());
+		int end = withinSkills.indexOf('/');
+		return end < 0 ? withinSkills : withinSkills.substring(0, end);
+	}
+
+	/**
+	 * What the guard this repository's build system wires in is run with, taken as the
+	 * verify command's last word: the words before it are the build tool, which a
+	 * checkout shipping a wrapper answers as a path of the adoption host's rather than
+	 * as anything a skill may repeat.
+	 */
+	private static String guardCommandOf(RealRepository repository) {
+		Path checkout = checkoutOf(repository);
+		return BuildSystems.detect(BUILD_SYSTEMS, checkout).orElseThrow().verifyCommand(checkout).getLast();
+	}
+
+	/**
+	 * The same word for every build system this checkout is <em>not</em>. A skill that
+	 * merely mentioned a guard would pass on the positive assertion alone; only naming
+	 * the wrong one is the failure worth catching.
+	 */
+	private static List<String> otherGuardCommands(RealRepository repository) {
+		Path checkout = checkoutOf(repository);
+		String wired = guardCommandOf(repository);
+		return BUILD_SYSTEMS.stream()
+				.map(buildSystem -> buildSystem.verifyCommand(checkout).getLast())
+				.filter(command -> !command.equals(wired))
+				.distinct()
 				.toList();
 	}
 

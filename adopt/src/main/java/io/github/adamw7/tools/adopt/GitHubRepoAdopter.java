@@ -21,6 +21,7 @@ import io.github.adamw7.tools.adopt.step.CommitStep;
 import io.github.adamw7.tools.adopt.step.EnforcerStep;
 import io.github.adamw7.tools.adopt.step.PullRequestStep;
 import io.github.adamw7.tools.adopt.step.PushStep;
+import io.github.adamw7.tools.adopt.step.SkillsStep;
 import io.github.adamw7.tools.adopt.step.ToolchainStep;
 import io.github.adamw7.tools.adopt.step.TrustStep;
 import io.github.adamw7.tools.adopt.step.VerifyStep;
@@ -40,8 +41,8 @@ import io.github.adamw7.tools.adopt.step.VerifyStep;
  * run returns an {@link AdoptionReport} of the steps completed and the pull request's
  * URL; a caller needing the report of a run that <em>fails</em> supplies its own to
  * {@link #adopt(AdoptionContext, AdoptionReport)}. What the default pipeline contains
- * is decided by {@link AdoptionOptions}: an {@link AssetsStep} on request, and a dry
- * run leaves out the two steps that write to GitHub.
+ * is decided by {@link AdoptionOptions}: an {@link AssetsStep} and a {@link SkillsStep}
+ * on request, and a dry run leaves out the two steps that write to GitHub.
  */
 public class GitHubRepoAdopter {
 
@@ -55,10 +56,10 @@ public class GitHubRepoAdopter {
 	static final String GUARD_COMMIT_MESSAGE = "Adopt Claude Code: add the CLAUDE.md guard";
 
 	/**
-	 * What the starter-assets commit says it did. It is named beside the guard's rather
-	 * than spelled out where the step is assembled, because a run leaves two commits in
-	 * somebody else's history and a test asking what each of them carried has to name
-	 * the one it means.
+	 * What the starter-assets commit says it did, the skills included. It is named beside
+	 * the guard's rather than spelled out where the step is assembled, because a run
+	 * leaves two commits in somebody else's history and a test asking what each of them
+	 * carried has to name the one it means.
 	 */
 	static final String ASSETS_COMMIT_MESSAGE = "Add Claude Code configuration assets";
 
@@ -108,7 +109,7 @@ public class GitHubRepoAdopter {
 		List<BuildSystem> buildSystems = BuildSystems.defaults(options.guard());
 		return Stream.of(
 				adoptionSteps(buildSystems, options),
-				assetSteps(options),
+				assetSteps(buildSystems, options),
 				List.<AdoptionStep>of(new VerifyStep(buildSystems)),
 				publicationSteps(options))
 				.flatMap(List::stream)
@@ -138,11 +139,18 @@ public class GitHubRepoAdopter {
 		return options.dryRun() ? ToolchainStep.forDryRun() : new ToolchainStep();
 	}
 
-	private static List<AdoptionStep> assetSteps(AdoptionOptions options) {
+	/**
+	 * The starter configuration is written by two steps and committed by one: the
+	 * assets that are the same everywhere, then the skills, whose bodies name the
+	 * build system the guard was wired into. One commit rather than two, so a run
+	 * still leaves exactly two commits in somebody else's history.
+	 */
+	private static List<AdoptionStep> assetSteps(List<BuildSystem> buildSystems, AdoptionOptions options) {
 		if (!options.includeAssets()) {
 			return List.of();
 		}
-		return List.of(new AssetsStep(), new CommitStep(ASSETS_COMMIT_MESSAGE, "assets"));
+		return List.of(new AssetsStep(), new SkillsStep(buildSystems),
+				new CommitStep(ASSETS_COMMIT_MESSAGE, "assets"));
 	}
 
 	/**

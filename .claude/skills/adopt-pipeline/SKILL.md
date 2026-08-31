@@ -30,16 +30,36 @@ module's rules are unusually strict because it shells out to `git`, `gh` and
    about to be wired in demands — `BuildSystem.requiredClaudeMdSections()`, so
    only the Maven path adds the format rule's Java/Maven headings — commit.
 7. `EnforcerStep` → `CommitStep` — wire the build-tool-aware guard in and commit.
-8. *(optional)* `AssetsStep` → `CommitStep` — starter config assets, on `--assets`.
+8. *(optional)* `AssetsStep` → `SkillsStep` → `CommitStep` — starter config assets
+   and the starter skills, on `--assets`, in one commit.
 9. `VerifyStep` — proves the guard passes on the generated file.
 10. `PushStep` → `PullRequestStep` — **omitted entirely on a dry run**, so the
     report says what a dry run really did rather than listing steps that
     pretended to run.
 
-The three build-system-aware steps (`BuildToolchainStep`, `EnforcerStep`,
-`VerifyStep`) share one `BuildSystems.defaults(...)` list, so the guard that is
-wired in is the guard that is verified with the tool that was probed
-(`MavenBuildSystem`, `GradleBuildSystem`, `FallbackBuildSystem`).
+The four build-system-aware steps (`BuildToolchainStep`, `EnforcerStep`,
+`SkillsStep`, `VerifyStep`) share one `BuildSystems.defaults(...)` list, so the
+guard that is wired in is the guard that is verified with the tool that was
+probed, and the one the starter skills describe (`MavenBuildSystem`,
+`GradleBuildSystem`, `FallbackBuildSystem`).
+
+## The starter skills
+`StarterSkills` writes `.claude/skills/build-and-test/SKILL.md` and
+`.claude/skills/claude-md/SKILL.md` from what the run established, never from
+anything guessed: `BuildSystem.buildDescription()` (overridden by the catch-all,
+which is not a build tool and must not claim to be), `requiredClaudeMdSections()`,
+and `verifyCommand(...)` — relativized, because that answers a checkout's wrapper
+by absolute path and committing it would put the adoption host's workspace path
+into somebody else's repository. What the adoption does not know is left as
+headings for the project to fill in. A skill whose name the checkout's own
+commands, sub-agents or skills already claim is not installed: `uniqueNames`
+fails a repository where two definitions answer to one name. Add a skill by
+naming it in `StarterSkills.NAMES` — `AdoptionAssets.WRITTEN_PATHS` derives its
+path from the name, so nothing else has to be told about it. Weigh that name
+against what repositories *ignore*, not only against what they name: the build
+skill is `build-and-test` because `build` is one of the most widely ignored words
+in a JVM `.gitignore`, and four of the seven foreign repositories excluded
+`.claude/skills/build/SKILL.md` on that rule alone.
 
 ## The step contract
 ```java
@@ -148,7 +168,8 @@ clone URL's credentials come back in the tool's own error text.
   branch — read from the remote, never guessed — is untouched, and the repository
   on GitHub is asked with `ls-remote` whether the adoption branch reached it (a
   local tracking ref is evidence about the clone; the claim is about somebody
-  else's repository). A second adoption changes nothing. It installs the starter assets too, so
+  else's repository). A second adoption changes nothing. It installs the starter
+  assets and skills too, so
   `AssetInstaller`'s "the project's own version wins" is checked against files
   somebody else wrote — `claude-code`'s own `.github/workflows/claude.yml` and
   `servers`' own `.mcp.json`, which no fixture can imitate. Its Maven guard is pinned to a released `--rule-version`,

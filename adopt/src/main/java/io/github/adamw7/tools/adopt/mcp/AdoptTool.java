@@ -100,7 +100,8 @@ public class AdoptTool implements McpTool {
 							Map.entry("draft", Map.of("type", "boolean",
 									"description", "open the pull request as a draft")),
 							Map.entry("assets", Map.of("type", "boolean",
-									"description", "also commit starter Claude Code configuration assets")),
+									"description",
+									"also commit starter Claude Code configuration assets and skills")),
 							Map.entry("rule_version", Map.of("type", "string",
 									"description", "released claude-code-enforcer version to wire into an adopted "
 											+ "Maven project; defaults to the version of this build")),

@@ -447,6 +447,7 @@ flowchart TB
             commit["<b>CommitStep</b><br/><i>runs after the conform,<br/>the guard, and the assets</i>"]
             enforcerStep["<b>EnforcerStep</b><br/><i>wires the guard in</i>"]
             assets["<b>AssetsStep</b><br/><i>optional starter config</i>"]
+            skills["<b>SkillsStep</b><br/><i>optional starter skills,<br/>written per build system</i>"]
             verify["<b>VerifyStep</b><br/><i>the guard passes on<br/>the generated file</i>"]
             publish["<b>PushStep +<br/>PullRequestStep</b><br/><i>omitted on a dry run</i>"]
         end
@@ -484,11 +485,13 @@ flowchart TB
     init --> commit
     commit --> enforcerStep
     enforcerStep --> assets
-    assets --> verify
+    assets --> skills
+    skills --> verify
     verify --> publish
 
     buildToolchain --> bs
     enforcerStep --> bs
+    skills --> bs
     verify --> bs
     bs --> installers
     installers -->|"edit pom.xml / build.gradle /<br/>.github workflow"| workspace
@@ -503,7 +506,7 @@ flowchart TB
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
     class maintainer,agent person
-    class cliMain,mcpMain,adoptTool,options,batch,adopter,ctx,report,redaction,toolchain,clone,buildToolchain,branch,init,enforcerStep,assets,verify,publish,commit,bs,installers,runner comp
+    class cliMain,mcpMain,adoptTool,options,batch,adopter,ctx,report,redaction,toolchain,clone,buildToolchain,branch,init,enforcerStep,assets,skills,verify,publish,commit,bs,installers,runner comp
     class github,cli,workspace ext
     style adopt fill:#f2f7fc,stroke:#438dd5,color:#08427b
     style entryLayer fill:#eef4ec,stroke:#6b3fa0,color:#46296b
@@ -639,6 +642,7 @@ sequenceDiagram
         A->>R: commit "Adopt Claude Code: add the CLAUDE.md guard"
         opt --assets
             A->>W: assets — .claude/settings.json, hook, .mcp.json, workflow
+            A->>W: skills — .claude/skills/build-and-test, .claude/skills/claude-md
             A->>R: commit "Add Claude Code configuration assets"
         end
         A->>R: verify — the guard passes on the generated file

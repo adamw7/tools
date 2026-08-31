@@ -75,6 +75,17 @@ public class FallbackBuildSystem implements BuildSystem {
 		return Optional.of(SHELL_PROBE);
 	}
 
+	/**
+	 * This one matched because nothing else did, so there is no build tool to name: what
+	 * a contributor needs to know is where the guard actually lives.
+	 */
+	@Override
+	public String buildDescription() {
+		return "This repository ships no Maven or Gradle build file, so its CLAUDE.md guard is a GitHub"
+				+ " Actions workflow and the portable shell script that workflow runs, rather than a step"
+				+ " in a build.";
+	}
+
 	/** Nothing here is installable as "github-actions"; what is missing is a shell. */
 	@Override
 	public String toolAdvice() {

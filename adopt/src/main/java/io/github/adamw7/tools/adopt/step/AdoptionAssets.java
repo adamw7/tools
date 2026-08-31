@@ -12,6 +12,11 @@ import java.util.stream.Stream;
  * {@code @claude} mentions. Every asset is a plain committed file, so the
  * configuration is shared with all contributors.
  *
+ * <p>The starter skills are written beside these by {@link SkillsStep} rather than
+ * listed here, their bodies depending on a build system this class never sees; only
+ * their paths are folded in below, so the adoption still accounts for every file it
+ * writes.
+ *
  * <p>Every repository-relative path the adoption writes is named here, including
  * the generated {@code CLAUDE.md} — not a starter asset, but keeping its name
  * beside the others stops the literal being spelled out in every step.
@@ -117,20 +122,22 @@ public final class AdoptionAssets {
 
 	/**
 	 * Every checkout-relative path an adoption may write or edit: the starter assets,
-	 * the generated {@code CLAUDE.md}, and whatever build file each supported build
-	 * system wires its guard into.
+	 * the starter skills, the generated {@code CLAUDE.md}, and whatever build file each
+	 * supported build system wires its guard into.
 	 *
 	 * <p>{@link CloneStep} reads this to tell the adoption's work from a contributor's,
 	 * and {@link CommitStep} refuses to commit while the checkout ignores one, so a
 	 * missing path is a file the adoption writes and cannot account for. Nothing is
-	 * added by hand for a new build system: the installers name their own paths and
-	 * each {@link BuildSystem} must answer {@link BuildSystem#writtenPaths()}.
+	 * added by hand for a new build system or a new skill: the installers name their own
+	 * paths, {@link StarterSkills} derives its paths from the skill names, and each
+	 * {@link BuildSystem} must answer {@link BuildSystem#writtenPaths()}.
 	 */
 	public static final List<String> WRITTEN_PATHS = writtenPaths();
 
 	private static List<String> writtenPaths() {
 		return Stream.of(
 				DEFAULTS.stream().map(AssetInstaller::relativePath),
+				StarterSkills.WRITTEN_PATHS.stream(),
 				Stream.of(CLAUDE_MD_FILE),
 				BuildSystems.DEFAULTS.stream().map(BuildSystem::writtenPaths).flatMap(List::stream))
 				.flatMap(paths -> paths)

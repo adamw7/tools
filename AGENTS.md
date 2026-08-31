@@ -57,8 +57,9 @@ build tool → create a feature branch (the default branch is never written to) 
 mark the checkout trusted in `~/.claude.json` so the headless CLI is not blocked
 by the folder-trust prompt → `claude init` to generate `CLAUDE.md`, conform it
 (plus a companion `AGENTS.md`) and commit → wire a `CLAUDE.md` guard into the
-project's build and commit → optionally commit starter assets → verify the guard
-passes → push → open a pull request with `gh pr create`.
+project's build and commit → optionally install the starter assets and skills and
+commit them together → verify the guard passes → push → open a pull request with
+`gh pr create`.
 
 What is worth knowing before changing any of it:
 
@@ -208,6 +209,28 @@ What is worth knowing before changing any of it:
   `.claude/hooks/session-start.sh` stub, a starter `.mcp.json`, and a workflow
   answering `@claude` mentions — never overwriting a file the repository already
   has.
+- **`--assets` also creates the starter skills.** `SkillsStep` writes
+  `.claude/skills/build-and-test/SKILL.md` and `.claude/skills/claude-md/SKILL.md`
+  beside
+  the assets, into the same commit. It is its own step rather than two more
+  entries in `AdoptionAssets.DEFAULTS` because a skill's body depends on the
+  checkout's build system: it names the build the guard was wired into
+  (`BuildSystem.buildDescription()`, so the catch-all does not tell a project it
+  "is built with github-actions"), the headings that guard demands, and the
+  command `VerifyStep` runs — relativized, since `verifyCommand` answers a
+  checkout's wrapper by absolute path and committing that would put the adoption
+  host's workspace path into somebody else's repository. What the adoption does
+  not know — how the project builds, tests and lints — is left as headings for its
+  maintainers, the bargain the session-start hook stub already strikes. A skill
+  whose name the project's own commands, sub-agents or skills already claim is
+  not installed at all: the guard fails a repository where two definitions answer
+  to one name, and the name is the project's. The build skill is called
+  `build-and-test` for a related reason: a skill's name is a directory name, and
+  `build` is one of the most widely ignored words in a JVM project's `.gitignore`,
+  so four of the seven repositories `ForeignRepositoryAdoptionIT` adopts excluded
+  `.claude/skills/build/SKILL.md` and `CommitStep` rightly refused to commit
+  around it. Weigh a new skill's name against what a repository ignores, not only
+  against what it already names.
 - **Everything shells out through a `CommandRunner`**, so steps are unit-tested
   without spawning processes; `ProcessCommandRunner` bounds every command with a
   timeout, ten minutes by default and overridable with `--timeout <minutes>`
@@ -664,7 +687,9 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   a `claude.yml` workflow of its own and `servers` an `.mcp.json` of its own, so
   the batch asserts each repository was given exactly the assets it lacked and
   that both of those files came through byte-identical to the blobs that were
-  cloned. A last test reads the one document the pipeline reshapes rather than
+  cloned. The starter skills land in the same run, and each is asserted to name
+  the guard its own checkout got and no other build system's — the one way a
+  generated file can be wrong on a repository nobody prepared. A last test reads the one document the pipeline reshapes rather than
   adds beside:
   `anthropic-quickstarts`' real `CLAUDE.md` is conformed and the real
   `claudeMdFormat` rule then accepts it, the foreign document having been

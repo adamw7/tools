@@ -151,11 +151,16 @@ class GitHubRepoAdopterTest {
 				stepNames(AdoptionOptions.defaults()));
 	}
 
+	/**
+	 * The skills are written beside the assets and committed with them: two steps
+	 * because a skill's body depends on the detected build system, one commit because a
+	 * run should still leave exactly two in somebody else's history.
+	 */
 	@Test
 	void defaultPipelineWithAssetsInstallsAndCommitsThemBeforeVerification() {
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify", "push",
-				"pull-request"),
+				"commit:claude-md", "enforcer", "commit:guard", "assets", "skills", "commit:assets", "verify",
+				"push", "pull-request"),
 				stepNames(withAssets()));
 	}
 
@@ -176,7 +181,7 @@ class GitHubRepoAdopterTest {
 		AdoptionOptions options = new AdoptionOptions(PullRequestOptions.defaults(), true, null, true, null,
 				AdoptionOptions.DEFAULT_RETRIES);
 		assertEquals(List.of("toolchain", "clone", "build-toolchain", "branch", "trust", "claude-init", "conform",
-				"commit:claude-md", "enforcer", "commit:guard", "assets", "commit:assets", "verify"),
+				"commit:claude-md", "enforcer", "commit:guard", "assets", "skills", "commit:assets", "verify"),
 				stepNames(options));
 	}
 

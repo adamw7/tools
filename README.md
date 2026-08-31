@@ -1004,6 +1004,29 @@ stub, a starter `.mcp.json`, and a GitHub Actions workflow answering `@claude`
 mentions. None of them ever overwrites a file the repository already carries, so
 the flag is safe on a project that has configured some of them already.
 
+The same flag creates two starter skills under `.claude/skills`, so an adopted
+repository carries its conventions where Claude Code loads them on demand rather
+than only in the file every session pays for:
+
+- **`build-and-test`** — what builds the project, and the command that runs the
+  guard the adoption just wired in, with headings left for the project's own
+  build, test and lint commands. Named that rather than `build` because a skill's
+  name is a directory name, and `build` is one of the most widely ignored words in
+  a JVM project's `.gitignore` — four of the seven real repositories the adoption
+  integration test adopts excluded `.claude/skills/build/SKILL.md` on that rule
+  alone.
+- **`claude-md`** — how to keep `CLAUDE.md` and `AGENTS.md` satisfying that
+  guard: which headings it demands, and the command to check them with before
+  pushing.
+
+Both are written from what the run established rather than from anything guessed
+about the project, so a Gradle checkout is told to run its Gradle task and is not
+sent appending the Maven rule's headings, and a repository with no build file at
+all is told where its guard actually lives instead of that it "is built with
+github-actions". A skill whose name the project's own commands, sub-agents or
+skills already claim is left out entirely — the guard fails a repository where
+two definitions answer to one name, and the name is the project's.
+
 The `claude-code-enforcer` version a Maven project's `pom.xml` is made to depend
 on defaults to the version of the `tools` build running the adoption;
 `--rule-version <version>` pins a different one. A `-SNAPSHOT` is refused either
@@ -1134,10 +1157,13 @@ The default pipeline runs these steps in order:
    `<rule/>`, turning a fourteen-line addition into a diff across the file.
 10. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
    build`), reported as `commit:guard`.
-11. **`AssetsStep` → `CommitStep`** — *only on `--assets`* (`assets` on the MCP
-   tool): installs the starter configuration files described above and commits
-   them (`commit:assets`). Each asset is installed independently and never
-   overwrites an existing file, so the pair is idempotent.
+11. **`AssetsStep` → `SkillsStep` → `CommitStep`** — *only on `--assets`*
+   (`assets` on the MCP tool): installs the starter configuration files and the
+   starter skills described above, then commits them together (`commit:assets`),
+   so the run still leaves two commits. The skills are a step of their own
+   because their bodies name the detected build system and the command that runs
+   its guard, which the static asset list never sees. Each file is installed
+   independently and never overwrites an existing one, so the trio is idempotent.
 12. **`VerifyStep`** — runs the detected build system's verification (a
    non-recursive `mvn -N validate` for Maven, the `enforceClaudeMd` task for
    Gradle, the `.github/claude-md-guard.sh` script for the fallback) so the
@@ -1397,7 +1423,8 @@ clone from GitHub with the real `git` and answer that:
   script's own DSL, the commits carry only the paths the pipeline claims to write,
   the guard commit removes nothing the build file already declared, the starter
   assets the project already keeps at those paths come through byte-identical to
-  the blobs that were cloned, the default branch — read from the remote rather
+  the blobs that were cloned, each starter skill names the guard its own checkout
+  got and no other build system's, the default branch — read from the remote rather
   than guessed — is left as cloned, GitHub itself is asked with `ls-remote` and
   has no branch of the adoption's, and adopting the same batch a second time
   commits nothing.

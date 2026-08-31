@@ -73,7 +73,12 @@ This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
 - `draft` (boolean, optional): open the pull request as a draft
 - `assets` (boolean, optional): also commit starter Claude Code configuration
   assets (`AGENTS.md`, `.claude/settings.json`, a session-start hook,
-  `.mcp.json`, and an `@claude`-mention GitHub Actions workflow)
+  `.mcp.json`, an `@claude`-mention GitHub Actions workflow, and the
+  `.claude/skills/build-and-test` and `.claude/skills/claude-md` starter skills,
+  whose
+  bodies name the build system the guard was wired into and the command that
+  runs it). A skill whose name the project's own commands, sub-agents or skills
+  already claim is left out.
 - `rule_version` (string, optional): the released `claude-code-enforcer` version
   to wire into an adopted Maven project; defaults to the version of the `tools`
   build running the server, and a `-SNAPSHOT` is refused either way

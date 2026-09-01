@@ -114,7 +114,55 @@ jobs:
         package: ${{ fromJson(needs.discover.outputs.packages) }}
 
     steps:
+      - name: Look up ${{ matrix.package }} in the registry
+        id: lookup
+        # The poms name a module from the moment it joins the reactor, but its
+        # first version only reaches the registry when a release publishes it.
+        # Until then there is no such package, and the prune action stops with
+        # "Package not found" — a red run for a state that is entirely
+        # expected. `fail-fast: false` only keeps that from cancelling the
+        # other packages; the job itself still fails. So ask the registry
+        # first, and skip the prune when there is nothing there to prune.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          # Only the owner's own kind of route serves its packages: an
+          # organisation is not readable under /users, nor a user under /orgs.
+          # Probing both keeps this working whoever the repository moves to.
+          probe() {
+            curl -sS -o /dev/null -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/${1}/${OWNER}/packages/maven/${PACKAGE}"
+          }
+
+          status="$(probe users)"
+          if [ "${status}" = "404" ]; then
+            status="$(probe orgs)"
+          fi
+
+          case "${status}" in
+            200)
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "published=false" >> "$GITHUB_OUTPUT"
+              # A warning rather than a notice: the same 404 answers both "this
+              # module has never been released" and "the token cannot see the
+              # package", and the second one means nothing is being pruned.
+              echo "::warning::${PACKAGE} is not in the registry, so there is nothing to prune. That is expected for a module that has never been released; if it has been released, then this token cannot see the package and its versions are going unpruned."
+              ;;
+            *)
+              echo "::error::Asking the registry about ${PACKAGE} returned HTTP ${status}. Refusing to read that as 'nothing to prune'."
+              exit 1
+              ;;
+          esac
+
       - name: Prune ${{ matrix.package }}
+        if: steps.lookup.outputs.published == 'true'
         # Maven packages inherit their permissions from this repository, so the
         # built-in token with `packages: write` is enough and no PAT secret is
         # needed. Only min-versions-to-keep is set: num-old-versions-to-delete

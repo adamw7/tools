@@ -21,6 +21,7 @@ Library of tooling for various purposes.
   - [Primitive int-keyed map](#primitive-int-keyed-map)
   - [Network kill-switch](#network-kill-switch)
 - [Claude Code adoption](#claude-code-adoption)
+  - [A recorded run](#a-recorded-run)
 - [Architecture tests (ArchUnit)](#architecture-tests-archunit)
 - [Integration tests](#integration-tests)
   - [MCP servers over a real transport](#mcp-servers-over-a-real-transport)
@@ -925,6 +926,25 @@ given:
 mvn -pl adopt exec:java \
     -Dexec.args="https://github.com/owner/repo.git --workspace /tmp/adoptions --dry-run"
 ```
+
+### A recorded run
+
+[`docs/adopt-demo.md`](docs/adopt-demo.md) is a **recording of that rehearsal
+actually running** — every step it logged, the report it wrote, and the commits it
+left in the checkout — so the pipeline can be read end to end without running
+anything. [`docs/adopt-demo.mpg`](docs/adopt-demo.mpg) is the same run as a
+22-second video, for watching rather than reading. `scripts/linux/adopt-demo.sh` and `scripts/windows/adopt-demo.ps1`
+reproduce it, against the repository of your choice:
+
+```bash
+./scripts/linux/adopt-demo.sh                      # the default repository, into target/adopt-demo
+./scripts/linux/adopt-demo.sh <repo-url> <out-dir> # any repository, anywhere
+```
+
+The demo needs `git`, `claude` and `mvn` — not `gh`, and no GitHub credentials,
+a dry run never reaching the step that uses them. It records with `script(1)`
+(`Start-Transcript` on Windows), and adds an `asciinema` cast of the same single
+run where `asciinema` is installed.
 
 Every external command is bounded by a timeout — 10 minutes by default —
 overridable with `--timeout <minutes>`, for a repository whose `claude init` or

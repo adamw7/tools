@@ -932,7 +932,8 @@ mvn -pl adopt exec:java \
 [`docs/adopt-demo.md`](docs/adopt-demo.md) is a **recording of that rehearsal
 actually running** — every step it logged, the report it wrote, and the commits it
 left in the checkout — so the pipeline can be read end to end without running
-anything. `scripts/linux/adopt-demo.sh` and `scripts/windows/adopt-demo.ps1`
+anything. [`docs/adopt-demo.mpg`](docs/adopt-demo.mpg) is the same run as a
+22-second video, for watching rather than reading. `scripts/linux/adopt-demo.sh` and `scripts/windows/adopt-demo.ps1`
 reproduce it, against the repository of your choice:
 
 ```bash

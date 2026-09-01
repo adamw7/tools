@@ -385,7 +385,13 @@ variants:
   report, for [`docs/adopt-demo.md`](docs/adopt-demo.md). Needs `git`, `claude`
   and `mvn`; a dry run never reaches the step that uses `gh`. Re-run it after
   changing a step's logging or the pipeline's shape, so the committed recording
-  still shows what the pipeline does.
+  still shows what the pipeline does — and re-render the video from the *same*
+  run, the document and the video being two views of one recording.
+- `adopt-demo-video.py` — renders a captured transcript as the `.mpg` at
+  [`docs/adopt-demo.mpg`](docs/adopt-demo.mpg). The one Python helper here, and
+  cross-platform rather than one of the `linux`/`windows` pairs; it needs `ffmpeg`
+  and `Pillow`, neither of which the build depends on, so `adopt-demo` calls it
+  only when both are present and skips the video otherwise.
 
 ## Build, test, and run
 

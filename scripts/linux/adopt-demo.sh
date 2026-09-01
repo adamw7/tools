@@ -8,7 +8,9 @@
 #
 # The adoption runs exactly once, however many recordings are made of it: the
 # session is captured as a plain-text transcript with script(1), and as an
-# asciinema cast around it when asciinema is installed.
+# asciinema cast around it when asciinema is installed. The transcript is then
+# rendered as an .mpg video where ffmpeg and Pillow are available — see
+# adopt-demo-video.py, which does that rendering and can be run on its own.
 #
 # Usage: ./adopt-demo.sh [github-repo-url] [output-directory]
 # Example: ./adopt-demo.sh https://github.com/octocat/Spoon-Knife.git /tmp/demo
@@ -46,6 +48,7 @@ fi
 
 TRANSCRIPT="${OUTPUT_DIR}/adopt-demo.txt"
 CAST="${OUTPUT_DIR}/adopt-demo.cast"
+VIDEO="${OUTPUT_DIR}/adopt-demo.mpg"
 REPORT="${OUTPUT_DIR}/adopt-demo-report.json"
 WORKSPACE="${OUTPUT_DIR}/workspace"
 # Written by the recorded run and read once it is over: asciinema exits zero
@@ -122,6 +125,30 @@ report_recordings() {
     if [[ -f "${CAST}" ]]; then
         success "Cast:       ${CAST} (replay with 'asciinema play ${CAST}')"
     fi
+    if [[ -f "${VIDEO}" ]]; then
+        success "Video:      ${VIDEO}"
+    fi
+}
+
+# Renders the transcript as an .mpg, when the machine has what that takes. The
+# video is a convenience over the recording rather than a second recording, so a
+# machine without ffmpeg or Pillow is told what is missing and loses nothing else.
+render_video() {
+    if [[ ! -f "${TRANSCRIPT}" ]]; then
+        return 0
+    fi
+    if ! command -v ffmpeg &>/dev/null; then
+        success "ffmpeg is not installed; skipping the video"
+        return 0
+    fi
+    if ! python3 -c "import PIL" &>/dev/null; then
+        success "Pillow is not installed (pip install Pillow); skipping the video"
+        return 0
+    fi
+    step "Rendering the transcript as an MPEG video..."
+    # Non-fatal: the recording is the deliverable, and it is already written.
+    python3 "${SCRIPT_DIR}/adopt-demo-video.py" --transcript "${TRANSCRIPT}" --output "${VIDEO}" \
+        || failure "The video could not be rendered; the transcript is unaffected"
 }
 
 case "${MODE}" in
@@ -159,6 +186,7 @@ fi
 # A missing status file means the adoption never got as far as writing one.
 adoption_status="$(cat "${STATUS_FILE}" 2>/dev/null || echo 1)"
 
+render_video
 report_recordings
 report_outcome
 

@@ -44,6 +44,44 @@ demonstrated from an unreleased checkout. A repository with no recognised build
 file takes the GitHub Actions fallback instead, whose guard is a portable script —
 which is also why `verify` needs no build tool installed.
 
+## The video
+
+[`adopt-demo.mpg`](adopt-demo.mpg) (2.5 MB, 22 seconds) is the run below as a
+terminal-style video — MPEG-2 in an `.mpg` container, so it plays in anything from
+VLC to a browser without a codec to install. GitHub does not preview `.mpg`
+inline, so it downloads rather than plays in place.
+
+It is a **rendering of the transcript, not a screen capture**: one frame per line
+the pipeline logged, drawn from the text below. Two things about it are worth
+knowing, because both are deliberate:
+
+- **Playback is compressed, the timings are not.** A gap between two lines is held
+  for at most 1.2 seconds, so the 37 seconds `claude init` spends thinking do not
+  become 37 seconds of a still frame. The header carries the run's *real* elapsed
+  time, read from the log, so the 22-second video still says the adoption took 37
+  seconds.
+- **The repository prefix is hoisted into the title bar.** Every log line carries
+  the repository it belongs to — invaluable when a batch interleaves, unreadable
+  when one repository repeats it sixty times. The transcript below keeps it.
+
+`scripts/linux/adopt-demo-video.py` does the rendering, and the demo script calls
+it whenever `ffmpeg` and `Pillow` are both present — a machine without them still
+gets the transcript, which is the actual recording. It also runs on its own
+against any transcript:
+
+```bash
+scripts/linux/adopt-demo-video.py \
+    --transcript target/adopt-demo/adopt-demo.txt \
+    --output docs/adopt-demo.mpg
+```
+
+Size is governed by `--gop`, not by the resolution: a terminal recording is nearly
+all still frames, and MPEG's default keyframe interval re-sent the whole screen
+twice a second, costing 7 MB for the same 22 seconds that `--gop 250` costs 2.5 MB
+of. `--codec mpeg1video` trades roughly double the size for a codec even older
+players accept, and `--fps` takes only the broadcast rates — ffmpeg refuses
+anything else outright, MPEG-1 and MPEG-2 having no way to express it.
+
 ## The recording
 
 Captured on 2026-09-01 against `https://github.com/sindresorhus/is-online.git`,
@@ -52,67 +90,67 @@ The `[<url>]` prefix on each line names the repository it belongs to, which is w
 keeps a batch of repositories legible when they interleave:
 
 ```text
-Script started on 2026-09-01 12:39:11+00:00 [COMMAND="/home/user/tools/scripts/linux/adopt-demo.sh --adoption-only" <not executed on terminal>]
-2026-09-01 12:39:15.023 INFO - Dry run: the adoption will be committed to the checkout but never pushed, and no pull request will be opened
-2026-09-01 12:39:15.032 INFO - Adopting Claude Code into 1 repositories on branch claude/adopt-claude-code
-2026-09-01 12:39:15.036 INFO [https://github.com/sindresorhus/is-online.git] - Repository 1 of 1: https://github.com/sindresorhus/is-online.git
-2026-09-01 12:39:15.038 INFO [https://github.com/sindresorhus/is-online.git] - Adopting Claude Code into https://github.com/sindresorhus/is-online.git in 14 steps
-2026-09-01 12:39:15.039 INFO [https://github.com/sindresorhus/is-online.git] - Step 1/14: toolchain
-2026-09-01 12:39:15.039 INFO [https://github.com/sindresorhus/is-online.git] - Checking required tools are available: [git, claude]
-2026-09-01 12:39:15.063 INFO [https://github.com/sindresorhus/is-online.git] - Found required tool: git
-2026-09-01 12:39:15.081 INFO [https://github.com/sindresorhus/is-online.git] - Found required tool: claude
-2026-09-01 12:39:15.082 INFO [https://github.com/sindresorhus/is-online.git] - Step toolchain completed in 43ms
-2026-09-01 12:39:15.082 INFO [https://github.com/sindresorhus/is-online.git] - Step 2/14: clone
-2026-09-01 12:39:15.083 INFO [https://github.com/sindresorhus/is-online.git] - Cloning https://github.com/sindresorhus/is-online.git into /home/user/tools/target/adopt-demo/workspace/is-online
-2026-09-01 12:39:16.243 INFO [https://github.com/sindresorhus/is-online.git] - Step clone completed in 1s
-2026-09-01 12:39:16.243 INFO [https://github.com/sindresorhus/is-online.git] - Step 3/14: build-toolchain
-2026-09-01 12:39:16.253 INFO [https://github.com/sindresorhus/is-online.git] - Step build-toolchain completed in 9ms
-2026-09-01 12:39:16.253 INFO [https://github.com/sindresorhus/is-online.git] - Step 4/14: branch
-2026-09-01 12:39:16.253 INFO [https://github.com/sindresorhus/is-online.git] - Creating branch claude/adopt-claude-code in /home/user/tools/target/adopt-demo/workspace/is-online
-2026-09-01 12:39:16.279 INFO [https://github.com/sindresorhus/is-online.git] - Step branch completed in 25ms
-2026-09-01 12:39:16.280 INFO [https://github.com/sindresorhus/is-online.git] - Step 5/14: trust
-2026-09-01 12:39:16.340 INFO [https://github.com/sindresorhus/is-online.git] - /home/user/tools/target/adopt-demo/workspace/is-online is already trusted for Claude Code; left unchanged
-2026-09-01 12:39:16.341 INFO [https://github.com/sindresorhus/is-online.git] - Step trust completed in 60ms
-2026-09-01 12:39:16.341 INFO [https://github.com/sindresorhus/is-online.git] - Step 6/14: claude-init
-2026-09-01 12:39:16.342 INFO [https://github.com/sindresorhus/is-online.git] - Running claude init in /home/user/tools/target/adopt-demo/workspace/is-online (attempt 1 of 3)
-2026-09-01 12:40:05.717 INFO [https://github.com/sindresorhus/is-online.git] - Step claude-init completed in 49s
-2026-09-01 12:40:05.719 INFO [https://github.com/sindresorhus/is-online.git] - Step 7/14: conform
-2026-09-01 12:40:05.721 INFO [https://github.com/sindresorhus/is-online.git] - Installed AGENTS.md
-2026-09-01 12:40:05.760 INFO [https://github.com/sindresorhus/is-online.git] - Normalised CLAUDE.md to satisfy the claudeMdFormat rule
-2026-09-01 12:40:05.760 INFO [https://github.com/sindresorhus/is-online.git] - Step conform completed in 40ms
-2026-09-01 12:40:05.761 INFO [https://github.com/sindresorhus/is-online.git] - Step 8/14: commit:claude-md
-2026-09-01 12:40:05.909 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Adopt Claude Code: add CLAUDE.md
-2026-09-01 12:40:05.909 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:claude-md completed in 148ms
-2026-09-01 12:40:05.910 INFO [https://github.com/sindresorhus/is-online.git] - Step 9/14: enforcer
-2026-09-01 12:40:05.911 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/workflows/claude-md-guard.yml
-2026-09-01 12:40:05.913 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/claude-md-guard.sh
-2026-09-01 12:40:05.913 INFO [https://github.com/sindresorhus/is-online.git] - Wired the CLAUDE.md guard into the github-actions build in /home/user/tools/target/adopt-demo/workspace/is-online
-2026-09-01 12:40:05.914 INFO [https://github.com/sindresorhus/is-online.git] - Step enforcer completed in 3ms
-2026-09-01 12:40:05.914 INFO [https://github.com/sindresorhus/is-online.git] - Step 10/14: commit:guard
-2026-09-01 12:40:06.078 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Adopt Claude Code: add the CLAUDE.md guard
-2026-09-01 12:40:06.079 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:guard completed in 164ms
-2026-09-01 12:40:06.079 INFO [https://github.com/sindresorhus/is-online.git] - Step 11/14: assets
-2026-09-01 12:40:06.081 INFO [https://github.com/sindresorhus/is-online.git] - AGENTS.md already exists; left unchanged
-2026-09-01 12:40:06.081 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/settings.json
-2026-09-01 12:40:06.082 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/hooks/session-start.sh
-2026-09-01 12:40:06.083 INFO [https://github.com/sindresorhus/is-online.git] - Installed .mcp.json
-2026-09-01 12:40:06.084 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/workflows/claude.yml
-2026-09-01 12:40:06.085 INFO [https://github.com/sindresorhus/is-online.git] - Step assets completed in 5ms
-2026-09-01 12:40:06.085 INFO [https://github.com/sindresorhus/is-online.git] - Step 12/14: skills
-2026-09-01 12:40:06.091 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/skills/build-and-test/SKILL.md
-2026-09-01 12:40:06.092 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/skills/claude-md/SKILL.md
-2026-09-01 12:40:06.093 INFO [https://github.com/sindresorhus/is-online.git] - Installed 2 starter skill(s) describing the github-actions build under /home/user/tools/target/adopt-demo/workspace/is-online/.claude/skills
-2026-09-01 12:40:06.093 INFO [https://github.com/sindresorhus/is-online.git] - Step skills completed in 7ms
-2026-09-01 12:40:06.093 INFO [https://github.com/sindresorhus/is-online.git] - Step 13/14: commit:assets
-2026-09-01 12:40:06.263 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Add Claude Code configuration assets
-2026-09-01 12:40:06.263 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:assets completed in 169ms
-2026-09-01 12:40:06.263 INFO [https://github.com/sindresorhus/is-online.git] - Step 14/14: verify
-2026-09-01 12:40:06.264 INFO [https://github.com/sindresorhus/is-online.git] - Verifying the CLAUDE.md guard passes with github-actions in /home/user/tools/target/adopt-demo/workspace/is-online
-2026-09-01 12:40:06.271 INFO [https://github.com/sindresorhus/is-online.git] - Step verify completed in 7ms
-2026-09-01 12:40:06.271 INFO [https://github.com/sindresorhus/is-online.git] - Adoption complete for https://github.com/sindresorhus/is-online.git in 51s
-2026-09-01 12:40:06.274 INFO - Adopted 1 of 1 repositories in 51s
-2026-09-01 12:40:06.289 INFO - Wrote the adoption report to /home/user/tools/target/adopt-demo/adopt-demo-report.json
-Script done on 2026-09-01 12:40:06+00:00 [COMMAND_EXIT_CODE="0"]
+Script started on 2026-09-01 12:56:44+00:00 [COMMAND="/home/user/tools/scripts/linux/adopt-demo.sh --adoption-only" <not executed on terminal>]
+2026-09-01 12:56:48.467 INFO - Dry run: the adoption will be committed to the checkout but never pushed, and no pull request will be opened
+2026-09-01 12:56:48.477 INFO - Adopting Claude Code into 1 repositories on branch claude/adopt-claude-code
+2026-09-01 12:56:48.481 INFO [https://github.com/sindresorhus/is-online.git] - Repository 1 of 1: https://github.com/sindresorhus/is-online.git
+2026-09-01 12:56:48.484 INFO [https://github.com/sindresorhus/is-online.git] - Adopting Claude Code into https://github.com/sindresorhus/is-online.git in 14 steps
+2026-09-01 12:56:48.484 INFO [https://github.com/sindresorhus/is-online.git] - Step 1/14: toolchain
+2026-09-01 12:56:48.485 INFO [https://github.com/sindresorhus/is-online.git] - Checking required tools are available: [git, claude]
+2026-09-01 12:56:48.507 INFO [https://github.com/sindresorhus/is-online.git] - Found required tool: git
+2026-09-01 12:56:48.528 INFO [https://github.com/sindresorhus/is-online.git] - Found required tool: claude
+2026-09-01 12:56:48.528 INFO [https://github.com/sindresorhus/is-online.git] - Step toolchain completed in 43ms
+2026-09-01 12:56:48.529 INFO [https://github.com/sindresorhus/is-online.git] - Step 2/14: clone
+2026-09-01 12:56:48.529 INFO [https://github.com/sindresorhus/is-online.git] - Cloning https://github.com/sindresorhus/is-online.git into /home/user/tools/target/adopt-demo/workspace/is-online
+2026-09-01 12:56:49.691 INFO [https://github.com/sindresorhus/is-online.git] - Step clone completed in 1s
+2026-09-01 12:56:49.691 INFO [https://github.com/sindresorhus/is-online.git] - Step 3/14: build-toolchain
+2026-09-01 12:56:49.703 INFO [https://github.com/sindresorhus/is-online.git] - Step build-toolchain completed in 11ms
+2026-09-01 12:56:49.704 INFO [https://github.com/sindresorhus/is-online.git] - Step 4/14: branch
+2026-09-01 12:56:49.704 INFO [https://github.com/sindresorhus/is-online.git] - Creating branch claude/adopt-claude-code in /home/user/tools/target/adopt-demo/workspace/is-online
+2026-09-01 12:56:49.735 INFO [https://github.com/sindresorhus/is-online.git] - Step branch completed in 30ms
+2026-09-01 12:56:49.735 INFO [https://github.com/sindresorhus/is-online.git] - Step 5/14: trust
+2026-09-01 12:56:49.784 INFO [https://github.com/sindresorhus/is-online.git] - /home/user/tools/target/adopt-demo/workspace/is-online is already trusted for Claude Code; left unchanged
+2026-09-01 12:56:49.785 INFO [https://github.com/sindresorhus/is-online.git] - Step trust completed in 49ms
+2026-09-01 12:56:49.785 INFO [https://github.com/sindresorhus/is-online.git] - Step 6/14: claude-init
+2026-09-01 12:56:49.785 INFO [https://github.com/sindresorhus/is-online.git] - Running claude init in /home/user/tools/target/adopt-demo/workspace/is-online (attempt 1 of 3)
+2026-09-01 12:57:25.109 INFO [https://github.com/sindresorhus/is-online.git] - Step claude-init completed in 35s
+2026-09-01 12:57:25.111 INFO [https://github.com/sindresorhus/is-online.git] - Step 7/14: conform
+2026-09-01 12:57:25.113 INFO [https://github.com/sindresorhus/is-online.git] - Installed AGENTS.md
+2026-09-01 12:57:25.150 INFO [https://github.com/sindresorhus/is-online.git] - Normalised CLAUDE.md to satisfy the claudeMdFormat rule
+2026-09-01 12:57:25.151 INFO [https://github.com/sindresorhus/is-online.git] - Step conform completed in 39ms
+2026-09-01 12:57:25.151 INFO [https://github.com/sindresorhus/is-online.git] - Step 8/14: commit:claude-md
+2026-09-01 12:57:25.321 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Adopt Claude Code: add CLAUDE.md
+2026-09-01 12:57:25.322 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:claude-md completed in 170ms
+2026-09-01 12:57:25.322 INFO [https://github.com/sindresorhus/is-online.git] - Step 9/14: enforcer
+2026-09-01 12:57:25.323 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/workflows/claude-md-guard.yml
+2026-09-01 12:57:25.323 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/claude-md-guard.sh
+2026-09-01 12:57:25.324 INFO [https://github.com/sindresorhus/is-online.git] - Wired the CLAUDE.md guard into the github-actions build in /home/user/tools/target/adopt-demo/workspace/is-online
+2026-09-01 12:57:25.324 INFO [https://github.com/sindresorhus/is-online.git] - Step enforcer completed in 1ms
+2026-09-01 12:57:25.324 INFO [https://github.com/sindresorhus/is-online.git] - Step 10/14: commit:guard
+2026-09-01 12:57:25.492 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Adopt Claude Code: add the CLAUDE.md guard
+2026-09-01 12:57:25.492 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:guard completed in 167ms
+2026-09-01 12:57:25.493 INFO [https://github.com/sindresorhus/is-online.git] - Step 11/14: assets
+2026-09-01 12:57:25.494 INFO [https://github.com/sindresorhus/is-online.git] - AGENTS.md already exists; left unchanged
+2026-09-01 12:57:25.494 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/settings.json
+2026-09-01 12:57:25.495 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/hooks/session-start.sh
+2026-09-01 12:57:25.496 INFO [https://github.com/sindresorhus/is-online.git] - Installed .mcp.json
+2026-09-01 12:57:25.497 INFO [https://github.com/sindresorhus/is-online.git] - Installed .github/workflows/claude.yml
+2026-09-01 12:57:25.497 INFO [https://github.com/sindresorhus/is-online.git] - Step assets completed in 4ms
+2026-09-01 12:57:25.497 INFO [https://github.com/sindresorhus/is-online.git] - Step 12/14: skills
+2026-09-01 12:57:25.503 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/skills/build-and-test/SKILL.md
+2026-09-01 12:57:25.504 INFO [https://github.com/sindresorhus/is-online.git] - Installed .claude/skills/claude-md/SKILL.md
+2026-09-01 12:57:25.504 INFO [https://github.com/sindresorhus/is-online.git] - Installed 2 starter skill(s) describing the github-actions build under /home/user/tools/target/adopt-demo/workspace/is-online/.claude/skills
+2026-09-01 12:57:25.504 INFO [https://github.com/sindresorhus/is-online.git] - Step skills completed in 7ms
+2026-09-01 12:57:25.505 INFO [https://github.com/sindresorhus/is-online.git] - Step 13/14: commit:assets
+2026-09-01 12:57:25.700 INFO [https://github.com/sindresorhus/is-online.git] - Committed: Add Claude Code configuration assets
+2026-09-01 12:57:25.700 INFO [https://github.com/sindresorhus/is-online.git] - Step commit:assets completed in 195ms
+2026-09-01 12:57:25.701 INFO [https://github.com/sindresorhus/is-online.git] - Step 14/14: verify
+2026-09-01 12:57:25.701 INFO [https://github.com/sindresorhus/is-online.git] - Verifying the CLAUDE.md guard passes with github-actions in /home/user/tools/target/adopt-demo/workspace/is-online
+2026-09-01 12:57:25.708 INFO [https://github.com/sindresorhus/is-online.git] - Step verify completed in 6ms
+2026-09-01 12:57:25.708 INFO [https://github.com/sindresorhus/is-online.git] - Adoption complete for https://github.com/sindresorhus/is-online.git in 37s
+2026-09-01 12:57:25.710 INFO - Adopted 1 of 1 repositories in 37s
+2026-09-01 12:57:25.725 INFO - Wrote the adoption report to /home/user/tools/target/adopt-demo/adopt-demo-report.json
+Script done on 2026-09-01 12:57:25+00:00 [COMMAND_EXIT_CODE="0"]
 ```
 
 ## The report

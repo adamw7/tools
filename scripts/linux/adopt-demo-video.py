@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Renders a recorded adoption transcript as an MPEG video.
+"""Renders a recorded adoption transcript as a video.
 
 The transcript `adopt-demo.sh` captures is text, which is the honest artifact but
 not one you can watch. This turns it into a terminal-style video: one frame per
 line the pipeline logged, paced by the timestamps in the log itself, encoded as
-MPEG-1 in an .mpg container so it plays anywhere without a codec to install.
+H.264 in an .mp4 container — the one combination GitHub plays inline in a README,
+rather than offering as a download.
+
+The codec follows the output's suffix, so the older MPEG containers are still a
+filename away: an .mpg is written as MPEG-2, which plays in anything from VLC
+upwards without a codec to install but which GitHub will not preview.
 
 Playback is compressed, not real time: a gap between two lines is clamped to
 --max-gap seconds, so the 38 seconds `claude init` spends thinking does not
@@ -15,7 +20,7 @@ Needs Pillow and ffmpeg. Usage:
 
     scripts/linux/adopt-demo-video.py \\
         --transcript target/adopt-demo/adopt-demo.txt \\
-        --output docs/adopt-demo.mpg
+        --output docs/adopt-demo.mp4
 """
 
 import argparse
@@ -52,6 +57,17 @@ STEP = (63, 185, 80)
 
 FONTS = ("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
          "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf")
+
+# The container decides the codec, because the two are not freely mixed: ffmpeg
+# refuses H.264 in an .mpg outright, and an .mp4 of MPEG-2 is what no player
+# expects. GitHub previews only the first of these inline.
+CODEC_FOR = {".mp4": "libx264", ".mpg": "mpeg2video", ".mpeg": "mpeg2video"}
+# H.264 is quantised on the CRF scale, MPEG-1/2 on ffmpeg's -q:v scale, and the
+# same picture sits at a different number on each.
+QUALITY_FOR = {"libx264": 23, "mpeg2video": 9, "mpeg1video": 9}
+# MPEG-1 and MPEG-2 accept only the broadcast frame rates, and ffmpeg refuses
+# anything else outright ("MPEG-1/2 does not support 12/1 fps"). H.264 takes any.
+BROADCAST_RATES = (24, 25, 30, 50, 60)
 
 
 class Line:
@@ -171,14 +187,29 @@ def durations(lines, max_gap, min_gap, tail):
     return held
 
 
+def codec_arguments(codec, quality, gop):
+    """The half of the ffmpeg command that depends on which codec is being written.
+
+    H.264 is quantised with -crf and MPEG-1/2 with -q:v, so the one --quality knob
+    reaches a different flag on a different scale. An .mp4 also carries its index
+    at the end of the file unless faststart moves it to the front, which is what
+    lets a browser — GitHub's README player included — start playing before the
+    whole file has arrived.
+    """
+    if codec == "libx264":
+        return ["-c:v", codec, "-crf", str(quality), "-preset", "veryslow",
+                "-g", str(gop), "-bf", "2", "-movflags", "+faststart"]
+    return ["-c:v", codec, "-q:v", str(quality), "-g", str(gop), "-bf", "2"]
+
+
 def encode(frames, held, output, fps, codec, quality, gop):
     """ffmpeg's concat demuxer, which takes a per-image duration.
 
     A terminal recording is nearly all still frames, so the size is decided by how
     often a keyframe is sent: MPEG's default GOP of a dozen frames re-sent this
     screen twice a second and cost 7 MB, where --gop 250 costs 2.4 MB of the same
-    picture. Quality is set with -q:v rather than a bitrate, so the still frames
-    are cheap and the scrolling ones are paid for.
+    picture. Quality is set per frame rather than as a bitrate, so the still
+    frames are cheap and the scrolling ones are paid for.
     """
     listing = frames[0].parent / "frames.txt"
     entries = []
@@ -189,9 +220,9 @@ def encode(frames, held, output, fps, codec, quality, gop):
     listing.write_text("\n".join(entries) + "\n")
     output.parent.mkdir(parents=True, exist_ok=True)
     command = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-               "-i", str(listing), "-vf", f"fps={fps},format=yuv420p",
-               "-c:v", codec, "-q:v", str(quality), "-g", str(gop), "-bf", "2",
-               str(output)]
+               "-i", str(listing), "-vf", f"fps={fps},format=yuv420p"]
+    command.extend(codec_arguments(codec, quality, gop))
+    command.append(str(output))
     subprocess.run(command, check=True)
 
 
@@ -201,20 +232,18 @@ def main():
     parser.add_argument("--transcript", type=pathlib.Path,
                         default=pathlib.Path("target/adopt-demo/adopt-demo.txt"))
     parser.add_argument("--output", type=pathlib.Path,
-                        default=pathlib.Path("target/adopt-demo/adopt-demo.mpg"))
+                        default=pathlib.Path("target/adopt-demo/adopt-demo.mp4"))
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
     parser.add_argument("--font-size", type=int, default=15)
-    # MPEG-1 and MPEG-2 accept only the broadcast frame rates, and ffmpeg refuses
-    # anything else outright ("MPEG-1/2 does not support 12/1 fps"), so this is not
-    # a free knob: 25 is a standard rate for both.
     parser.add_argument("--fps", type=int, default=25,
-                        choices=[24, 25, 30, 50, 60])
-    parser.add_argument("--codec", default="mpeg2video",
-                        choices=["mpeg2video", "mpeg1video"],
-                        help="MPEG-2 by default; MPEG-1 plays on even more, at twice the size")
-    parser.add_argument("--quality", type=int, default=9,
-                        help="ffmpeg -q:v, 1 best and 31 worst")
+                        help="frames a second; MPEG-1/2 take only 24, 25, 30, 50 or 60")
+    parser.add_argument("--codec", choices=sorted(QUALITY_FOR),
+                        help="defaults to the codec the output's suffix implies: "
+                             "H.264 for .mp4, MPEG-2 for .mpg")
+    parser.add_argument("--quality", type=int,
+                        help="H.264: -crf, 0 best and 51 worst (default 23). "
+                             "MPEG-1/2: -q:v, 1 best and 31 worst (default 9)")
     parser.add_argument("--gop", type=int, default=250,
                         help="frames between keyframes; the still frames make it the size lever")
     parser.add_argument("--max-gap", type=float, default=1.2,
@@ -228,6 +257,15 @@ def main():
         raise SystemExit("ffmpeg is not on the PATH.")
     if not args.transcript.is_file():
         raise SystemExit(f"No transcript at {args.transcript}. Run adopt-demo.sh first.")
+
+    codec = args.codec or CODEC_FOR.get(args.output.suffix.lower())
+    if codec is None:
+        raise SystemExit(f"No codec for a {args.output.suffix} output; name a --codec "
+                         f"or write one of {', '.join(sorted(CODEC_FOR))}.")
+    quality = args.quality if args.quality is not None else QUALITY_FOR[codec]
+    if codec != "libx264" and args.fps not in BROADCAST_RATES:
+        raise SystemExit(f"{codec} accepts only the broadcast frame rates "
+                         f"{BROADCAST_RATES}, not {args.fps}.")
 
     # The terminal is built twice: once to learn its width, then again with the
     # repository the transcript names, which the title bar carries.
@@ -245,7 +283,7 @@ def main():
             frame = directory / f"frame-{index:05d}.png"
             terminal.frame(lines[:index + 1], lines[index].seconds).save(frame)
             frames.append(frame)
-        encode(frames, held, args.output, args.fps, args.codec, args.quality, args.gop)
+        encode(frames, held, args.output, args.fps, codec, quality, args.gop)
 
     real = elapsed_label(lines[-1].seconds)
     playback = sum(held)

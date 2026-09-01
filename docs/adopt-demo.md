@@ -46,10 +46,25 @@ which is also why `verify` needs no build tool installed.
 
 ## The video
 
-[`adopt-demo.mpg`](adopt-demo.mpg) (2.5 MB, 22 seconds) is the run below as a
-terminal-style video — MPEG-2 in an `.mpg` container, so it plays in anything from
-VLC to a browser without a codec to install. GitHub does not preview `.mpg`
-inline, so it downloads rather than plays in place.
+<video src="https://github.com/adamw7/tools/raw/main/docs/adopt-demo.mp4" controls muted playsinline width="900">
+  <a href="adopt-demo.mp4"><code>adopt-demo.mp4</code></a> — the run below as a 22-second video.
+</video>
+
+[`adopt-demo.mp4`](adopt-demo.mp4) (391 KB, 22 seconds) is the run below as a
+terminal-style video — H.264 in an `.mp4` container, which is what GitHub plays
+**inline** in a rendered Markdown file rather than offering as a download, and
+what a browser plays without a plugin. The `moov` atom is moved to the front of
+the file (`-movflags +faststart`), so playback starts before the whole file has
+arrived instead of after it.
+
+The element above needs an absolute URL: GitHub rewrites a relative link into one
+its player can use for images, not for video. The link inside it is what a renderer
+with no player shows instead — an IDE preview of this file, say.
+
+A player older than H.264 is a `--output` away: `--output <name>.mpg` writes the
+same run as MPEG-2, which every player back to a DVD one accepts, at six times the
+size for the same 22 seconds. Nothing here links such a file, because GitHub will
+not preview one.
 
 It is a **rendering of the transcript, not a screen capture**: one frame per line
 the pipeline logged, drawn from the text below. Two things about it are worth
@@ -72,15 +87,20 @@ against any transcript:
 ```bash
 scripts/linux/adopt-demo-video.py \
     --transcript target/adopt-demo/adopt-demo.txt \
-    --output docs/adopt-demo.mpg
+    --output docs/adopt-demo.mp4
 ```
 
+The **output's suffix picks the codec**, because the two are not freely mixed:
+`.mp4` is written as H.264 and `.mpg` as MPEG-2, `--codec` overrides that, and any
+other suffix is refused by name rather than handed to ffmpeg to fail on. `--quality`
+follows the codec it lands on — H.264's `-crf` (0 best, 51 worst, 23 by default),
+MPEG's `-q:v` (1 best, 31 worst, 9 by default) — as does `--fps`, which MPEG-1 and
+MPEG-2 accept only at the broadcast rates, having no way to express any other.
+
 Size is governed by `--gop`, not by the resolution: a terminal recording is nearly
-all still frames, and MPEG's default keyframe interval re-sent the whole screen
-twice a second, costing 7 MB for the same 22 seconds that `--gop 250` costs 2.5 MB
-of. `--codec mpeg1video` trades roughly double the size for a codec even older
-players accept, and `--fps` takes only the broadcast rates — ffmpeg refuses
-anything else outright, MPEG-1 and MPEG-2 having no way to express it.
+all still frames, and a default keyframe interval re-sends the whole screen twice a
+second. At `--gop 250` the same 22 seconds cost 391 KB as H.264 and 2.5 MB as
+MPEG-2.
 
 ## The recording
 

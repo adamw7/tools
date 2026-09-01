@@ -929,12 +929,22 @@ mvn -pl adopt exec:java \
 
 ### A recorded run
 
-[`docs/adopt-demo.md`](docs/adopt-demo.md) is a **recording of that rehearsal
-actually running** — every step it logged, the report it wrote, and the commits it
-left in the checkout — so the pipeline can be read end to end without running
-anything. [`docs/adopt-demo.mpg`](docs/adopt-demo.mpg) is the same run as a
-22-second video, for watching rather than reading. `scripts/linux/adopt-demo.sh` and `scripts/windows/adopt-demo.ps1`
-reproduce it, against the repository of your choice:
+<video src="https://github.com/adamw7/tools/raw/main/docs/adopt-demo.mp4" controls muted playsinline width="900">
+  <a href="docs/adopt-demo.mp4"><code>docs/adopt-demo.mp4</code></a> — a dry run
+  adopting Claude Code, as a 22-second video.
+</video>
+
+That is a real `--dry-run` adopting a real repository, 22 seconds of it, playing
+here rather than downloading: H.264 in an `.mp4`, which is the one combination
+GitHub renders inline. The `src` is absolute because a relative one is rewritten
+for images and not for video, and the link inside the element is what a renderer
+with no player shows instead.
+
+[`docs/adopt-demo.md`](docs/adopt-demo.md) is the same run in text — every step it
+logged, the report it wrote, and the commits it left in the checkout — so the
+pipeline can also be read end to end without running or watching anything.
+`scripts/linux/adopt-demo.sh` and `scripts/windows/adopt-demo.ps1` reproduce both,
+against the repository of your choice:
 
 ```bash
 ./scripts/linux/adopt-demo.sh                      # the default repository, into target/adopt-demo

@@ -9,7 +9,7 @@
 # The adoption runs exactly once, however many recordings are made of it: the
 # session is captured as a plain-text transcript with script(1), and as an
 # asciinema cast around it when asciinema is installed. The transcript is then
-# rendered as an .mpg video where ffmpeg and Pillow are available — see
+# rendered as an .mp4 video where ffmpeg and Pillow are available — see
 # adopt-demo-video.py, which does that rendering and can be run on its own.
 #
 # Usage: ./adopt-demo.sh [github-repo-url] [output-directory]
@@ -48,7 +48,7 @@ fi
 
 TRANSCRIPT="${OUTPUT_DIR}/adopt-demo.txt"
 CAST="${OUTPUT_DIR}/adopt-demo.cast"
-VIDEO="${OUTPUT_DIR}/adopt-demo.mpg"
+VIDEO="${OUTPUT_DIR}/adopt-demo.mp4"
 REPORT="${OUTPUT_DIR}/adopt-demo-report.json"
 WORKSPACE="${OUTPUT_DIR}/workspace"
 # Written by the recorded run and read once it is over: asciinema exits zero
@@ -130,7 +130,8 @@ report_recordings() {
     fi
 }
 
-# Renders the transcript as an .mpg, when the machine has what that takes. The
+# Renders the transcript as an .mp4, when the machine has what that takes — H.264
+# in an .mp4 being what GitHub plays inline rather than offers as a download. The
 # video is a convenience over the recording rather than a second recording, so a
 # machine without ffmpeg or Pillow is told what is missing and loses nothing else.
 render_video() {
@@ -145,7 +146,7 @@ render_video() {
         success "Pillow is not installed (pip install Pillow); skipping the video"
         return 0
     fi
-    step "Rendering the transcript as an MPEG video..."
+    step "Rendering the transcript as an H.264 video..."
     # Non-fatal: the recording is the deliverable, and it is already written.
     python3 "${SCRIPT_DIR}/adopt-demo-video.py" --transcript "${TRANSCRIPT}" --output "${VIDEO}" \
         || failure "The video could not be rendered; the transcript is unaffected"

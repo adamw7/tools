@@ -109,16 +109,31 @@ class AssetsStepTest {
 	 * {@link CloneStep} tells the adoption's own uncommitted work apart from a
 	 * contributor's by this list, so a file the adoption writes but does not name here
 	 * would make a resumable checkout look like one carrying somebody else's work.
-	 * Every starter asset is folded in from {@link AdoptionAssets#DEFAULTS} itself; the
-	 * files written outside an installer are the ones worth pinning.
+	 * Every starter asset is folded in from {@link AdoptionAssets#DEFAULTS} itself and
+	 * every starter skill from {@link StarterSkills#WRITTEN_PATHS}; the files written
+	 * outside an installer are the ones worth pinning.
 	 */
 	@Test
 	void namesEveryFileTheAdoptionWrites() {
 		assertTrue(AdoptionAssets.WRITTEN_PATHS.containsAll(List.of(
 				"CLAUDE.md", "AGENTS.md", ".claude/settings.json", ".claude/hooks/session-start.sh",
 				".mcp.json", ".github/workflows/claude.yml", ".github/workflows/claude-md-guard.yml",
-				".github/claude-md-guard.sh", "pom.xml", "build.gradle", "build.gradle.kts")),
+				".github/claude-md-guard.sh", ".claude/skills/build-and-test/SKILL.md",
+				".claude/skills/claude-md/SKILL.md", "pom.xml", "build.gradle", "build.gradle.kts")),
 				AdoptionAssets.WRITTEN_PATHS.toString());
+	}
+
+	/**
+	 * The skills are written by {@link SkillsStep} beside this step, so a run that
+	 * installs the assets alone leaves the skills to it rather than writing a body no
+	 * build system has been detected for.
+	 */
+	@Test
+	void leavesTheStarterSkillsToTheStepThatKnowsTheBuildSystem(@TempDir Path workspace) throws IOException {
+		AdoptionContext context = AdoptionContexts.checkedOutIn(workspace);
+		step.execute(context, new RecordingCommandRunner());
+		StarterSkills.WRITTEN_PATHS.forEach(
+				path -> assertTrue(Files.notExists(context.repositoryDirectory().resolve(path)), path));
 	}
 
 	/** A path named twice would report the same file twice in a refusal. */

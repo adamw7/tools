@@ -245,6 +245,32 @@ class BuildSystemsTest {
 		assertTrue(new GradleBuildSystem().toolAdvice().contains("gradle"), "gradle should name itself");
 	}
 
+	@Test
+	void aBuildToolDescribesTheBuildByName() {
+		assertTrue(new MavenBuildSystem().buildDescription().contains("maven"), "maven should name itself");
+		assertTrue(new GradleBuildSystem().buildDescription().contains("gradle"), "gradle should name itself");
+	}
+
+	/**
+	 * The same mistake {@link #theFallbackAdvisesAboutAShellRatherThanAboutItself}
+	 * pins one method along: a repository the catch-all matched has no build tool, so a
+	 * starter skill telling its contributors it "is built with github-actions" would be
+	 * describing a build that does not exist.
+	 */
+	@Test
+	void theFallbackDescribesWhereItsGuardLivesRatherThanABuildTool() {
+		String description = new FallbackBuildSystem().buildDescription();
+		assertFalse(description.contains("built with github-actions"), description);
+		assertTrue(description.contains("GitHub Actions workflow"), description);
+	}
+
+	/** Every build system has to say what builds the project, the starter skills opening with it. */
+	@Test
+	void everyBuildSystemDescribesTheBuild() {
+		BuildSystems.DEFAULTS.forEach(buildSystem -> assertFalse(buildSystem.buildDescription().isBlank(),
+				buildSystem.name() + " must describe the build"));
+	}
+
 	/**
 	 * {@link BuildSystem#toolProbe(Path)} is the default a new build system inherits,
 	 * and it reads the first word of the verify command. One that names no command has

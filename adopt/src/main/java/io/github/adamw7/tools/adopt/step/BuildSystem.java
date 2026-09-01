@@ -102,6 +102,20 @@ public interface BuildSystem {
 	}
 
 	/**
+	 * How a contributor reading the starter skills is told what builds this project,
+	 * named by the build system for the same reason {@link #toolAdvice()} is: the
+	 * answer is not the same for every one of them, and a sentence spelled out by
+	 * {@link StarterSkills} told a project with no build file at all that it "is built
+	 * with github-actions", which is neither its build tool nor true.
+	 *
+	 * @return the sentence, in prose rather than markup, so the skill that embeds it
+	 *         decides how it is presented
+	 */
+	default String buildDescription() {
+		return "This repository is built with " + name() + ".";
+	}
+
+	/**
 	 * What an operator whose {@link #toolProbe(Path)} could not be run has to do
 	 * about it, named by the build system rather than by {@link BuildToolchainStep}:
 	 * the remedy is not the same for every one of them, and a step that spelled out

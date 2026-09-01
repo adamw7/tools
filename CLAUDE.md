@@ -83,7 +83,8 @@ streamable HTTP, or stateless HTTP; each has its own `MCP_USAGE.md` next to its
 Further reading: [README.md](README.md) for worked examples,
 [docs/c4-architecture.md](docs/c4-architecture.md) for the C4 model,
 [docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) for the
-builder walkthrough, [docs/adr](docs/adr) for the architecture decision records,
+builder walkthrough, [docs/adopt-demo.md](docs/adopt-demo.md) for a recorded
+dry-run adoption, [docs/adr](docs/adr) for the architecture decision records,
 [k8s/README.md](k8s/README.md) for running `SampleApp` on minikube, and
 [SECURITY.md](SECURITY.md) for the private disclosure process.
 

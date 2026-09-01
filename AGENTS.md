@@ -288,6 +288,9 @@ unwrapped.
   → Containers → Components) as Mermaid diagrams.
 - [docs/compile-time-safe-builders.md](docs/compile-time-safe-builders.md) — how
   the generated builder chain shifts validation to compile time.
+- [docs/adopt-demo.md](docs/adopt-demo.md) — a recorded `--dry-run` adoption:
+  every step the pipeline logged, the JSON report it wrote, and the commits it
+  left behind, with the scripts that reproduce it.
 - [docs/adr](docs/adr) — the **architecture decision records** behind the
   standing choices (the foundational record, the security and supply-chain
   posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
@@ -378,6 +381,11 @@ variants:
 - `update-git-client` — upgrades the system `git` via the host package manager.
 - `update-git-repos-async` — `git pull`s every repository in the script's parent
   directory in parallel.
+- `adopt-demo` — records a `--dry-run` adoption of a repository, transcript and
+  report, for [`docs/adopt-demo.md`](docs/adopt-demo.md). Needs `git`, `claude`
+  and `mvn`; a dry run never reaches the step that uses `gh`. Re-run it after
+  changing a step's logging or the pipeline's shape, so the committed recording
+  still shows what the pipeline does.
 
 ## Build, test, and run
 

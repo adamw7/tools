@@ -290,7 +290,9 @@ unwrapped.
   the generated builder chain shifts validation to compile time.
 - [docs/adopt-demo.md](docs/adopt-demo.md) — a recorded `--dry-run` adoption:
   every step the pipeline logged, the JSON report it wrote, and the commits it
-  left behind, with the scripts that reproduce it.
+  left behind, with the scripts that reproduce it, and
+  [docs/adopt-demo.mp4](docs/adopt-demo.mp4) — the same run as a video the README
+  plays inline.
 - [docs/adr](docs/adr) — the **architecture decision records** behind the
   standing choices (the foundational record, the security and supply-chain
   posture, TLS 1.3 and hybrid post-quantum key exchange, CodeQL, the two
@@ -387,11 +389,14 @@ variants:
   changing a step's logging or the pipeline's shape, so the committed recording
   still shows what the pipeline does — and re-render the video from the *same*
   run, the document and the video being two views of one recording.
-- `adopt-demo-video.py` — renders a captured transcript as the `.mpg` at
-  [`docs/adopt-demo.mpg`](docs/adopt-demo.mpg). The one Python helper here, and
-  cross-platform rather than one of the `linux`/`windows` pairs; it needs `ffmpeg`
-  and `Pillow`, neither of which the build depends on, so `adopt-demo` calls it
-  only when both are present and skips the video otherwise.
+- `adopt-demo-video.py` — renders a captured transcript as the `.mp4` at
+  [`docs/adopt-demo.mp4`](docs/adopt-demo.mp4), which the README embeds: H.264 in
+  an `.mp4` is what GitHub plays inline, where the `.mpg` this once wrote only
+  downloaded. The output's suffix picks the codec — `.mpg` still writes MPEG-2 —
+  and `--quality` follows it onto that codec's scale. The one Python helper here,
+  and cross-platform rather than one of the `linux`/`windows` pairs; it needs
+  `ffmpeg` and `Pillow`, neither of which the build depends on, so `adopt-demo`
+  calls it only when both are present and skips the video otherwise.
 
 ## Build, test, and run
 

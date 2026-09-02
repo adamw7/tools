@@ -1,3 +1,7 @@
 # Shell scripts must always use LF, even when checked out on Windows.
 # shellcheck (SC1017) rejects literal carriage returns, so CRLF breaks the build.
 *.sh text eol=lf
+
+# The recorded demo is binary and must survive a Windows checkout byte for byte,
+# where an autocrlf setting would otherwise rewrite anything git took for text.
+*.mp4 binary

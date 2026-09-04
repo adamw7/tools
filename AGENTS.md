@@ -1019,7 +1019,7 @@ ignored.
 `.claude/settings.json` carries two sections:
 
 - `permissions.allow` pre-approves the commands a session runs constantly — `mvn`
-  (and `PowerShell(mvn *)` for the Windows path), the
+  (and `PowerShell(mvn *)` for the Windows path), which already covers the
   `dependency:tree`/`dependency:analyze` reports, the `unzip -l`/`unzip -p`
   archive inspection, and `Edit`. Each entry must be a well-formed `Tool` or
   `Tool(specifier)` and must not also appear in `deny`.

@@ -518,7 +518,7 @@ rather than inside the first timed test.
 execution on with `mode.classes.default = concurrent` but `mode.default =
 same_thread`: `unit.test.parallelism` (default **3**) test classes run at once in
 a module, while the methods of one class stay on a single thread. A class already
-owns its fixture — 79 of them take a `@TempDir`, which JUnit makes unique per
+owns its fixture — most take a `@TempDir`, which JUnit makes unique per
 class — so concurrency *between* classes is the mode this suite can take;
 concurrency *within* one would interleave methods sharing a `@BeforeEach`-built
 instance, which nothing here was written for. The number is deliberately a small

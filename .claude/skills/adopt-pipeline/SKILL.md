@@ -37,10 +37,10 @@ module's rules are unusually strict because it shells out to `git`, `gh` and
     report says what a dry run really did rather than listing steps that
     pretended to run.
 
-The four build-system-aware steps (`BuildToolchainStep`, `EnforcerStep`,
-`SkillsStep`, `VerifyStep`) share one `BuildSystems.defaults(...)` list, so the
-guard that is wired in is the guard that is verified with the tool that was
-probed, and the one the starter skills describe (`MavenBuildSystem`,
+The build-system-aware steps (`BuildToolchainStep`, `ClaudeMdConformanceStep`,
+`EnforcerStep`, `SkillsStep`, `VerifyStep`) share one `BuildSystems.defaults(...)`
+list, so the guard that is wired in is the guard that is verified with the tool
+that was probed, and the one the starter skills describe (`MavenBuildSystem`,
 `GradleBuildSystem`, `FallbackBuildSystem`).
 
 ## The starter skills

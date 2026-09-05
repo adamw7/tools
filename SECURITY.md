@@ -2,34 +2,23 @@
 
 ## Supported Versions
 
+Only the **latest release line** receives security fixes. A vulnerability
+confirmed in an older release is fixed by releasing a new version, not by
+patching the older one, so upgrading is the remediation.
 
-| Version | Supported          |
-|---------|--------------------|
+| Version | Supported |
+|---------|-----------|
 | 2.6.0   | ✅ |
-| 2.5.0   | ❌ |
-| 2.4.0   | ❌ |
-| 2.3.0   | ❌ |
-| 2.2.0   | ❌ |
-| 2.1.0   | ❌ |
-| 2.0.1   | ❌ |
-| 2.0.0   | ❌ |
-| 1.5.0   | ❌ |
-| 1.4.0   | ❌ |
-| 1.3.0   | ❌ |
-| 1.2.0   | ❌ |
-| 1.1.0   | ❌ |
-| 1.0.0   | ❌ |
-| 0.9.4   | ❌ |
-| 0.9.3   | ❌ |
-| 0.9.2   | ❌ |
-| 0.9.1   | ❌ |
-| 0.9     | ❌ |
-| 0.8     | ❌ |
-| 0.7     | ❌ |
-| 0.6     | ❌ |
-| 0.5     | ❌ |
-| 0.4     | ❌ |
+| < 2.6.0 | ❌ |
+
+Releases are listed at
+[github.com/adamw7/tools/releases](https://github.com/adamw7/tools/releases).
 
 ## Reporting a Vulnerability
 
-In case of finding security vulnerability please send email to adamwitkowski3@gmail.com
+Report vulnerabilities privately by email to adamwitkowski3@gmail.com. Please do
+not open a public issue for them, so the fix can be released before the problem
+is public.
+
+A report is easiest to act on when it names the affected version and module, the
+impact, and the steps to reproduce it.

@@ -518,7 +518,7 @@ rather than inside the first timed test.
 execution on with `mode.classes.default = concurrent` but `mode.default =
 same_thread`: `unit.test.parallelism` (default **3**) test classes run at once in
 a module, while the methods of one class stay on a single thread. A class already
-owns its fixture — 79 of them take a `@TempDir`, which JUnit makes unique per
+owns its fixture — most take a `@TempDir`, which JUnit makes unique per
 class — so concurrency *between* classes is the mode this suite can take;
 concurrency *within* one would interleave methods sharing a `@BeforeEach`-built
 instance, which nothing here was written for. The number is deliberately a small
@@ -1414,9 +1414,13 @@ To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is normally a
    `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
-2. Commit and push.
-3. Confirm all builds pass.
-4. Release and mark as latest in GitHub.
+2. Move the supported-versions table in [SECURITY.md](SECURITY.md) onto `X` —
+   both cells, since only the latest release line is supported. Nothing checks
+   this, and a stale table tells consumers an unsupported version still receives
+   fixes.
+3. Commit and push.
+4. Confirm all builds pass.
+5. Release and mark as latest in GitHub.
 
 Nothing about the reproducible-build timestamp is a manual step: both publishing
 workflows derive `project.build.outputTimestamp` from the released commit,

@@ -8,9 +8,7 @@ Library of tooling for various purposes.
 - [Code generation](#code-generation)
 - [gRPC example](#grpc-example)
 - [Context engineering](#context-engineering)
-  - [Java code context build up](#java-code-context-build-up)
-  - [Kotlin code context build up](#kotlin-code-context-build-up)
-  - [Scala code context build up](#scala-code-context-build-up)
+  - [Java, Kotlin and Scala code context build up](#java-kotlin-and-scala-code-context-build-up)
   - [Project tree](#project-tree)
   - [Output formats](#output-formats)
   - [Open Knowledge Format bundles](#open-knowledge-format-bundles)
@@ -426,7 +424,7 @@ See the [grpc-example module](grpc-example/README.md) for full details and how t
 
 ## Context engineering
 
-### Java code context build up
+### Java, Kotlin and Scala code context build up
 
 For gen ai agents that work with Java code the context usually starts with one class but may get wider and be extended to the classes used by it etc so on.
 In order to build this tree there is a very simple and fast regex based interface:
@@ -448,39 +446,10 @@ Context context = new Finder(allContainers, Language.JAVA);
 Set<ClassContainer> used = context.find(root, depth);
 ```
 
-`Language.JAVA` resolves `.java` files when mapping a referenced class name back
-to its source file, so the usage-tree building works out of the box for Java
-sources.
-
-### Kotlin code context build up
-
-Kotlin is supported with exactly the same features as Java. The regex-based
-`Finder` and the `Context` interface are language agnostic; the only difference
-is the source-file extension used to resolve a referenced class back to a file.
-Pick the language with the `Language` enum:
-
-```java
-Context context = new Finder(allContainers, Language.KOTLIN);
-Set<ClassContainer> used = context.find(root, depth);
-```
-
-`Language.JAVA` (the default) resolves `.java` files and `Language.KOTLIN`
-resolves `.kt` files, so the same usage-tree building works for Kotlin sources.
-
-### Scala code context build up
-
-Scala is supported with exactly the same features as Java and Kotlin. The
-regex-based `Finder` and the `Context` interface are language agnostic; the only
-difference is the source-file extension used to resolve a referenced class back
-to a file. Pick the language with the `Language` enum:
-
-```java
-Context context = new Finder(allContainers, Language.SCALA);
-Set<ClassContainer> used = context.find(root, depth);
-```
-
-`Language.SCALA` resolves `.scala` files, so the same usage-tree building works
-for Scala sources.
+`Finder` and `Context` are language agnostic; the only thing the language decides
+is the source-file extension a referenced class name is resolved back through —
+`.java`, `.kt` or `.scala` — so the usage-tree building works the same for Kotlin
+and Scala sources as it does for Java.
 
 ### Project tree
 
@@ -955,11 +924,6 @@ The demo needs `git`, `claude` and `mvn` — not `gh`, and no GitHub credentials
 a dry run never reaching the step that uses them. It records with `script(1)`
 (`Start-Transcript` on Windows), and adds an `asciinema` cast of the same single
 run where `asciinema` is installed.
-
-Every external command is bounded by a timeout — 10 minutes by default —
-overridable with `--timeout <minutes>`, for a repository whose `claude init` or
-whose first Maven build against a cold `~/.m2` needs longer, or for a batch that
-should fail fast instead.
 
 A `git` or `gh` command the **network** refused is run again rather than failing
 the repository: twice by default, after 2 seconds and 4 seconds, with

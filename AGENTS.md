@@ -1298,6 +1298,11 @@ Skill: `maven-conventions`.
   `derby.version` and `log4j2.version` are Spring Boot's own property names on
   purpose — the BOM manages the rest of each family from them, so pinning only
   the artifacts declared here would leave the siblings on Boot's older version.
+- `tomcat.version` is the same mechanism used for a different reason: no module
+  declares a Tomcat artifact at all, but the embedded Tomcat the MCP servers'
+  web starter pulls in reaches the distribution's `lib/`, where `docker.yml`'s
+  Trivy scan sees it. Overriding Boot's property is how a Tomcat CVE gets fixed
+  ahead of the BOM; remove the override once Boot ships that version or later.
 - The root pom's parent is `spring-boot-starter-parent`, so its
   `<dependencyManagement>` and `<pluginManagement>` reach every module. Two of
   its entries are deliberately neutralised in the root pom rather than lived

@@ -28,6 +28,10 @@
 		<grpc.version>1.83.1</grpc.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j2.version>2.26.1</log4j2.version>
+		<!-- Ahead of the Boot BOM's 11.0.24, which Trivy fails the Docker workflow on:
+		     CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 are all fixed in 11.0.25.
+		     Drop this once the BOM reaches that version or later. -->
+		<tomcat.version>11.0.25</tomcat.version>
 		<!-- Not maven.version: Maven exposes that as the running Maven's own version. -->
 		<maven.api.version>4.0.0-rc-5</maven.api.version>
 		<argLine/>

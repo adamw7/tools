@@ -15,7 +15,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class StarterSkillsTest {
 
-	private static final String WRAPPER = "mvnw";
+	private static final String POSIX_WRAPPER = "mvnw";
+	private static final String WINDOWS_WRAPPER = "mvnw.cmd";
 
 	@Test
 	void namesOneSkillDirectoryPerSkill(@TempDir Path checkout) {
@@ -111,11 +112,19 @@ class StarterSkillsTest {
 	 */
 	@Test
 	void theWrapperIsNamedRelativelyRatherThanByTheAdoptionHostsPath(@TempDir Path checkout) throws IOException {
-		Files.writeString(checkout.resolve(WRAPPER), "#!/bin/sh\n");
-		install(new MavenBuildSystem(), checkout);
-		String skill = read(checkout, StarterSkills.BUILD_SKILL);
-		assertTrue(skill.contains("./mvnw -q -N validate"), skill);
-		assertFalse(skill.contains(checkout.toAbsolutePath().toString()), skill);
+		assertTheWrapperIsNamedRelatively(checkout, POSIX_WRAPPER, false);
+	}
+
+	/**
+	 * The same, for the wrapper a Windows checkout is built with. Both platforms are
+	 * named by the test rather than read off the host: a Windows host looks for
+	 * {@value #WINDOWS_WRAPPER} and so found no wrapper to rewrite in a checkout given
+	 * only {@value #POSIX_WRAPPER}, leaving the skill naming a {@code mvn} off the
+	 * {@code PATH} and failing this assertion on Windows alone.
+	 */
+	@Test
+	void theWindowsWrapperIsNamedRelativelyToo(@TempDir Path checkout) throws IOException {
+		assertTheWrapperIsNamedRelatively(checkout, WINDOWS_WRAPPER, true);
 	}
 
 	/** A flag is not a path, and asking the filesystem to parse one is how Windows differs. */
@@ -242,6 +251,21 @@ class StarterSkillsTest {
 		public List<String> verifyCommand(Path repositoryDirectory) {
 			return List.of();
 		}
+	}
+
+	private void assertTheWrapperIsNamedRelatively(Path checkout, String wrapper, boolean windows)
+			throws IOException {
+		Files.writeString(checkout.resolve(wrapper), "#!/bin/sh\n");
+		install(maven(windows), checkout);
+		String skill = read(checkout, StarterSkills.BUILD_SKILL);
+		assertTrue(skill.contains("./" + wrapper + " -q -N validate"), skill);
+		assertFalse(skill.contains(checkout.toAbsolutePath().toString()), skill);
+	}
+
+	/** Maven looking for the named platform's wrapper rather than for the host's. */
+	private MavenBuildSystem maven(boolean windows) {
+		return new MavenBuildSystem(PomEnforcerInstaller.from(GuardOptions.defaults()),
+				new BuildWrapper(POSIX_WRAPPER, WINDOWS_WRAPPER, windows));
 	}
 
 	private void assertFrontMatterIsWellFormed(String skill, String name) {

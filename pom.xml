@@ -25,7 +25,7 @@
 		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
 		<!-- One version for the whole toolchain: the protobuf-java runtime and protoc. -->
 		<protobuf.version>4.36.0</protobuf.version>
-		<grpc.version>1.83.1</grpc.version>
+		<grpc.version>1.84.0</grpc.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j2.version>2.26.1</log4j2.version>
 		<!-- Ahead of the Boot BOM's 11.0.24, which Trivy fails the Docker workflow on:

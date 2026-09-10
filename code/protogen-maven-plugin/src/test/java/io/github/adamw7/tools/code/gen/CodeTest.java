@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.maven.plugin.logging.Log;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,6 +42,27 @@ import com.google.protobuf.GeneratedMessage;
 public class CodeTest {
 
 	private static final String OUTPUT_PKG = "com/x/out";
+
+	private static Log log;
+
+	/**
+	 * Charges this class's one-time initialisation to a lifecycle method instead of
+	 * to whichever test Jupiter happens to run first. Three costs land on a first
+	 * caller and never again: Mockito generating and loading a proxy class,
+	 * protobuf bringing up its descriptor pool, and the generator loading the
+	 * classes that turn a descriptor into source. Together they are close to a
+	 * second on an idle machine, and they belong to no single test — CI charged all
+	 * of them to {@code refusesEditionsSyntax}, which then overran the 5-second
+	 * per-test deadline under the parallel build's contention while its siblings
+	 * ran in milliseconds. Running one full generation here pays all three against
+	 * the 10-second lifecycle-method deadline, the one meant to cover shared setup,
+	 * so each test then measures only the work it is asserting on.
+	 */
+	@BeforeAll
+	static void warmUpTheGeneratorAndItsDependencies(@TempDir Path warmUp) {
+		log = mock(Log.class);
+		generate(warmUp, Proto2Message.class);
+	}
 
 	/** Carries the syntax {@code Code} accepts today, so the accepting branch is asserted and not assumed. */
 	public abstract static class Proto2Message extends GeneratedMessage {
@@ -166,8 +188,8 @@ public class CodeTest {
 		assertFalse(Files.exists(nested), "the nested directory itself must go with its contents");
 	}
 
-	private void generate(Path generatedSources, Class<? extends GeneratedMessage> message) {
-		new Code(mock(Log.class), generatedSources.toString(), OUTPUT_PKG.replace('/', '.'))
+	private static void generate(Path generatedSources, Class<? extends GeneratedMessage> message) {
+		new Code(log, generatedSources.toString(), OUTPUT_PKG.replace('/', '.'))
 				.genBuilders(Set.of(message));
 	}
 

@@ -224,7 +224,7 @@
 			<dependency>
 				<groupId>org.eclipse.jdt</groupId>
 				<artifactId>org.eclipse.jdt.core</artifactId>
-				<version>3.46.0</version>
+				<version>3.47.0</version>
 			</dependency>
 			<!-- The Eclipse platform tree resolves at several versions along different paths; pin
 			     the highest so dependencyConvergence is satisfied. -->

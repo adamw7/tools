@@ -924,6 +924,9 @@ configuration is `.github/renovate.json`:
   images stay pinned and current. What Renovate still raises for actions is the
   major move — `@v7` to `@v8` — as one grouped PR, and that is the one to read
   release notes for.
+- One **customManager** tracks `tomcat.version` in the root pom, the one version
+  here that no dependency declaration names — see the `tomcat.version` paragraph
+  under *Maven conventions* for why it is pinned and how it gets retired.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
   dashboard approval — a Maven 4 API is wired in on purpose while the build is
   pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.
@@ -1303,6 +1306,18 @@ Skill: `maven-conventions`.
   web starter pulls in reaches the distribution's `lib/`, where `docker.yml`'s
   Trivy scan sees it. Overriding Boot's property is how a Tomcat CVE gets fixed
   ahead of the BOM; remove the override once Boot ships that version or later.
+  Neither half of that is left to memory, because the same thing that makes the
+  override necessary — no declaration anywhere — is what hides it. Renovate's
+  maven manager cannot see a property no dependency mentions, so
+  `.github/renovate.json` matches this one with a **customManager** against
+  `org.apache.tomcat.embed:tomcat-embed-core`; the next Tomcat release arrives as
+  a pull request rather than as a red weekly Trivy run. And the root-only
+  `enforce-tomcat-override` execution names the Boot release the override was
+  measured against, as a `requireProperty` regex over `project.parent.version`,
+  so the next Boot bump fails the build carrying the decision with it: delete the
+  override if the BOM has caught up, raise the named Boot version if it has not.
+  That execution is `inherited=false` — every other module's parent is this pom,
+  not Boot's, so inherited it would fail in all twelve.
 - The root pom's parent is `spring-boot-starter-parent`, so its
   `<dependencyManagement>` and `<pluginManagement>` reach every module. Two of
   its entries are deliberately neutralised in the root pom rather than lived

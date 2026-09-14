@@ -99,5 +99,19 @@
       ],
       "dependencyDashboardApproval": true
     }
+  ],
+  "customManagers": [
+    {
+      "description": "No module declares a Tomcat artifact - the embedded Tomcat arrives through Boot's web starter - so the maven manager never sees the tomcat.version override the root pom holds ahead of the BOM for a CVE. Match the property itself, so a new Tomcat release arrives as a PR rather than as a red weekly Trivy run.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pom\\.xml$/"
+      ],
+      "matchStrings": [
+        "<tomcat\\.version>(?<currentValue>[^<]+)</tomcat\\.version>"
+      ],
+      "depNameTemplate": "org.apache.tomcat.embed:tomcat-embed-core",
+      "datasourceTemplate": "maven"
+    }
   ]
 }

@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -468,6 +470,22 @@ class PomEnforcerInstallerTest {
 		String result = Files.readString(pom);
 		assertTrue(result.contains("<claudeMdSection>## Overview</claudeMdSection>"), result);
 		assertTrue(result.contains("<claudeMdSection>## Running it</claudeMdSection>"), result);
+	}
+
+	/**
+	 * A heading is the operator's text, not markup: written verbatim, the ampersand of
+	 * {@code ## Build & Test} left a POM no XML parser — Maven's included — accepts.
+	 */
+	@Test
+	void escapesMarkupInASectionHeading(@TempDir Path dir) throws Exception {
+		Path pom = write(dir, POM_WITH_BUILD);
+
+		assertTrue(installer.install(pom, List.of("## Build & Test <fast>")));
+
+		String result = Files.readString(pom);
+		assertTrue(result.contains("<claudeMdSection>## Build &amp; Test &lt;fast&gt;</claudeMdSection>"), result);
+		assertEquals("## Build & Test <fast>", DocumentBuilderFactory.newInstance().newDocumentBuilder()
+				.parse(pom.toFile()).getElementsByTagName("claudeMdSection").item(0).getTextContent());
 	}
 
 	@Test

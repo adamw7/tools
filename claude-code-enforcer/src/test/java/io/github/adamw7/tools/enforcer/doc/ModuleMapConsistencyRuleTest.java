@@ -67,6 +67,19 @@ class ModuleMapConsistencyRuleTest {
 		assertDoesNotThrow(ruleFor(POM, "data and context are documented.\n")::execute);
 	}
 
+	/**
+	 * Maven accepts a module written with a trailing slash; cut at that slash, its
+	 * name was empty, which every document "mentions", so the module went unchecked.
+	 */
+	@Test
+	void looksUpAModuleWrittenWithATrailingSlashByItsName() {
+		String pom = "<project><modules><module>data/</module><module>code\\context\\</module></modules></project>";
+
+		assertFailure(EnforcerRuleException.class, ruleFor(pom, "Only the data module.\n")::execute,
+				"does not mention module 'context'");
+		assertDoesNotThrow(ruleFor(pom, "The data and context modules.\n")::execute);
+	}
+
 	@Test
 	void ignoresCommentedOutModules() {
 		assertDoesNotThrow(ruleFor(POM, "data and context, but never the disabled one by name.\n")::execute);

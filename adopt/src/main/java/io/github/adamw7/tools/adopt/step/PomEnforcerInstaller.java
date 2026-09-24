@@ -388,7 +388,18 @@ public class PomEnforcerInstaller {
 				element("version", ruleVersion.get())));
 	}
 
+	/**
+	 * The text is escaped because not all of it is this installer's: a section heading
+	 * comes from the operator's {@code --section}, and {@code ## Build & Test} spliced
+	 * in verbatim left a POM Maven refuses to parse — every build of the adopted
+	 * repository broken by its own guard.
+	 */
 	private String element(String name, String text) {
-		return "<" + name + ">" + text + "</" + name + ">";
+		return "<" + name + ">" + escaped(text) + "</" + name + ">";
+	}
+
+	/** The ampersand first, so the entities the other two are replaced with are not escaped again. */
+	private static String escaped(String text) {
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 }

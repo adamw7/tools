@@ -165,6 +165,22 @@ class BaselineTest {
 		assertEquals(List.of(), assertDoesNotThrow(() -> Baseline.read(file, projectDir()).staleEntries(violations)));
 	}
 
+	/**
+	 * Every line is stripped as it is read back, so a violation ending in whitespace —
+	 * here a quoted value's trailing line break, folded to a space — has to be compared
+	 * stripped too, or the entry recorded for it never matches it again.
+	 */
+	@Test
+	void aViolationEndingInWhitespaceIsSuppressedOnReadBack() {
+		File file = tempDir.resolve("baseline.txt").toFile();
+		List<String> violations = List.of("settings.json declares an unknown entry: Bash\n", "  indented one ");
+
+		assertDoesNotThrow(() -> Baseline.write(file, violations, projectDir()));
+
+		assertEquals(List.of(), assertDoesNotThrow(() -> Baseline.read(file, projectDir()).newViolations(violations)));
+		assertEquals(List.of(), assertDoesNotThrow(() -> Baseline.read(file, projectDir()).staleEntries(violations)));
+	}
+
 	/** The project base directory a rule would be configured with, as {@code ${project.basedir}}. */
 	private File projectDir() {
 		return tempDir.toFile();

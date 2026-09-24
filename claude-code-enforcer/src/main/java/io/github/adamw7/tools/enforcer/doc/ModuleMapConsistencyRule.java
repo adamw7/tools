@@ -34,6 +34,7 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 
 	private static final Pattern XML_COMMENT = Pattern.compile("(?s)<!--.*?-->");
 	private static final Pattern MODULE = Pattern.compile("<module>\\s*([^<]+?)\\s*</module>");
+	private static final Pattern TRAILING_SEPARATORS = Pattern.compile("/+$");
 	private static final String IDENTIFIER_BOUNDARY_BEFORE = "(?<![A-Za-z0-9_-])";
 	private static final String IDENTIFIER_BOUNDARY_AFTER = "(?![A-Za-z0-9_-])";
 
@@ -111,10 +112,17 @@ public class ModuleMapConsistencyRule extends ClaudeCodeEnforcerRule {
 				.matcher(content).find();
 	}
 
-	/** The last path segment, so a nested reactor entry such as {@code code/context} is looked up as {@code context}. */
+	/**
+	 * The last path segment, so a nested reactor entry such as {@code code/context} is
+	 * looked up as {@code context}. Trailing separators are dropped first, and a
+	 * backslash counts as one: Maven accepts {@code <module>data/</module>} and
+	 * {@code code\context}, and cutting either at its last {@code /} alone left an
+	 * empty or whole-path name — the empty one "mentioned" by any document at all, so
+	 * the module was never checked.
+	 */
 	private String moduleName(String module) {
-		int slash = module.lastIndexOf('/');
-		return slash < 0 ? module : module.substring(slash + 1);
+		String path = TRAILING_SEPARATORS.matcher(module.replace('\\', '/')).replaceAll("");
+		return path.substring(path.lastIndexOf('/') + 1);
 	}
 
 	private boolean isIgnored(String name) {

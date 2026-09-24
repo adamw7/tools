@@ -144,8 +144,15 @@ final class Baseline {
 			return new Signatures(base.toAbsolutePath().normalize().toString());
 		}
 
+		/**
+		 * Stripped as well as folded, because {@link #addAccepted} strips every line it
+		 * reads back: a violation beginning or ending in whitespace — a quoted value's
+		 * trailing line break, folded to a space, included — was recorded with it, read
+		 * back without it, and so never matched again, never suppressed and reported
+		 * as stale for ever after.
+		 */
 		String normalize(String signature) {
-			return LINE_BREAK.matcher(signature.replace(base, BASE_DIR_TOKEN)).replaceAll(" ");
+			return LINE_BREAK.matcher(signature.replace(base, BASE_DIR_TOKEN)).replaceAll(" ").strip();
 		}
 	}
 }

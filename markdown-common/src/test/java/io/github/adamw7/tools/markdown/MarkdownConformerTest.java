@@ -9,10 +9,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The reshape as anything but a CLAUDE.md asks for it. The CLAUDE.md contract has
- * its own tests in the adopt module, which also runs the real enforcer rule over
- * the output; these cover what generalising the contract added — another title,
- * no companion document, and no required sections at all.
+ * The reshape as anything but a CLAUDE.md asks for it: another title, no companion
+ * document, and no required sections at all. How it reads fences, indented code and
+ * comments is {@link MarkdownConformerReadingTest}'s; the CLAUDE.md contract's own
+ * choices are tested in the adopt module, which also runs the real enforcer rule over
+ * the output.
  */
 class MarkdownConformerTest {
 

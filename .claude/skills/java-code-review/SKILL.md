@@ -113,8 +113,10 @@ asked whether a pom *depended on* the enforcer artifact rather than whether it
 The reading now lives once, in `markdown-common`, which both modules depend on.
 That is the fix this defect shape usually wants: when two implementations must
 agree, look for the third place they could both depend on before reaching for a
-test that compares them. What survives as a copy is the *required sections* list
-— data, guarded by `ClaudeMdConformerContractTest`.
+test that compares them. The contract's values — title, companion document,
+required sections — live there too, in `ClaudeMdContract`, and
+`ClaudeMdConformerContractTest` still runs the real rule over the conformer's
+output.
 
 **Ask:**
 - Is there a second implementation of this format, constant, or predicate

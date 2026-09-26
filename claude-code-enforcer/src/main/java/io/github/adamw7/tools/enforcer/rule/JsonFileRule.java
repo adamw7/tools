@@ -79,14 +79,12 @@ public abstract class JsonFileRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * The parsed file, through {@link DocumentCache} so the four rules that each
-	 * check a section of {@code settings.json} parse it once between them. A failed
-	 * parse is not cached: the next rule to ask needs its violation too.
+	 * The parsed file, through {@link JsonNodes#parseObject(File, String, String, List)}
+	 * so the rules that each check a section of {@code settings.json} parse it once
+	 * between them.
 	 */
 	private Optional<JsonNode> parse(File file, List<String> violations) throws EnforcerRuleException {
-		String content = requireContent(file, description);
-		return DocumentCache.parsed(file,
-				() -> Optional.ofNullable(JsonNodes.parseObject(content, description, violations)));
+		return JsonNodes.parseObject(file, requireContent(file, description), description, violations);
 	}
 
 	/** The JSON file to validate. Injected from the rule configuration. */

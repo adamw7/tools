@@ -114,7 +114,8 @@ abstract class DefinitionFormatRule extends ClaudeCodeEnforcerRule {
 		return checks;
 	}
 
-	void setAutoFix(boolean autoFix) {
+	/** Public so the composite can hand its own {@code autoFix} on; see {@code ProjectParts}. */
+	public void setAutoFix(boolean autoFix) {
 		this.autoFix = autoFix;
 	}
 }

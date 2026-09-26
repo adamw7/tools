@@ -31,9 +31,10 @@ import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
 /**
  * Architecture rules for the enforcer module. They pin the layering that the
  * package structure already follows today: {@code text} is the foundation,
- * {@code rule} builds on it, and the feature packages ({@code definition},
- * {@code doc}, {@code mcp}, {@code settings}) build on {@code rule} without
- * reaching sideways into one another. They also pin what a rule is allowed to
+ * {@code rule} builds on it, the feature packages ({@code definition},
+ * {@code doc}, {@code mcp}, {@code okf}, {@code secret}, {@code settings}) build on
+ * {@code rule} without reaching sideways into one another, and {@code project}
+ * assembles them. They also pin what a rule is allowed to
  * do at build time: read the project, and nothing else — no process, no network,
  * and no write outside the report, the baseline and the front-matter fix a rule
  * was asked for. Only production classes are analysed.
@@ -171,9 +172,9 @@ public class EnforcerArchitectureTest {
 	static final ArchRule oneConfiguredJsonMapper = noClasses()
 			.that().doNotHaveFullyQualifiedName(JSON_NODES)
 			.should().dependOnClassesThat().haveFullyQualifiedName(OBJECT_MAPPER)
-			.because("JsonNodes owns the single mapper configured for the comments and trailing commas "
-					+ "Claude Code's JSON files allow; a rule that built its own would reject a file the "
-					+ "tool itself accepts");
+			.because("JsonNodes owns the single mapper, configured to reject what Claude Code would read "
+					+ "differently from its author — content after the closing brace and a key declared twice; "
+					+ "a rule that built its own with Jackson's defaults would pass exactly those files");
 
 	@ArchTest
 	static final ArchRule rulesDoNotSpawnProcesses = noClasses()

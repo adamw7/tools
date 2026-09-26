@@ -321,9 +321,11 @@ mvn -N validate -DenforceClaudeMd          # 2. quick root-only doc check
 
 `.github/workflows/maven.yml` is the only CI workflow that opts in; ordinary
 builds are unaffected. The same rules run without Maven at all —
-`java -cp tools.claude-code-enforcer.jar:enforcer-api.jar
-io.github.adamw7.tools.enforcer.cli.Main <project-directory>` — which is the path
-for a pre-commit hook or a project built with something else.
+`java -cp <classpath> io.github.adamw7.tools.enforcer.cli.Main <project-directory>`,
+where the classpath is the rule jar plus its compile and `provided` dependencies
+(`markdown-common`, `enforcer-api`, Jackson, SnakeYAML; AGENTS.md shows how to
+build it) — which is the path for a pre-commit hook or a project built with
+something else.
 
 ## Dependencies
 

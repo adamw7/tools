@@ -5,13 +5,17 @@ import java.io.FileFilter;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.markdown.MarkdownText;
+
 /**
  * The file-system helpers the rules share: the null-safe {@link File#listFiles}
- * wrappers, the {@code .md} handling, the "directory must exist" check, and the
- * normalised path a file is keyed by. They live here rather than once per feature
+ * wrappers, the {@code .md} handling, the "directory must exist" check, the
+ * normalised path a file is keyed by, and the cached read every rule takes a file's
+ * text through. They live here rather than once per feature
  * package, since the layering forbids those packages reaching sideways into each
  * other and a helper only one of them owned had to be written twice.
  * <p>
@@ -44,6 +48,15 @@ public final class ProjectFiles {
 		if (directory.exists() && !directory.isDirectory()) {
 			throw new EnforcerRuleException(label + " directory is not a directory: " + directory);
 		}
+	}
+
+	/**
+	 * The file's text with any leading byte-order mark stripped, or empty when it
+	 * cannot be decoded as UTF-8. Read through {@link DocumentCache}, so a file several
+	 * rules check is read once per build however many of them ask.
+	 */
+	public static Optional<String> text(File file) {
+		return DocumentCache.text(file, () -> MarkdownText.readIfText(file));
 	}
 
 	/** The {@code *.md} files directly in {@code directory}, sorted; empty when it cannot be listed. */

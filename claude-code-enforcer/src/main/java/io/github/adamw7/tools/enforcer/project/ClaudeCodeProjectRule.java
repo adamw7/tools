@@ -62,9 +62,11 @@ public class ClaudeCodeProjectRule extends ClaudeCodeEnforcerRule {
 	private List<String> skippedRules;
 
 	/**
-	 * When true, the parts that can repair what they report do so. Passed to the
-	 * document parts rather than set on this rule's own behalf, because a composite
-	 * has no document of its own to repair.
+	 * When true, the parts that can repair what they report do so: the document parts
+	 * reshape {@code CLAUDE.md} and {@code AGENTS.md}, and the skill, sub-agent and
+	 * command parts mend a malformed front matter block. Passed to them rather than set
+	 * on this rule's own behalf, because a composite has no document of its own to
+	 * repair.
 	 */
 	private boolean autoFix;
 

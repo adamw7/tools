@@ -20,9 +20,13 @@ import io.github.adamw7.tools.enforcer.project.ClaudeCodeProjectRule;
  * directly:
  *
  * <pre>{@code
- * java -jar claude-code-enforcer.jar /path/to/project
- * java -jar claude-code-enforcer.jar . --fix --skip okfBundleFormat
+ * java -cp <classpath> io.github.adamw7.tools.enforcer.cli.Main /path/to/project
+ * java -cp <classpath> io.github.adamw7.tools.enforcer.cli.Main . --fix --skip okfBundleFormat
  * }</pre>
+ *
+ * <p>The classpath is the rule jar plus its compile and {@code provided}
+ * dependencies — the jar is not shaded, so {@code java -jar} on it alone cannot
+ * load the Markdown reader or the enforcer API. AGENTS.md shows how to build it.
  *
  * <p>Everything it can be asked is a parameter of {@link ClaudeCodeProjectRule},
  * so the command line and a pom configure one thing rather than two that could

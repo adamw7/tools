@@ -119,13 +119,29 @@ class HooksFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
+	/**
+	 * A hook naming a script that is not there is {@code hookCommandsValid}'s to
+	 * report, which resolves every project-local script a hook runs. Reporting it here
+	 * as well put the same finding in front of the operator twice.
+	 */
 	@Test
-	void failsWhenSettingsReferencesAMissingHookScript() {
+	void leavesAHookNamingAMissingScriptToHookCommandsValid() {
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
 		rule.setProjectDir(tempDir.toFile());
+		rule.setReportUnreferencedScripts(true);
 
-		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
+		assertDoesNotThrow(rule::execute);
+	}
+
+	/** The settings file is read for the unreferenced-scripts report alone, so without it nothing is read. */
+	@Test
+	void readsNoSettingsFileWhenNoReportIsAskedFor() {
+		writeScript("session-start.sh", "#!/bin/sh\n", true);
+		HooksFormatRule rule = ruleFor();
+		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+
+		assertDoesNotThrow(rule::execute);
 	}
 
 	@Test
@@ -165,15 +181,6 @@ class HooksFormatRuleTest {
 		rule.setReportUnreferencedScripts(true);
 
 		assertDoesNotThrow(rule::execute);
-	}
-
-	@Test
-	void failsWhenSettingsReferencesAMissingScriptRelatively() {
-		HooksFormatRule rule = ruleFor();
-		rule.setSettingsFile(settingsReferencing(".claude/hooks/gone.sh"));
-		rule.setProjectDir(tempDir.toFile());
-
-		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	/** A hook chaining two scripts references both, whichever spelling each is written with. */
@@ -276,17 +283,6 @@ class HooksFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenTheSecondScriptOfAChainedCommandIsMissing() {
-		writeScript("first.sh", "#!/bin/sh\n", true);
-		HooksFormatRule rule = ruleFor();
-		rule.setSettingsFile(settingsReferencing("$CLAUDE_PROJECT_DIR/.claude/hooks/first.sh"
-				+ " && $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
-		rule.setProjectDir(tempDir.toFile());
-
-		assertFailure(EnforcerRuleException.class, rule::execute, "missing hook script", "gone.sh");
-	}
-
-	@Test
 	void doesNotTreatASymlinkedScriptPointingOutsideAsInsideTheHooksDirectory() {
 		Path outside = tempDir.resolve("outside.sh");
 		writeString(outside, "#!/bin/sh\n");
@@ -324,6 +320,7 @@ class HooksFormatRuleTest {
 		writeScript("session-start.sh", "#!/bin/sh\n", true);
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+		rule.setReportUnreferencedScripts(true);
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json does not exist");
 	}
@@ -338,6 +335,7 @@ class HooksFormatRuleTest {
 		writeScript("session-start.sh", "#!/bin/sh\n", true);
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(tempDir.resolve("absent.json").toFile());
+		rule.setReportUnreferencedScripts(true);
 		rule.setSeverity("warn");
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json does not exist");
@@ -356,6 +354,7 @@ class HooksFormatRuleTest {
 		TestFiles.writeBytes(settings, new byte[] { (byte) 0xFF, (byte) 0xFE, 0x00, (byte) 0x80 });
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(settings.toFile());
+		rule.setReportUnreferencedScripts(true);
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "settings.json cannot be read as text");
 	}
@@ -367,6 +366,7 @@ class HooksFormatRuleTest {
 		writeString(settings, "{ not json");
 		HooksFormatRule rule = ruleFor();
 		rule.setSettingsFile(settings.toFile());
+		rule.setReportUnreferencedScripts(true);
 
 		assertFailure(EnforcerRuleException.class, rule::execute, "not valid JSON");
 	}
@@ -462,15 +462,6 @@ class HooksFormatRuleTest {
 		assertDoesNotThrow(rule::execute);
 	}
 
-	/** The other half of reading {@code exec}: the script behind it is resolved, so a rename is caught. */
-	@Test
-	void failsWhenExecRunsAMissingHookScript() {
-		HooksFormatRule rule = ruleFor();
-		rule.setSettingsFile(settingsReferencing("exec $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
-
-		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
-	}
-
 	@Test
 	void countsAScriptRunInASubshellAsAReference() {
 		writeScript("a.sh", "#!/bin/sh\necho a\n", true);
@@ -495,15 +486,6 @@ class HooksFormatRuleTest {
 		rule.setReportUnreferencedScripts(true);
 
 		assertDoesNotThrow(rule::execute);
-	}
-
-	@Test
-	void failsWhenAConditionalHookReferencesAMissingScript() {
-		HooksFormatRule rule = ruleFor();
-		rule.setSettingsFile(settingsReferencing("if true; then .claude/hooks/gone.sh; fi"));
-		rule.setProjectDir(tempDir.toFile());
-
-		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing hook script", "gone.sh");
 	}
 
 	@Test

@@ -18,8 +18,10 @@
 	</properties>
 	<build>
 		<plugins>
-			<!-- The rule jar is also the command line: java -jar runs the checks against a project
-			     directory with no Maven build around them. -->
+			<!-- The rule jar is also the command line, io.github.adamw7.tools.enforcer.cli.Main, which
+			     runs the checks against a project directory with no Maven build around them. The jar
+			     is not shaded: run it with java -cp and its compile and provided dependencies on the
+			     class path, as AGENTS.md shows, rather than with java -jar alone. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

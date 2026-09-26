@@ -14,76 +14,55 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.adamw7.tools.enforcer.rule.JsonNodes;
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * The cross-check between the scripts in a hooks directory and the command hooks
- * {@code settings.json} wires to them: a hook that names a script the directory
- * does not hold, and — when asked for — a script the directory holds that no hook
- * names.
+ * {@code settings.json} wires to them: a script the directory holds that no hook
+ * names. A hook naming a script that does not exist is {@link HookCommandsValidRule}'s
+ * to report — it resolves every project-local script a hook runs, inside the hooks
+ * directory or not — so reporting it here too only said the same thing twice.
  * <p>
  * It answers a different question from {@link HooksFormatRule} with different
  * inputs: it reads settings.json, walks its hooks through {@link HookCommands}, and
  * resolves what they name through {@link ClaudeProjectDir}. Keeping it beside the
  * rule leaves that rule to the scripts themselves, and puts the path
  * canonicalisation the containment check needs where nothing else reads past it.
- * A settings.json that cannot be decoded is reported rather than thrown, the rules
- * that own that file failing on it in their own right.
+ * The file is read and parsed through the same per-build cache the
+ * {@code settings.json} rules use. One that cannot be decoded is reported rather
+ * than thrown, the rules that own that file failing on it in their own right.
  */
 final class HookWiring {
 
 	private final File hooksDir;
 	private final File settingsFile;
 	private final File projectDir;
-	private final boolean reportUnreferencedScripts;
 
-	HookWiring(File hooksDir, File settingsFile, File projectDir, boolean reportUnreferencedScripts) {
+	HookWiring(File hooksDir, File settingsFile, File projectDir) {
 		this.hooksDir = hooksDir;
 		this.settingsFile = settingsFile;
 		this.projectDir = projectDir;
-		this.reportUnreferencedScripts = reportUnreferencedScripts;
 	}
 
-	/** Collects everything the wiring between {@code scripts} and the settings file gets wrong. */
+	/** Collects every script in {@code scripts} that no command hook of the settings file runs. */
 	void collectViolations(List<File> scripts, List<String> violations) {
-		Optional<String> content = MarkdownText.readIfText(settingsFile);
+		Optional<String> content = ProjectFiles.text(settingsFile);
 		if (content.isEmpty()) {
 			violations.add("settings.json cannot be read as text: " + settingsFile);
 			return;
 		}
-		JsonNode settings = JsonNodes.parseObject(content.get(), "settings.json", violations);
-		if (settings == null) {
-			return;
-		}
-		Set<Path> referenced = collectReferencedScripts(settings, violations);
-		collectUnreferencedScripts(scripts, referenced, violations);
+		JsonNodes.parseObject(settingsFile, content.get(), "settings.json", violations)
+				.ifPresent(settings -> collectUnreferencedScripts(scripts, referencedScripts(settings), violations));
 	}
 
-	private Set<Path> collectReferencedScripts(JsonNode settings, List<String> violations) {
+	private Set<Path> referencedScripts(JsonNode settings) {
 		Set<Path> referenced = new LinkedHashSet<>();
 		for (String command : HookCommands.from(settings)) {
-			addReferencedScript(command, referenced, violations);
+			referenced.addAll(scriptsInHooksDir(command));
 		}
 		return referenced;
 	}
 
-	private void addReferencedScript(String command, Set<Path> referenced, List<String> violations) {
-		for (Path script : scriptsInHooksDir(command)) {
-			referenced.add(script);
-			collectMissingScriptViolation(script, violations);
-		}
-	}
-
-	private void collectMissingScriptViolation(Path script, List<String> violations) {
-		if (!script.toFile().exists()) {
-			violations.add("settings.json references a missing hook script: " + script);
-		}
-	}
-
 	private void collectUnreferencedScripts(List<File> scripts, Set<Path> referenced, List<String> violations) {
-		if (!reportUnreferencedScripts) {
-			return;
-		}
 		for (File script : scripts) {
 			if (!referenced.contains(canonical(script.toPath()))) {
 				violations.add("hook script is not referenced by any settings.json hook: " + script);

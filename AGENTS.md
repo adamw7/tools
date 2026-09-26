@@ -1209,13 +1209,18 @@ repository before wiring anything. The jar is therefore also a command line,
 running the same `claudeCodeProject` composite a pom would configure:
 
 ```bash
-java -cp tools.claude-code-enforcer.jar:enforcer-api.jar \
+mvn -q -pl claude-code-enforcer -am install -DskipTests
+mvn -q -f claude-code-enforcer dependency:build-classpath -DincludeScope=compile \
+    -Dmdep.outputFile=target/cli.classpath
+java -cp "claude-code-enforcer/target/tools.claude-code-enforcer-<version>.jar:$(cat claude-code-enforcer/target/cli.classpath)" \
      io.github.adamw7.tools.enforcer.cli.Main . --fix --skip okfBundleFormat
 ```
 
-`enforcer-api` is on the classpath because it is a `provided` dependency of the
-rule jar — Maven supplies it in the wiring that matters, and a standalone run has
-to bring it. Every option is a parameter of that rule (`--skip`, `--fix`,
+The rule jar is not shaded, so `java -jar` on it alone fails on the first class it
+needs from elsewhere. `-DincludeScope=compile` collects its compile dependencies
+(`markdown-common`, Jackson, SnakeYAML) together with the `provided` ones
+(`enforcer-api`, `javax.inject`) — Maven supplies those in the wiring that
+matters, and a standalone run has to bring them. Every option is a parameter of that rule (`--skip`, `--fix`,
 `--warn`, `--budget`, `--report`, `--debug`), so the command line and a pom
 configure one thing rather than two that could drift; an unrecognised option is
 refused rather than ignored. Failure is reported by throwing, as everywhere else

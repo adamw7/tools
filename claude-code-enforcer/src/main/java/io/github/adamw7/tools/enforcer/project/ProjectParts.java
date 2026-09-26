@@ -39,7 +39,7 @@ import io.github.adamw7.tools.enforcer.settings.SettingsJsonValidRule;
  * there — whereas nothing was named here, so an absent {@code .claude/commands}
  * means a project with no slash commands. A part starts checking the day the
  * project grows the thing it checks. The module map is checked only where the pom
- * declares one, for the same reason.
+ * declares one and a document is there to carry it, for the same reason.
  *
  * <p>{@code contextBudget} is the one part no file can size, so the composite
  * supplies the convention — a {@code CLAUDE.md} is loaded into every session, so
@@ -89,12 +89,23 @@ final class ProjectParts {
 				rule.setMaxBytes(contract.budgetBytes());
 			});
 		}
-		if (layout.declaresModules()) {
-			ifFile(parts, layout.pom(), ModuleMapConsistencyRule::new, rule -> {
-				rule.setPomFile(layout.pom());
-				rule.setDocFiles(presentOf(claudeMd, agentsMd));
-			});
+		addModuleMapPart(parts, presentOf(claudeMd, agentsMd));
+	}
+
+	/**
+	 * The module map is checked where the pom declares one and a document is there to
+	 * carry it. A project with neither {@code CLAUDE.md} nor {@code AGENTS.md} has no
+	 * map to keep in step, and pointing the rule at no document at all is a
+	 * build-setup mistake it would report instead of a verdict.
+	 */
+	private void addModuleMapPart(List<ClaudeCodeEnforcerRule> parts, List<File> documents) {
+		if (documents.isEmpty() || !layout.declaresModules()) {
+			return;
 		}
+		ifFile(parts, layout.pom(), ModuleMapConsistencyRule::new, rule -> {
+			rule.setPomFile(layout.pom());
+			rule.setDocFiles(documents);
+		});
 	}
 
 	private void configureClaudeMd(ClaudeMdFormatRule rule, File claudeMd) {
@@ -108,13 +119,20 @@ final class ProjectParts {
 		}
 	}
 
+	/** The definition parts repair a malformed front matter block when the document parts repair theirs. */
 	private void addDefinitionParts(List<ClaudeCodeEnforcerRule> parts) {
-		ifDirectory(parts, layout.skillsDir(), SkillFilesExistRule::new,
-				rule -> rule.setSkillsDir(layout.skillsDir()));
-		ifDirectory(parts, layout.agentsDir(), SubAgentFormatRule::new,
-				rule -> rule.setAgentsDir(layout.agentsDir()));
-		ifDirectory(parts, layout.commandsDir(), CommandFormatRule::new,
-				rule -> rule.setCommandsDir(layout.commandsDir()));
+		ifDirectory(parts, layout.skillsDir(), SkillFilesExistRule::new, rule -> {
+			rule.setSkillsDir(layout.skillsDir());
+			rule.setAutoFix(contract.autoFix());
+		});
+		ifDirectory(parts, layout.agentsDir(), SubAgentFormatRule::new, rule -> {
+			rule.setAgentsDir(layout.agentsDir());
+			rule.setAutoFix(contract.autoFix());
+		});
+		ifDirectory(parts, layout.commandsDir(), CommandFormatRule::new, rule -> {
+			rule.setCommandsDir(layout.commandsDir());
+			rule.setAutoFix(contract.autoFix());
+		});
 		addUniquenessParts(parts);
 	}
 
@@ -150,11 +168,7 @@ final class ProjectParts {
 			rule.setSettingsFile(settings);
 			rule.setProjectDir(layout.projectDir());
 		});
-		ifDirectory(parts, layout.hooksDir(), HooksFormatRule::new, rule -> {
-			rule.setHooksDir(layout.hooksDir());
-			rule.setSettingsFile(settings);
-			rule.setProjectDir(layout.projectDir());
-		});
+		ifDirectory(parts, layout.hooksDir(), HooksFormatRule::new, rule -> rule.setHooksDir(layout.hooksDir()));
 		ifFile(parts, layout.gitignore(), LocalSettingsIgnoredRule::new,
 				rule -> rule.setGitignoreFile(layout.gitignore()));
 	}

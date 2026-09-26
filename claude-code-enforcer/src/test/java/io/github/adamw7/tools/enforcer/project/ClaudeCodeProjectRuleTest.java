@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.enforcer.project;
 
 import static io.github.adamw7.tools.test.TestFiles.createDirectory;
+import static io.github.adamw7.tools.test.TestFiles.readString;
 import static io.github.adamw7.tools.test.TestFiles.writeString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -233,6 +234,60 @@ class ClaudeCodeProjectRuleTest {
 		rule.setAutoFix(true);
 
 		assertDoesNotThrow(rule::execute);
+	}
+
+	/**
+	 * A malformed front matter block is a mechanical repair too, and {@code --fix}
+	 * promises every repair a part can make — not only the documents'.
+	 */
+	@Test
+	void autoFixReachesTheDefinitionParts() {
+		writeString(tempDir.resolve("CLAUDE.md"), VALID_CLAUDE_MD);
+		Path skill = tempDir.resolve(".claude/skills/review/SKILL.md");
+		writeString(skill, "----\nname: review\ndescription: Reviews a change.\n----\nBody.\n");
+		ClaudeCodeProjectRule rule = ruleFor(tempDir);
+		rule.setAutoFix(true);
+
+		assertDoesNotThrow(rule::execute);
+		assertTrue(readString(skill).startsWith("---\nname: review"), readString(skill));
+	}
+
+	/**
+	 * Hooks without a settings file are a project that has scripts and has not wired
+	 * them yet. Nothing named that settings file, so its absence is not the build-setup
+	 * mistake a part pointed at it would report.
+	 */
+	@Test
+	void checksHookScriptsInAProjectWithNoSettingsFile() {
+		writeString(tempDir.resolve("CLAUDE.md"), VALID_CLAUDE_MD);
+		Path hook = tempDir.resolve(".claude/hooks/session-start.sh");
+		writeString(hook, "#!/bin/sh\nexit 0\n");
+		assertTrue(hook.toFile().setExecutable(true) || hook.toFile().canExecute());
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
+	/**
+	 * An aggregator pom with neither CLAUDE.md nor AGENTS.md has no module map to keep
+	 * in step, so the part is left out rather than pointed at no document at all.
+	 */
+	@Test
+	void skipsTheModuleMapWhenNoDocumentIsThereToCarryIt() {
+		writeString(tempDir.resolve("pom.xml"), "<project><modules><module>core</module></modules></project>\n");
+		writeString(tempDir.resolve(".gitignore"), ".claude/settings.local.json\n");
+
+		assertDoesNotThrow(ruleFor(tempDir)::execute);
+	}
+
+	@Test
+	void checksTheModuleMapOfAnAggregatorThatHasADocument() {
+		writeString(tempDir.resolve("pom.xml"), "<project><modules><module>core</module></modules></project>\n");
+		writeString(tempDir.resolve("CLAUDE.md"), VALID_CLAUDE_MD);
+
+		EnforcerRuleException thrown = assertThrows(EnforcerRuleException.class, ruleFor(tempDir)::execute);
+
+		assertTrue(thrown.getMessage().contains("[moduleMapConsistency]"), thrown.getMessage());
+		assertTrue(thrown.getMessage().contains("'core'"), thrown.getMessage());
 	}
 
 	private ClaudeCodeProjectRule ruleFor(Path projectDir) {

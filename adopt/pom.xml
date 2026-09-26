@@ -59,8 +59,6 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<mainClass>io.github.adamw7.tools.adopt.mcp.Main</mainClass>
-					<executable>true</executable>
-					<layout>JAR</layout>
 				</configuration>
 			</plugin>
 		</plugins>

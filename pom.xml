@@ -277,6 +277,19 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<!-- The three MCP servers (data, code/context, adopt) package the same way; each module
+				     names only its mainClass. The executable server jar is attached under the boot
+				     classifier, so the main artifact stays an ordinary library jar rather than a nested
+				     BOOT-INF layout every consumer inherits. The version is Spring Boot's parent's. -->
+				<plugin>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-maven-plugin</artifactId>
+					<configuration>
+						<executable>true</executable>
+						<layout>JAR</layout>
+						<classifier>boot</classifier>
+					</configuration>
+				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
@@ -900,8 +913,8 @@
 			     secrets in is tracked by issue #350. -->
 			<id>release</id>
 			<properties>
-				<!-- Central rejects the executable bundle spring-boot:repackage produces, so publish
-				     the plain library jar instead. -->
+				<!-- Central is sent the plain library jars only: skipping repackage keeps the
+				     boot-classified executable server jars out of the bundle. -->
 				<spring-boot.repackage.skip>true</spring-boot.repackage.skip>
 			</properties>
 			<build>

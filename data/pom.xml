@@ -58,13 +58,6 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<mainClass>io.github.adamw7.tools.data.uniqueness.mcp.Main</mainClass>
-					<executable>true</executable>
-					<layout>JAR</layout>
-					<jvmArguments>-Djdk.tls.client.protocols=TLSv1.3</jvmArguments>
-					<!-- Attach the executable server jar under a classifier, so the main artifact
-					     stays an ordinary library jar rather than a nested BOOT-INF layout every
-					     consumer inherits. -->
-					<classifier>boot</classifier>
 				</configuration>
 			</plugin>
 		</plugins>

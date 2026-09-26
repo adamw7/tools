@@ -49,7 +49,9 @@ From the root of the repository:
 mvn clean install
 ```
 
-This creates an executable JAR in `adopt/target/tools.adopt-{version}.jar`.
+This creates an executable JAR in `adopt/target/tools.adopt-{version}-boot.jar`. The
+`boot` classifier keeps the executable server separate from `tools.adopt-{version}.jar`,
+which stays an ordinary library jar.
 
 ## Tool Specification
 
@@ -171,7 +173,7 @@ For any MCP client that supports stdio transport:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/adopt/target/tools.adopt-{version}.jar"
+        "/absolute/path/to/tools/adopt/target/tools.adopt-{version}-boot.jar"
       ]
     }
   }

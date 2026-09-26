@@ -59,7 +59,9 @@ From the root of the repository:
 mvn clean install
 ```
 
-This creates an executable JAR in `code/context/target/tools.code.context-{version}.jar`.
+This creates an executable JAR in `code/context/target/tools.code.context-{version}-boot.jar`. The
+`boot` classifier keeps the executable server separate from `tools.code.context-{version}.jar`,
+which stays an ordinary library jar.
 
 ## Tool Specifications
 
@@ -191,13 +193,13 @@ generated:
 ### stdio (default)
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar
+java -jar code/context/target/tools.code.context-{version}-boot.jar
 ```
 
 ### streamable HTTP
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=streamable-http
+java -jar code/context/target/tools.code.context-{version}-boot.jar --transport.mode=streamable-http
 ```
 
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
@@ -206,7 +208,7 @@ configurable through `server.port`).
 ### stateless HTTP
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=stateless-http
+java -jar code/context/target/tools.code.context-{version}-boot.jar --transport.mode=stateless-http
 ```
 
 The MCP endpoint is served at `http://localhost:8082/mcp`, the same as
@@ -281,7 +283,7 @@ constrained by design:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/code/context/target/tools.code.context-{version}.jar"
+        "/absolute/path/to/tools/code/context/target/tools.code.context-{version}-boot.jar"
       ]
     }
   }

@@ -18,8 +18,10 @@ import io.github.adamw7.tools.data.structure.internal.Wrapper;
 
 /**
  * A {@link Map} using open addressing with double hashing: entries live directly
- * in one array, a removal leaves a tombstone behind, and the table grows while a
- * slot is still free so every probe chain ends on an empty one.
+ * in one prime-sized array and a removal leaves a tombstone behind. Before an
+ * insert would load the table past {@link DoubleHashing#MAX_LOAD_FACTOR} &mdash;
+ * counting tombstones, which lengthen probe chains as live entries do &mdash; it
+ * is rehashed, growing only when the live entries need the room.
  *
  * <p>It extends {@link AbstractMap}, so {@code equals}, {@code hashCode} and
  * {@code toString} are the ones {@link Map} specifies over {@link #entrySet()} —
@@ -46,6 +48,9 @@ public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 	protected Wrapper<K, V>[] array;
 	protected int size;
 
+	/** The slots no longer empty: the live entries plus the tombstones among them. */
+	private int occupied;
+
 	/**
 	 * Counts the structural modifications — an insertion, a removal, a rehash or a
 	 * clear, but not the overwrite of an existing key — so the view iterators can
@@ -62,6 +67,7 @@ public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 		int newSize = DoubleHashing.tableSize(size);
 		array = new Wrapper[newSize];
 		prime = Primes.findMaxSmallerThan(newSize);
+		occupied = 0;
 	}
 
 	public OpenAddressingMap() {
@@ -131,26 +137,54 @@ public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 		return DoubleHashing.sequence(key.hashCode(), prime, array.length);
 	}
 
+	/**
+	 * Stores {@code value} under {@code key}. A live entry for the key is overwritten
+	 * in place and never triggers a rehash; the key's own tombstone is revived, which
+	 * occupies no further slot; only filling an empty slot can overload the table,
+	 * and that rehashes it first.
+	 */
 	@Override
 	public V put(K key, V value) {
 		Objects.requireNonNull(key, "Key is null");
-		checkIfResizeNeeded();
-		DoubleHashing.Probe probe = probe(key);
-		for (int i = 0; i < array.length; ++i) {
-			int hash = probe.slot(i);
-			Wrapper<K, V> wrapper = array[hash];
-			if (wrapper == null) {
-				return insert(hash, key, value);
-			} else if (wrapper.getKey().equals(key)) {
-				return wrapper.isRemoved() ? insert(hash, key, value) : overwrite(hash, key, value);
-			} // removed entries with a different key are skipped
+		int slot = slotFor(key);
+		if (slot < 0) {
+			rehash(newSize());
+			return put(key, value);
 		}
-		resize();
-		return put(key, value);
+		Wrapper<K, V> wrapper = array[slot];
+		if (valid(wrapper)) {
+			return overwrite(slot, key, value);
+		}
+		if (wrapper == null && DoubleHashing.overloaded(occupied + 1, array.length)) {
+			rehash(DoubleHashing.rehashedSize(array.length, size));
+			return put(key, value);
+		}
+		return insert(slot, key, value);
 	}
 
-	private V insert(int hash, K key, V value) {
-		array[hash] = new Wrapper<>(key, value);
+	/**
+	 * The slot {@code key} belongs in: the one already holding it, live or tombstoned,
+	 * else the first empty slot of its probe chain. Tombstones of other keys are
+	 * skipped, because the key may still sit further along. {@code -1} when the chain
+	 * meets neither, which the load factor keeps from happening on a prime-sized table.
+	 */
+	private int slotFor(K key) {
+		DoubleHashing.Probe probe = probe(key);
+		for (int i = 0; i < array.length; ++i) {
+			int slot = probe.slot(i);
+			Wrapper<K, V> wrapper = array[slot];
+			if (wrapper == null || wrapper.getKey().equals(key)) {
+				return slot;
+			}
+		}
+		return -1;
+	}
+
+	private V insert(int slot, K key, V value) {
+		if (array[slot] == null) {
+			occupied++;
+		}
+		array[slot] = new Wrapper<>(key, value);
 		size++;
 		modCount++;
 		return null;
@@ -162,21 +196,15 @@ public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 		return previous;
 	}
 
-	private void checkIfResizeNeeded() {
-		if (size + 1 >= array.length) {
-			resize();
-		}
-	}
-
 	/**
-	 * Rehashes into a larger table. It counts as a structural modification in its
-	 * own right, because it replaces the array an iterator is walking even when the
-	 * put that triggered it only overwrote an existing key.
+	 * Rehashes the live entries into a table of {@code newSize} slots, dropping the
+	 * tombstones. It counts as a structural modification in its own right, because it
+	 * replaces the array an iterator is walking.
 	 */
-	private void resize() {
+	private void rehash(int newSize) {
 		modCount++;
 		Wrapper<K, V>[] old = array;
-		initArray(newSize());
+		initArray(newSize);
 		size = 0;
 		for (Wrapper<K, V> wrapper : old) {
 			if (valid(wrapper)) {
@@ -202,9 +230,10 @@ public class OpenAddressingMap<K, V> extends AbstractMap<K, V> {
 		map.forEach(this::put);
 	}
 
+	/** Empties the map and keeps its current capacity, as {@link java.util.HashMap#clear()} does. */
 	@Override
 	public void clear() {
-		initArray(size >= array.length ? newSize() : Math.max(size, 1));
+		initArray(array.length);
 		size = 0;
 		modCount++;
 	}

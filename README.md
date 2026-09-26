@@ -712,7 +712,7 @@ alternative when you want a plain map without the per-entry node objects of
 separate chaining.
 
 ```java
-Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 64
+Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 67, the prime at or above 64
 map.put("a", 1);
 map.put("b", 2);
 map.get("a");          // 1
@@ -726,16 +726,21 @@ How it works:
   `h1 + i * h2` (modulo the array length), which spreads probes better than
   linear probing and avoids primary clustering. `h1`/`h2` are derived from the
   key's `hashCode()` and a prime chosen as the largest prime smaller than the
-  array length.
+  array length. The array length is itself prime, so every step is coprime with
+  it and a probe sequence visits every slot before repeating one.
 - **Tombstones for removal**: `remove` marks a slot as removed rather than
   clearing it, so probe sequences that ran *through* that slot still find the
   entries placed after it. `put` reuses the first free slot and a never-used
   (`null`) slot terminates a lookup.
-- **Automatic resizing**: when the array is about to fill up, it grows by a
-  `1.2` factor and all live entries are re-hashed into the new array (tombstones
-  are dropped in the process). The initial capacity can be set via
-  `new OpenAddressingMap<>(size)` (minimum effective size is 3); a
-  non-positive size is rejected with `IllegalArgumentException`.
+- **Automatic resizing**: before an insert would fill more than 75% of the
+  array — tombstones included, since they lengthen probe chains just as live
+  entries do — the live entries are re-hashed into a fresh array and the
+  tombstones dropped. The array doubles (rounded up to a prime) when the live
+  entries need the room, and keeps its size when it was tombstones filling it.
+  Overwriting an existing key never resizes, and `clear()` keeps the current
+  capacity. The initial capacity can be set via `new OpenAddressingMap<>(size)`
+  (rounded up to a prime, at least 3); a non-positive size is rejected with
+  `IllegalArgumentException`.
 
 It extends `java.util.AbstractMap`, so `equals`, `hashCode` and `toString` are
 the ones `Map` specifies over the entry set — a map holding the same entries as a
@@ -764,7 +769,7 @@ value, so all of the open-addressing behaviour (double hashing, tombstone
 removal and automatic resizing) is **reused rather than re-implemented**.
 
 ```java
-Set<String> set = new OpenAddressingSet<>(); // default capacity 64
+Set<String> set = new OpenAddressingSet<>(); // default capacity 67, as for the map
 set.add("a");          // true  (newly added)
 set.add("a");          // false (already present)
 set.contains("a");     // true
@@ -796,9 +801,10 @@ int[] keys = map.keys(); // live keys, unboxed
 It deliberately does **not** implement `java.util.Map`, because that interface is
 defined in terms of `Object` keys and would reintroduce the very boxing this
 class exists to avoid; instead it mirrors the relevant map operations with
-primitive `int` keys. Unlike `OpenAddressingMap`, **`null` values are stored
-faithfully** and reported by `containsKey(int)` — only `get(int)` cannot tell a
-stored `null` from an absent key. It is **not thread-safe**.
+primitive `int` keys. It sizes, loads and resizes its table exactly as
+`OpenAddressingMap` does. As there, **`null` values are stored faithfully** and
+reported by `containsKey(int)` — only `get(int)` cannot tell a stored `null` from
+an absent key. It is **not thread-safe**.
 
 ### Network kill-switch
 

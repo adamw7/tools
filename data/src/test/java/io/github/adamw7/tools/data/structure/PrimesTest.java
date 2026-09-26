@@ -45,6 +45,15 @@ public class PrimesTest {
 	}
 
 	@Test
+	public void findsTheSmallestPrimeAtOrAboveTheBound() {
+		assertEquals(2, Primes.findMinAtLeast(-5));
+		assertEquals(2, Primes.findMinAtLeast(2));
+		assertEquals(11, Primes.findMinAtLeast(8));
+		assertEquals(67, Primes.findMinAtLeast(67));
+		assertEquals(7919, Primes.findMinAtLeast(7908));
+	}
+
+	@Test
 	public void negativeTooLowNumber() {
 		IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> Primes.findMaxSmallerThan(2), "Expected findMaxSmallerThan method to throw, but it didn't");
 

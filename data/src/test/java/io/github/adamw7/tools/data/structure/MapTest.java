@@ -453,71 +453,78 @@ public class MapTest {
 	}
 
 	@Test
-	public void growsOnePutBeforeTheTableWouldFill() {
-		// The table grows while one slot is still free rather than once it is full, so
-		// a probe chain always terminates on an empty slot. Pinning the exact capacity
-		// either side of the trigger is what keeps the growth policy from drifting: a
-		// table that waited for the last slot, or grew a put early, still passes every
-		// test that only checks the entries survive.
+	public void growsOncePastTheLoadFactor() {
+		// A requested size of 8 becomes an 11-slot table, the smallest prime at or above
+		// it. It holds 8 entries within the 0.75 load factor (8 <= 8.25); the ninth
+		// doubles it and rounds up to the next prime, 23. Pinning the exact capacity
+		// either side of the trigger keeps the growth policy from drifting unnoticed.
 		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
-		for (int i = 0; i < 7; ++i) {
+		for (int i = 0; i < 8; ++i) {
 			map.put(i, "v" + i);
 		}
-		assertEquals(7, map.size());
-		assertEquals(8, map.capacity(), "the seventh entry still fits the original table");
-
-		map.put(7, "v7");
 		assertEquals(8, map.size());
-		assertEquals(9, map.capacity(), "the eighth entry grows the table by one slot");
-		for (int i = 0; i < 8; ++i) {
+		assertEquals(11, map.capacity(), "the eighth entry still fits the original table");
+
+		map.put(8, "v8");
+		assertEquals(9, map.size());
+		assertEquals(23, map.capacity(), "the ninth entry doubles the table");
+		for (int i = 0; i < 9; ++i) {
 			assertEquals("v" + i, map.get(i));
 		}
 	}
 
 	@Test
-	public void churnOfDistinctKeysGrowsTheTableEvenWhileEmpty() {
+	public void overwritingAKeyNeverGrowsTheTable() {
+		// A put that only replaces a value occupies no new slot, so it must not rehash:
+		// doing so would also invalidate an iterator over a map that did not change shape.
+		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
+		for (int i = 0; i < 8; ++i) {
+			map.put(i, "v" + i);
+		}
+		Iterator<Integer> keys = map.keySet().iterator();
+		for (int i = 0; i < 8; ++i) {
+			assertEquals("v" + i, map.put(i, "w" + i));
+		}
+		assertEquals(11, map.capacity(), "a full table overwritten in place keeps its size");
+		assertNotNull(keys.next(), "overwrites are not structural modifications, so the iterator stays valid");
+	}
+
+	@Test
+	public void churnOfDistinctKeysRehashesWithoutGrowing() {
 		// A tombstone can only be revived by its own key, so churning distinct keys
-		// leaves one behind on every cycle until no slot is empty. The table must then
-		// grow to clear them, even though it holds nothing.
+		// leaves one behind on every cycle. The tombstones count towards the load
+		// factor, and once they cross it the table is rehashed to clear them - at its
+		// current size, since the map itself holds nothing.
 		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
 		int initialCapacity = map.capacity();
-		for (int key = 0; key < 30; ++key) {
+		for (int key = 0; key < 1_000; ++key) {
 			map.put(key, "v" + key);
 			map.remove(key);
 		}
 		assertEquals(0, map.size());
 		assertTrue(map.isEmpty());
-		assertTrue(map.capacity() > initialCapacity,
-				"tombstones from distinct keys must force the table to grow");
+		assertEquals(initialCapacity, map.capacity(), "tombstones alone must not grow the table");
 
-		map.put(999, "last");
-		assertEquals("last", map.get(999), "the map still works once the tombstones are cleared");
+		map.put(999_999, "last");
+		assertEquals("last", map.get(999_999), "the map still works once the tombstones are cleared");
 		assertEquals(1, map.size());
 	}
 
 	@Test
-	public void clearResizesToTheSizeTheMapHeld() {
-		// clear() rebuilds the array at the size the map held rather than reusing the
-		// grown one, so clearing a table that grew hands the memory back.
+	public void clearKeepsTheCurrentCapacity() {
+		// clear() keeps the table it has, as HashMap.clear() and
+		// IntKeyOpenAddressingMap.clear() do, so refilling a cleared map does not
+		// repeat the growth it already went through.
 		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
-		for (int i = 0; i < 5; ++i) {
+		for (int i = 0; i < 20; ++i) {
 			map.put(i, "v" + i);
 		}
-		assertEquals(8, map.capacity());
+		int grownCapacity = map.capacity();
 
 		map.clear();
 		assertEquals(0, map.size());
-		assertEquals(5, map.capacity(), "the cleared table shrinks to the size it held");
-	}
-
-	@Test
-	public void clearOnAnEmptyMapShrinksToTheMinimumTable() {
-		// An array of 2 would force prime == 1, so 3 is the floor a cleared empty map
-		// lands on rather than 0.
-		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
-		map.clear();
-		assertEquals(0, map.size());
-		assertEquals(3, map.capacity());
+		assertEquals(grownCapacity, map.capacity());
+		assertFalse(map.containsKey(0));
 	}
 
 	@ParameterizedTest
@@ -653,19 +660,19 @@ public class MapTest {
 	}
 
 	@Test
-	public void aGrowingPutFailsTheIteratorEvenWhenItOnlyOverwrites() {
-		// The rehash replaces the array the iterator walks, so it is a structural
-		// modification in its own right even though no entry was added.
+	public void aGrowingPutFailsTheIterator() {
+		// The rehash replaces the array the iterator walks, so the iterator must not
+		// carry on over the stale table.
 		OpenAddressingMap<Integer, String> map = new OpenAddressingMap<>(8);
-		for (int i = 0; i < 7; ++i) {
+		for (int i = 0; i < 8; ++i) {
 			map.put(i, "v" + i);
 		}
 		Iterator<Integer> iterator = map.keySet().iterator();
 		iterator.next();
 
-		map.put(0, "overwritten"); // the table is one put away from growing
+		map.put(8, "v8"); // the table is at its load factor, so this put grows it
 
-		assertEquals(7, map.size());
+		assertEquals(23, map.capacity());
 		assertThrows(ConcurrentModificationException.class, iterator::next);
 	}
 }

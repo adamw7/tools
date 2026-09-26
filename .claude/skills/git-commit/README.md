@@ -6,7 +6,8 @@
 
 ## Description
 
-Helps Claude write clear, concise, and conventional Git commit messages for Java projects.
+Helps Claude write clear, concise, and conventional Git commit messages for this
+repository, scoped by its real modules.
 
 ---
 
@@ -23,11 +24,11 @@ Helps Claude write clear, concise, and conventional Git commit messages for Java
 ```
 > view .claude/skills/git-commit/SKILL.md
 > "Commit these changes"
-→ fix(plugin-loader): prevent NPE when directory missing
+→ fix(source.db): close the statement when a read stops early
 ```
 
 ---
 
 ## Notes / Tips
 
-- Best used after staging changes in a Java project
+- Best used after staging the changes, one module or concern per commit

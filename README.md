@@ -45,6 +45,22 @@ consistent and in their expected shape:
 - **`agentsMdFormat`** (`AgentsMdFormatRule`) — applies the same structural
   checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
   every required section heading.
+- **`moduleMapConsistency`** (`ModuleMapConsistencyRule`) — requires every
+  `<module>` of the aggregator pom (commented-out ones ignored) to be mentioned,
+  by its last path segment, in each configured document, so adding a module
+  without documenting it fails the build. It checks presence only;
+  `ignoredModules` exempts one, and a pom declaring no modules is reported as a
+  build-setup mistake.
+- **`contextBudget`** (`ContextBudgetRule`) — caps every configured file (and
+  every `*.md` under configured directories) at `maxBytes`, `maxLines` and/or
+  `maxTokens`. `CLAUDE.md` is loaded into every session, so the fix for a
+  violation is moving detail into `AGENTS.md` or a skill.
+- **`memoryImports`** (`MemoryImportsRule`) — checks that the `@path` imports of
+  `CLAUDE.md` resolve on disk, without cycles and no deeper than `maxDepth`
+  (default 5, Claude Code's own limit). Imports are recognised the way Claude
+  Code evaluates them — outside code fences and code spans, and only for a token
+  written as a path or ending in an `importExtensions` extension — so an
+  `@anthropic-ai/claude-code` install line is not mistaken for one.
 - **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
   directory under `.claude/skills` contains a non-empty `SKILL.md` that opens
   with a YAML front matter block declaring every required key (`name`,
@@ -71,6 +87,12 @@ consistent and in their expected shape:
   assert policy on `permissions.allow`: `requiredPermissions` must all be
   present and `forbiddenPermissions` must all be absent, so a project can mandate
   a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
+- **`permissionsFormat`** (`PermissionsFormatRule`) — checks each entry of the
+  `allow`, `deny` and `ask` lists in `.claude/settings.json` is a non-blank
+  `Tool` or `Tool(specifier)` — a malformed `Bash(mvn *` grants nothing and fails
+  silently at runtime — and reports duplicates and an entry in both `allow` and
+  `deny`. `allowedTools` rejects a mistyped tool, and `forbiddenEntryPatterns`
+  bans an over-broad grant such as `Bash(*)` by its shape.
 - **`hookCommandsValid`** (`HookCommandsValidRule`) — validates the `hooks`
   section of `.claude/settings.json`: every event must map to an array of groups,
   each group must carry a `hooks` array, and every hook must declare a non-blank
@@ -122,12 +144,10 @@ consistent and in their expected shape:
   non-empty, start with a `#!` shebang (`requireShebang`), and carry the
   executable bit (`requireExecutable`), and an optional `allowedExtensions`
   whitelist rejects a stray file. Where `hookCommandsValid` validates the JSON
-  shape of the `hooks` section, this rule validates the scripts themselves; when
-  a `settingsFile` is configured it also cross-checks the wiring, so a command
-  hook whose project-local path — `$CLAUDE_PROJECT_DIR`-rooted or plain
-  repository-relative — lands in the hooks directory must point
-  at a script that exists there, and `reportUnreferencedScripts` flags a script
-  no hook references. An absent `hooksDir` is a pass because hooks are optional.
+  shape of the `hooks` section and that every script a hook runs exists, this
+  rule validates the scripts themselves; with a `settingsFile` configured,
+  `reportUnreferencedScripts` also flags a script in the directory that no hook
+  runs. An absent `hooksDir` is a pass because hooks are optional.
 - **`uniqueDescriptions`** (`UniqueDescriptionsRule`) — reads the `description`
   from the front matter of every sub-agent (`*.md`), command (`*.md`), and skill
   (`SKILL.md`) in the configured `commandsDir`, `agentsDir`, and `skillsDir`, and
@@ -145,6 +165,19 @@ consistent and in their expected shape:
   be configured, and any directory that is configured must exist. Uniqueness is
   checked across all configured directories at once, so a command that clashes
   with a skill is caught just like two commands that clash.
+- **`noSecrets`** (`NoSecretsRule`) — scans the configured files and directories
+  for literal credentials: Anthropic, AWS, GitHub and Slack token formats and
+  private key blocks by default, and `secretPatterns` adds regexes of your own.
+  A match is reported with its file, line and kind but only its first few
+  characters, so the build log never republishes the secret.
+- **`localSettingsIgnored`** (`LocalSettingsIgnoredRule`) — checks the
+  configured `.gitignore` covers each `ignoredPaths` entry (by default
+  `.claude/settings.local.json`, the personal settings file), honouring
+  negations, anchoring and globs as git does.
+- **`pluginFormat`** (`PluginFormatRule`) — validates
+  `.claude-plugin/plugin.json` when a project ships one: valid JSON declaring
+  every `requiredKeys` entry, a kebab-case `name`, a dotted `version` and a
+  non-empty `description`, with `allowedKeys` reporting typos.
 - **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
   is a regular expression with one capturing group; the captured value must
@@ -159,6 +192,22 @@ consistent and in their expected shape:
   simply does not repeat is ignored — the README is a curated, example-heavy view
   and may document a subset — so only a value present in both files that disagrees
   fails the build.
+- **`claudeCodeProject`** (`ClaudeCodeProjectRule`) — all of the above from a
+  `projectDir` alone. It finds each input at the conventional path Claude Code
+  itself uses, runs only the parts whose input is present, and prefixes every
+  violation with the part that found it; `skippedRules` switches a part off.
+  `crossDocConsistency` and `readmeConsistency` are left out, since they take
+  patterns only a particular project can supply. This is the rule another
+  project wires, and the one `adopt` installs.
+
+Every rule takes a `severity` (`error` by default, or `warn` to log without
+failing), an optional `reportFile` for an HTML report, and an optional
+`baselineFile` that suppresses violations already accepted, so a rule can be
+introduced into a project that does not pass it yet. All three have build-wide
+defaults: `-Dclaude.enforcer.severity`, `-Dclaude.enforcer.reportDir` and
+`-Dclaude.enforcer.baselineDir`. The same rules also run without Maven, through
+`io.github.adamw7.tools.enforcer.cli.Main`, for a pre-commit hook or a project
+built with something else; [AGENTS.md](AGENTS.md) shows the class path it needs.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks. It
@@ -249,7 +298,7 @@ Solution:
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
 	<!-- Use the latest release: https://github.com/adamw7/tools/releases/latest -->
-	<version>2.5.0</version>
+	<version>2.6.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
 		<pkgs>
@@ -821,9 +870,14 @@ offline — e.g. no accidental calls out while loading and checking local data.
 boolean changed = Switch.off(); // true the first time, false if already off
 ```
 
-`Switch.off()` installs a default `ProxySelector` that refuses every proxy
-selection by throwing `UnsupportedOperationException("The network is off")`, so
-any subsequent attempt to open an outbound connection fails fast. The method is:
+`Switch.off()` seals the network on two layers: a default `ProxySelector` that
+refuses every proxy selection by throwing `UnsupportedOperationException("The
+network is off")`, which stops proxy-aware clients such as `HttpURLConnection` and
+`HttpClient`, and a `SocketImplFactory` that refuses to create any client
+`Socket`, which stops code that dials directly. So any subsequent attempt to open
+an outbound connection fails fast. The one gap is an NIO `SocketChannel` taken
+straight from a `SelectorProvider`, which cannot be replaced once the JVM has
+loaded it. The method is:
 
 - **One-way** — there is no `on()`; once off, the JVM stays offline. Apply it
   early, only when you really mean to seal the process.
@@ -882,7 +936,11 @@ Because it opens the pull request through the GitHub CLI, an authenticated `gh`
 must be on the `PATH` alongside `git` and `claude`. Launch it through `exec:java`
 so Maven puts the full runtime classpath (log4j2 and the rest) on the command — a
 bare `java -cp adopt/target/classes` omits the dependency jars and fails at
-start-up with a `NoClassDefFoundError` for the log4j `LogManager`:
+start-up with a `NoClassDefFoundError` for the log4j `LogManager`. This is the
+one `-pl` used without `-am`: `exec:java` is a goal rather than a lifecycle phase,
+so `-am` would run it in every upstream module too, where there is no main class
+to run. The sibling modules therefore come from the local repository, so run
+`mvn install -DskipTests` once first:
 
 ```bash
 mvn -pl adopt exec:java \
@@ -1047,17 +1105,18 @@ derived checkout directory, and the feature-branch name):
 
 ```java
 AdoptionOptions options = AdoptionOptions.defaults();
-CommandRunner runner = new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()),
-        options.retries());
+CommandRunner runner = CommandRunners.forRun(options);
 GitHubRepoAdopter.withDefaultPipeline(runner, options)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace), new AdoptionReport());
 ```
 
 `AdoptionOptions` is how a run is configured — the pull request's metadata, the
 starter assets, the rule version to pin, whether it is a dry run, how long one
-command may take, and how many further attempts one the network refused earns. Both entry points build one, so the command line and the
-MCP tool cannot drift apart on what an omitted option means, and the pipeline
-factory does not grow a parameter per switch.
+command may take, and how many further attempts one the network refused earns.
+Both entry points build one, and both build their command runner from it through
+`CommandRunners.forRun`, so the command line and the MCP tool cannot drift apart
+on what an omitted option means, and the pipeline factory does not grow a
+parameter per switch.
 
 The report is a parameter rather than a return value alone, so a run that fails
 part-way still leaves the caller holding the steps that did complete and the
@@ -1225,8 +1284,8 @@ A set of conventions is shared across modules:
 - **No cycles between packages** — `slices().matching(...).should().beFreeOfCycles()`
   keeps the package graph acyclic in each module.
 - **Loggers are constants** — every `org.apache.logging.log4j.Logger` field must
-  be `private static final` (the context module relaxes this to `private final`),
-  because a logger is a shared, immutable, class-scoped collaborator.
+  be `private static final` in every module, because a logger is a shared,
+  immutable, class-scoped collaborator.
 - **`*Exception` types really are exceptions** — any class whose simple name ends
   with `Exception` must be assignable to `java.lang.Exception`.
 - **`Abstract`-prefixed names** — a top-level abstract class must have a simple
@@ -1234,9 +1293,9 @@ A set of conventions is shared across modules:
   at a glance.
 - **Logging goes through log4j2, not the console or the JDK** — ArchUnit's
   `GeneralCodingRules` forbid access to `System.out`/`System.err`, throwing
-  generic exceptions, and using `java.util.logging`; libraries additionally must
-  never call `System.exit`. The `data` module tightens this further, also
-  rejecting the JDK's own `System.Logger` so all logging stays on log4j2.
+  generic exceptions, and using `java.util.logging`; the shared rule also rejects
+  the JDK's own `System.Logger`, so all logging stays on log4j2, and libraries
+  must never call `System.exit`.
   `protogen-maven-plugin` is the one exemption, and it has a rule of its own
   saying so: a Maven plugin reports through `AbstractMojo.getLog()`, which is
   what honours `-q` and `-X` and attributes a line to the plugin in the reactor
@@ -1281,9 +1340,9 @@ design:
   `System.exit`.
 - **[`claude-code-enforcer`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/architecture/EnforcerArchitectureTest.java)** — a `layeredArchitecture` pins the module's layers
   (`text` is the foundation, `rule` builds on it, and the feature packages
-  `definition`/`doc`/`mcp`/`settings` build on `rule` without reaching sideways
-  into one another), and every concrete `*Rule` must extend the shared
-  `ClaudeCodeEnforcerRule` base.
+  `definition`/`doc`/`mcp`/`okf`/`secret`/`settings` build on `rule` without
+  reaching sideways into one another, while `project` assembles them), and every
+  concrete `*Rule` must extend the shared `ClaudeCodeEnforcerRule` base.
 - **[`adopt`](adopt/src/test/java/io/github/adamw7/tools/adopt/architecture/AdoptArchitectureTest.java)** — the `command` runner layer must not depend on the
   `step` package, so the reusable command abstraction stays unaware of the
   adoption steps that build on it; and every concrete `*Step` in `step` must
@@ -1305,10 +1364,11 @@ into the `PER_CLASS` lifecycle).
 
 Run them for a single module with, for example:
 ```
-mvn -pl data -am test
+mvn -pl data -am package
 ```
 (`-am` is required — a bare `mvn -pl data test` fails the root pom's
-`ReactorModuleConvergence` enforcer rule.)
+`ReactorModuleConvergence` enforcer rule — and so is a phase past `test`: `data`
+requires `mcp-common` by the automatic module name its jar carries.)
 or across the whole repository as part of `mvn install`.
 
 ## Integration tests
@@ -1450,9 +1510,13 @@ mvn install
 ## Releasing
 In order to release a new version - X you need to:
 1. Change the revision property to X in root pom.xml
-2. Commit and push
-3. Check if all builds pass
-4. Release and mark as latest in GitHub
+2. Move the supported-versions table in [SECURITY.md](SECURITY.md) onto X — both
+   cells, since only the latest release line is supported
+3. Commit and push
+4. Check if all builds pass
+5. Release and mark as latest in GitHub
+
+[AGENTS.md](AGENTS.md#releasing) covers what the release then publishes, and where.
 
 ## License
 

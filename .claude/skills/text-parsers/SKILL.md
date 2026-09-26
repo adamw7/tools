@@ -228,8 +228,9 @@ in its column before calling it done.
 
 ## References
 - `markdown-common/src/main/java/io/github/adamw7/tools/markdown/`
-  — `MarkdownDocument`, `MarkdownText`; shared by the enforcer and by `adopt`,
-  and dependency-free so it can be
+  — `MarkdownDocument`, `MarkdownText`, `ClaudeMdContract`; shared by the
+  enforcer and by `adopt`, and dependency-free so either can read through it
+  without inheriting the other's dependencies
 - `claude-code-enforcer/src/main/java/io/github/adamw7/tools/enforcer/text/`
   — `FrontMatter`, `FrontMatterFixer`, `NameConvention`
 - `.../enforcer/doc/ImportGraph.java`, `.../enforcer/settings/CommandTokens.java`

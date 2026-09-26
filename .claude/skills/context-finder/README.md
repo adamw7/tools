@@ -27,8 +27,8 @@ serializers, OKF bundles, and the four MCP tools over them.
 ```
 > view .claude/skills/context-finder/SKILL.md
 > "Assemble the context for KeyFinder within a 5000-token budget"
-→ ProjectSources.load(root) → new BudgetedContext(new Finder(containers),
-  new SubwordTokenEstimator(), 5000).find(root, depth)
+→ new ProjectSources(Language.JAVA).load(root) → new BudgetedContext(
+  new Finder(containers), new SubwordTokenEstimator(), 5000).find(rootClass, depth)
 ```
 
 ---

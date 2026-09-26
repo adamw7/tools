@@ -15,8 +15,8 @@ verifies it, pushes the branch, and opens a pull request. The default branch is
 never written to. The tool answers with a JSON report of the run: the
 repository, the branch, the pull request URL, and the completed steps.
 
-One call can adopt a list of repositories, one after another, sharing the
-workspace and branch name. A repository whose adoption fails does not strand the
+One call can adopt a list of repositories, one after another or up to eight at
+once (`parallel`), sharing the workspace and branch name. A repository whose adoption fails does not strand the
 ones behind it: the batch runs to the end and the report says which landed, the
 result being marked as an error when any of them did not. Each repository claims
 its checkout directory inside its own adoption, so a second repository of the list
@@ -77,10 +77,9 @@ which stays an ordinary library jar.
   assets (`AGENTS.md`, `.claude/settings.json`, a session-start hook,
   `.mcp.json`, an `@claude`-mention GitHub Actions workflow, and the
   `.claude/skills/build-and-test` and `.claude/skills/claude-md` starter skills,
-  whose
-  bodies name the build system the guard was wired into and the command that
-  runs it). A skill whose name the project's own commands, sub-agents or skills
-  already claim is left out.
+  whose bodies name the build system the guard was wired into and the command
+  that runs it). A skill whose name the project's own commands, sub-agents or
+  skills already claim is left out.
 - `rule_version` (string, optional): the released `claude-code-enforcer` version
   to wire into an adopted Maven project; defaults to the version of the `tools`
   build running the server, and a `-SNAPSHOT` is refused either way
@@ -97,6 +96,23 @@ which stays an ordinary library jar.
   each. Defaults to 2, bounded to 10, and 0 reports the first failure. Only a
   transport-level refusal is retried — an authentication failure, a 404, a
   rejected push and a rate limit are answered as they happen
+- `parallel` (integer, optional): how many repositories of the call to adopt at
+  once, from 1 (the default, one after another) to 8. Every log line carries the
+  repository it belongs to, so a parallel batch stays readable
+- `verify_only` (boolean, optional): report whether each repository is still
+  adopted and its guard still passes, without adopting anything — it clones and
+  reads, and writes nothing at all
+- `keep_workspace` (boolean, optional): keep every checkout after a successful
+  adoption. By default a checkout whose adoption landed is removed, since its
+  product is the pushed branch and the pull request; a failed or dry-run
+  checkout is always kept
+- `rules` (string, optional): how much of the adopted repository's Claude Code
+  configuration the wired guard checks — `project` (the default) for all of it
+  through `claudeCodeProject`, or `minimal` for the `CLAUDE.md` format alone. A
+  name that is neither is refused rather than read as the default
+- `claude_md_sections` (comma-separated string, or an array of strings,
+  optional): the `CLAUDE.md` headings the guard demands and the reshape conforms
+  to. Defaults to what the detected build system asks for
 
 **Returns** a JSON report. Each commit the adoption makes is named for what it
 commits (`commit:claude-md`, `commit:guard`, `commit:assets`), so a run that

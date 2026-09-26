@@ -47,7 +47,7 @@ The server uses:
   or stateless HTTP (`--transport.mode=stateless-http`), which serves the same
   `/mcp` endpoint without keeping a session. Any other value is refused at
   startup with a message naming the three.
-- **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
+- **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.1
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
 

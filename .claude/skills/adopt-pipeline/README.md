@@ -37,6 +37,6 @@ CLI flags, and how batch runs isolate failures.
 
 - A dry run omits `PushStep` and `PullRequestStep` outright — it does not run
   them in a no-op mode.
-- Only `CloneStep` may read the credentialled clone URL; everything else uses
-  `displayUrl()`.
+- Only `CloneStep` and `PushStep` may read the credentialled clone URL;
+  everything else uses `displayUrl()`.
 - One failing repository must never abort the rest of a batch.

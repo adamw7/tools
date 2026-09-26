@@ -44,7 +44,8 @@
 				</configuration>
 			</plugin>
 			<!-- Runs the pipeline CLI with the module's full runtime classpath: mvn -pl adopt
-			     exec:java. -->
+			     exec:java, without -am, after one mvn install -DskipTests. exec:java is a goal,
+			     not a phase, so -am would try to run it in every upstream module. -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>

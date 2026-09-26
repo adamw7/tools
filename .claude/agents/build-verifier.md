@@ -51,7 +51,7 @@ module in the reactor and surefire fails the upstream ones where nothing matches
 
 ```bash
 cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'
-mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -pl data -am package -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 The first needs `mvn install -DskipTests` to have run once, since a module

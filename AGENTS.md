@@ -175,17 +175,17 @@ What is worth knowing before changing any of it:
   `PullRequestOptions`) carries the pull-request metadata, the starter assets,
   the rule version, the dry-run flag, the per-command timeout and the retry
   count, and both entry points hand it to the same pipeline factory, so the CLI
-  and the MCP tool cannot drift. `CliArguments` declares the command line to **picocli**, binding the
-  repository, workspace and branch options to methods — the first so a batch
-  mixing `--repo` and `--repos` keeps the order it was written in, the other two
-  because each shares a field with its positional and the last one named has to
-  win — and everything else straight to a field; refusals are re-raised as an
-  `IllegalArgumentException`
-  carrying the hand-written usage line, with the parser's own message masked
-  through `Redaction` and its exception left unchained — it quotes the argument it
-  could not place, which for this command can be a credentialled clone URL.
-  `--help` is answered with the usage line even when another argument on the same
-  line could not be read.
+  and the MCP tool cannot drift. `CliArguments` declares the command line to
+  **picocli**, binding the repository, workspace and branch options to methods —
+  the first so a batch mixing `--repo` and `--repos` keeps the order it was
+  written in, the other two because each shares a field with its positional and
+  the last one named has to win — and everything else straight to a field;
+  refusals are re-raised as an `IllegalArgumentException` carrying the
+  hand-written usage line, with the parser's own message masked through
+  `Redaction` and its exception left unchained — it quotes the argument it could
+  not place, which for this command can be a credentialled clone URL. `--help`
+  is answered with the usage line even when another argument on the same line
+  could not be read.
 - **The wired rule version may not be a `-SNAPSHOT`** (`EnforcerRuleVersion`): it
   resolves only from the adopting machine's local repository and would leave the
   adopted project's CI unable to build.
@@ -211,27 +211,27 @@ What is worth knowing before changing any of it:
   answering `@claude` mentions — never overwriting a file the repository already
   has.
 - **`--assets` also creates the starter skills.** `SkillsStep` writes
-  `.claude/skills/build-and-test/SKILL.md` and `.claude/skills/claude-md/SKILL.md`
-  beside
-  the assets, into the same commit. It is its own step rather than two more
-  entries in `AdoptionAssets.DEFAULTS` because a skill's body depends on the
-  checkout's build system: it names the build the guard was wired into
-  (`BuildSystem.buildDescription()`, so the catch-all does not tell a project it
-  "is built with github-actions"), the headings that guard demands, and the
-  command `VerifyStep` runs — relativized, since `verifyCommand` answers a
-  checkout's wrapper by absolute path and committing that would put the adoption
-  host's workspace path into somebody else's repository. What the adoption does
-  not know — how the project builds, tests and lints — is left as headings for its
-  maintainers, the bargain the session-start hook stub already strikes. A skill
-  whose name the project's own commands, sub-agents or skills already claim is
-  not installed at all: the guard fails a repository where two definitions answer
-  to one name, and the name is the project's. The build skill is called
-  `build-and-test` for a related reason: a skill's name is a directory name, and
-  `build` is one of the most widely ignored words in a JVM project's `.gitignore`,
-  so four of the seven repositories `ForeignRepositoryAdoptionIT` adopts excluded
+  `.claude/skills/build-and-test/SKILL.md` and
+  `.claude/skills/claude-md/SKILL.md` beside the assets, into the same commit.
+  It is its own step rather than two more entries in `AdoptionAssets.DEFAULTS`
+  because a skill's body depends on the checkout's build system: it names the
+  build the guard was wired into (`BuildSystem.buildDescription()`, so the
+  catch-all does not tell a project it "is built with github-actions"), the
+  headings that guard demands, and the command `VerifyStep` runs — relativized,
+  since `verifyCommand` answers a checkout's wrapper by absolute path and
+  committing that would put the adoption host's workspace path into somebody
+  else's repository. What the adoption does not know — how the project builds,
+  tests and lints — is left as headings for its maintainers, the bargain the
+  session-start hook stub already strikes. A skill whose name the project's own
+  commands, sub-agents or skills already claim is not installed at all: the
+  guard fails a repository where two definitions answer to one name, and the
+  name is the project's. The build skill is called `build-and-test` for a
+  related reason: a skill's name is a directory name, and `build` is one of the
+  most widely ignored words in a JVM project's `.gitignore`, so four of the
+  seven repositories `ForeignRepositoryAdoptionIT` adopts excluded
   `.claude/skills/build/SKILL.md` and `CommitStep` rightly refused to commit
-  around it. Weigh a new skill's name against what a repository ignores, not only
-  against what it already names.
+  around it. Weigh a new skill's name against what a repository ignores, not
+  only against what it already names.
 - **Everything shells out through a `CommandRunner`**, so steps are unit-tested
   without spawning processes; `ProcessCommandRunner` bounds every command with a
   timeout, ten minutes by default and overridable with `--timeout <minutes>`
@@ -415,8 +415,9 @@ mvn install
 # Build without installing (what CI runs)
 mvn -B package
 
-# Run the tests for a single module (-am is required, see below)
-mvn -pl data -am test
+# Run the tests for a single module (-am is required, and package rather than
+# test, see below)
+mvn -pl data -am package
 
 # Build the standalone data-test module. It is not in the root <modules>, so
 # -pl cannot select it; run it from its own directory, with tools.data installed.
@@ -427,7 +428,11 @@ cd data-test && mvn test
 compiles anything: the root pom's `ReactorModuleConvergence` enforcer rule
 rejects a reactor whose module parents are not part of it, and sibling
 `-SNAPSHOT` dependencies (e.g. `mcp-common`) do not resolve from the local
-repository until they are installed. `-am` ("also make") fixes both.
+repository until they are installed. `-am` ("also make") fixes both. Stop at
+`package` rather than `test`: `data` requires `mcp-common` by its automatic
+module name, which is read from that module's **jar**, and a `test`-only reactor
+never builds the jar, so `data` fails to compile with `module not found:
+tools.mcp.common`.
 
 To run a **single test class or method**, note that `-Dtest` applies to every
 module in the reactor, so surefire fails the upstream modules where the pattern
@@ -439,7 +444,7 @@ matches nothing. Use either form:
 cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'
 
 # From the root, telling surefire not to fail the modules with no match
-mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -pl data -am package -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 **Always use `clean` after removing a source of code generation**, so stale
@@ -511,9 +516,9 @@ contention but still catches real work; it is not a budget to spend. A genuinely
 heavier test (shelling out to `protoc`, streaming a large data set) opts out with
 an explicit `@Timeout` carrying a comment that says why. `*IT`s do not inherit
 the limit, and ArchUnit runs on a separate engine the JUnit timeout does not
-apply to. The one module using Mockito (`protogen-maven-plugin`) pre-loads it as
-a surefire `-javaagent`, so the byte-buddy self-attach happens at JVM startup
-rather than inside the first timed test.
+apply to. The two modules using Mockito (`protogen-maven-plugin` and `data`)
+pre-load it as a surefire `-javaagent`, so the byte-buddy self-attach happens at
+JVM startup rather than inside the first timed test.
 
 **Unit tests run a class at a time in parallel.** Surefire turns JUnit's parallel
 execution on with `mode.classes.default = concurrent` but `mode.default =
@@ -549,10 +554,12 @@ one-way and every class engages it before its own first test.
 auto-detection and the `tools.test.network.off` guard property are set only on
 surefire, so the failsafe `*IT`s, which need real network, are unaffected.
 Because `ServiceLoader` ignores `META-INF/services` for a named JPMS module,
-`data` runs its unit tests from the classpath (`<useModulePath>false</useModulePath>`);
-the published artifact stays a proper module. `NetworkOffDuringUnitTestsTest` verifies the switch is already engaged by the
-time a unit test executes. A test opts in explicitly with `@NetworkOff`, which engages the switch regardless of the guard property (so the
-network is off when that test is run from an IDE too).
+`data` runs its unit tests from the classpath
+(`<useModulePath>false</useModulePath>`); the published artifact stays a proper
+module. `NetworkOffDuringUnitTestsTest` verifies the switch is already engaged
+by the time a unit test executes. A test opts in explicitly with `@NetworkOff`,
+which engages the switch regardless of the guard property (so the network is off
+when that test is run from an IDE too).
 
 ### Architecture tests
 
@@ -679,47 +686,46 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   `github/gitignore`, `JakeWharton/timber` and `modelcontextprotocol/servers` —
   chosen for the shapes they put in front of the steps that read a checkout: a
   multi-module Maven build, a Gradle build on the Kotlin DSL and another on the
-  Groovy one, a real `CLAUDE.md`, a real `.claude` directory, a project whose own
-  files already sit where two of the starter assets go, a default branch called
-  neither `main` nor `master`, and a very large flat tree with no build file.
-  Every step test drives its step over a directory this repository laid out, so
-  between them these seven are the only place all three `BuildSystem`s — and both
-  Gradle DSLs — meet build files nobody wrote for them. What is asserted is that
-  the adoption's work is *its own and nothing else*: the pipeline runs to its end
-  on each, the guard that lands is the one the checkout's build files ask for
-  (the enforcer execution spliced into gson's `pom.xml`, the guard task appended
-  to okhttp's `build.gradle.kts` and to timber's `build.gradle`, the workflow and
-  script for the rest) and is written in that script's own DSL — a Kotlin block
-  appended to a Groovy script would register the task the verification looks for
-  and leave the project a build that no longer compiles — the two commits carry
-  only paths `AdoptionAssets.WRITTEN_PATHS` names and the working tree is left
-  clean, the guard commit's diff *removes* nothing the build file already
-  declared, the default branch and the remote are untouched, and a second
-  adoption of the same batch commits nothing. That nothing was published is asked
-  of GitHub itself with `ls-remote`, not only of the clone's tracking refs: a ref
-  in the checkout is evidence about the checkout, and the promise is about seven
-  repositories belonging to other people. The default branch is read from the
-  remote rather than guessed, which only a repository like `timber` — developed
-  on `trunk` — can show: its adoption branch is asserted to have been cut from
-  that branch. The
-  run installs the starter assets too, because `AssetInstaller`'s promise that
-  the project's own version always wins is about a file somebody else keeps at
-  one of their paths, and only a real repository brings one: `claude-code` ships
-  a `claude.yml` workflow of its own and `servers` an `.mcp.json` of its own, so
-  the batch asserts each repository was given exactly the assets it lacked and
-  that both of those files came through byte-identical to the blobs that were
-  cloned. The starter skills land in the same run, and each is asserted to name
-  the guard its own checkout got and no other build system's — the one way a
-  generated file can be wrong on a repository nobody prepared. A last test reads the one document the pipeline reshapes rather than
-  adds beside:
-  `anthropic-quickstarts`' real `CLAUDE.md` is conformed and the real
+  Groovy one, a real `CLAUDE.md`, a real `.claude` directory, a project whose
+  own files already sit where two of the starter assets go, a default branch
+  called neither `main` nor `master`, and a very large flat tree with no build
+  file. Every step test drives its step over a directory this repository laid
+  out, so between them these seven are the only place all three `BuildSystem`s —
+  and both Gradle DSLs — meet build files nobody wrote for them. What is
+  asserted is that the adoption's work is *its own and nothing else*: the
+  pipeline runs to its end on each, the guard that lands is the one the
+  checkout's build files ask for (the enforcer execution spliced into gson's
+  `pom.xml`, the guard task appended to okhttp's `build.gradle.kts` and to
+  timber's `build.gradle`, the workflow and script for the rest) and is written
+  in that script's own DSL — a Kotlin block appended to a Groovy script would
+  register the task the verification looks for and leave the project a build
+  that no longer compiles — the two commits carry only paths
+  `AdoptionAssets.WRITTEN_PATHS` names and the working tree is left clean, the
+  guard commit's diff *removes* nothing the build file already declared, the
+  default branch and the remote are untouched, and a second adoption of the same
+  batch commits nothing. That nothing was published is asked of GitHub itself
+  with `ls-remote`, not only of the clone's tracking refs: a ref in the checkout
+  is evidence about the checkout, and the promise is about seven repositories
+  belonging to other people. The default branch is read from the remote rather
+  than guessed, which only a repository like `timber` — developed on `trunk` —
+  can show: its adoption branch is asserted to have been cut from that branch.
+  The run installs the starter assets too, because `AssetInstaller`'s promise
+  that the project's own version always wins is about a file somebody else keeps
+  at one of their paths, and only a real repository brings one: `claude-code`
+  ships a `claude.yml` workflow of its own and `servers` an `.mcp.json` of its
+  own, so the batch asserts each repository was given exactly the assets it
+  lacked and that both of those files came through byte-identical to the blobs
+  that were cloned. The starter skills land in the same run, and each is
+  asserted to name the guard its own checkout got and no other build system's —
+  the one way a generated file can be wrong on a repository nobody prepared. A
+  last test reads the one document the pipeline reshapes rather than adds
+  beside: `anthropic-quickstarts`' real `CLAUDE.md` is conformed and the real
   `claudeMdFormat` rule then accepts it, the foreign document having been
-  asserted to fail it first.
-  Like `MultiRepoAdoptionIT` it stops short of pushing; it also leaves out
-  `claude init` and the build-toolchain and verify steps, which for a checkout
-  shipping a wrapper would download that project's whole build tool. The Maven
-  guard is pinned to a released `--rule-version`, since the installer refuses to
-  wire a `-SNAPSHOT` into somebody else's POM.
+  asserted to fail it first. Like `MultiRepoAdoptionIT` it stops short of
+  pushing; it also leaves out `claude init` and the build-toolchain and verify
+  steps, which for a checkout shipping a wrapper would download that project's
+  whole build tool. The Maven guard is pinned to a released `--rule-version`,
+  since the installer refuses to wire a `-SNAPSHOT` into somebody else's POM.
 - `claude-code-enforcer`'s `e2e` package runs **real Maven builds**, because
   everything between a pom and a rule's `execute()` is what a unit test assumes:
   artifact resolution, Sisu finding the class behind a `@Named` element, and
@@ -836,7 +842,9 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   module's own filter file, wired in from the module pom — today only
   `data/spotbugs-exclude.xml`, which accepts
   `SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE` on the two JDBC sources that run the
-  caller's query by contract. Every `Match` there names a class, a method and a
+  caller's query by contract, and `PZLA_PREFER_ZERO_LENGTH_ARRAYS` on the
+  read methods whose `null` means "no row", as `IterableDataSource.nextRow`
+  specifies. Every `Match` there names a class, a method and a
   pattern, so the detector still fires anywhere else in the module;
   `SpotBugsExcludeFilterTest` fails the build if one grows broader than that.
 
@@ -909,8 +917,8 @@ updates are a repository *setting* rather than a committed file and have not bee
 switched on; the record flips to `Accepted` when they are. Renovate's
 configuration is `.github/renovate.json`:
 
-- It runs on a **schedule** (Monday before 06:00 UTC, ≤ 5 open PRs, 2 per hour),
-  so ordinary bumps arrive in one weekly batch.
+- It runs on a **schedule** (Monday before 06:00 UTC, ≤ 5 open PRs, no hourly
+  limit), so ordinary bumps arrive in one weekly batch.
 - `vulnerabilityAlerts` and `osvVulnerabilityAlerts` are **off**, so Dependabot
   raises security bumps without a duplicate PR.
 - Artifacts that must move together are **grouped** into one PR: the Maven
@@ -962,11 +970,11 @@ which is why they, not `CLAUDE.md`, are where detail belongs.
 | `maven-conventions` | versions only in the root pom, version-free module poms, the profiles, clean-after-codegen |
 | `testing-conventions` | the surefire timeouts, network-off unit tests, the ArchUnit conventions, JUnit Jupiter only |
 | `java-code-review` | review led by the rules the build fails on, then the defect shapes this repository ships fixes for |
-| `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, the `ClaudeMdConformer` copy, the SnakeYAML-backed `FrontMatter` — and the input that has broken each |
+| `text-parsers` | the invariants of the readers — `MarkdownDocument`, `MarkdownText`, `ImportGraph`, `CommandTokens`, how `ClaudeMdConformer` reads through them, the SnakeYAML-backed `FrontMatter` — and the input that has broken each |
 | `solid-principles` | the per-principle detection heuristics and the refactorings that fix them |
 | `git-commit` | conventional commit messages using this repository's real module scopes |
 
-`text-parsers` and section 9 of `java-code-review` are the bug-finding pair, and
+`text-parsers` and section 2 of `java-code-review` are the bug-finding pair, and
 they are written from this repository's own `fix(...)` history rather than from a
 generic checklist.
 
@@ -1023,10 +1031,10 @@ ignored.
 
 `.claude/settings.json` carries two sections:
 
-- `permissions.allow` pre-approves the commands a session runs constantly — `mvn`
-  (and `PowerShell(mvn *)` for the Windows path), which already covers the
-  `dependency:tree`/`dependency:analyze` reports, the `unzip -l`/`unzip -p`
-  archive inspection, and `Edit`. Each entry must be a well-formed `Tool` or
+- `permissions.allow` pre-approves what a session runs constantly: `mvn` (and
+  `PowerShell(mvn *)` for the Windows path), whose entry already covers the
+  `dependency:tree`/`dependency:analyze` reports; `unzip -l`/`unzip -p` for
+  archive inspection; and `Edit`. Each entry must be a well-formed `Tool` or
   `Tool(specifier)` and must not also appear in `deny`.
 - `hooks.SessionStart` runs `$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh`.
 
@@ -1102,7 +1110,7 @@ Skill: `enforcer-rules`.
 | `noSecrets` | the configured files and directories for literal credentials — Anthropic, AWS, GitHub and Slack token formats plus private key blocks by default; `secretPatterns` adds custom regexes, or replaces the defaults when `useDefaultPatterns` is off. Each match is reported with file, line and kind but only the first characters, so the report never republishes the secret. |
 | `localSettingsIgnored` | the configured `.gitignore` covers each `ignoredPaths` entry (by default `.claude/settings.local.json`), honouring negations, anchoring, directory patterns and `*`/`?`/`**` globs. |
 | `pluginFormat` | `.claude-plugin/plugin.json`, when present: valid JSON with every `requiredKeys` entry, a kebab-case `name`, a dotted `version` and a non-empty `description` — each declared as a JSON string — and `allowedKeys` reporting typos. |
-| `claudeCodeProject` | all of the above, from a `projectDir` alone. It resolves each input by the conventional path Claude Code itself uses, runs only the parts whose input is present, and prefixes every violation with the part that found it. `skippedRules` switches a part off by that name, `claudeMdSections`/`claudeMdReference` pass the document contract through, `claudeMdBudgetBytes` sizes `CLAUDE.md` (32 KB by default, zero to skip), and `autoFix` reaches the document parts. `crossDocConsistency` and `readmeConsistency` are deliberately not included: they take the patterns a particular project needs kept in step, and no convention supplies those. |
+| `claudeCodeProject` | all of the above, from a `projectDir` alone. It resolves each input by the conventional path Claude Code itself uses, runs only the parts whose input is present, and prefixes every violation with the part that found it. `skippedRules` switches a part off by that name, `claudeMdSections`/`claudeMdReference` pass the document contract through, `claudeMdBudgetBytes` sizes `CLAUDE.md` (32 KB by default, zero to skip), and `autoFix` reaches the document and definition parts. `crossDocConsistency` and `readmeConsistency` are deliberately not included: they take the patterns a particular project needs kept in step, and no convention supplies those. |
 
 Rules whose target is optional (`mcpServersValid`, `mcpConfigFormat`,
 `okfBundleFormat`, `pluginFormat`, `noSecrets`, `hooksFormat`) pass on the absent
@@ -1141,8 +1149,8 @@ offers:
 - **Build-wide defaults for all three** — `-Dclaude.enforcer.severity`,
   `-Dclaude.enforcer.reportDir` and `-Dclaude.enforcer.baselineDir`. They are the
   three parameters that are the same answer for every rule a project wires, and a
-  full catalogue is around twenty of them; spelled per rule that is sixty elements
-  to keep in step. A parameter configured on the rule itself still wins, so a
+  full catalogue is twenty-two of them; spelled per rule that is sixty-six
+  elements to keep in step. A parameter configured on the rule itself still wins, so a
   build can downgrade the catalogue and insist on one rule. A directory names each
   rule's file after the rule — two rules sharing one report would overwrite each
   other's verdict, and one shared baseline would let a violation accepted for one
@@ -1218,16 +1226,16 @@ java -cp "claude-code-enforcer/target/tools.claude-code-enforcer-<version>.jar:$
      io.github.adamw7.tools.enforcer.cli.Main . --fix --skip okfBundleFormat
 ```
 
-The rule jar is not shaded, so `java -jar` on it alone fails on the first class it
-needs from elsewhere. `-DincludeScope=compile` collects its compile dependencies
-(`markdown-common`, Jackson, SnakeYAML) together with the `provided` ones
-(`enforcer-api`, `javax.inject`) — Maven supplies those in the wiring that
-matters, and a standalone run has to bring them. Every option is a parameter of that rule (`--skip`, `--fix`,
-`--warn`, `--budget`, `--report`, `--debug`), so the command line and a pom
-configure one thing rather than two that could drift; an unrecognised option is
-refused rather than ignored. Failure is reported by throwing, as everywhere else
-here, so the process exits non-zero without the class ending a JVM it does not
-own.
+The rule jar is not shaded, so `java -jar` on it alone fails on the first class
+it needs from elsewhere. `-DincludeScope=compile` collects its compile
+dependencies (`markdown-common`, Jackson, SnakeYAML) together with the
+`provided` ones (`enforcer-api`, `javax.inject`) — Maven supplies those in the
+wiring that matters, and a standalone run has to bring them. Every option is a
+parameter of that rule (`--skip`, `--fix`, `--warn`, `--budget`, `--report`,
+`--debug`), so the command line and a pom configure one thing rather than two
+that could drift; an unrecognised option is refused rather than ignored. Failure
+is reported by throwing, as everywhere else here, so the process exits non-zero
+without the class ending a JVM it does not own.
 
 The command line is analysed apart from the shared coding conventions, because
 one of them cannot hold there: an entry point invoked as `java -jar` has no host
@@ -1435,7 +1443,7 @@ plugin in the build plan supports reproducible builds — and needs this repo's 
 To release version `X`:
 
 1. Change the `revision` property in the root `pom.xml` to `X` (it is normally a
-   `-SNAPSHOT`, e.g. `2.5.0-SNAPSHOT`).
+   `-SNAPSHOT`, e.g. `2.7.0-SNAPSHOT`).
 2. Move the supported-versions table in [SECURITY.md](SECURITY.md) onto `X` —
    both cells, since only the latest release line is supported. Nothing checks
    this, and a stale table tells consumers an unsupported version still receives
@@ -1484,10 +1492,10 @@ of each package. Maven Central keeps every released version permanently, so a
 pruned GitHub Packages version is a second copy going away, never the release
 itself.
 
-To publish from a workstation:
-`mvn -P release deploy -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"`
-with the `central` server credentials in `~/.m2/settings.xml`. A hand-run deploy that omits the property still publishes, but the
-artifacts will not be reproducible.
+To publish from a workstation: `mvn -P release deploy
+-Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"` with the `central`
+server credentials in `~/.m2/settings.xml`. A hand-run deploy that omits the
+property still publishes, but the artifacts will not be reproducible.
 
 ### Staged-only dry run (validate without releasing)
 

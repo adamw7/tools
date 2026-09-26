@@ -73,3 +73,10 @@ records that explicitly.
   a maintainer must triage.
 - The supported-versions table in `SECURITY.md` must be kept current as releases
   are cut — stale entries mislead consumers.
+
+## Errata (2026-09-26)
+
+Pillar 3 is in force: [ADR 0005](0005-renovate-dependency-updates.md) (Renovate)
+is `Accepted`, since `.github/renovate.json` landed. Only
+[ADR 0006](0006-dependabot-security-updates.md) (Dependabot security updates)
+is still `Proposed`, waiting on the repository setting.

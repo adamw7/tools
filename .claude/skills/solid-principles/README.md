@@ -29,8 +29,8 @@ refactoring that fixes each violation, with the real examples from `data`,
 
 ```
 > view .claude/skills/solid-principles/SKILL.md
-> "Review this UserService for SOLID principles"
-→ Identifies the SRP violation, suggests extracting validation and notification
+> "Review AdoptTool for SOLID principles"
+→ Names each reason the class could change, and which collaborator should absorb it
 ```
 
 ---

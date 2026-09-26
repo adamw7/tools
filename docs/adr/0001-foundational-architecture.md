@@ -155,3 +155,19 @@ above.
 Later decisions that revisit any point above should be recorded as their own
 numbered ADRs and reference this record. This ADR remains `Accepted` until such a
 successor supersedes a specific section.
+
+## Errata (2026-09-26)
+
+Facts this record states that no longer hold. The decisions stand; only the
+details below have moved on.
+
+- **Test timeout.** The per-test Surefire timeout is 5 s (8 s under coverage),
+  not 900 ms: 900 ms fell below the cold-fork warmup of the parallel `-T1C`
+  build. See *Testing* in [AGENTS.md](../../AGENTS.md).
+- **MCP servers.** Three ship, not two: the `adopt` module added a server of
+  its own on the same `mcp-common` scaffolding.
+- **Modules.** The reactor also holds `markdown-common`, `test-common` and
+  `adopt`.
+- **Java 25.** The version is carried by `maven.compiler.release`, which Spring
+  Boot's parent derives from `java.version`; `maven.compiler.source`/`target`
+  are deliberately left unset.

@@ -109,8 +109,9 @@ included. Preserve that when changing `BatchAdoption` or `Failures`.
 ## CLI flags
 `--repo`, `--repos`, `--workspace`, `--branch`, `--title`, `--body`,
 `--reviewer`, `--label`, `--assignee`, `--draft`, `--assets`, `--dry-run`,
-`--rule-version`, `--timeout <minutes>`, `--retries <count>`, `--report <file>`,
-`--help`. They build an `AdoptionOptions` (wrapping `PullRequestOptions`) that
+`--verify-only`, `--keep-workspace`, `--parallel <count>`, `--rules
+<project|minimal>`, `--section <heading>`, `--rule-version`, `--timeout
+<minutes>`, `--retries <count>`, `--report <file>`, `--help`. They build an `AdoptionOptions` (wrapping `PullRequestOptions`) that
 both entry points — `Main` and the MCP `AdoptTool` — hand to the pipeline factory.
 
 ## Retrying what the network refused

@@ -106,7 +106,7 @@ Common commands (run from the repository root):
 mvn clean install                 # full clean build + install to local repo
 mvn install                       # faster incremental build
 mvn -pl data -am install          # one module plus the modules it depends on
-mvn -pl data -am test             # tests for a single module
+mvn -pl data -am package          # tests for a single module (package, not test)
 mvn -B package                    # build without installing (what CI runs)
 mvn -P integration-tests verify   # integration tests (*IT): MCP servers, real-GitHub adoption, enforcer builds
 mvn -Pcoverage verify             # JaCoCo coverage (fails under 80% instruction or branch)
@@ -119,7 +119,9 @@ mvn -Pspotbugs verify -DskipTests # SpotBugs static analysis, report-only (write
 **Always pair `-pl` with `-am`.** `mvn -pl data test` fails before compiling: the
 root pom's `ReactorModuleConvergence` rule rejects a reactor whose module parents
 are absent from it, and sibling `-SNAPSHOT`s (e.g. `mcp-common`) do not resolve
-from the local repo until installed.
+from the local repo until installed. Stop at `package`, not `test`: `data`
+requires `mcp-common` by the automatic module name its jar carries, and a
+`test`-only reactor never builds that jar.
 
 Running a single test class or method needs one of these, because `-Dtest`
 applies to *every* module in the reactor and surefire fails the upstream ones
@@ -127,7 +129,7 @@ where nothing matches:
 
 ```bash
 cd data && mvn test -Dtest='KeyFinderTest#repeatedRowIsADuplicate'   # simplest
-mvn -pl data -am test -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -pl data -am package -Dtest=KeyFinderTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 The first form needs the parent and siblings installed once (`mvn install

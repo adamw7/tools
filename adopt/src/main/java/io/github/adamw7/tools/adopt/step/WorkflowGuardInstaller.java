@@ -53,10 +53,11 @@ public class WorkflowGuardInstaller {
 			  claude-md-guard:
 			    runs-on: ubuntu-latest
 			    steps:
-			      - uses: actions/checkout@v4
+			      - uses: @checkout@
 			      - name: Enforce CLAUDE.md
 			        run: sh @scriptFile@
-			""".replace(MARKER_TOKEN, MARKER).replace(SCRIPT_FILE_TOKEN, SCRIPT_FILE);
+			""".replace(MARKER_TOKEN, MARKER).replace(SCRIPT_FILE_TOKEN, SCRIPT_FILE)
+			.replace(AdoptionAssets.CHECKOUT_TOKEN, AdoptionAssets.CHECKOUT_ACTION);
 
 	private static final String SCRIPT = """
 			#!/bin/sh

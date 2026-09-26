@@ -22,8 +22,20 @@ class WorkflowGuardInstallerTest {
 	void writesTheWorkflowThatRunsTheGuardScript(@TempDir Path directory) throws IOException {
 		assertTrue(installer.install(directory));
 		String workflow = Files.readString(directory.resolve(WorkflowGuardInstaller.WORKFLOW_FILE));
-		assertTrue(workflow.contains("uses: actions/checkout@v4"));
+		assertTrue(workflow.contains("uses: " + AdoptionAssets.CHECKOUT_ACTION));
 		assertTrue(workflow.contains("run: sh " + WorkflowGuardInstaller.SCRIPT_FILE));
+	}
+
+	/**
+	 * Renovate bumps the checkout action in this repository's own workflows but cannot
+	 * see the one inside the templates, so this is what fails when the two drift apart.
+	 */
+	@Test
+	void checkoutActionIsTheOneThisRepositorysWorkflowsRun() throws IOException {
+		String ownWorkflow = Files.readString(Path.of("..", ".github", "workflows", "maven.yml"));
+		assertTrue(ownWorkflow.contains("uses: " + AdoptionAssets.CHECKOUT_ACTION),
+				() -> "the generated workflows run " + AdoptionAssets.CHECKOUT_ACTION
+						+ " but maven.yml runs another version; update AdoptionAssets.CHECKOUT_ACTION");
 	}
 
 	@Test

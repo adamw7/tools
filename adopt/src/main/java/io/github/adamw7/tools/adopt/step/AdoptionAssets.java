@@ -30,6 +30,16 @@ public final class AdoptionAssets {
 	static final String MCP_CONFIG_FILE = ".mcp.json";
 	static final String CLAUDE_WORKFLOW_FILE = ".github/workflows/claude.yml";
 
+	/**
+	 * The checkout action both generated workflows run, named once. Renovate cannot see
+	 * a version inside a Java string, so a test holds it to the major tag this
+	 * repository's own workflows use, which Renovate does keep current.
+	 */
+	static final String CHECKOUT_ACTION = "actions/checkout@v7";
+
+	/** Where a workflow template names {@link #CHECKOUT_ACTION}. */
+	static final String CHECKOUT_TOKEN = "@checkout@";
+
 	static final String AGENTS_MD = """
 			# Agent guide
 
@@ -97,11 +107,11 @@ public final class AdoptionAssets {
 			      issues: write
 			      id-token: write
 			    steps:
-			      - uses: actions/checkout@v4
+			      - uses: @checkout@
 			      - uses: anthropics/claude-code-action@v1
 			        with:
 			          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-			""";
+			""".replace(CHECKOUT_TOKEN, CHECKOUT_ACTION);
 
 	/**
 	 * The {@code AGENTS.md} installer, built here rather than by each caller because

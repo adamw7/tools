@@ -20,11 +20,13 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.adamw7.tools.data.Utils;
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
 import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
 public class ParquetDataSourceTest {
@@ -137,6 +139,37 @@ public class ParquetDataSourceTest {
 		assertThrows(IllegalArgumentException.class, () -> new InMemoryParquetDataSource("  "));
 	}
 
+	/**
+	 * A Parquet file is a file like any other, so the source reading it is held to the
+	 * same boundary: a path outside the allowed directory is refused before DuckDB is
+	 * asked to read it.
+	 */
+	@Test
+	public void refusesAFileOutsideTheAllowedDirectory(@TempDir Path allowed) throws Exception {
+		AllowedPaths confined = AllowedPaths.under(allowed);
+		String outside = parquetFile.toString();
+
+		assertThrows(SecurityException.class, () -> new IterableParquetDataSource(outside, confined));
+		assertThrows(SecurityException.class, () -> new InMemoryParquetDataSource(outside, confined));
+	}
+
+	@Test
+	public void readsAFileInsideTheAllowedDirectory() throws Exception {
+		AllowedPaths confined = AllowedPaths.under(parquetFile.getParent());
+		InMemoryParquetDataSource source = new InMemoryParquetDataSource(parquetFile.toString(), confined);
+
+		source.open();
+		assertEquals(3, source.readAll().size());
+		Utils.close(source);
+	}
+
+	@Test
+	public void refusesAPathThatClimbsOutEvenUnconfined() {
+		String climbing = parquetFile.getParent().resolve("..").resolve("people.parquet").toString();
+
+		assertThrows(SecurityException.class, () -> new IterableParquetDataSource(climbing));
+	}
+
 	@Test
 	public void parquetSourcesAreColumnar() {
 		assertTrue(ColumnarDataSource.class.isAssignableFrom(IterableParquetDataSource.class));
@@ -150,7 +183,7 @@ public class ParquetDataSourceTest {
 		try (Connection real = DriverManager.getConnection("jdbc:duckdb:")) {
 			Connection recording = recordingConnection(real, created);
 			IterableSQLDataSource source = new IterableSQLDataSource(recording,
-					DuckDbParquet.readQuery(parquetFile.toString()));
+					DuckDbParquet.readQuery(parquetFile.toString(), AllowedPaths.anywhere()));
 			source.open();
 			source.open();
 			// The second open() must release the first statement instead of leaking it on the

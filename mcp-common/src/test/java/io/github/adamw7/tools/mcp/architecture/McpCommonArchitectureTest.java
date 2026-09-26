@@ -20,8 +20,8 @@ import io.github.adamw7.tools.test.architecture.CommonNamingConventions;
  * production classes are analysed; test classes are excluded via
  * {@link ImportOption}.
  */
-@AnalyzeClasses(packages = { McpCommonArchitectureTest.MCP_PACKAGE, McpCommonArchitectureTest.SECRET_PACKAGE },
-		importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = { McpCommonArchitectureTest.MCP_PACKAGE, McpCommonArchitectureTest.SECRET_PACKAGE,
+		McpCommonArchitectureTest.PATH_PACKAGE }, importOptions = ImportOption.DoNotIncludeTests.class)
 public class McpCommonArchitectureTest {
 
 	static final String MCP_PACKAGE = "io.github.adamw7.tools.mcp";
@@ -33,6 +33,12 @@ public class McpCommonArchitectureTest {
 	 * delivery package.
 	 */
 	static final String SECRET_PACKAGE = "io.github.adamw7.tools.secret";
+
+	/**
+	 * The path confinement the data sources and the context server share, outside
+	 * {@link #MCP_PACKAGE} for the same reason as {@link #SECRET_PACKAGE}.
+	 */
+	static final String PATH_PACKAGE = "io.github.adamw7.tools.path";
 
 	@ArchTest
 	static final ArchTests commonCodingConventions = ArchTests.in(CommonCodingConventions.class);

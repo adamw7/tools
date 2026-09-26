@@ -9,7 +9,6 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -39,16 +38,14 @@ public class Code {
 	}
 
 	private Path createPkg(String pkg) {
-		String directory = generatedSourcesDir + File.separator + pkg;
-		Path dir = pkgToPath(directory);
-
+		Path dir = pkgToPath(Path.of(generatedSourcesDir), pkg);
 		try {
 			deleteRecursively(dir);
 			Files.createDirectories(dir);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		log.info(directory + " created");
+		log.info(dir + " created");
 		return dir;
 	}
 
@@ -64,8 +61,14 @@ public class Code {
 		}
 	}
 
-	private Path pkgToPath(String pkg) {
-		return Paths.get(pkg.replaceAll("\\.", "/"));
+	/**
+	 * The package's directory under {@code root}. Only the package's own dots are
+	 * separators: a {@code generatedSourcesDir} such as {@code /home/me/my.project/target}
+	 * keeps its dots, where converting the whole path would have written — and first
+	 * deleted — a directory nobody named.
+	 */
+	static Path pkgToPath(Path root, String pkg) {
+		return root.resolve(String.join(File.separator, pkg.split("\\.")));
 	}
 
 	public void genBuilders(Set<Class<? extends GeneratedMessage>> allMessages) {

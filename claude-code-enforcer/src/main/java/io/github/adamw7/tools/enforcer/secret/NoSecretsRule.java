@@ -13,8 +13,8 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.Patterns;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when a configured file contains what looks
@@ -102,7 +102,7 @@ public class NoSecretsRule extends ClaudeCodeEnforcerRule {
 
 	/** The file's lines, or none when it cannot be decoded as text (e.g. a binary asset). */
 	private List<String> readTextLines(File file) {
-		Optional<String> content = MarkdownText.readIfText(file);
+		Optional<String> content = ProjectFiles.text(file);
 		if (content.isEmpty()) {
 			log().debug("Skipping undecodable file " + file);
 		}

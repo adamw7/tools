@@ -2,7 +2,7 @@ package io.github.adamw7.tools.enforcer.project;
 
 import java.io.File;
 
-import io.github.adamw7.tools.markdown.MarkdownText;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 
 /**
  * Where Claude Code keeps a project's configuration, so a composite rule can find
@@ -75,7 +75,7 @@ public record ProjectLayout(File projectDir) {
 	 * cannot be read is not an aggregator, and the rule that reads it will say why.
 	 */
 	public boolean declaresModules() {
-		return MarkdownText.readIfText(pom()).filter(pom -> pom.contains("<module>")).isPresent();
+		return ProjectFiles.text(pom()).filter(pom -> pom.contains("<module>")).isPresent();
 	}
 
 	private File claudeDir() {

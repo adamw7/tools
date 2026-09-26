@@ -620,13 +620,14 @@ Per-module rules:
   the string the poms and these docs use. A rule may read the project and nothing
   else: no `ProcessBuilder`/`Process`/`Runtime` (so `hookCommandsValid` checks
   commands without running one), no network (so the checks work offline and a
-  secret scanner cannot become the leak), and the only classes writing through
-  `Files` are `HtmlReport`, `Baseline` and `MarkdownText`'s front-matter fix.
+  secret scanner cannot become the leak), and the only writes are `ReportFiles`'s
+  — the HTML report, the report index and the baseline all go through it — and
+  `MarkdownText`'s front-matter fix.
   `..enforcer.text..` stays free of the Maven API, `javax.inject` and Jackson,
   which is what lets a reader be tested without a Maven session, and `JsonNodes`
   is the only class depending on `ObjectMapper`, so every JSON rule reads through
-  the one mapper configured for the comments and trailing commas Claude Code's
-  files allow.
+  the one mapper, configured to reject content after the closing brace and a key
+  declared twice — what Claude Code would read differently from its author.
 
 `TestConventionsArchitectureTest` (same package, analysing only test classes via
 `ImportOption.OnlyIncludeTests`) adds the shared test conventions plus, in
@@ -1096,7 +1097,7 @@ Skill: `enforcer-rules`.
 | `hookCommandsValid` | the `hooks` section's shape: every event maps to an array of groups, each with a `hooks` array whose entries declare a non-blank `type` as a JSON string (and `command`, likewise a string, for a command hook). A project-local script — `$CLAUDE_PROJECT_DIR`-rooted or plain repository-relative — must exist on disk; an argument that merely looks like a path need not, so `--out $CLAUDE_PROJECT_DIR/target/log.txt` is not reported as missing. `allowedEvents` rejects a mistyped event and `validateScriptReferences` toggles the existence check. |
 | `hooksFormat` | every script under `hooksDir`, at any depth: non-empty, `#!` shebang, executable bit, `allowedExtensions`. With a `settingsFile` it also cross-checks the wiring (symlinks resolved, so a script cannot escape the directory) and `reportUnreferencedScripts` flags an unused one. An absent `hooksDir` passes; one that is there and is not a directory fails, since a rule that silently scanned nothing reads like a project with no hooks. |
 | `mcpServersValid` | `.mcp.json`, when present, is valid JSON whose `mcpServers` entries are objects with a well-formed transport (`stdio` needs a `command`; `sse`/`http` need a `url`, each declared as a JSON string rather than coerced from a number or a boolean). An explicit `type` outside `allowedTypes` (`stdio`, `sse`, `http`) is rejected, an `mcpServers` that is present but is not an object is reported as that rather than as a missing one, and `requiredServers`/`forbiddenServers` assert which must or must not be declared. |
-| `mcpConfigFormat` | the details `mcpServersValid` leaves: `args` an array of strings, `env`/`headers` objects of strings, a `url` declared as a string and a syntactically valid `http`/`https` one (`https` only when `requireHttps`), and no server mixing `command` with `url`. A `url` built from an environment expansion is left alone. |
+| `mcpConfigFormat` | the details `mcpServersValid` leaves: `args` an array of strings, `env`/`headers` objects of strings, a string `url` that is a syntactically valid `http`/`https` one (`https` only when `requireHttps`; a `url` that is not a string is `mcpServersValid`'s to report), and no server mixing `command` with `url`. A `url` built from an environment expansion is left alone. |
 | `okfBundleFormat` | an Open Knowledge Format bundle at `bundleDir` against the spec's conformance conditions: parseable frontmatter with a non-empty `type`, reserved names keeping their structure (`index.md` carries no frontmatter beyond a root `okf_version`; `log.md` groups entries under ISO 8601 headings), and closed vocabularies checked (`status`, `stale_after`, `generated`). Where the format defines no vocabulary nothing is imposed — an unregistered `type` passes. `requiredKeys` adds frontmatter keys every concept must declare, `okfVersion` pins the version the bundle root declares, and `requireIndex` (off by default) demands a listing in every directory holding concepts. The producer side is guarded separately by `code/context`'s `OkfBundleConformanceTest`, which restates the same conditions in the ordinary `test` phase. |
 | `noSecrets` | the configured files and directories for literal credentials — Anthropic, AWS, GitHub and Slack token formats plus private key blocks by default; `secretPatterns` adds custom regexes, or replaces the defaults when `useDefaultPatterns` is off. Each match is reported with file, line and kind but only the first characters, so the report never republishes the secret. |
 | `localSettingsIgnored` | the configured `.gitignore` covers each `ignoredPaths` entry (by default `.claude/settings.local.json`), honouring negations, anchoring, directory patterns and `*`/`?`/`**` globs. |

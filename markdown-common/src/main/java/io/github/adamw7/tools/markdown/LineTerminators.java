@@ -9,10 +9,11 @@ package io.github.adamw7.tools.markdown;
  * reading normalised the file first, flips every line of it to LF and reformats
  * the whole thing. Both show up as a diff nobody wrote.
  *
- * <p>It lives here rather than beside any one caller because the two that need it
- * are on either side of this module: {@link MarkdownConformer} reshapes a
- * document line by line and has to put the terminators back, and the adoption
- * pipeline edits build files the same way.
+ * <p>It lives here rather than beside any one caller because the callers that need
+ * it are on either side of this module: {@link MarkdownConformer} reshapes a
+ * document line by line and has to put the terminators back, the adoption
+ * pipeline edits build files the same way, and the enforcer's front-matter fix
+ * rewrites a skill or agent file in place.
  */
 public final class LineTerminators {
 
@@ -25,13 +26,23 @@ public final class LineTerminators {
 
 	/**
 	 * Rewrites {@code text}'s line terminators to the one {@code sample} already
-	 * uses: CRLF when the sample carries one, LF otherwise. The text is normalised
-	 * to LF first, so one that already mixes terminators — assembled from a
-	 * converted body and a part carried over verbatim — is not double-converted.
+	 * uses: CRLF when the sample carries one, a lone CR when that is the only
+	 * terminator it has, LF otherwise. A stray CR inside an LF file therefore keeps
+	 * it on LF. The text is normalised to LF first, so one that already mixes
+	 * terminators — assembled from a converted body and a part carried over
+	 * verbatim — is not double-converted.
 	 */
 	public static String matching(String text, String sample) {
 		String normalized = normalized(text);
-		return sample.contains(CRLF) ? normalized.replace(LF, CRLF) : normalized;
+		String terminator = terminatorOf(sample);
+		return terminator.equals(LF) ? normalized : normalized.replace(LF, terminator);
+	}
+
+	private static String terminatorOf(String sample) {
+		if (sample.contains(CRLF)) {
+			return CRLF;
+		}
+		return sample.contains(CR) && !sample.contains(LF) ? CR : LF;
 	}
 
 	/**

@@ -8,8 +8,8 @@ import javax.inject.Named;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when two Claude Code definitions share the
@@ -53,7 +53,7 @@ public class UniqueDescriptionsRule extends MultiDefinitionRule {
 		if (!definitionFile.isFile()) {
 			return Optional.empty();
 		}
-		return MarkdownText.readIfText(definitionFile)
+		return ProjectFiles.text(definitionFile)
 				.flatMap(FrontMatter::parse)
 				.flatMap(frontMatter -> frontMatter.value(DESCRIPTION_KEY))
 				.filter(value -> !value.isBlank());

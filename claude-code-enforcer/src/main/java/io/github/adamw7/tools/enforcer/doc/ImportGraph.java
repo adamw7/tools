@@ -1,8 +1,6 @@
 package io.github.adamw7.tools.enforcer.doc;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -215,16 +213,14 @@ final class ImportGraph {
 	}
 
 	/**
-	 * The file's content, or empty when it cannot be read as text. A binary target is
-	 * a leaf rather than a failure — its existence is the rule's to verify, not this
-	 * class's.
+	 * The file's content, read through the per-build cache the other rules share, or
+	 * empty when it cannot be read as text. A binary target is a leaf rather than a
+	 * failure — its existence is the rule's to verify, not this class's.
 	 */
 	private String readSafely(File file) {
-		try {
-			return Files.readString(file.toPath());
-		} catch (IOException e) {
-			unreadable.accept("Skipping unreadable import target " + file + ": " + e.getMessage());
+		return ProjectFiles.text(file).orElseGet(() -> {
+			unreadable.accept("Skipping unreadable import target " + file + ": it cannot be read as UTF-8 text");
 			return "";
-		}
+		});
 	}
 }

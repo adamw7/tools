@@ -12,7 +12,6 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
 import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.rule.ScanTargets;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that keeps agent context files within a size budget.
@@ -85,7 +84,7 @@ public class ContextBudgetRule extends ClaudeCodeEnforcerRule {
 		if (maxLines <= 0 && maxTokens <= 0) {
 			return;
 		}
-		Optional<String> content = MarkdownText.readIfText(file);
+		Optional<String> content = ProjectFiles.text(file);
 		if (content.isEmpty()) {
 			violations.add(file + " cannot be read as text, so its line and token budgets cannot be measured");
 			return;

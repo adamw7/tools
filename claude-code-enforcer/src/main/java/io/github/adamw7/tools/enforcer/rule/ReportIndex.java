@@ -7,10 +7,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * The one page a build's reports are read from: an {@code index.html} beside the
@@ -62,11 +62,10 @@ final class ReportIndex {
 	 */
 	static synchronized void record(File directory, String ruleName, int violations) throws IOException {
 		Path path = directory.toPath().toAbsolutePath();
-		Files.createDirectories(path);
 		Map<String, Integer> outcomes = read(path.resolve(SIDECAR_FILE));
 		outcomes.put(ruleName, violations);
-		write(path.resolve(SIDECAR_FILE), outcomes);
-		Files.writeString(path.resolve(INDEX_FILE), render(outcomes), StandardCharsets.UTF_8);
+		ReportFiles.write(path.resolve(SIDECAR_FILE), sidecar(outcomes));
+		ReportFiles.write(path.resolve(INDEX_FILE), render(outcomes));
 	}
 
 	/**
@@ -102,11 +101,10 @@ final class ReportIndex {
 		}
 	}
 
-	private static void write(Path sidecar, Map<String, Integer> outcomes) throws IOException {
-		List<String> lines = outcomes.entrySet().stream()
-				.map(outcome -> outcome.getKey() + SEPARATOR + outcome.getValue())
-				.toList();
-		Files.write(sidecar, lines, StandardCharsets.UTF_8);
+	private static String sidecar(Map<String, Integer> outcomes) {
+		return outcomes.entrySet().stream()
+				.map(outcome -> outcome.getKey() + SEPARATOR + outcome.getValue() + "\n")
+				.collect(Collectors.joining());
 	}
 
 	static String render(Map<String, Integer> outcomes) {

@@ -6,20 +6,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
 import io.github.adamw7.tools.data.compression.ZipUtils;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
-public abstract class AbstractFileSource implements IterableDataSource {
+/**
+ * Base for the file sources that hold a {@link Scanner} over their input from the moment
+ * they are built: the CSV sources and the map-backed in-memory JSON, YAML and TOON ones.
+ */
+public abstract class AbstractFileSource extends AbstractFileBackedSource {
 	protected Scanner scanner;
-	protected String fileName;
-	protected InputStream inputStream;
-	protected boolean opened = false;
 	
 	@Override
 	public void close() throws IOException {
@@ -46,7 +44,7 @@ public abstract class AbstractFileSource implements IterableDataSource {
 	 * this source is confined to.
 	 */
 	protected AbstractFileSource(String fileName, AllowedPaths allowedPaths) {
-		this.fileName = allowedPaths.validate(fileName);
+		super(fileName, allowedPaths);
 		try {
 			scanner = createScanner();
 		} catch (FileNotFoundException e) {
@@ -55,7 +53,8 @@ public abstract class AbstractFileSource implements IterableDataSource {
 	}
 
 	protected AbstractFileSource(InputStream inputStream) {
-		this.inputStream = inputStream;
+		super(inputStream);
+		scanner = createScanner(inputStream);
 	}
 
 	protected Scanner createScanner() throws FileNotFoundException {
@@ -124,30 +123,6 @@ public abstract class AbstractFileSource implements IterableDataSource {
 		return fileName != null ? fileName : "the input stream";
 	}
 
-	protected void checkIfOpen() {
-		if (!opened) {
-			throw new IllegalStateException("DataSource is not open");
-		}
-	}
-	
-	/**
-	 * The last element of the path this source reads, which a caller naming its columns
-	 * after the file it came from asks for. A path that names no file — a filesystem root
-	 * such as {@code /} or {@code C:\} — is refused in the same terms as a raw stream,
-	 * rather than dereferencing the {@code null} {@link Path#getFileName}
-	 * answers for it.
-	 */
-	public String getFileName() {
-		if (fileName == null) {
-			throw new IllegalStateException("Source is backed by a raw input stream, not a file");
-		}
-		Path name = Paths.get(fileName).getFileName();
-		if (name == null) {
-			throw new IllegalStateException("Source path names no file: " + fileName);
-		}
-		return name.toString();
-	}
-	
 	/**
 	 * Opens this source and drains it into a list, skipping the rows {@link #nextRow()}
 	 * declines to produce. It is the shared machinery behind {@code readAll()} on the

@@ -39,8 +39,6 @@ public class CSVDataSource extends AbstractFileSource implements ColumnarDataSou
 	
 	public CSVDataSource(InputStream inputStream, String delimiter, int columnsRow) {
 		super(inputStream);
-		this.inputStream = inputStream;
-		scanner = createScanner(inputStream);
 		this.delimiter = delimiter;
 		this.columnsRow = columnsRow;
 		regex = Pattern.quote(delimiter) + REGEX_SUFFIX;

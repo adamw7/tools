@@ -36,7 +36,6 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 
 	protected AbstractInMemoryMapDataSource(InputStream inputStream) {
 		super(inputStream);
-		scanner = createScanner(inputStream);
 		parse();
 	}
 

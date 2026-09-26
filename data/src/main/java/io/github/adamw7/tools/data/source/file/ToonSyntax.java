@@ -40,14 +40,6 @@ final class ToonSyntax {
 		return Arrays.stream(fieldsText.split(",")).map(String::trim).toArray(String[]::new);
 	}
 
-	/** Emits the header pairs of a tabular array: its declared count, then each field as its own key. */
-	static void emitTabularHeader(BiConsumer<String, String> sink, String arrayKey, int count, String[] fields) {
-		sink.accept(arrayKey, String.valueOf(count));
-		for (String field : fields) {
-			sink.accept(field, field);
-		}
-	}
-
 	/** Emits one tabular row as {@code arrayKey[rowIndex].field = value} pairs, ignoring surplus values. */
 	static void emitTabularRow(BiConsumer<String, String> sink, String arrayKey, String[] fields,
 			String rowData, int rowIndex) {

@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.uniqueness;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -37,16 +38,16 @@ public class MapSourceUniquenessCheckTest {
 		return "src/test/resources/test." + format;
 	}
 
+	/** Every flattened key is distinct, so the {@code key} column is a key of the document. */
 	@ParameterizedTest
 	@MethodSource("sources")
-	void singleColumnDoesNotCrash(String format, Function<String, InMemoryDataSource> factory) {
+	void keyColumnIsUnique(String format, Function<String, InMemoryDataSource> factory) {
 		InMemoryDataSource source = factory.apply(fileFor(format));
 		InMemoryUniquenessCheck check = new InMemoryUniquenessCheck(source);
-		String column = source.getColumnNames()[0];
 
-		Result result = check.exec(column);
+		Result result = check.exec("key");
 
-		assertNotNull(result);
+		assertTrue(result.isUnique());
 	}
 
 	@ParameterizedTest
@@ -62,12 +63,25 @@ public class MapSourceUniquenessCheckTest {
 	}
 
 	/**
+	 * The source used to name every flattened key as a column while emitting two-column
+	 * {@code {key, value}} rows, so checking all columns of a document with more than two
+	 * keys indexed past the end of a row. It now names the two columns its rows have.
+	 */
+	@ParameterizedTest
+	@MethodSource("sources")
+	void execForAllColumnsStaysWithinRowArity(String format, Function<String, InMemoryDataSource> factory) {
+		InMemoryUniquenessCheck check = new InMemoryUniquenessCheck(factory.apply(fileFor(format)));
+
+		Result result = check.execForAllColumns();
+
+		assertTrue(result.isUnique());
+	}
+
+	/**
 	 * Regression for the double-open bug: {@code execForAllColumns()} opened the
 	 * source to read its column names and then delegated to {@code exec()}, which
 	 * opened it a second time. The open-once map-backed sources rejected that with
-	 * {@code IllegalStateException: DataSource is already open}. A two-field
-	 * document keeps every column index within the {@code {key, value}} row arity,
-	 * so the check runs to completion once the redundant open is removed.
+	 * {@code IllegalStateException: DataSource is already open}.
 	 */
 	@Test
 	void execForAllColumnsDoesNotReopenMapSource() {

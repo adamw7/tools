@@ -1,17 +1,14 @@
 package io.github.adamw7.tools.data.source.file;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,13 +20,19 @@ public class YAMLDataSourceTest {
 	public void testGetColumnNames() throws IOException {
 		try (InMemoryYAMLDataSource source = new InMemoryYAMLDataSource(Utils.getFileName("test.yaml"))) {
 			source.open();
-			String[] columnNames = source.getColumnNames();
-			Set<String> names = new HashSet<>(Arrays.asList(columnNames));
-			assertTrue(names.contains("people[0].name"));
-			assertTrue(names.contains("people[0].age"));
-			assertTrue(names.contains("people[0].address.city"));
-			assertTrue(names.contains("cars[0].manufacturer"));
-			assertTrue(names.contains("fruits[0]"));
+			assertArrayEquals(new String[] { "key", "value" }, source.getColumnNames());
+		}
+	}
+
+	@Test
+	public void rowsFollowDocumentOrder() throws IOException {
+		try (InMemoryYAMLDataSource source = new InMemoryYAMLDataSource(Utils.getFileName("test.yaml"))) {
+			List<String> keys = source.readAll().stream().map(row -> row[0]).toList();
+			assertEquals(List.of("people[0].name", "people[0].age", "people[0].address.city",
+					"people[0].address.state", "people[1].name", "people[1].age", "people[1].address.city",
+					"people[1].address.state", "cars[0].manufacturer", "cars[0].model", "cars[0].year",
+					"cars[1].manufacturer", "cars[1].model", "cars[1].year", "fruits[0]", "fruits[1]",
+					"fruits[2]"), keys);
 		}
 	}
 
@@ -77,9 +80,7 @@ public class YAMLDataSourceTest {
 	public void testInputStream() throws IOException {
 		try (InputStream is = getClass().getClassLoader().getResourceAsStream("test.yaml");
 			 InMemoryYAMLDataSource source = new InMemoryYAMLDataSource(is)) {
-			source.open();
-			String[] columnNames = source.getColumnNames();
-			assertEquals(17, columnNames.length);
+			assertEquals(17, source.readAll().size());
 		}
 	}
 

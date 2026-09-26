@@ -2,8 +2,8 @@ package io.github.adamw7.tools.data.source.file;
 
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,11 +14,24 @@ import io.github.adamw7.tools.data.source.interfaces.InMemoryDataSource;
  * {@code key -> value} pairs and then emit each entry as a {@code {key, value}} row.
  *
  * <p>Subclasses only need to parse the document into {@link #fieldsMap}; the
- * row-iteration lifecycle (open/next/hasMoreData/reset/iterator) is shared here.</p>
+ * row-iteration lifecycle (open/next/hasMoreData/reset/iterator) is shared here.
+ * The map keeps insertion order, so rows come out in the order the document
+ * declares them &mdash; the order the matching iterable source streams them in.</p>
+ *
+ * <p>Every row has the same two columns, {@value #KEY_COLUMN} and
+ * {@value #VALUE_COLUMN}, and {@link #getColumnNames()} names exactly those. The
+ * flattened keys are data here, not a schema: a column check such as the uniqueness
+ * check addresses a row by the position of a name in {@link #getColumnNames()}, so
+ * naming every key there would point it past the end of a two-column row.</p>
  */
 public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource implements InMemoryDataSource {
 
-	protected final Map<String, String> fieldsMap = new HashMap<>();
+	/** The column holding a flattened key, such as {@code people[0].address.city}. */
+	public static final String KEY_COLUMN = "key";
+	/** The column holding the value found at that key. */
+	public static final String VALUE_COLUMN = "value";
+
+	protected final Map<String, String> fieldsMap = new LinkedHashMap<>();
 	private Iterator<String> mapIterator;
 
 	protected AbstractInMemoryMapDataSource(InputStream inputStream) {
@@ -92,9 +105,10 @@ public abstract class AbstractInMemoryMapDataSource extends AbstractFileSource i
 		};
 	}
 
+	/** @return {@value #KEY_COLUMN} and {@value #VALUE_COLUMN}, the two columns every row has */
 	@Override
 	public String[] getColumnNames() {
-		return fieldsMap.keySet().toArray(new String[] {});
+		return new String[] { KEY_COLUMN, VALUE_COLUMN };
 	}
 
 	/**

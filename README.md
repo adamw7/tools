@@ -631,9 +631,9 @@ It contains:
   - in memory and iterative loading
   - CSV, JDBC support
   - Parquet (`InMemoryParquetDataSource`, `IterableParquetDataSource`) — read through an in-process DuckDB engine, exposing the file's columns and rows like any other JDBC-backed source
-  - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`)
-  - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; no document-size limit
-  - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects
+  - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`), and each becomes a two-column `{key, value}` row, in document order; the in-memory source names those two columns `key` and `value`
+  - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; the iterable source lifts SnakeYAML's 3 MB document limit, while the in-memory one, which holds the whole document anyway, keeps it
+  - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects, flattened into the same `{key, value}` rows — every array as its count under its own key, then `key[i]` or `key[i].field` per element
   - All file-based sources accept either a file path or an `InputStream`
   - GZIP decompression — any file-based source transparently decompresses `.gz` files; no extra configuration needed
 - uniqueness checks tool

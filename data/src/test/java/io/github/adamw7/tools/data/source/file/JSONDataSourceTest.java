@@ -1,18 +1,15 @@
 package io.github.adamw7.tools.data.source.file;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -33,13 +30,18 @@ public class JSONDataSourceTest {
 
 	@ParameterizedTest
 	@MethodSource("dataSources")
-    public void testGetColumnNames(InMemoryJSONDataSource source) throws IOException {
+	public void testGetColumnNames(InMemoryJSONDataSource source) throws IOException {
 		source.open();
-        String[] columnNames = source.getColumnNames();
-        assertEquals(17, columnNames.length);
-        assertEquals(expectedColumnNames(), Set.of(columnNames));
-        source.close();
-    }
+		assertArrayEquals(new String[] { "key", "value" }, source.getColumnNames());
+		source.close();
+	}
+
+	@ParameterizedTest
+	@MethodSource("dataSources")
+	public void rowsFollowDocumentOrder(InMemoryJSONDataSource source) throws IOException {
+		assertEquals(expectedKeys(), keysOf(source.readAll()));
+		source.close();
+	}
 
 	@ParameterizedTest
 	@MethodSource("dataSources")
@@ -85,11 +87,8 @@ public class JSONDataSourceTest {
 	public void readsFromInputStream() throws IOException {
 		try (InputStream stream = new FileInputStream(Utils.getFileName("test.json"))) {
 			InMemoryJSONDataSource source = new InMemoryJSONDataSource(stream);
+			assertEquals(expectedKeys(), keysOf(source.readAll()));
 			source.open();
-			Set<String> names = new HashSet<>(Arrays.asList(source.getColumnNames()));
-			assertEquals(17, names.size());
-			assertTrue(names.contains("people[0].address.city"));
-			assertTrue(names.contains("fruits[2]"));
 			int rowCount = 0;
 			while (source.hasMoreData()) {
 				assertNotNull(source.nextRow());
@@ -100,8 +99,13 @@ public class JSONDataSourceTest {
 		}
 	}
 
-	private static Set<String> expectedColumnNames() {
-		return Set.of(
+	private static List<String> keysOf(List<String[]> rows) {
+		return rows.stream().map(row -> row[0]).toList();
+	}
+
+	/** The flattened keys of {@code test.json}, in the order the document declares them. */
+	private static List<String> expectedKeys() {
+		return List.of(
 				"people[0].name", "people[0].age", "people[0].address.city", "people[0].address.state",
 				"people[1].name", "people[1].age", "people[1].address.city", "people[1].address.state",
 				"cars[0].manufacturer", "cars[0].model", "cars[0].year",

@@ -23,7 +23,7 @@ public class IterableTOONDataSourceTest extends AbstractIterableDataSourceTest {
 		Map<String, String> inMemory = collect(new InMemoryTOONDataSource(Utils.getFileName("test.toon")));
 		Map<String, String> iterated = collect(newSource());
 		assertEquals(inMemory, iterated);
-		assertEquals(70, iterated.size());
+		assertEquals(58, iterated.size());
 	}
 
 	@Test

@@ -8,7 +8,7 @@ import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
  * Where Claude Code keeps a project's configuration, so a composite rule can find
  * it from the project directory alone. Every path here is the one Claude Code
  * itself uses, which is what lets {@link ClaudeCodeProjectRule} be configured with
- * a single {@code projectDir} instead of the sixty-odd elements naming each rule's
+ * a single {@code projectDir} instead of the dozens of elements naming each rule's
  * inputs; stating the convention once keeps two parts from disagreeing about where
  * the skills live.
  *

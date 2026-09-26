@@ -50,7 +50,7 @@ public class SwitchThreadSafetyTest {
 	private static final int HOLD_SECONDS = 60;
 
 	/**
-	 * Opts out of the 900 ms per-test timeout: spinning up and joining a pool of
+	 * Opts out of the 5 s per-test timeout: spinning up and joining a pool of
 	 * threads to force real contention is heavier than a plain unit test, though it
 	 * still completes in well under a second.
 	 */

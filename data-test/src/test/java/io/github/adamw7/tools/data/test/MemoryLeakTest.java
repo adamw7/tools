@@ -28,7 +28,7 @@ import io.github.adamw7.tools.data.uniqueness.NoMemoryUniquenessCheck;
 import io.github.adamw7.tools.data.uniqueness.Result;
 
 // Every test streams tens of thousands of rows repeatedly to expose leaks, so
-// it legitimately runs well past the global 1-second per-test timeout. Grant a
+// it legitimately runs well past the global 5-second per-test timeout. Grant a
 // generous bound that still catches a genuine hang while iterating a source.
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 public class MemoryLeakTest {

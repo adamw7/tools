@@ -19,12 +19,13 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Builds a {@link ProjectTreeNode} tree from a Java or Kotlin project on disk.
- * The tree mirrors the project's folders and files; every source file (a
- * {@code .java} or {@code .kt} file, depending on the configured
+ * Builds a {@link ProjectTreeNode} tree from a Java, Kotlin or Scala project on
+ * disk. The tree mirrors the project's folders and files; every source file (a
+ * {@code .java}, {@code .kt} or {@code .scala} file, depending on the configured
  * {@link Language}) is enriched with the classes it depends on, resolved by a
  * {@link Context} over all the project's sources. The result is a
- * ready-to-serialise context for gen-AI agents working with Java or Kotlin code.
+ * ready-to-serialise context for gen-AI agents working with Java, Kotlin or Scala
+ * code.
  */
 public class ProjectTreeBuilder {
 

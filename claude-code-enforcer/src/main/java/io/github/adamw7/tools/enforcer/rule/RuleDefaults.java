@@ -9,8 +9,9 @@ import java.util.Optional;
  *
  * <p>{@code severity}, {@code reportFile} and {@code baselineFile} are the three
  * parameters that are the <em>same answer</em> for every rule of the catalogue:
- * spelled per rule that is sixty elements to keep in step, and a rule left out of
- * the sweep is one whose severity silently differs from its neighbours'.
+ * spelled per rule across its twenty-two rules that is sixty-six elements to keep
+ * in step, and a rule left out of the sweep is one whose severity silently
+ * differs from its neighbours'.
  *
  * <table>
  * <caption>The properties and what they default</caption>

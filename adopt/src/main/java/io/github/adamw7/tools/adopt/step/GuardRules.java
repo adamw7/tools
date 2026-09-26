@@ -27,7 +27,7 @@ public enum GuardRules {
 	 * composite: the documents, the definitions, the settings and hooks, and the
 	 * secret scan. It is the default because it is the one that covers what the
 	 * adoption itself installs, and because it costs the adopted POM three elements
-	 * rather than sixty.
+	 * rather than dozens.
 	 */
 	PROJECT("claudeCodeProject");
 

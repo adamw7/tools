@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * per-rule reports, listing every rule that has reported into the directory and
  * whether it passed.
  *
- * <p>Twenty rules writing twenty HTML files is twenty files nobody opens. Each
+ * <p>Twenty-two rules writing an HTML file each is twenty-two files nobody opens. Each
  * still writes its own, where its violations and remediation steps are, but the
  * index says which are worth opening — the question a reader arrives with.
  *

@@ -23,8 +23,12 @@ import java.util.stream.Stream;
  *
  * <p>Traversal is the depth-bounded breadth-first expansion of
  * {@link AbstractFinder}, and comments and string or character literals are
- * stripped before matching. The package/import grammar this relies on is shared by
- * Java, Kotlin and Scala, so it serves every {@link Language} the finder supports.
+ * stripped before matching. The plain {@code package} and {@code import a.b.C} /
+ * {@code import a.b.*} grammar this relies on is shared by Java, Kotlin and Scala.
+ * Scala's own import forms are not read: its wildcard {@code import a.b._} and its
+ * selectors {@code import a.b.{C, D}} are each read as importing no class, so a
+ * class they bring in is found only through the same-package or sole-candidate
+ * fallbacks.
  */
 public class PackageAwareFinder extends AbstractFinder {
 

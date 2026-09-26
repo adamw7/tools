@@ -50,8 +50,8 @@ public enum Severity {
 
 	private static EnforcerRuleException unrecognized(String configured, String ruleLabel) {
 		return new EnforcerRuleException("The severity '" + configured.strip() + "' configured on " + ruleLabel
-				+ " is not a severity. Use one of " + names() + ". A value that is neither was previously read"
-				+ " as '" + DEFAULT.configuredName() + "', so a rule meant to be downgraded still failed the build.");
+				+ " is not a severity. Use one of " + names() + ", or leave it unset for '"
+				+ DEFAULT.configuredName() + "'.");
 	}
 
 	private static String names() {

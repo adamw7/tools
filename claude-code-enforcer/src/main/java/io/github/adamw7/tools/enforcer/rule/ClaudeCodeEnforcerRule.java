@@ -43,9 +43,8 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * into one directory gain an {@link ReportIndex index page} linking them.
  * <p>
  * A rule's configuration parameters are its <em>fields</em>: Plexus binds a
- * {@code <claudeMdFile>} element to a field of that name and never sees the
- * package-private setters here, because it looks only at public methods. So the
- * field is declared under exactly the name its pom element uses — on the concrete
+ * {@code <claudeMdFile>} element to the field of that name. So the field is
+ * declared under exactly the name its pom element uses — on the concrete
  * rule, or on a base only rules that spell it identically share, as the three
  * {@code settings.json} rules share {@link
  * io.github.adamw7.tools.enforcer.settings.SettingsJsonRule}'s {@code settingsFile}

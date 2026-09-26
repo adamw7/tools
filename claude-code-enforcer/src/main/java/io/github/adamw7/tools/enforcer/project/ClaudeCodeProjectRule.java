@@ -18,8 +18,9 @@ import io.github.adamw7.tools.enforcer.rule.ClaudeCodeEnforcerRule;
  *
  * <p>The shipped rules are deliberately separate — each names its own inputs and
  * reaches its own verdict — and the cost of that lands on whoever wires them: a
- * project adopting the catalogue writes around twenty elements and sixty paths,
- * every one of them the conventional location the tool already uses. This rule
+ * project adopting the catalogue writes twenty-two rule elements and a path for
+ * every input each one reads, every one of them the conventional location the
+ * tool already uses. This rule
  * spends that convention instead of restating it:
  *
  * <pre>{@code

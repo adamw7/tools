@@ -291,8 +291,7 @@ public class AdoptTool implements McpTool {
 	 * saying so.
 	 */
 	private GuardRules guardRules(Map<String, Object> arguments) {
-		String rules = text(arguments, "rules");
-		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
+		return GuardRules.ofOrDefault(text(arguments, "rules"));
 	}
 
 	/**

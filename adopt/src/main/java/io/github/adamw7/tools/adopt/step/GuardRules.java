@@ -57,6 +57,16 @@ public enum GuardRules {
 						+ "'. Use one of " + names()));
 	}
 
+	/**
+	 * @param name the value as an operator wrote it, or {@code null} when none was
+	 * @return {@link #PROJECT} when {@code name} is {@code null} or blank &mdash; a caller
+	 *         that named nothing asked for the default &mdash; and otherwise what
+	 *         {@link #of} reads it as, refusal included
+	 */
+	public static GuardRules ofOrDefault(String name) {
+		return name == null || name.isBlank() ? PROJECT : of(name);
+	}
+
 	private static String names() {
 		return Arrays.stream(values())
 				.map(value -> value.name().toLowerCase(Locale.ROOT))

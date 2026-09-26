@@ -25,6 +25,19 @@ class GuardRulesTest {
 		assertEquals(GuardRules.PROJECT, GuardRules.of("  Project  "));
 	}
 
+	/** Naming nothing is asking for the default, on the command line and over MCP alike. */
+	@Test
+	void readsNoNameAsTheDefault() {
+		assertEquals(GuardRules.PROJECT, GuardRules.ofOrDefault(null));
+		assertEquals(GuardRules.PROJECT, GuardRules.ofOrDefault("  "));
+		assertEquals(GuardRules.MINIMAL, GuardRules.ofOrDefault("minimal"));
+	}
+
+	@Test
+	void stillRefusesAnUnknownRuleSetWhenADefaultIsOnOffer() {
+		assertFailure(IllegalArgumentException.class, () -> GuardRules.ofOrDefault("everything"), "everything");
+	}
+
 	/** The refusal names what it accepts, so the operator can correct the command line from it. */
 	@Test
 	void refusesAnUnknownRuleSetNamingTheOnesItAccepts() {

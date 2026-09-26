@@ -349,9 +349,11 @@ public class ExampleTest {
 }
 ```
 Both proto2 and proto3 are supported. In proto2 the generated builder enforces
-that every `required` field is set before `build()` can be called. proto3 has no
-`required` fields, so there is nothing to enforce there; the builder simply
-exposes all fields as optional. Presence-tracking is handled correctly for each
+that every `required` field is set before `build()` can be called. In both
+syntaxes `repeated` and `map` fields are steps of the chain too. proto3 has no
+`required` fields, so its chain holds only those — a proto3 `Team` with a
+`repeated string members` must be given its members before `build()` — and a
+message without them builds straight away. Presence-tracking is handled correctly for each
 syntax: a `hasXxx()` accessor is generated only for fields that actually track
 presence — every singular field in proto2, but in proto3 only message fields and
 those declared with the explicit `optional` keyword (implicit-presence proto3
@@ -560,12 +562,16 @@ on:
 
 ```markdown
 ---
-type: "Java Source File"
-title: "B.java"
-description: "Java source file with 1 project dependency."
-resource: "pkg/B.java"
-tags: ["source", "java"]
-generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+type: Java Source File
+title: B.java
+description: Java source file with 1 project dependency.
+resource: pkg/B.java
+tags:
+- source
+- java
+generated:
+  by: tools.code.context/1
+  at: '2026-08-03T10:15:30Z'
 ---
 
 # Dependencies
@@ -650,47 +656,46 @@ It contains:
     - `streamable-http` — the modern HTTP transport served at `/mcp`
     - `stateless-http` — the same HTTP transport served at `/mcp`, but session-less: each JSON-RPC request is answered in isolation, which suits load-balanced or serverless deployments
     - any other value is refused at startup with a message naming the three
-  - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
-  - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`
+  - Build: `mvn clean install` produces the executable server jar `data/target/tools.data-<version>-boot.jar`, attached under the `boot` classifier beside the plain library jar
+  - Run: `java -jar data/target/tools.data-<version>-boot.jar --transport.mode=stdio`
   - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for client configuration (Claude Desktop, Cline) and usage examples
   
 Examples:
 
 in memory check:
 ```java
-		AbstractUniqueness check = new InMemoryUniquenessCheck();
-		check.setDataSource(new InMemorySQLDataSource(connection, query));
-		Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
-		log.info(result.isUnique());
-		Set<Result> betterOptions = result.getBetterOptions();
-		for (Result betterOption : betterOptions) {
-			log.info(betterOption);	
-		}
-```
-In order to add a new data source for example for XML, JSON, etc you just need to implement this interface:
-```java
-public interface IterableDataSource extends AutoCloseable, Closeable {
-	public String[] getColumnNames();
-	
-	public void open();
-	
-	public String[] nextRow();
-
-	public boolean hasMoreData();
-	
-	public void reset();
-
-	// default method, loads up to batchSize rows in one operation
-	public List<String[]> nextRows(int batchSize);
+Uniqueness check = new InMemoryUniquenessCheck(new InMemorySQLDataSource(connection, query));
+Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
+log.info(result.isUnique());
+for (Result betterOption : result.getBetterOptions()) {
+	log.info(betterOption);
 }
 ```
+The source is handed to the check's constructor, so a check is never without one. `NoMemoryUniquenessCheck` takes any `ColumnarDataSource` the same way, and `execForAllColumns()` checks every column the source names.
+
+In order to add a new data source for example for XML, JSON, etc you just need to implement this interface:
+```java
+public interface IterableDataSource extends Closeable {
+	void open();
+
+	String[] nextRow();
+
+	boolean hasMoreData();
+
+	void reset();
+
+	// default method, loads up to batchSize rows in one operation
+	default List<String[]> nextRows(int batchSize) { ... }
+}
+```
+A source that knows its columns up front also implements `ColumnarDataSource`, which adds `String[] getColumnNames()`. That is the contract the uniqueness checks take, so a forward-only source that discovers its keys as it streams cannot be handed to one.
 `nextRow()` answers `null` when a call produced no row, and `hasMoreData()` is what says which of the two reasons it was: the source is exhausted, or that particular line yielded nothing and a further call may still return a row (a CSV comment does this). `null` rather than an empty array because an empty array is a row these sources really produce — a blank CSV line splits to one empty column, and a query over no columns gives rows of exactly that shape.
 
 `nextRows(int batchSize)` lets callers decide how much data is pulled from the source at once instead of reading row by row. It is a default method built on `hasMoreData()`/`nextRow()`, so every source gets it for free; an empty list signals the source is exhausted. The SQL source additionally applies `batchSize` as the JDBC fetch size so the rows are fetched in a single round-trip.
 If you need an in memory source you need to implement one more method:
 ```java
-public interface InMemoryDataSource extends IterableDataSource {
-	public List<String[]> readAll();
+public interface InMemoryDataSource extends ColumnarDataSource {
+	List<String[]> readAll();
 }
 ```
 `readAll()` belongs to this interface alone, so a forward-only source never carries it: the file sources share the drain-the-whole-source machinery as a `protected readAllRows()` on their base class, and each in-memory source publishes it by writing `readAll()` itself.
@@ -1155,12 +1160,13 @@ The default pipeline runs these steps in order:
    a parsed document out whole would normalise details a DOM does not record,
    collapsing a start tag spread over several lines and rewriting `<rule />` as
    `<rule/>`, turning a fourteen-line addition into a diff across the file.
-10. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
-   build`), reported as `commit:guard`.
+10. **`CommitStep`** — commits the build change (`Adopt Claude Code: add the
+   CLAUDE.md guard`), reported as `commit:guard`.
 11. **`AssetsStep` → `SkillsStep` → `CommitStep`** — *only on `--assets`*
    (`assets` on the MCP tool): installs the starter configuration files and the
-   starter skills described above, then commits them together (`commit:assets`),
-   so the run still leaves two commits. The skills are a step of their own
+   starter skills described above, then commits them together (`commit:assets`,
+   `Add Claude Code configuration assets`), so a run with the assets leaves
+   three commits rather than four. The skills are a step of their own
    because their bodies name the detected build system and the command that runs
    its guard, which the static asset list never sees. Each file is installed
    independently and never overwrites an existing one, so the trio is idempotent.

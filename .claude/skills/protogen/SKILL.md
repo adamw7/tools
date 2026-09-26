@@ -88,8 +88,10 @@ Person person = builder.setId(1).setDepartment("dep")
 ## proto2 vs proto3 (the rules that trip people up)
 - **proto2**: every `required` field is enforced by the builder chain; every
   singular field tracks presence, so all get a `hasXxx()` accessor.
-- **proto3**: has no `required` fields, so the builder is all-optional — there is
-  nothing to enforce. `hasXxx()` is generated **only** for message fields and
+- **proto3**: has no `required` fields, so the chain holds only the `repeated`
+  and `map` fields, which are steps in every syntax (`ClassInfo.nonOptional()`
+  is `required` ∪ `map` ∪ `repeated`); a message without them gets a single
+  terminal interface. `hasXxx()` is generated **only** for message fields and
   fields declared with the explicit `optional` keyword. Implicit-presence proto3
   scalars have no `hasXxx()` and are left alone.
 - **`oneof`**: gets a `getXxxCase()` accessor returning protobuf's generated

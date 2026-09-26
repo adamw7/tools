@@ -17,9 +17,10 @@ skill carries the reasoning and the worked example.
 - **Code generation** (`code/protogen-maven-plugin`) — a Maven plugin that
   generates protobuf builders which detect a missing required field at
   **compile time** instead of runtime (shift-left). proto2 `required` fields are
-  enforced by the builder chain; proto3 has no required fields, so its builders
-  are all-optional with presence-aware `hasXxx()` accessors for message fields
-  and explicit `optional` fields only; a `oneof` group gets a `getXxxCase()`
+  enforced by the builder chain; proto3 has no required fields, so its chain
+  holds only the `repeated` and `map` fields (steps in every syntax), with
+  presence-aware `hasXxx()` accessors for message fields and explicit
+  `optional` fields only; a `oneof` group gets a `getXxxCase()`
   discriminator and a `clearXxx()` that resets the whole group. Skill:
   `protogen`.
 - **Context engineering** (`code/context`) — a fast, regex-based finder that
@@ -1453,14 +1454,19 @@ Creating the GitHub release fires two workflows:
   attaches the javadoc jar, which a default `mvn deploy` would not.
 - `central-publish.yml` deploys to **Maven Central** via the Sonatype Central
   Portal (`mvn -P release deploy`). The `release` profile attaches the sources
-  and javadoc jars, GPG-signs every artifact, and hands the bundle to the
-  `central-publishing-maven-plugin` (`autoPublish=true`).
+  and javadoc jars and hands the bundle to the `central-publishing-maven-plugin`
+  (`autoPublish=true`).
+
+The artifacts are **not signed yet**: neither the `release` profile nor the
+workflow runs `maven-gpg-plugin`, and Central validation requires a signature
+on every file. Wiring that in, with its key and passphrase secrets, is tracked
+by issue #350.
 
 Central publishing is **opt-in** through the `release` profile, and the plugin is
 bound to the `deploy` phase, so ordinary and CI builds never publish and never
-need GPG keys or Central credentials. The release job requires four repository
-secrets: `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD` (a Central Portal
-user token), plus `MAVEN_GPG_PRIVATE_KEY` and `MAVEN_GPG_PASSPHRASE`.
+need Central credentials. The release job requires two repository secrets:
+`MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_PASSWORD`, a Central Portal user
+token.
 
 Every reactor module is published to Central except `assembly`, `grpc-example`,
 `protogen-maven-plugin-test` and `test-common`, each of which sets
@@ -1479,8 +1485,7 @@ itself.
 
 To publish from a workstation:
 `mvn -P release deploy -Dproject.build.outputTimestamp="$(git log -1 --format=%cI)"`
-with the `central` server credentials in `~/.m2/settings.xml` and a GPG key on
-the keyring. A hand-run deploy that omits the property still publishes, but the
+with the `central` server credentials in `~/.m2/settings.xml`. A hand-run deploy that omits the property still publishes, but the
 artifacts will not be reproducible.
 
 ### Staged-only dry run (validate without releasing)

@@ -895,8 +895,9 @@
 			</build>
 		</profile>
 		<profile>
-			<!-- Publishes signed artifacts to Maven Central. Opt-in, so ordinary builds need no GPG
-			     keys or Central credentials. -->
+			<!-- Publishes artifacts to Maven Central. Opt-in, so ordinary builds need no Central
+			     credentials. Nothing here signs them yet: wiring maven-gpg-plugin and its key
+			     secrets in is tracked by issue #350. -->
 			<id>release</id>
 			<properties>
 				<!-- Central rejects the executable bundle spring-boot:repackage produces, so publish

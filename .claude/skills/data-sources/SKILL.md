@@ -86,8 +86,8 @@ JVM that any caller can move or clear.
 
 ## Uniqueness check
 ```java
-AbstractUniqueness check = new InMemoryUniquenessCheck();   // or NoMemoryUniquenessCheck
-check.setDataSource(new InMemorySQLDataSource(connection, query));
+// or new NoMemoryUniquenessCheck(columnarSource)
+Uniqueness check = new InMemoryUniquenessCheck(new InMemorySQLDataSource(connection, query));
 Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
 if (result.isUnique()) {
     for (Result better : result.getBetterOptions()) {   // smaller candidate keys

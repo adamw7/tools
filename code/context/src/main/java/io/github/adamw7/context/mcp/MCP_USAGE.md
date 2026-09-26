@@ -169,12 +169,16 @@ A returned concept document looks like this:
 
 ```markdown
 ---
-type: "Java Source File"
-title: "B.java"
-description: "Java source file with 1 project dependency."
-resource: "pkg/B.java"
-tags: ["source", "java"]
-generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+type: Java Source File
+title: B.java
+description: Java source file with 1 project dependency.
+resource: pkg/B.java
+tags:
+- source
+- java
+generated:
+  by: tools.code.context/1
+  at: '2026-08-03T10:15:30Z'
 ---
 
 # Dependencies

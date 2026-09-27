@@ -58,8 +58,8 @@ public class GitHubRepoAdopter {
 	/**
 	 * What the starter-assets commit says it did, the skills included. It is named beside
 	 * the guard's rather than spelled out where the step is assembled, because a run
-	 * leaves two commits in somebody else's history and a test asking what each of them
-	 * carried has to name the one it means.
+	 * with the assets leaves three commits in somebody else's history and a test asking
+	 * what each of them carried has to name the one it means.
 	 */
 	static final String ASSETS_COMMIT_MESSAGE = "Add Claude Code configuration assets";
 
@@ -142,8 +142,8 @@ public class GitHubRepoAdopter {
 	/**
 	 * The starter configuration is written by two steps and committed by one: the
 	 * assets that are the same everywhere, then the skills, whose bodies name the
-	 * build system the guard was wired into. One commit rather than two, so a run
-	 * still leaves exactly two commits in somebody else's history.
+	 * build system the guard was wired into. One commit rather than two, so the assets
+	 * add a single commit to the two every run leaves in somebody else's history.
 	 */
 	private static List<AdoptionStep> assetSteps(List<BuildSystem> buildSystems, AdoptionOptions options) {
 		if (!options.includeAssets()) {

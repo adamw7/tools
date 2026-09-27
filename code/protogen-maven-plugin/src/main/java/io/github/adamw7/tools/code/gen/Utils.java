@@ -2,6 +2,7 @@ package io.github.adamw7.tools.code.gen;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
@@ -32,12 +33,25 @@ public class Utils {
 		return first.apply(string.substring(0, 1)) + rest.apply(string.substring(1));
 	}
 
+	/**
+	 * Recased in {@link Locale#ROOT} rather than the machine's locale: the result is a
+	 * Java identifier, and under a Turkish default {@code "id"} upper-cases to
+	 * {@code "İd"}, which names no method protoc generated.
+	 */
 	public static String firstToLower(String string) {
-		return recased(string, String::toLowerCase, UnaryOperator.identity());
+		return recased(string, Utils::lower, UnaryOperator.identity());
 	}
 
 	public static String firstToUpper(String string) {
-		return recased(string, String::toUpperCase, UnaryOperator.identity());
+		return recased(string, Utils::upper, UnaryOperator.identity());
+	}
+
+	private static String lower(String string) {
+		return string.toLowerCase(Locale.ROOT);
+	}
+
+	private static String upper(String string) {
+		return string.toUpperCase(Locale.ROOT);
 	}
 
 	public static String toUpperCamelCase(String s) {
@@ -50,7 +64,7 @@ public class Utils {
 	}
 
 	static String toProperCase(String s) {
-		return recased(s, String::toUpperCase, String::toLowerCase);
+		return recased(s, Utils::upper, Utils::lower);
 	}
 	
 	public static String getNextIfc(String className, List<FieldDescriptor> fields, FieldDescriptor requiredField) {

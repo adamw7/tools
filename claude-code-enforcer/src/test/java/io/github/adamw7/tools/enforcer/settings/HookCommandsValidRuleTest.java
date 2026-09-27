@@ -465,6 +465,24 @@ class HookCommandsValidRuleTest {
 		assertFailure(EnforcerRuleException.class, rule::execute, "gone.sh");
 	}
 
+	/** {@code exec} runs the script behind it, so a renamed one is caught through it too. */
+	@Test
+	void failsWhenExecRunsAMissingScript() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("exec $CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing script", "gone.sh");
+	}
+
+	/** A hook that guards its script with a condition still runs it, and so still needs it. */
+	@Test
+	void failsWhenAConditionalHookRunsAMissingScript() {
+		HookCommandsValidRule rule = ruleFor(hooksReferencing("if true; then .claude/hooks/gone.sh; fi"));
+		rule.setProjectDir(tempDir.toFile());
+
+		assertFailure(EnforcerRuleException.class, rule::execute, "references a missing script", "gone.sh");
+	}
+
 	@Test
 	void failsWhenAHookTypeIsNotAString() {
 		// Read as its text, a JSON 123 was neither blank nor "command", so the hook

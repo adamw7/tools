@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.structure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,11 +16,13 @@ import io.github.adamw7.tools.data.structure.internal.DoubleHashing;
 public class DoubleHashingTest {
 
 	@Test
-	public void tableSizeKeepsSizesAtOrAboveFloor() {
+	public void tableSizeIsThePrimeAtOrAboveTheRequestAndTheFloor() {
 		assertEquals(3, DoubleHashing.tableSize(1));
 		assertEquals(3, DoubleHashing.tableSize(2));
 		assertEquals(3, DoubleHashing.tableSize(3));
-		assertEquals(64, DoubleHashing.tableSize(64));
+		assertEquals(11, DoubleHashing.tableSize(8));
+		assertEquals(67, DoubleHashing.tableSize(64));
+		assertEquals(67, DoubleHashing.tableSize(67));
 	}
 
 	@Test
@@ -38,19 +41,33 @@ public class DoubleHashingTest {
 	}
 
 	@Test
-	public void grownSizeAppliesTheMultiplier() {
-		assertEquals(76, DoubleHashing.grownSize(64)); // 64 * 1.2 = 76.8, truncated
-		assertEquals(12, DoubleHashing.grownSize(10));
+	public void grownSizeDoublesToTheNextPrime() {
+		assertEquals(137, DoubleHashing.grownSize(67)); // 134 rounded up to a prime
+		assertEquals(7, DoubleHashing.grownSize(3));
+		assertEquals(23, DoubleHashing.grownSize(11));
 	}
 
 	@Test
-	public void grownSizeAlwaysGrowsForSmallTables() {
-		// (int) (3 * 1.2) == 3 and (int) (4 * 1.2) == 4, so the multiplier alone
-		// would never grow the smallest tables and put() would recurse forever.
-		assertEquals(4, DoubleHashing.grownSize(3));
-		assertEquals(5, DoubleHashing.grownSize(4));
-		assertTrue(DoubleHashing.grownSize(3) > 3);
-		assertTrue(DoubleHashing.grownSize(4) > 4);
+	public void overloadedOnlyPastTheLoadFactor() {
+		assertFalse(DoubleHashing.overloaded(8, 11)); // 8 <= 8.25
+		assertTrue(DoubleHashing.overloaded(9, 11));
+	}
+
+	@Test
+	public void rehashedSizeGrowsOnlyWhenTheLiveEntriesNeedTheRoom() {
+		// Two live entries in 11 slots: it is tombstones filling the table, so it is
+		// rehashed where it is. Eight live entries need a bigger table.
+		assertEquals(11, DoubleHashing.rehashedSize(11, 2));
+		assertEquals(23, DoubleHashing.rehashedSize(11, 8));
+	}
+
+	@Test
+	public void probeVisitsEverySlotOfALargeTable() {
+		// iteration * h2 overflows an int past about 46,000 slots; the sequence must
+		// still be a full permutation of a large prime-sized table.
+		int length = DoubleHashing.tableSize(100_000);
+		int prime = 99_991;
+		assertProbesAllDistinct(-123_456_789, prime, length);
 	}
 
 	@Test

@@ -45,8 +45,8 @@ final class EnforcerRuleVersion {
 			throw new AdoptionException("Refusing to wire the snapshot enforcer rule version " + version
 					+ " into the adopted project's pom.xml: a snapshot is not resolvable outside this machine's"
 					+ " local repository, so the pull request would break the adopted project's build."
-					+ " Run the adoption from a released build of tools, or supply a released version to"
-					+ " PomEnforcerInstaller.");
+					+ " Run the adoption from a released build of tools, or name a released version with"
+					+ " --rule-version (rule_version on the MCP tool).");
 		}
 		return version;
 	}

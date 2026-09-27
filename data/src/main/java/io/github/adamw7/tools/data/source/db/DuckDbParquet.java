@@ -4,11 +4,17 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
+
 /**
  * Builds the in-process DuckDB plumbing that lets the Parquet data sources reuse the JDBC
  * {@code source.db} machinery: an in-memory DuckDB connection and a {@code read_parquet} query
  * over a given file. Keeping this here means both the iterable and in-memory Parquet sources
  * share one definition of how a Parquet file is turned into a JDBC result set.
+ *
+ * <p>The file is validated by the {@link AllowedPaths} the source was given before it reaches
+ * the query — canonicalised, refused when it climbs out with {@code ..}, and held under the
+ * source's base directory when it has one — exactly as every file source validates its own.</p>
  */
 final class DuckDbParquet {
 
@@ -21,11 +27,11 @@ final class DuckDbParquet {
 		return Sql.answering(() -> DriverManager.getConnection(IN_MEMORY_URL));
 	}
 
-	static String readQuery(String filePath) {
+	static String readQuery(String filePath, AllowedPaths allowedPaths) {
 		if (filePath == null || filePath.trim().isEmpty()) {
 			throw new IllegalArgumentException("Parquet file path must not be null or empty");
 		}
-		return "SELECT * FROM read_parquet('" + escape(filePath) + "')";
+		return "SELECT * FROM read_parquet('" + escape(allowedPaths.validate(filePath)) + "')";
 	}
 
 	private static String escape(String filePath) {

@@ -27,7 +27,7 @@ public enum GuardRules {
 	 * composite: the documents, the definitions, the settings and hooks, and the
 	 * secret scan. It is the default because it is the one that covers what the
 	 * adoption itself installs, and because it costs the adopted POM three elements
-	 * rather than sixty.
+	 * rather than dozens.
 	 */
 	PROJECT("claudeCodeProject");
 
@@ -55,6 +55,16 @@ public enum GuardRules {
 				.findFirst()
 				.orElseThrow(() -> new IllegalArgumentException("Unknown rule set '" + name.strip()
 						+ "'. Use one of " + names()));
+	}
+
+	/**
+	 * @param name the value as an operator wrote it, or {@code null} when none was
+	 * @return {@link #PROJECT} when {@code name} is {@code null} or blank &mdash; a caller
+	 *         that named nothing asked for the default &mdash; and otherwise what
+	 *         {@link #of} reads it as, refusal included
+	 */
+	public static GuardRules ofOrDefault(String name) {
+		return name == null || name.isBlank() ? PROJECT : of(name);
 	}
 
 	private static String names() {

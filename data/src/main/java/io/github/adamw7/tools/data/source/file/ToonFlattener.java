@@ -10,6 +10,11 @@ import java.util.regex.Matcher;
  * and flattened {@code key/value} pairs are pushed to a {@link BiConsumer} sink; {@link #finish}
  * closes any array block still open at end of input.
  *
+ * <p>Every array, whatever its form, is emitted the same way: its count under the array's own
+ * key first, then one pair per element &mdash; {@code key[i]} for a primitive, or
+ * {@code key[i].field} for each field of a tabular row. A tabular header's field names are
+ * carried by those row keys alone, so two tables sharing a field name cannot collide.</p>
+ *
  * <p>Only a stack of the enclosing objects and the array block currently being read are held,
  * so a caller that drains the sink between lines (the iterable source) keeps memory bounded by
  * nesting depth, while a caller that collects into a map (the in-memory source) reuses the exact
@@ -58,10 +63,7 @@ final class ToonFlattener {
 	}
 
 	private void closeBlock() {
-		if (block != null) {
-			block.close();
-			block = null;
-		}
+		block = null;
 	}
 
 	private void interpret(int indent, String trimmed) {
@@ -103,18 +105,18 @@ final class ToonFlattener {
 		String inline = matcher.group(5);
 
 		if (fields != null && !fields.isEmpty()) {
+			enqueue(arrayKey, String.valueOf(count));
 			startTabular(arrayKey, count, indent, fields, inline);
 		} else if (!inline.isEmpty()) {
 			ToonSyntax.emitInlineArray(this::enqueue, arrayKey, inline);
 		} else {
+			enqueue(arrayKey, String.valueOf(count));
 			block = new NestedArrayBlock(arrayKey, count);
 		}
 	}
 
 	private void startTabular(String arrayKey, int count, int indent, String fieldsText, String inline) {
 		String[] fields = ToonSyntax.splitFields(fieldsText);
-		ToonSyntax.emitTabularHeader(this::enqueue, arrayKey, count, fields);
-
 		TabularBlock tabular = new TabularBlock(arrayKey, fields, count);
 		block = tabular;
 
@@ -139,9 +141,6 @@ final class ToonFlattener {
 		abstract void consume(int indent, String trimmed);
 
 		abstract boolean isComplete();
-
-		void close() {
-		}
 	}
 
 	private final class TabularBlock extends Block {
@@ -215,11 +214,6 @@ final class ToonFlattener {
 		@Override
 		boolean isComplete() {
 			return itemIndex >= count;
-		}
-
-		@Override
-		void close() {
-			enqueue(arrayKey, String.valueOf(count));
 		}
 	}
 }

@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import io.github.adamw7.tools.path.PathBoundary;
+
 /**
  * Confines the file-system access of the MCP tools to a set of allowed root
  * directories. Every caller-supplied path is resolved to its real location
@@ -19,41 +21,41 @@ import java.util.List;
  */
 final class PathPolicy {
 
-	private final List<Path> allowedRoots;
+	private final PathBoundary boundary;
 
 	PathPolicy(String configuredRoots) {
-		this.allowedRoots = resolveRoots(configuredRoots);
+		this.boundary = PathBoundary.under(configuredRoots(configuredRoots));
 	}
 
 	List<Path> allowedRoots() {
-		return allowedRoots;
+		return boundary.roots();
 	}
 
+	/**
+	 * The real location of {@code requestedPath}, which must exist and lie under an
+	 * allowed root. The containment is {@code mcp-common}'s {@link PathBoundary}, the
+	 * same the data module's file sources are confined with.
+	 */
 	Path resolve(String requestedPath) {
 		Path candidate = realPath(Path.of(requestedPath));
-		if (isWithinAllowedRoot(candidate)) {
+		if (boundary.contains(candidate)) {
 			return candidate;
 		}
 		throw new SecurityException("Access denied: path is outside the allowed roots: " + requestedPath);
 	}
 
-	private boolean isWithinAllowedRoot(Path candidate) {
-		return allowedRoots.stream().anyMatch(candidate::startsWith);
-	}
-
-	private List<Path> resolveRoots(String configuredRoots) {
+	private static List<Path> configuredRoots(String configuredRoots) {
 		if (configuredRoots == null || configuredRoots.isBlank()) {
-			return List.of(realPath(Path.of(System.getProperty("user.dir"))));
+			return List.of(Path.of(System.getProperty("user.dir")));
 		}
 		return Arrays.stream(configuredRoots.split(File.pathSeparator))
 				.map(String::trim)
 				.filter(root -> !root.isEmpty())
 				.map(Path::of)
-				.map(this::realPath)
 				.toList();
 	}
 
-	private Path realPath(Path path) {
+	private static Path realPath(Path path) {
 		try {
 			return path.toRealPath();
 		} catch (IOException e) {

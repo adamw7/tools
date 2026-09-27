@@ -9,18 +9,30 @@ package io.github.adamw7.tools.data.structure.internal;
  */
 public final class DoubleHashing {
 
-	/** Growth factor applied to the backing array on each resize. */
-	public static final double MULTIPLIER = 1.2;
+	/**
+	 * Growth factor applied to the backing array on each resize. Doubling keeps the
+	 * cost of the rehashes amortised to a constant per insert.
+	 */
+	public static final int GROWTH_FACTOR = 2;
 
-	/** Backing-array size for a map created without an explicit size. */
+	/**
+	 * The share of the backing array that live entries and tombstones together may
+	 * occupy. Past it the expected probe chain lengthens sharply, so the table is
+	 * rehashed before an insert would cross it.
+	 */
+	public static final double MAX_LOAD_FACTOR = 0.75;
+
+	/** Backing-array size requested for a map created without an explicit size. */
 	public static final int DEFAULT_SIZE = 64;
 
 	private DoubleHashing() {
 	}
 
 	/**
-	 * The legal backing-array size for a requested capacity. An array of size 2
-	 * would force {@code prime == 1}, so 3 is the floor.
+	 * The backing-array size for a requested capacity: the smallest prime at or above
+	 * it, and at least 3, since an array of size 2 would force {@code prime == 1}. A
+	 * prime length is coprime with every probe step, so a probe sequence visits every
+	 * slot before it repeats one.
 	 *
 	 * @throws IllegalArgumentException when {@code requestedSize} is not positive
 	 */
@@ -28,19 +40,31 @@ public final class DoubleHashing {
 		if (requestedSize <= 0) {
 			throw new IllegalArgumentException("Wrong size: " + requestedSize);
 		}
-		return Math.max(requestedSize, 3);
+		return Primes.findMinAtLeast(Math.max(requestedSize, 3));
+	}
+
+	/** The backing-array size after one growth step: {@link #GROWTH_FACTOR} times larger, rounded up to a prime. */
+	public static int grownSize(int currentLength) {
+		return tableSize((int) Math.min((long) currentLength * GROWTH_FACTOR, Integer.MAX_VALUE - 8));
 	}
 
 	/**
-	 * The backing-array size after one growth step. The multiplier alone does not
-	 * guarantee progress for small arrays &mdash; {@code (int) (3 * 1.2) == 3} and
-	 * {@code (int) (4 * 1.2) == 4} &mdash; so growth is floored at
-	 * {@code currentLength + 1} to ensure the table always gets strictly larger.
-	 * Without this the open-addressing maps recurse forever in {@code put} once a
-	 * small table fills up.
+	 * Whether {@code occupiedSlots} &mdash; live entries plus tombstones &mdash; would
+	 * load a table of {@code length} slots past {@link #MAX_LOAD_FACTOR}.
 	 */
-	public static int grownSize(int currentLength) {
-		return Math.max((int) (currentLength * MULTIPLIER), currentLength + 1);
+	public static boolean overloaded(int occupiedSlots, int length) {
+		return occupiedSlots > length * MAX_LOAD_FACTOR;
+	}
+
+	/**
+	 * The backing-array size to rehash an overloaded table into. When the live entries
+	 * alone fill no more than half of what the load factor allows, it is tombstones
+	 * crowding the table, and rehashing at the current size clears them without
+	 * growing; otherwise the table grows. Without that, churning distinct keys through
+	 * a map of constant size would double its table on every rehash.
+	 */
+	public static int rehashedSize(int currentLength, int liveEntries) {
+		return overloaded(2 * (liveEntries + 1), currentLength) ? grownSize(currentLength) : currentLength;
 	}
 
 	/**
@@ -90,9 +114,14 @@ public final class DoubleHashing {
 			this.length = length;
 		}
 
-		/** The slot index probed on the given {@code iteration} of the sequence. */
+		/**
+		 * The slot index probed on the given {@code iteration} of the sequence. The
+		 * arithmetic is done in {@code long}: {@code iteration * h2} overflows an
+		 * {@code int} on any table past about 46,000 slots, which would scramble the
+		 * sequence rather than walk it.
+		 */
 		public int slot(int iteration) {
-			return Math.abs((h1 + (iteration * h2)) % length);
+			return (int) Math.abs((h1 + ((long) iteration * h2)) % length);
 		}
 	}
 }

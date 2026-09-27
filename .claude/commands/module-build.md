@@ -16,7 +16,10 @@ compiling anything: the root pom's `ReactorModuleConvergence` rule rejects a
 reactor whose modules' parents are absent from it, and sibling `-SNAPSHOT`s such
 as `mcp-common` do not resolve from the local repository until they are
 installed. If you see a missing parent or an unresolved sibling, that is this
-mistake and not the module's code.
+mistake and not the module's code. Asked for `test` on `data`, run `package`
+instead: `data` requires `mcp-common` by the automatic module name its jar
+carries, and a `test`-only reactor never builds that jar, so the compile fails
+with `module not found: tools.mcp.common`.
 
 Resolve the module name against the root pom's `<modules>` before running
 anything. Two are worth knowing:
@@ -32,7 +35,7 @@ ones where nothing matches:
 
 ```bash
 cd <module> && mvn test -Dtest='SomeTest#someMethod'
-mvn -pl <module> -am test -Dtest=SomeTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -pl <module> -am package -Dtest=SomeTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 The first form needs `mvn install -DskipTests` to have run once, since a module

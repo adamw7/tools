@@ -169,7 +169,7 @@ flowchart TB
     classDef mcp fill:#6b3fa0,stroke:#46296b,color:#fff
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
     class dev,agent,maintainer person
-    class enforcer,testCommon,mcpCommon,protogen,protogenTest,grpc,assembly,context,data,adopt container
+    class enforcer,markdownCommon,testCommon,mcpCommon,protogen,protogenTest,grpc,assembly,context,data,adopt container
     class contextMcp,dataMcp,adoptMcp mcp
     class projectSrc,db,files,github,cli,ownBuild ext
     style tools fill:#f2f7fc,stroke:#438dd5,color:#08427b
@@ -197,7 +197,7 @@ flowchart TB
         direction TB
 
         subgraph mcpLayer ["MCP server"]
-            mcpMain["<b>Main + McpConfiguration</b><br/><i>Spring Boot</i><br/>stdio / streamable-http"]
+            mcpMain["<b>Main + McpConfiguration</b><br/><i>Spring Boot</i><br/>stdio / streamable-http / stateless-http"]
             uniqTool["<b>UniquenessTool</b><br/><i>MCP tool: uniqueness_check</i>"]
         end
 
@@ -413,7 +413,8 @@ flowchart TB
 How a run adopts Claude Code into one or more GitHub repositories. Every step
 implements `AdoptionStep`, so the pipeline is a list the entry points assemble
 from `AdoptionOptions`; only the `command` package spawns processes, and only
-`CloneStep` reads the credentialled clone URL (both pinned by ArchUnit).
+`CloneStep` and `PushStep` read the credentialled clone URL (both pinned by
+ArchUnit).
 
 ```mermaid
 flowchart TB
@@ -737,6 +738,7 @@ flowchart TB
         covWf["<b>coverage.yml</b><br/><i>Saturdays · JaCoCo, 80% floor</i>"]
         pitWf["<b>pitest.yml</b><br/><i>Sundays · mutation testing</i>"]
         winWf["<b>maven-windows.yml</b><br/><i>Sundays · the build on Windows</i>"]
+        spotbugsWf["<b>spotbugs.yml</b><br/><i>Sundays · SpotBugs, one SARIF<br/>run per module to code scanning</i>"]
         dockerWf["<b>docker.yml</b><br/><i>Saturdays · builds, smoke-runs<br/>and scans the image; on a release,<br/>also pushes it to GHCR</i>"]
         pkgCleanWf["<b>packages-cleanup.yml</b><br/><i>monthly · prunes the GitHub Packages<br/>Maven registry to the newest<br/>three versions per package</i>"]
     end
@@ -752,10 +754,12 @@ flowchart TB
     sched --> covWf
     sched --> pitWf
     sched --> winWf
+    sched --> spotbugsWf
     sched --> dockerWf
     sched --> pkgCleanWf
     manual --> pitWf
     manual --> winWf
+    manual --> spotbugsWf
     manual --> dockerWf
     manual --> pkgCleanWf
     manual --> central
@@ -765,7 +769,7 @@ flowchart TB
 
     classDef comp fill:#85bbf0,stroke:#5d82a8,color:#08427b
     classDef ext fill:#999999,stroke:#6b6b6b,color:#fff
-    class mavenWf,dockerWf,codeqlWf,itWf,covWf,pitWf,winWf,pkgCleanWf,ghPkg,central comp
+    class mavenWf,dockerWf,codeqlWf,itWf,covWf,pitWf,winWf,spotbugsWf,pkgCleanWf,ghPkg,central comp
     class pr,sched,manual,rel ext
     style gate fill:#eef4ec,stroke:#6b8e6b,color:#2f5230
     style scheduled fill:#fff7ec,stroke:#d59a43,color:#7a5418

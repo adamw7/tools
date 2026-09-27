@@ -2,8 +2,9 @@ package io.github.adamw7.tools.adopt.step;
 
 import java.util.List;
 
-import io.github.adamw7.tools.markdown.MarkdownContract;
+import io.github.adamw7.tools.markdown.ClaudeMdContract;
 import io.github.adamw7.tools.markdown.MarkdownConformer;
+import io.github.adamw7.tools.markdown.MarkdownContract;
 
 /**
  * The {@code CLAUDE.md} contract as the adoption states it, reshaped by the
@@ -30,33 +31,23 @@ import io.github.adamw7.tools.markdown.MarkdownConformer;
 public class ClaudeMdConformer {
 
 	/*
-	 * These mirror io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule in the
-	 * claude-code-enforcer module. They are restated rather than imported because the
-	 * adopt module does not depend on the enforcer module — a pipeline that shipped an
-	 * enforcer rule would force the maven-enforcer API on every consumer. What is
-	 * restated is now only the contract's values; the reshape that satisfies them is
-	 * markdown-common's, which both modules do depend on. The copy is not trusted to
-	 * stay in step: ClaudeMdConformerContractTest runs the real rule over this class's
-	 * output, so a rule that asks for one more section fails this module's build
-	 * rather than some adopted repository's.
+	 * The contract's values are markdown-common's ClaudeMdContract, the same ones
+	 * io.github.adamw7.tools.enforcer.doc.ClaudeMdFormatRule checks against, and the
+	 * reshape that satisfies them is markdown-common's too. The adopt module does not
+	 * depend on the enforcer module, so ClaudeMdConformerContractTest still runs the
+	 * real rule over this class's output: a rule that comes to judge a document
+	 * differently fails this module's build rather than some adopted repository's.
 	 */
-	static final String TITLE = "# CLAUDE.md";
-	static final String AGENTS_REFERENCE = "AGENTS.md";
+	static final String TITLE = ClaudeMdContract.TITLE;
+	static final String AGENTS_REFERENCE = ClaudeMdContract.COMPANION;
 
 	/**
 	 * The sections the {@code claudeMdFormat} rule demands, and so the sections to
 	 * conform to <em>where that rule is the guard being wired in</em> — the Maven
-	 * path, {@link MavenBuildSystem#requiredClaudeMdSections()}. They are Java and
-	 * Maven sections because the rule is a Java project's rule; a build system whose
+	 * path, {@link MavenBuildSystem#requiredClaudeMdSections()}. A build system whose
 	 * guard asks only that the file exist and carry something requires none.
 	 */
-	static final List<String> REQUIRED_SECTIONS = List.of(
-			"## Project",
-			"## Java version",
-			"## Maven",
-			"## Principles for Java Development",
-			"## Testing",
-			"## Dependencies");
+	static final List<String> REQUIRED_SECTIONS = ClaudeMdContract.REQUIRED_SECTIONS;
 
 	static final String AGENTS_REFERENCE_LINE = "See [AGENTS.md](AGENTS.md) for the companion agent guide.";
 

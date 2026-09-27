@@ -248,12 +248,11 @@ public final class CliArguments {
 	}
 
 	/**
-	 * @return the rule set named, or the default when none was. A blank value counts
-	 *         as none; anything else that is not a rule set is refused by
-	 *         {@link GuardRules#of}.
+	 * @return the rule set named, or the default when none was; see
+	 *         {@link GuardRules#ofOrDefault}
 	 */
 	private GuardRules guardRules() {
-		return rules == null || rules.isBlank() ? GuardRules.PROJECT : GuardRules.of(rules);
+		return GuardRules.ofOrDefault(rules);
 	}
 
 	/**

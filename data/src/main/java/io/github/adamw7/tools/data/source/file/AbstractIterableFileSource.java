@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 
 import io.github.adamw7.tools.data.compression.ZipUtils;
-import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 
 /**
  * Base class for file data sources that emit rows incrementally without loading the whole
@@ -14,11 +13,8 @@ import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
  * {@link #nextRow()} stay accurate while only the current row (plus any per-format parser
  * state) is held in memory.
  */
-public abstract class AbstractIterableFileSource implements IterableDataSource {
+public abstract class AbstractIterableFileSource extends AbstractFileBackedSource {
 
-	protected final String fileName;
-	private final InputStream providedStream;
-	protected boolean opened = false;
 	private String[] lookahead;
 
 	/**
@@ -36,13 +32,11 @@ public abstract class AbstractIterableFileSource implements IterableDataSource {
 	 * this source is confined to.
 	 */
 	protected AbstractIterableFileSource(String fileName, AllowedPaths allowedPaths) {
-		this.fileName = allowedPaths.validate(fileName);
-		this.providedStream = null;
+		super(fileName, allowedPaths);
 	}
 
 	protected AbstractIterableFileSource(InputStream inputStream) {
-		this.fileName = null;
-		this.providedStream = inputStream;
+		super(inputStream);
 	}
 
 	@Override
@@ -60,7 +54,7 @@ public abstract class AbstractIterableFileSource implements IterableDataSource {
 	}
 
 	private InputStream openStream() throws IOException {
-		InputStream raw = providedStream != null ? providedStream : new FileInputStream(fileName);
+		InputStream raw = inputStream != null ? inputStream : new FileInputStream(fileName);
 		return ZipUtils.unzipIfNeeded(raw, fileName);
 	}
 
@@ -109,12 +103,6 @@ public abstract class AbstractIterableFileSource implements IterableDataSource {
 			close();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
-		}
-	}
-
-	protected void checkIfOpen() {
-		if (!opened) {
-			throw new IllegalStateException("DataSource is not open");
 		}
 	}
 

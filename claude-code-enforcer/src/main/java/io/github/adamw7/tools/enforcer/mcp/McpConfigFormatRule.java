@@ -24,14 +24,16 @@ import io.github.adamw7.tools.enforcer.rule.JsonNodes;
  * <li>{@code args} must be an array of strings;</li>
  * <li>{@code env} and {@code headers} must be objects whose values are all
  * strings;</li>
- * <li>{@code url} must be declared as a JSON string;</li>
- * <li>{@code url} must be a syntactically valid {@code http} or {@code https}
+ * <li>a string {@code url} must be a syntactically valid {@code http} or {@code https}
  * URL (and {@code https} only when {@code requireHttps} is set), unless it is
  * assembled from an environment variable expansion, which only the shell that
  * resolves it can judge; and</li>
  * <li>a server must not declare both a {@code command} and a {@code url}, which
  * mixes a stdio and a remote transport in one entry.</li>
  * </ul>
+ * A {@code url} that is not a string at all is a transport fault, and
+ * {@link McpServersValidRule} reports it; reporting it here too said the same thing
+ * twice when both rules run.
  * <p>
  * A project-level {@code .mcp.json} is optional, so an absent file is a pass, as is
  * one that declares no {@code mcpServers}; an {@code mcpServers} that is present
@@ -130,10 +132,6 @@ public class McpConfigFormatRule extends JsonFileRule {
 
 	private void collectUrlViolations(String name, JsonNode server, List<String> violations) {
 		JsonNode url = server.get(URL_KEY);
-		if (JsonNodes.declaresNonText(server, URL_KEY)) {
-			McpServers.add(name, "has a 'url' that is not a string", violations);
-			return;
-		}
 		if (url == null || !url.isTextual() || isExpanded(url.asText())) {
 			return;
 		}

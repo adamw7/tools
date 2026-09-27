@@ -16,9 +16,8 @@ import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when a hook script under
- * {@code .claude/hooks} is not a well-formed executable, or when
- * {@code .claude/settings.json} wires a command hook to a script that should live
- * in that directory but does not.
+ * {@code .claude/hooks} is not a well-formed executable, or — when asked — when
+ * no command hook of {@code .claude/settings.json} runs it.
  * <p>
  * Where {@link HookCommandsValidRule} validates the JSON shape of the
  * {@code hooks} section, this rule validates the scripts themselves: every regular
@@ -29,17 +28,18 @@ import io.github.adamw7.tools.markdown.MarkdownText;
  * {@code allowedExtensions} whitelist rejects a stray file such as a {@code .txt}
  * note left in the directory.
  * <p>
- * When {@code settingsFile} is configured, any command hook resolving a
- * project-local path into the hooks directory — written with
+ * With {@code reportUnreferencedScripts}, a script in the directory that no command
+ * hook of {@code settingsFile} runs is reported too — a hook resolving a
+ * project-local path into the hooks directory, written with
  * {@code $CLAUDE_PROJECT_DIR} or as the repository-relative path Claude Code
- * resolves the same way — must point at a script that exists, catching a hook
- * renamed on disk but not in settings; {@code reportUnreferencedScripts} also
- * reports a script no hook references. {@code hooksDir} must be configured, but an
+ * resolves the same way, counts as running it. A hook naming a script that does not
+ * exist is {@link HookCommandsValidRule}'s to report, which resolves every
+ * project-local script a hook runs. {@code hooksDir} must be configured, but an
  * absent directory is a pass since hooks are optional; a path that is there and is
  * not a directory fails, a rule that silently scanned nothing being
- * indistinguishable from a project with no hooks. A configured but absent
- * {@code settingsFile} fails outright as a build-setup mistake. All problems are
- * reported together.
+ * indistinguishable from a project with no hooks. A {@code settingsFile} the report
+ * was asked to read that is absent fails outright as a build-setup mistake. All
+ * problems are reported together.
  */
 @Named("hooksFormat")
 public class HooksFormatRule extends ClaudeCodeEnforcerRule {
@@ -49,7 +49,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	/** The {@code .claude/hooks} directory to scan. Injected from the rule configuration. */
 	private File hooksDir;
 
-	/** Optional {@code .claude/settings.json} used to cross-check hook wiring. */
+	/** The {@code .claude/settings.json} whose command hooks {@code reportUnreferencedScripts} reads. */
 	private File settingsFile;
 
 	/** Base directory that {@code $CLAUDE_PROJECT_DIR} resolves to. Defaults to the settings file's grandparent. */
@@ -64,7 +64,7 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	/** When true (default), each hook script must carry the executable bit. */
 	private boolean requireExecutable = true;
 
-	/** When true, a script in the directory referenced by no settings hook is reported. */
+	/** When true, a script in the directory that no command hook of {@code settingsFile} runs is reported. */
 	private boolean reportUnreferencedScripts;
 
 	@Override
@@ -141,18 +141,17 @@ public class HooksFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	/**
-	 * A configured settings file that is not there is a build-setup mistake and fails
-	 * whatever the severity: reporting it as a violation let {@code severity=warn}
-	 * turn the whole wiring cross-check off silently. What the cross-check itself
+	 * A settings file the report was asked to read that is not there is a build-setup
+	 * mistake and fails whatever the severity: reporting it as a violation let
+	 * {@code severity=warn} turn the whole report off silently. What the report itself
 	 * finds is a violation, collected by {@link HookWiring}.
 	 */
 	private void collectWiringViolations(List<File> scripts, List<String> violations) throws EnforcerRuleException {
-		if (settingsFile == null) {
+		if (!reportUnreferencedScripts || settingsFile == null) {
 			return;
 		}
 		requireExists(settingsFile, "settings.json");
-		new HookWiring(hooksDir, settingsFile, projectDir, reportUnreferencedScripts)
-				.collectViolations(scripts, violations);
+		new HookWiring(hooksDir, settingsFile, projectDir).collectViolations(scripts, violations);
 	}
 
 	public void setHooksDir(File hooksDir) {

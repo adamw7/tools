@@ -13,7 +13,8 @@ import io.github.adamw7.tools.data.structure.internal.Primes;
  * double-hashing open-addressing strategy, but keys live in an {@code int[]} so
  * lookups and inserts never box. That makes it an allocation-light choice for
  * large, integer-keyed maps where the autoboxing of a {@code Map<Integer, V>}
- * would dominate.
+ * would dominate. Its table is sized, loaded and rehashed by the same policy as
+ * {@link OpenAddressingMap}'s.
  *
  * <p>It deliberately does <em>not</em> implement {@link java.util.Map}, which is
  * defined in terms of {@code Object} keys and would reintroduce the boxing this
@@ -37,6 +38,9 @@ public class IntKeyOpenAddressingMap<V> {
 	private byte[] state;
 	private int size;
 
+	/** The slots no longer {@link #EMPTY}: the live entries plus the tombstones among them. */
+	private int occupied;
+
 	public IntKeyOpenAddressingMap(int size) {
 		initArrays(size);
 	}
@@ -52,6 +56,7 @@ public class IntKeyOpenAddressingMap<V> {
 		values = (V[]) new Object[newSize];
 		state = new byte[newSize];
 		prime = Primes.findMaxSmallerThan(newSize);
+		occupied = 0;
 	}
 
 	public int size() {
@@ -111,30 +116,49 @@ public class IntKeyOpenAddressingMap<V> {
 
 	/**
 	 * Probes the double-hashing sequence for {@code key} and stores {@code value}.
-	 * An {@link #EMPTY} slot ends the search and receives a fresh entry. A slot
-	 * already holding {@code key} is reused in place: a {@link #LIVE} one is
-	 * overwritten, a {@link #TOMBSTONE} one is revived. Reviving the key's own
-	 * tombstone rather than probing past it keeps a remove/re-add cycle of the same
-	 * key from leaking a tombstone on every pass, which would otherwise fill the
-	 * probe chain and force needless resizes. Tombstones for a <em>different</em>
-	 * key are skipped, because the sought key may still sit further along the chain.
+	 * A slot already holding {@code key} is reused in place: a {@link #LIVE} one is
+	 * overwritten, and never triggers a rehash; a {@link #TOMBSTONE} one is revived.
+	 * Reviving the key's own tombstone rather than probing past it keeps a
+	 * remove/re-add cycle of the same key from leaking a tombstone on every pass.
+	 * Otherwise the first {@link #EMPTY} slot of the chain receives a fresh entry,
+	 * and filling it is the one step that can overload the table and rehash it first.
 	 */
 	public V put(int key, V value) {
-		checkIfResizeNeeded();
+		int index = slotFor(key);
+		if (index < 0) {
+			rehash(newSize());
+			return put(key, value);
+		}
+		if (state[index] == LIVE) {
+			return overwrite(index, value);
+		}
+		if (state[index] == EMPTY && DoubleHashing.overloaded(occupied + 1, keys.length)) {
+			rehash(DoubleHashing.rehashedSize(keys.length, size));
+			return put(key, value);
+		}
+		return insert(index, key, value);
+	}
+
+	/**
+	 * The slot {@code key} belongs in: the one already holding it, live or tombstoned,
+	 * else the first {@link #EMPTY} slot of its probe chain. Slots holding a different
+	 * key are skipped. {@code -1} when the chain meets neither.
+	 */
+	private int slotFor(int key) {
 		DoubleHashing.Probe probe = probe(key);
 		for (int i = 0; i < keys.length; ++i) {
 			int index = probe.slot(i);
-			if (state[index] == EMPTY) {
-				return insert(index, key, value);
-			} else if (keys[index] == key) {
-				return state[index] == TOMBSTONE ? insert(index, key, value) : overwrite(index, value);
-			} // slots holding a different key, live or tombstoned, are skipped
+			if (state[index] == EMPTY || keys[index] == key) {
+				return index;
+			}
 		}
-		resize();
-		return put(key, value);
+		return -1;
 	}
 
 	private V insert(int index, int key, V value) {
+		if (state[index] == EMPTY) {
+			occupied++;
+		}
 		keys[index] = key;
 		values[index] = value;
 		state[index] = LIVE;
@@ -148,17 +172,12 @@ public class IntKeyOpenAddressingMap<V> {
 		return previous;
 	}
 
-	private void checkIfResizeNeeded() {
-		if (size + 1 >= keys.length) {
-			resize();
-		}
-	}
-
-	private void resize() {
+	/** Rehashes the live entries into a table of {@code newSize} slots, dropping the tombstones. */
+	private void rehash(int newSize) {
 		int[] oldKeys = keys;
 		V[] oldValues = values;
 		byte[] oldState = state;
-		initArrays(newSize());
+		initArrays(newSize);
 		size = 0;
 		for (int i = 0; i < oldState.length; ++i) {
 			if (oldState[i] == LIVE) {
@@ -179,6 +198,7 @@ public class IntKeyOpenAddressingMap<V> {
 		return previous;
 	}
 
+	/** Empties the map and keeps its current capacity, as {@link OpenAddressingMap#clear()} does. */
 	public void clear() {
 		initArrays(keys.length);
 		size = 0;

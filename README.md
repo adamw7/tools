@@ -45,6 +45,22 @@ consistent and in their expected shape:
 - **`agentsMdFormat`** (`AgentsMdFormatRule`) — applies the same structural
   checks to `AGENTS.md`: it must start with the `# AGENTS.md` title and contain
   every required section heading.
+- **`moduleMapConsistency`** (`ModuleMapConsistencyRule`) — requires every
+  `<module>` of the aggregator pom (commented-out ones ignored) to be mentioned,
+  by its last path segment, in each configured document, so adding a module
+  without documenting it fails the build. It checks presence only;
+  `ignoredModules` exempts one, and a pom declaring no modules is reported as a
+  build-setup mistake.
+- **`contextBudget`** (`ContextBudgetRule`) — caps every configured file (and
+  every `*.md` under configured directories) at `maxBytes`, `maxLines` and/or
+  `maxTokens`. `CLAUDE.md` is loaded into every session, so the fix for a
+  violation is moving detail into `AGENTS.md` or a skill.
+- **`memoryImports`** (`MemoryImportsRule`) — checks that the `@path` imports of
+  `CLAUDE.md` resolve on disk, without cycles and no deeper than `maxDepth`
+  (default 5, Claude Code's own limit). Imports are recognised the way Claude
+  Code evaluates them — outside code fences and code spans, and only for a token
+  written as a path or ending in an `importExtensions` extension — so an
+  `@anthropic-ai/claude-code` install line is not mistaken for one.
 - **`skillFilesExist`** (`SkillFilesExistRule`) — checks that every skill
   directory under `.claude/skills` contains a non-empty `SKILL.md` that opens
   with a YAML front matter block declaring every required key (`name`,
@@ -71,6 +87,12 @@ consistent and in their expected shape:
   assert policy on `permissions.allow`: `requiredPermissions` must all be
   present and `forbiddenPermissions` must all be absent, so a project can mandate
   a permission it relies on or ban an over-broad wildcard such as `Bash(*)`.
+- **`permissionsFormat`** (`PermissionsFormatRule`) — checks each entry of the
+  `allow`, `deny` and `ask` lists in `.claude/settings.json` is a non-blank
+  `Tool` or `Tool(specifier)` — a malformed `Bash(mvn *` grants nothing and fails
+  silently at runtime — and reports duplicates and an entry in both `allow` and
+  `deny`. `allowedTools` rejects a mistyped tool, and `forbiddenEntryPatterns`
+  bans an over-broad grant such as `Bash(*)` by its shape.
 - **`hookCommandsValid`** (`HookCommandsValidRule`) — validates the `hooks`
   section of `.claude/settings.json`: every event must map to an array of groups,
   each group must carry a `hooks` array, and every hook must declare a non-blank
@@ -122,12 +144,10 @@ consistent and in their expected shape:
   non-empty, start with a `#!` shebang (`requireShebang`), and carry the
   executable bit (`requireExecutable`), and an optional `allowedExtensions`
   whitelist rejects a stray file. Where `hookCommandsValid` validates the JSON
-  shape of the `hooks` section, this rule validates the scripts themselves; when
-  a `settingsFile` is configured it also cross-checks the wiring, so a command
-  hook whose project-local path — `$CLAUDE_PROJECT_DIR`-rooted or plain
-  repository-relative — lands in the hooks directory must point
-  at a script that exists there, and `reportUnreferencedScripts` flags a script
-  no hook references. An absent `hooksDir` is a pass because hooks are optional.
+  shape of the `hooks` section and that every script a hook runs exists, this
+  rule validates the scripts themselves; with a `settingsFile` configured,
+  `reportUnreferencedScripts` also flags a script in the directory that no hook
+  runs. An absent `hooksDir` is a pass because hooks are optional.
 - **`uniqueDescriptions`** (`UniqueDescriptionsRule`) — reads the `description`
   from the front matter of every sub-agent (`*.md`), command (`*.md`), and skill
   (`SKILL.md`) in the configured `commandsDir`, `agentsDir`, and `skillsDir`, and
@@ -145,6 +165,19 @@ consistent and in their expected shape:
   be configured, and any directory that is configured must exist. Uniqueness is
   checked across all configured directories at once, so a command that clashes
   with a skill is caught just like two commands that clash.
+- **`noSecrets`** (`NoSecretsRule`) — scans the configured files and directories
+  for literal credentials: Anthropic, AWS, GitHub and Slack token formats and
+  private key blocks by default, and `secretPatterns` adds regexes of your own.
+  A match is reported with its file, line and kind but only its first few
+  characters, so the build log never republishes the secret.
+- **`localSettingsIgnored`** (`LocalSettingsIgnoredRule`) — checks the
+  configured `.gitignore` covers each `ignoredPaths` entry (by default
+  `.claude/settings.local.json`, the personal settings file), honouring
+  negations, anchoring and globs as git does.
+- **`pluginFormat`** (`PluginFormatRule`) — validates
+  `.claude-plugin/plugin.json` when a project ships one: valid JSON declaring
+  every `requiredKeys` entry, a kebab-case `name`, a dotted `version` and a
+  non-empty `description`, with `allowedKeys` reporting typos.
 - **`crossDocConsistency`** (`CrossDocConsistencyRule`) — keeps `CLAUDE.md` and
   `AGENTS.md` from contradicting each other. Each configured `consistentPattern`
   is a regular expression with one capturing group; the captured value must
@@ -159,6 +192,22 @@ consistent and in their expected shape:
   simply does not repeat is ignored — the README is a curated, example-heavy view
   and may document a subset — so only a value present in both files that disagrees
   fails the build.
+- **`claudeCodeProject`** (`ClaudeCodeProjectRule`) — all of the above from a
+  `projectDir` alone. It finds each input at the conventional path Claude Code
+  itself uses, runs only the parts whose input is present, and prefixes every
+  violation with the part that found it; `skippedRules` switches a part off.
+  `crossDocConsistency` and `readmeConsistency` are left out, since they take
+  patterns only a particular project can supply. This is the rule another
+  project wires, and the one `adopt` installs.
+
+Every rule takes a `severity` (`error` by default, or `warn` to log without
+failing), an optional `reportFile` for an HTML report, and an optional
+`baselineFile` that suppresses violations already accepted, so a rule can be
+introduced into a project that does not pass it yet. All three have build-wide
+defaults: `-Dclaude.enforcer.severity`, `-Dclaude.enforcer.reportDir` and
+`-Dclaude.enforcer.baselineDir`. The same rules also run without Maven, through
+`io.github.adamw7.tools.enforcer.cli.Main`, for a pre-commit hook or a project
+built with something else; [AGENTS.md](AGENTS.md) shows the class path it needs.
 
 The `claudeMdFormat` and `agentsMdFormat` rules share a `MarkdownFormatRule`
 base class that performs the file-existence, BOM, title, and section checks. It
@@ -249,7 +298,7 @@ Solution:
 	<groupId>io.github.adamw7</groupId>
 	<artifactId>protogen-maven-plugin</artifactId>
 	<!-- Use the latest release: https://github.com/adamw7/tools/releases/latest -->
-	<version>2.5.0</version>
+	<version>2.6.0</version>
 	<configuration>
 		<generatedSourcesDir>${project.basedir}/target/generated-sources/</generatedSourcesDir>
 		<pkgs>
@@ -349,9 +398,11 @@ public class ExampleTest {
 }
 ```
 Both proto2 and proto3 are supported. In proto2 the generated builder enforces
-that every `required` field is set before `build()` can be called. proto3 has no
-`required` fields, so there is nothing to enforce there; the builder simply
-exposes all fields as optional. Presence-tracking is handled correctly for each
+that every `required` field is set before `build()` can be called. In both
+syntaxes `repeated` and `map` fields are steps of the chain too. proto3 has no
+`required` fields, so its chain holds only those — a proto3 `Team` with a
+`repeated string members` must be given its members before `build()` — and a
+message without them builds straight away. Presence-tracking is handled correctly for each
 syntax: a `hasXxx()` accessor is generated only for fields that actually track
 presence — every singular field in proto2, but in proto3 only message fields and
 those declared with the explicit `optional` keyword (implicit-presence proto3
@@ -560,12 +611,16 @@ on:
 
 ```markdown
 ---
-type: "Java Source File"
-title: "B.java"
-description: "Java source file with 1 project dependency."
-resource: "pkg/B.java"
-tags: ["source", "java"]
-generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+type: Java Source File
+title: B.java
+description: Java source file with 1 project dependency.
+resource: pkg/B.java
+tags:
+- source
+- java
+generated:
+  by: tools.code.context/1
+  at: '2026-08-03T10:15:30Z'
 ---
 
 # Dependencies
@@ -631,9 +686,9 @@ It contains:
   - in memory and iterative loading
   - CSV, JDBC support
   - Parquet (`InMemoryParquetDataSource`, `IterableParquetDataSource`) — read through an in-process DuckDB engine, exposing the file's columns and rows like any other JDBC-backed source
-  - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`)
-  - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; no document-size limit
-  - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects
+  - JSON (`InMemoryJSONDataSource`, `IterableJSONDataSource`) — nested objects are flattened with dotted-path keys (e.g. `people[0].address.city`), and each becomes a two-column `{key, value}` row, in document order; the in-memory source names those two columns `key` and `value`
+  - YAML (`InMemoryYAMLDataSource`, `IterableYAMLDataSource`) — same flattening convention; the iterable source lifts SnakeYAML's 3 MB document limit, while the in-memory one, which holds the whole document anyway, keeps it
+  - TOON (`InMemoryTOONDataSource`, `IterableTOONDataSource`) — a compact, LLM-friendly format that minimises tokens; supports key-value pairs, primitive arrays, tabular arrays, and nested objects, flattened into the same `{key, value}` rows — every array as its count under its own key, then `key[i]` or `key[i].field` per element
   - All file-based sources accept either a file path or an `InputStream`
   - GZIP decompression — any file-based source transparently decompresses `.gz` files; no extra configuration needed
 - uniqueness checks tool
@@ -650,47 +705,46 @@ It contains:
     - `streamable-http` — the modern HTTP transport served at `/mcp`
     - `stateless-http` — the same HTTP transport served at `/mcp`, but session-less: each JSON-RPC request is answered in isolation, which suits load-balanced or serverless deployments
     - any other value is refused at startup with a message naming the three
-  - Build: `mvn clean install` produces `data/target/tools.data-<version>.jar`
-  - Run: `java -jar data/target/tools.data-<version>.jar --transport.mode=stdio`
+  - Build: `mvn clean install` produces the executable server jar `data/target/tools.data-<version>-boot.jar`, attached under the `boot` classifier beside the plain library jar
+  - Run: `java -jar data/target/tools.data-<version>-boot.jar --transport.mode=stdio`
   - See [MCP Usage Documentation](data/src/main/java/io/github/adamw7/tools/data/uniqueness/mcp/MCP_USAGE.md) for client configuration (Claude Desktop, Cline) and usage examples
   
 Examples:
 
 in memory check:
 ```java
-		AbstractUniqueness check = new InMemoryUniquenessCheck();
-		check.setDataSource(new InMemorySQLDataSource(connection, query));
-		Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
-		log.info(result.isUnique());
-		Set<Result> betterOptions = result.getBetterOptions();
-		for (Result betterOption : betterOptions) {
-			log.info(betterOption);	
-		}
-```
-In order to add a new data source for example for XML, JSON, etc you just need to implement this interface:
-```java
-public interface IterableDataSource extends AutoCloseable, Closeable {
-	public String[] getColumnNames();
-	
-	public void open();
-	
-	public String[] nextRow();
-
-	public boolean hasMoreData();
-	
-	public void reset();
-
-	// default method, loads up to batchSize rows in one operation
-	public List<String[]> nextRows(int batchSize);
+Uniqueness check = new InMemoryUniquenessCheck(new InMemorySQLDataSource(connection, query));
+Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
+log.info(result.isUnique());
+for (Result betterOption : result.getBetterOptions()) {
+	log.info(betterOption);
 }
 ```
+The source is handed to the check's constructor, so a check is never without one. `NoMemoryUniquenessCheck` takes any `ColumnarDataSource` the same way, and `execForAllColumns()` checks every column the source names.
+
+In order to add a new data source for example for XML, JSON, etc you just need to implement this interface:
+```java
+public interface IterableDataSource extends Closeable {
+	void open();
+
+	String[] nextRow();
+
+	boolean hasMoreData();
+
+	void reset();
+
+	// default method, loads up to batchSize rows in one operation
+	default List<String[]> nextRows(int batchSize) { ... }
+}
+```
+A source that knows its columns up front also implements `ColumnarDataSource`, which adds `String[] getColumnNames()`. That is the contract the uniqueness checks take, so a forward-only source that discovers its keys as it streams cannot be handed to one.
 `nextRow()` answers `null` when a call produced no row, and `hasMoreData()` is what says which of the two reasons it was: the source is exhausted, or that particular line yielded nothing and a further call may still return a row (a CSV comment does this). `null` rather than an empty array because an empty array is a row these sources really produce — a blank CSV line splits to one empty column, and a query over no columns gives rows of exactly that shape.
 
 `nextRows(int batchSize)` lets callers decide how much data is pulled from the source at once instead of reading row by row. It is a default method built on `hasMoreData()`/`nextRow()`, so every source gets it for free; an empty list signals the source is exhausted. The SQL source additionally applies `batchSize` as the JDBC fetch size so the rows are fetched in a single round-trip.
 If you need an in memory source you need to implement one more method:
 ```java
-public interface InMemoryDataSource extends IterableDataSource {
-	public List<String[]> readAll();
+public interface InMemoryDataSource extends ColumnarDataSource {
+	List<String[]> readAll();
 }
 ```
 `readAll()` belongs to this interface alone, so a forward-only source never carries it: the file sources share the drain-the-whole-source machinery as a `protected readAllRows()` on their base class, and each in-memory source publishes it by writing `readAll()` itself.
@@ -712,7 +766,7 @@ alternative when you want a plain map without the per-entry node objects of
 separate chaining.
 
 ```java
-Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 64
+Map<String, Integer> map = new OpenAddressingMap<>(); // default capacity 67, the prime at or above 64
 map.put("a", 1);
 map.put("b", 2);
 map.get("a");          // 1
@@ -726,16 +780,21 @@ How it works:
   `h1 + i * h2` (modulo the array length), which spreads probes better than
   linear probing and avoids primary clustering. `h1`/`h2` are derived from the
   key's `hashCode()` and a prime chosen as the largest prime smaller than the
-  array length.
+  array length. The array length is itself prime, so every step is coprime with
+  it and a probe sequence visits every slot before repeating one.
 - **Tombstones for removal**: `remove` marks a slot as removed rather than
   clearing it, so probe sequences that ran *through* that slot still find the
   entries placed after it. `put` reuses the first free slot and a never-used
   (`null`) slot terminates a lookup.
-- **Automatic resizing**: when the array is about to fill up, it grows by a
-  `1.2` factor and all live entries are re-hashed into the new array (tombstones
-  are dropped in the process). The initial capacity can be set via
-  `new OpenAddressingMap<>(size)` (minimum effective size is 3); a
-  non-positive size is rejected with `IllegalArgumentException`.
+- **Automatic resizing**: before an insert would fill more than 75% of the
+  array — tombstones included, since they lengthen probe chains just as live
+  entries do — the live entries are re-hashed into a fresh array and the
+  tombstones dropped. The array doubles (rounded up to a prime) when the live
+  entries need the room, and keeps its size when it was tombstones filling it.
+  Overwriting an existing key never resizes, and `clear()` keeps the current
+  capacity. The initial capacity can be set via `new OpenAddressingMap<>(size)`
+  (rounded up to a prime, at least 3); a non-positive size is rejected with
+  `IllegalArgumentException`.
 
 It extends `java.util.AbstractMap`, so `equals`, `hashCode` and `toString` are
 the ones `Map` specifies over the entry set — a map holding the same entries as a
@@ -764,7 +823,7 @@ value, so all of the open-addressing behaviour (double hashing, tombstone
 removal and automatic resizing) is **reused rather than re-implemented**.
 
 ```java
-Set<String> set = new OpenAddressingSet<>(); // default capacity 64
+Set<String> set = new OpenAddressingSet<>(); // default capacity 67, as for the map
 set.add("a");          // true  (newly added)
 set.add("a");          // false (already present)
 set.contains("a");     // true
@@ -796,9 +855,10 @@ int[] keys = map.keys(); // live keys, unboxed
 It deliberately does **not** implement `java.util.Map`, because that interface is
 defined in terms of `Object` keys and would reintroduce the very boxing this
 class exists to avoid; instead it mirrors the relevant map operations with
-primitive `int` keys. Unlike `OpenAddressingMap`, **`null` values are stored
-faithfully** and reported by `containsKey(int)` — only `get(int)` cannot tell a
-stored `null` from an absent key. It is **not thread-safe**.
+primitive `int` keys. It sizes, loads and resizes its table exactly as
+`OpenAddressingMap` does. As there, **`null` values are stored faithfully** and
+reported by `containsKey(int)` — only `get(int)` cannot tell a stored `null` from
+an absent key. It is **not thread-safe**.
 
 ### Network kill-switch
 
@@ -810,9 +870,14 @@ offline — e.g. no accidental calls out while loading and checking local data.
 boolean changed = Switch.off(); // true the first time, false if already off
 ```
 
-`Switch.off()` installs a default `ProxySelector` that refuses every proxy
-selection by throwing `UnsupportedOperationException("The network is off")`, so
-any subsequent attempt to open an outbound connection fails fast. The method is:
+`Switch.off()` seals the network on two layers: a default `ProxySelector` that
+refuses every proxy selection by throwing `UnsupportedOperationException("The
+network is off")`, which stops proxy-aware clients such as `HttpURLConnection` and
+`HttpClient`, and a `SocketImplFactory` that refuses to create any client
+`Socket`, which stops code that dials directly. So any subsequent attempt to open
+an outbound connection fails fast. The one gap is an NIO `SocketChannel` taken
+straight from a `SelectorProvider`, which cannot be replaced once the JVM has
+loaded it. The method is:
 
 - **One-way** — there is no `on()`; once off, the JVM stays offline. Apply it
   early, only when you really mean to seal the process.
@@ -871,7 +936,11 @@ Because it opens the pull request through the GitHub CLI, an authenticated `gh`
 must be on the `PATH` alongside `git` and `claude`. Launch it through `exec:java`
 so Maven puts the full runtime classpath (log4j2 and the rest) on the command — a
 bare `java -cp adopt/target/classes` omits the dependency jars and fails at
-start-up with a `NoClassDefFoundError` for the log4j `LogManager`:
+start-up with a `NoClassDefFoundError` for the log4j `LogManager`. This is the
+one `-pl` used without `-am`: `exec:java` is a goal rather than a lifecycle phase,
+so `-am` would run it in every upstream module too, where there is no main class
+to run. The sibling modules therefore come from the local repository, so run
+`mvn install -DskipTests` once first:
 
 ```bash
 mvn -pl adopt exec:java \
@@ -1036,17 +1105,18 @@ derived checkout directory, and the feature-branch name):
 
 ```java
 AdoptionOptions options = AdoptionOptions.defaults();
-CommandRunner runner = new RetryingCommandRunner(new ProcessCommandRunner(options.commandTimeout()),
-        options.retries());
+CommandRunner runner = CommandRunners.forRun(options);
 GitHubRepoAdopter.withDefaultPipeline(runner, options)
     .adopt(new AdoptionContext("https://github.com/owner/repo.git", workspace), new AdoptionReport());
 ```
 
 `AdoptionOptions` is how a run is configured — the pull request's metadata, the
 starter assets, the rule version to pin, whether it is a dry run, how long one
-command may take, and how many further attempts one the network refused earns. Both entry points build one, so the command line and the
-MCP tool cannot drift apart on what an omitted option means, and the pipeline
-factory does not grow a parameter per switch.
+command may take, and how many further attempts one the network refused earns.
+Both entry points build one, and both build their command runner from it through
+`CommandRunners.forRun`, so the command line and the MCP tool cannot drift apart
+on what an omitted option means, and the pipeline factory does not grow a
+parameter per switch.
 
 The report is a parameter rather than a return value alone, so a run that fails
 part-way still leaves the caller holding the steps that did complete and the
@@ -1149,12 +1219,13 @@ The default pipeline runs these steps in order:
    a parsed document out whole would normalise details a DOM does not record,
    collapsing a start tag spread over several lines and rewriting `<rule />` as
    `<rule/>`, turning a fourteen-line addition into a diff across the file.
-10. **`CommitStep`** — commits the build change (`Add claude-code-enforcer to the
-   build`), reported as `commit:guard`.
+10. **`CommitStep`** — commits the build change (`Adopt Claude Code: add the
+   CLAUDE.md guard`), reported as `commit:guard`.
 11. **`AssetsStep` → `SkillsStep` → `CommitStep`** — *only on `--assets`*
    (`assets` on the MCP tool): installs the starter configuration files and the
-   starter skills described above, then commits them together (`commit:assets`),
-   so the run still leaves two commits. The skills are a step of their own
+   starter skills described above, then commits them together (`commit:assets`,
+   `Add Claude Code configuration assets`), so a run with the assets leaves
+   three commits rather than four. The skills are a step of their own
    because their bodies name the detected build system and the command that runs
    its guard, which the static asset list never sees. Each file is installed
    independently and never overwrites an existing one, so the trio is idempotent.
@@ -1213,8 +1284,8 @@ A set of conventions is shared across modules:
 - **No cycles between packages** — `slices().matching(...).should().beFreeOfCycles()`
   keeps the package graph acyclic in each module.
 - **Loggers are constants** — every `org.apache.logging.log4j.Logger` field must
-  be `private static final` (the context module relaxes this to `private final`),
-  because a logger is a shared, immutable, class-scoped collaborator.
+  be `private static final` in every module, because a logger is a shared,
+  immutable, class-scoped collaborator.
 - **`*Exception` types really are exceptions** — any class whose simple name ends
   with `Exception` must be assignable to `java.lang.Exception`.
 - **`Abstract`-prefixed names** — a top-level abstract class must have a simple
@@ -1222,9 +1293,9 @@ A set of conventions is shared across modules:
   at a glance.
 - **Logging goes through log4j2, not the console or the JDK** — ArchUnit's
   `GeneralCodingRules` forbid access to `System.out`/`System.err`, throwing
-  generic exceptions, and using `java.util.logging`; libraries additionally must
-  never call `System.exit`. The `data` module tightens this further, also
-  rejecting the JDK's own `System.Logger` so all logging stays on log4j2.
+  generic exceptions, and using `java.util.logging`; the shared rule also rejects
+  the JDK's own `System.Logger`, so all logging stays on log4j2, and libraries
+  must never call `System.exit`.
   `protogen-maven-plugin` is the one exemption, and it has a rule of its own
   saying so: a Maven plugin reports through `AbstractMojo.getLog()`, which is
   what honours `-q` and `-X` and attributes a line to the plugin in the reactor
@@ -1269,9 +1340,9 @@ design:
   `System.exit`.
 - **[`claude-code-enforcer`](claude-code-enforcer/src/test/java/io/github/adamw7/tools/enforcer/architecture/EnforcerArchitectureTest.java)** — a `layeredArchitecture` pins the module's layers
   (`text` is the foundation, `rule` builds on it, and the feature packages
-  `definition`/`doc`/`mcp`/`settings` build on `rule` without reaching sideways
-  into one another), and every concrete `*Rule` must extend the shared
-  `ClaudeCodeEnforcerRule` base.
+  `definition`/`doc`/`mcp`/`okf`/`secret`/`settings` build on `rule` without
+  reaching sideways into one another, while `project` assembles them), and every
+  concrete `*Rule` must extend the shared `ClaudeCodeEnforcerRule` base.
 - **[`adopt`](adopt/src/test/java/io/github/adamw7/tools/adopt/architecture/AdoptArchitectureTest.java)** — the `command` runner layer must not depend on the
   `step` package, so the reusable command abstraction stays unaware of the
   adoption steps that build on it; and every concrete `*Step` in `step` must
@@ -1293,10 +1364,11 @@ into the `PER_CLASS` lifecycle).
 
 Run them for a single module with, for example:
 ```
-mvn -pl data -am test
+mvn -pl data -am package
 ```
 (`-am` is required — a bare `mvn -pl data test` fails the root pom's
-`ReactorModuleConvergence` enforcer rule.)
+`ReactorModuleConvergence` enforcer rule — and so is a phase past `test`: `data`
+requires `mcp-common` by the automatic module name its jar carries.)
 or across the whole repository as part of `mvn install`.
 
 ## Integration tests
@@ -1438,9 +1510,13 @@ mvn install
 ## Releasing
 In order to release a new version - X you need to:
 1. Change the revision property to X in root pom.xml
-2. Commit and push
-3. Check if all builds pass
-4. Release and mark as latest in GitHub
+2. Move the supported-versions table in [SECURITY.md](SECURITY.md) onto X — both
+   cells, since only the latest release line is supported
+3. Commit and push
+4. Check if all builds pass
+5. Release and mark as latest in GitHub
+
+[AGENTS.md](AGENTS.md#releasing) covers what the release then publishes, and where.
 
 ## License
 

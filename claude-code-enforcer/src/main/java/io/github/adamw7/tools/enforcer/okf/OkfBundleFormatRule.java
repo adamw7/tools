@@ -24,7 +24,6 @@ import io.github.adamw7.tools.enforcer.rule.ScanTargets;
 import io.github.adamw7.tools.enforcer.rule.Violations;
 import io.github.adamw7.tools.enforcer.text.FrontMatter;
 import io.github.adamw7.tools.markdown.MarkdownDocument;
-import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
  * Enforcer rule that fails the build when a bundle in Google's Open Knowledge
@@ -134,7 +133,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 
 	private void collectDocumentViolations(File document, List<String> violations) {
 		String name = relativePath(document);
-		Optional<String> content = MarkdownText.readIfText(document);
+		Optional<String> content = ProjectFiles.text(document);
 		if (content.isEmpty()) {
 			violations.add(name + " could not be read as UTF-8 text");
 			return;
@@ -245,7 +244,7 @@ public class OkfBundleFormatRule extends ClaudeCodeEnforcerRule {
 	}
 
 	private void collectDeclaredVersionViolations(File root, List<String> violations) {
-		String declared = MarkdownText.readIfText(root)
+		String declared = ProjectFiles.text(root)
 				.flatMap(FrontMatter::parse)
 				.flatMap(frontMatter -> frontMatter.value(OKF_VERSION_KEY))
 				.orElse("");

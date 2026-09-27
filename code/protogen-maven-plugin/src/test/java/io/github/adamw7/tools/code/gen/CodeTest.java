@@ -188,6 +188,28 @@ public class CodeTest {
 		assertFalse(Files.exists(nested), "the nested directory itself must go with its contents");
 	}
 
+	/**
+	 * Only the package's dots become directories. A generated-sources directory that
+	 * carries a dot of its own — a project checked out as {@code my.project} — used to
+	 * be rewritten too, so the output landed in (and first cleared) a directory nobody
+	 * named.
+	 */
+	@Test
+	public void keepsTheDotsOfTheGeneratedSourcesDirectory(@TempDir Path root) throws IOException {
+		Path generatedSources = Files.createDirectories(root.resolve("my.project").resolve("generated-sources"));
+
+		generate(generatedSources, Proto2Message.class);
+
+		assertEquals(List.of("SampleBuilder.java", "SampleOptionalIfc.java", "SampleOptionalImpl.java"),
+				generatedFileNames(generatedSources));
+		assertFalse(Files.exists(root.resolve("my").resolve("project")), "no directory named after a split path");
+	}
+
+	@Test
+	public void resolvesEveryPackageSegmentUnderTheRoot(@TempDir Path root) {
+		assertEquals(root.resolve("com").resolve("x").resolve("out"), Code.pkgToPath(root, "com.x.out"));
+	}
+
 	private static void generate(Path generatedSources, Class<? extends GeneratedMessage> message) {
 		new Code(log, generatedSources.toString(), OUTPUT_PKG.replace('/', '.'))
 				.genBuilders(Set.of(message));

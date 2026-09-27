@@ -7,6 +7,8 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import io.github.adamw7.tools.markdown.LineTerminators;
+
 /**
  * Repairs the unambiguous ways a Claude Code front matter block is commonly
  * malformed, so an auto-fixing rule can rewrite the file rather than only fail the
@@ -143,23 +145,14 @@ public final class FrontMatterFixer {
 		return value.chars().allMatch(character -> character == DASH);
 	}
 
-	private static String render(List<String> lines, String original) {
-		String separator = separatorOf(original);
-		String joined = String.join(separator, lines);
-		return endsWithNewline(original) ? joined + separator : joined;
-	}
-
 	/**
-	 * The line separator the document is already written with. Rebuilding with
-	 * {@code \n} regardless turned a two-line delimiter fix into a whole-file diff on
-	 * Windows.
+	 * The lines joined back on the line terminator the document is already written
+	 * with. Rebuilding with {@code \n} regardless turned a two-line delimiter fix into
+	 * a whole-file diff on Windows.
 	 */
-	private static String separatorOf(String content) {
-		int carriageReturn = content.indexOf(CARRIAGE_RETURN);
-		if (carriageReturn < 0) {
-			return LINE_FEED;
-		}
-		return content.startsWith(LINE_FEED, carriageReturn + 1) ? CARRIAGE_RETURN + LINE_FEED : CARRIAGE_RETURN;
+	private static String render(List<String> lines, String original) {
+		String joined = String.join(LINE_FEED, lines);
+		return LineTerminators.matching(endsWithNewline(original) ? joined + LINE_FEED : joined, original);
 	}
 
 	private static boolean endsWithNewline(String content) {

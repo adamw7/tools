@@ -57,3 +57,12 @@ Spring Boot is chosen because:
 - The servers inherit Spring Boot's release cadence and its share of the dependency
   tree that the security posture ([ADR 0002](0002-security-policy-and-supply-chain-posture.md))
   must keep current.
+
+## Errata (2026-09-26)
+
+- **Where the TLS customiser lives.** It is `TlsConfiguration` in `code/context`,
+  the one server that serves HTTPS, not part of `mcp-common`. Moving it there is
+  still open, as [ADR 0003](0003-require-tls-1.3.md) and
+  [ADR 0011](0011-hybrid-post-quantum-key-exchange.md) record.
+- **How many servers.** Three capabilities are exposed, not two: the adoption
+  pipeline (`adopt`) ships a third server on the same scaffolding.

@@ -42,13 +42,15 @@ Every format ships in two variants:
 | JDBC | `InMemorySQLDataSource` | `IterableSQLDataSource` | `batchSize` sets JDBC fetch size |
 | Parquet | `InMemoryParquetDataSource` | `IterableParquetDataSource` | read via in-process DuckDB, JDBC-like |
 | JSON | `InMemoryJSONDataSource` | `IterableJSONDataSource` | nested flattened to dotted paths |
-| YAML | `InMemoryYAMLDataSource` | `IterableYAMLDataSource` | same flattening; no size limit |
+| YAML | `InMemoryYAMLDataSource` | `IterableYAMLDataSource` | same flattening; iterable lifts the 3 MB limit |
 | TOON | `InMemoryTOONDataSource` | `IterableTOONDataSource` | compact, LLM-friendly |
 
 - All file-based sources accept a **file path or an `InputStream`** and
   transparently **decompress `.gz`** with no extra config.
-- JSON/YAML flatten nested objects to dotted keys, e.g.
-  `people[0].address.city`.
+- JSON/YAML/TOON flatten nested objects to dotted keys, e.g.
+  `people[0].address.city`, and emit each as a two-column `{key, value}` row in
+  document order. The in-memory ones report exactly those two columns, `key` and
+  `value`, from `getColumnNames()` — the keys are data, not a schema.
 - The **JDBC sources run the query verbatim** through a plain `Statement`: they
   bind nothing, so a query built from untrusted input is an injection at the
   caller's keyboard. Their javadoc says so, and `data/spotbugs-exclude.xml`
@@ -84,8 +86,8 @@ JVM that any caller can move or clear.
 
 ## Uniqueness check
 ```java
-AbstractUniqueness check = new InMemoryUniquenessCheck();   // or NoMemoryUniquenessCheck
-check.setDataSource(new InMemorySQLDataSource(connection, query));
+// or new NoMemoryUniquenessCheck(columnarSource)
+Uniqueness check = new InMemoryUniquenessCheck(new InMemorySQLDataSource(connection, query));
 Result result = check.exec("COLUMN1", "COLUMN2", "COLUMN3");
 if (result.isUnique()) {
     for (Result better : result.getBetterOptions()) {   // smaller candidate keys

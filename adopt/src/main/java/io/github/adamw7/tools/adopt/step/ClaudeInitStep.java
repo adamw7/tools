@@ -13,7 +13,9 @@ import org.apache.logging.log4j.Logger;
 
 import io.github.adamw7.tools.adopt.AdoptionContext;
 import io.github.adamw7.tools.adopt.AdoptionException;
+import io.github.adamw7.tools.adopt.AdoptionFiles;
 import io.github.adamw7.tools.adopt.Failures;
+import io.github.adamw7.tools.adopt.command.Backoff;
 import io.github.adamw7.tools.adopt.command.CommandResult;
 import io.github.adamw7.tools.adopt.command.CommandRunner;
 import io.github.adamw7.tools.adopt.command.RetryingCommandRunner.Pause;
@@ -66,6 +68,8 @@ public class ClaudeInitStep extends AbstractCommandStep {
 
 	/** The wait the doubling stops at, so a generous retry count cannot idle a run for minutes. */
 	static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
+
+	private static final Backoff BACKOFF = new Backoff(FIRST_BACKOFF, MAX_BACKOFF);
 
 	private final List<String> claudeCommand;
 	private final int retries;
@@ -158,18 +162,11 @@ public class ClaudeInitStep extends AbstractCommandStep {
 	 * where a reader finds out that the CLI declined rather than failed.
 	 */
 	private void waitBefore(int attempt, CommandResult result) {
-		Duration backoff = backoff(attempt);
+		Duration backoff = BACKOFF.before(attempt);
 		log.warn("claude init produced no {} (exit {}); retrying in {}s ({} of {}): {}", CLAUDE_MD,
 				result.exitCode(), backoff.toSeconds(), attempt, retries, result.redactedOutput().strip());
 		pause.of(backoff);
 	}
-
-	private Duration backoff(int attempt) {
-		Duration doubled = FIRST_BACKOFF.multipliedBy(1L << (attempt - 1));
-		return doubled.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : doubled;
-	}
-
-
 
 	private void restoreRelocated(Optional<Path> relocated, Path checkout) {
 		relocated.ifPresent(backup -> restore(backup, claudeDirMemory(checkout)));
@@ -204,22 +201,9 @@ public class ClaudeInitStep extends AbstractCommandStep {
 		}
 	}
 
-	/**
-	 * The path is absolutised before its parent is taken, so a memory file named relative
-	 * to the working directory — which {@link Path#getParent} answers {@code null} for —
-	 * still names the directory the move will land in instead of being dereferenced.
-	 */
 	private void restore(Path backup, Path memory) {
-		try {
-			Path directory = memory.toAbsolutePath().getParent();
-			if (directory != null) {
-				Files.createDirectories(directory);
-			}
-			Files.move(backup, memory, StandardCopyOption.REPLACE_EXISTING);
-			log.info("Restored existing {}", memory);
-		} catch (IOException e) {
-			throw new AdoptionException(name() + " could not restore " + memory + " from " + backup, e);
-		}
+		AdoptionFiles.move(backup, memory, name() + "'s relocated " + CLAUDE_MD);
+		log.info("Restored existing {}", memory);
 	}
 
 	/**

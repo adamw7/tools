@@ -31,9 +31,10 @@ import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
 /**
  * Architecture rules for the enforcer module. They pin the layering that the
  * package structure already follows today: {@code text} is the foundation,
- * {@code rule} builds on it, and the feature packages ({@code definition},
- * {@code doc}, {@code mcp}, {@code settings}) build on {@code rule} without
- * reaching sideways into one another. They also pin what a rule is allowed to
+ * {@code rule} builds on it, the feature packages ({@code definition},
+ * {@code doc}, {@code mcp}, {@code okf}, {@code secret}, {@code settings}) build on
+ * {@code rule} without reaching sideways into one another, and {@code project}
+ * assembles them. They also pin what a rule is allowed to
  * do at build time: read the project, and nothing else — no process, no network,
  * and no write outside the report, the baseline and the front-matter fix a rule
  * was asked for. Only production classes are analysed.
@@ -72,9 +73,7 @@ public class EnforcerArchitectureTest {
 	private static final String TEXT_PACKAGE = "..enforcer.text..";
 	private static final String OBJECT_MAPPER = "com.fasterxml.jackson.databind.ObjectMapper";
 	private static final String JSON_NODES = ENFORCER_PACKAGE + ".rule.JsonNodes";
-	private static final String BASELINE = ENFORCER_PACKAGE + ".rule.Baseline";
-	private static final String HTML_REPORT = ENFORCER_PACKAGE + ".rule.HtmlReport";
-	private static final String REPORT_INDEX = ENFORCER_PACKAGE + ".rule.ReportIndex";
+	private static final String REPORT_FILES = ENFORCER_PACKAGE + ".rule.ReportFiles";
 	private static final String FILE_MUTATIONS =
 			"write|writeString|newBufferedWriter|newOutputStream|createFile|createDirectory|createDirectories"
 					+ "|delete|deleteIfExists|move|copy";
@@ -171,9 +170,9 @@ public class EnforcerArchitectureTest {
 	static final ArchRule oneConfiguredJsonMapper = noClasses()
 			.that().doNotHaveFullyQualifiedName(JSON_NODES)
 			.should().dependOnClassesThat().haveFullyQualifiedName(OBJECT_MAPPER)
-			.because("JsonNodes owns the single mapper configured for the comments and trailing commas "
-					+ "Claude Code's JSON files allow; a rule that built its own would reject a file the "
-					+ "tool itself accepts");
+			.because("JsonNodes owns the single mapper, configured to reject what Claude Code would read "
+					+ "differently from its author — content after the closing brace and a key declared twice; "
+					+ "a rule that built its own with Jackson's defaults would pass exactly those files");
 
 	@ArchTest
 	static final ArchRule rulesDoNotSpawnProcesses = noClasses()
@@ -197,13 +196,11 @@ public class EnforcerArchitectureTest {
 
 	@ArchTest
 	static final ArchRule rulesDoNotWriteToTheProjectTheyCheck = noClasses()
-			.that().doNotHaveFullyQualifiedName(BASELINE)
-			.and().doNotHaveFullyQualifiedName(HTML_REPORT)
-			.and().doNotHaveFullyQualifiedName(REPORT_INDEX)
+			.that().doNotHaveFullyQualifiedName(REPORT_FILES)
 			.should().callMethodWhere(target(owner(type(Files.class))).and(target(nameMatching(FILE_MUTATIONS))))
-			.because("a check reports what it found; the three places that write here are the ones a build "
-					+ "asked for — the HTML report, the index linking the reports, and the recorded "
-					+ "baseline. Each writes only where a configured parameter or property pointed it, "
+			.because("a check reports what it found; the one class that writes here, ReportFiles, writes "
+					+ "what a build asked for — the HTML report, the index linking the reports, and the "
+					+ "recorded baseline — only where a configured parameter or property pointed it, "
 					+ "never into the project under check. The front-matter fix writes through "
 					+ "markdown-common's MarkdownText, which its own module holds to the same rule")
 			.allowEmptyShould(true);

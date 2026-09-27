@@ -207,7 +207,8 @@ classDiagram
 > in the chain. The full generator additionally emits `hasXxx()`, `clearXxx()`
 > and, for `oneof` groups, `getXxxCase()` accessors; they are elided here to keep
 > the shift-left mechanism in focus. proto3 has no `required` fields, so its
-> chain is a single terminal interface — nothing to enforce.
+> chain holds only its `map` and `repeated` fields, and a message with none of
+> those gets a single terminal interface.
 
 ---
 

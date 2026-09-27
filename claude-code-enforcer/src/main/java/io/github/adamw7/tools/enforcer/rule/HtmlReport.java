@@ -4,9 +4,6 @@ import static io.github.adamw7.tools.enforcer.rule.HtmlPage.escape;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
@@ -46,19 +43,11 @@ final class HtmlReport {
 
 	/**
 	 * Writes the rendered report to {@code file}, failing the build if it cannot be
-	 * written. Missing parent directories are created first: a report under
-	 * {@code target/} is written at {@code validate}, before any plugin created it. A
-	 * path with no parent to create — which {@link Path#getParent} answers {@code null}
-	 * for at a filesystem root — simply has nothing to make before the write.
+	 * written. Missing parent directories are created first.
 	 */
 	void writeTo(File file) throws EnforcerRuleException {
 		try {
-			Path path = file.toPath().toAbsolutePath();
-			Path parent = path.getParent();
-			if (parent != null) {
-				Files.createDirectories(parent);
-			}
-			Files.writeString(path, render(), StandardCharsets.UTF_8);
+			ReportFiles.write(file.toPath(), render());
 		} catch (IOException e) {
 			throw new EnforcerRuleException("Could not write HTML report to " + file, e);
 		}

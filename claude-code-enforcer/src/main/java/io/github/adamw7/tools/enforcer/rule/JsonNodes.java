@@ -1,7 +1,9 @@
 package io.github.adamw7.tools.enforcer.rule;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,6 +53,17 @@ public final class JsonNodes {
 			violations.add(description + " is not valid JSON: " + e.getOriginalMessage());
 			return null;
 		}
+	}
+
+	/**
+	 * {@link #parseObject(String, String, List)} for the content of {@code file},
+	 * parsed once per build however many rules ask — the rules that each check a
+	 * section of {@code settings.json} parse it once between them. A failed parse is not
+	 * kept, so every rule that asks collects the violation for itself.
+	 */
+	public static Optional<JsonNode> parseObject(File file, String content, String description,
+			List<String> violations) {
+		return DocumentCache.parsed(file, () -> Optional.ofNullable(parseObject(content, description, violations)));
 	}
 
 	/** The child object at {@code key}, or null when it is absent or not an object. */

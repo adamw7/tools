@@ -11,6 +11,7 @@ import org.apache.maven.enforcer.rule.api.EnforcerRuleException;
 
 import io.github.adamw7.tools.enforcer.doc.BoundedCharSequence.BacktrackLimitExceededException;
 import io.github.adamw7.tools.enforcer.rule.Patterns;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.markdown.MarkdownText;
 
 /**
@@ -94,7 +95,7 @@ final class DocumentConsistency {
 	 * an internal error instead.
 	 */
 	private Document read(File file) throws EnforcerRuleException {
-		return new Document(file.getName(), MarkdownText.readIfText(file)
+		return new Document(file.getName(), ProjectFiles.text(file)
 				.orElseThrow(() -> new EnforcerRuleException(
 						file.getName() + " cannot be read as UTF-8 text: " + file)));
 	}

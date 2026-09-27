@@ -6,6 +6,7 @@ import java.util.List;
 import javax.inject.Named;
 
 import io.github.adamw7.tools.enforcer.rule.MarkdownFormatRule;
+import io.github.adamw7.tools.markdown.ClaudeMdContract;
 import io.github.adamw7.tools.markdown.MarkdownDocument;
 
 /**
@@ -29,15 +30,7 @@ import io.github.adamw7.tools.markdown.MarkdownDocument;
 public class ClaudeMdFormatRule extends MarkdownFormatRule {
 
 	/** The companion document a {@code CLAUDE.md} points at unless configured otherwise. */
-	static final String DEFAULT_REQUIRED_REFERENCE = "AGENTS.md";
-
-	private static final List<String> REQUIRED_SECTIONS = List.of(
-			"## Project",
-			"## Java version",
-			"## Maven",
-			"## Principles for Java Development",
-			"## Testing",
-			"## Dependencies");
+	static final String DEFAULT_REQUIRED_REFERENCE = ClaudeMdContract.COMPANION;
 
 	/** The {@code CLAUDE.md} file to validate. Injected from the rule configuration. */
 	private File claudeMdFile;
@@ -50,7 +43,7 @@ public class ClaudeMdFormatRule extends MarkdownFormatRule {
 	private String requiredReference;
 
 	public ClaudeMdFormatRule() {
-		super("CLAUDE.md", REQUIRED_SECTIONS);
+		super(ClaudeMdContract.FILE_NAME, ClaudeMdContract.REQUIRED_SECTIONS);
 	}
 
 	/**

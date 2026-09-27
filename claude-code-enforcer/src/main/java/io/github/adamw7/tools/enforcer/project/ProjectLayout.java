@@ -2,13 +2,13 @@ package io.github.adamw7.tools.enforcer.project;
 
 import java.io.File;
 
-import io.github.adamw7.tools.markdown.MarkdownText;
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 
 /**
  * Where Claude Code keeps a project's configuration, so a composite rule can find
  * it from the project directory alone. Every path here is the one Claude Code
  * itself uses, which is what lets {@link ClaudeCodeProjectRule} be configured with
- * a single {@code projectDir} instead of the sixty-odd elements naming each rule's
+ * a single {@code projectDir} instead of the dozens of elements naming each rule's
  * inputs; stating the convention once keeps two parts from disagreeing about where
  * the skills live.
  *
@@ -75,7 +75,7 @@ public record ProjectLayout(File projectDir) {
 	 * cannot be read is not an aggregator, and the rule that reads it will say why.
 	 */
 	public boolean declaresModules() {
-		return MarkdownText.readIfText(pom()).filter(pom -> pom.contains("<module>")).isPresent();
+		return ProjectFiles.text(pom()).filter(pom -> pom.contains("<module>")).isPresent();
 	}
 
 	private File claudeDir() {

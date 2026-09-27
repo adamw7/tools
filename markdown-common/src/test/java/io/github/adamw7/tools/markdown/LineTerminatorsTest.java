@@ -28,6 +28,17 @@ class LineTerminatorsTest {
 	}
 
 	@Test
+	void keepsAFileWrittenWithLoneCarriageReturnsOnThem() {
+		assertEquals("a\rb\r", LineTerminators.matching("a\nb\n", "first\rsecond\r"));
+	}
+
+	/** A stray CR inside an LF file is content, not the file's terminator. */
+	@Test
+	void keepsAnLfFileWithAStrayCarriageReturnOnLf() {
+		assertEquals("a\nb\n", LineTerminators.matching("a\nb\n", "first\rstill first\nsecond\n"));
+	}
+
+	@Test
 	void normalizesEveryTerminatorToLf() {
 		assertEquals("a\nb\nc\n", LineTerminators.normalized("a\r\nb\rc\n"));
 	}

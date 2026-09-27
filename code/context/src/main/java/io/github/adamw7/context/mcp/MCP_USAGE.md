@@ -47,7 +47,7 @@ The server uses:
   or stateless HTTP (`--transport.mode=stateless-http`), which serves the same
   `/mcp` endpoint without keeping a session. Any other value is refused at
   startup with a message naming the three.
-- **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.0
+- **MCP SDK**: `io.modelcontextprotocol.sdk` v2.0.1
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
 
@@ -59,7 +59,9 @@ From the root of the repository:
 mvn clean install
 ```
 
-This creates an executable JAR in `code/context/target/tools.code.context-{version}.jar`.
+This creates an executable JAR in `code/context/target/tools.code.context-{version}-boot.jar`. The
+`boot` classifier keeps the executable server separate from `tools.code.context-{version}.jar`,
+which stays an ordinary library jar.
 
 ## Tool Specifications
 
@@ -169,12 +171,16 @@ A returned concept document looks like this:
 
 ```markdown
 ---
-type: "Java Source File"
-title: "B.java"
-description: "Java source file with 1 project dependency."
-resource: "pkg/B.java"
-tags: ["source", "java"]
-generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
+type: Java Source File
+title: B.java
+description: Java source file with 1 project dependency.
+resource: pkg/B.java
+tags:
+- source
+- java
+generated:
+  by: tools.code.context/1
+  at: '2026-08-03T10:15:30Z'
 ---
 
 # Dependencies
@@ -187,13 +193,13 @@ generated: { by: "tools.code.context/1", at: "2026-08-03T10:15:30Z" }
 ### stdio (default)
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar
+java -jar code/context/target/tools.code.context-{version}-boot.jar
 ```
 
 ### streamable HTTP
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=streamable-http
+java -jar code/context/target/tools.code.context-{version}-boot.jar --transport.mode=streamable-http
 ```
 
 The MCP endpoint is then served at `http://localhost:8082/mcp` (the port is
@@ -202,7 +208,7 @@ configurable through `server.port`).
 ### stateless HTTP
 
 ```bash
-java -jar code/context/target/tools.code.context-{version}.jar --transport.mode=stateless-http
+java -jar code/context/target/tools.code.context-{version}-boot.jar --transport.mode=stateless-http
 ```
 
 The MCP endpoint is served at `http://localhost:8082/mcp`, the same as
@@ -277,7 +283,7 @@ constrained by design:
       "command": "java",
       "args": [
         "-jar",
-        "/absolute/path/to/tools/code/context/target/tools.code.context-{version}.jar"
+        "/absolute/path/to/tools/code/context/target/tools.code.context-{version}-boot.jar"
       ]
     }
   }

@@ -63,3 +63,10 @@ removed a restriction somebody was relying on.
   what was refused before is still refused — with one deliberate exception: a
   path element is now compared to `..` rather than searched for as a substring,
   so a legitimate file named `..name` is no longer mistaken for an escape.
+
+## Errata (2026-09-26)
+
+The one-release window for `PathValidator`'s deprecated entry points has passed:
+2.6.0 shipped with them. Removing them is tracked in issue #716. The containment
+check `AllowedPaths` runs now lives in `mcp-common`'s `PathBoundary`, which the
+context server's `PathPolicy` shares; the behaviour described above is unchanged.

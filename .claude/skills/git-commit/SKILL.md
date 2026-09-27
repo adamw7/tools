@@ -34,8 +34,10 @@ Maven reactor.
 
 ### Scope — use this repo's real modules/components
 `data`, `code`, `context`, `protogen-maven-plugin`, `adopt`, `mcp-common`,
-`claude-code-enforcer`, `assembly`, `grpc-example`, `data-test`. Narrow to a
-component when it's clearer (e.g. `source.db`, `uniqueness`, `mcp`, `builder`).
+`markdown-common`, `test-common`, `claude-code-enforcer`, `assembly`,
+`grpc-example`, `data-test`. Narrow to a component when it's clearer (e.g.
+`source.db`, `uniqueness`, `mcp`, `builder`); `deps` and `ci` cover dependency
+bumps and workflow changes.
 
 ### Subject rules
 - Imperative mood: "Add support", not "Added support"
@@ -60,7 +62,7 @@ Closes #123
 ```
 fix(data): close JDBC statement when the result iterator is exhausted
 
-IterativeDbSource leaked a Statement when callers stopped before the last
+IterableSQLDataSource leaked a Statement when callers stopped before the last
 row. Wrap the cursor in try-with-resources so it closes on every path.
 
 Fixes #456

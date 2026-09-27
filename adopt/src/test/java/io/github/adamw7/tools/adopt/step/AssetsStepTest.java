@@ -31,6 +31,8 @@ class AssetsStepTest {
 		assertTrue(Files.isRegularFile(checkout.resolve(AdoptionAssets.SESSION_START_HOOK_FILE)));
 		assertTrue(Files.isRegularFile(checkout.resolve(AdoptionAssets.MCP_CONFIG_FILE)));
 		assertTrue(Files.isRegularFile(checkout.resolve(AdoptionAssets.CLAUDE_WORKFLOW_FILE)));
+		assertTrue(Files.readString(checkout.resolve(AdoptionAssets.CLAUDE_WORKFLOW_FILE))
+				.contains("uses: " + AdoptionAssets.CHECKOUT_ACTION));
 	}
 
 	@Test

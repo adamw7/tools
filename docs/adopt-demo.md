@@ -198,7 +198,8 @@ with steps that decide to do nothing. The report says what really happened.
 ## What the run left behind
 
 A dry run keeps its checkout — that being all it produces — under the workspace the
-report names. Four commits sit on the `claude/adopt-claude-code` branch there, and
+report names. Three commits sit on the `claude/adopt-claude-code` branch there —
+`commit:claude-md`, `commit:guard` and `commit:assets` in the steps above — and
 reading them is the point of a rehearsal:
 
 ```bash

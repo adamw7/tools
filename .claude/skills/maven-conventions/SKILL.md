@@ -73,10 +73,10 @@ profile, is the most common source of avoidable build friction here.
 |---|---|
 | `mvn clean install` | Full clean build + install to local repo |
 | `mvn install` | Faster incremental build |
-| `mvn -pl <module> -am test` | Tests for a single module (`-am` is required — a bare `-pl` fails the `ReactorModuleConvergence` rule) |
+| `mvn -pl <module> -am package` | Tests for a single module (`-am` is required — a bare `-pl` fails the `ReactorModuleConvergence` rule; `package`, since `data` needs `mcp-common`'s jar to resolve its module name) |
 | `mvn -P integration-tests verify` | MCP integration tests (`*IT`) |
 | `mvn -Pcoverage verify` | JaCoCo coverage (fails under 80% instruction or branch) |
-| `mvn -Ppitest test` | PIT mutation testing |
+| `mvn -Ppitest install` | PIT mutation testing (needs a phase past `package`) |
 | `mvn install -Dskip.shellcheck=true` | Skip the shellcheck lint |
 
 ## Notes that save time

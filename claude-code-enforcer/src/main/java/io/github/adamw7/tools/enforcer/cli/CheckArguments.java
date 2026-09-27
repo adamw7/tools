@@ -30,7 +30,8 @@ final class CheckArguments {
 			                             reported under, e.g. okfBundleFormat
 			  --fix                      repair what can be repaired rather than only
 			                             reporting it: a missing title, a near-miss
-			                             heading, an empty or absent section
+			                             heading, an empty or absent section, a
+			                             malformed front matter block
 			  --warn                     report violations without failing
 			  --budget <bytes>           the size CLAUDE.md is held to; 0 to not check
 			  --report <directory>       write an HTML report per rule, and an index

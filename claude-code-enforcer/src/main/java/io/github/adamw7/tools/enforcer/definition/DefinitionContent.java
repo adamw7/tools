@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.apache.maven.enforcer.rule.api.EnforcerLogger;
 
+import io.github.adamw7.tools.enforcer.rule.ProjectFiles;
 import io.github.adamw7.tools.enforcer.text.FrontMatterFixer;
 import io.github.adamw7.tools.markdown.MarkdownText;
 
@@ -32,7 +33,7 @@ final class DefinitionContent {
 	 */
 	static Optional<String> of(File file, String label, boolean autoFix, EnforcerLogger log,
 			List<String> violations) {
-		Optional<String> text = MarkdownText.readIfText(file);
+		Optional<String> text = ProjectFiles.text(file);
 		if (text.isEmpty()) {
 			violations.add(label + " cannot be read as text: " + file);
 			return Optional.empty();

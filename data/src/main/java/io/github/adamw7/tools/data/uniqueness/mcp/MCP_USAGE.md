@@ -16,7 +16,7 @@ The implementation consists of three main components:
 
 The server uses:
 - **Transport**: stdio (default), streamable-http (`--transport.mode=streamable-http`, served at `/mcp`), or stateless-http (`--transport.mode=stateless-http`, session-less, also served at `/mcp`). Any other value is refused at startup, naming the three
-- **MCP SDK**: io.modelcontextprotocol.sdk v2.0.0
+- **MCP SDK**: io.modelcontextprotocol.sdk v2.0.1
 - **Framework**: Spring Boot
 - **Protocol**: Model Context Protocol (MCP)
 
@@ -40,7 +40,7 @@ Checks if a given column in a CSV file contains only unique values.
 
 **Parameters:**
 - `file` (string, required): Path to the CSV file
-- `columns_row` (integer, required): Row number (0-based) that contains column headers
+- `columns_row` (integer, required): 1-based line number of the header row — `1` when the headers are on the first line
 - `columns_name` (string, required): Name of the column to check for uniqueness
 
 **Returns:**
@@ -51,7 +51,7 @@ Checks if a given column in a CSV file contains only unique values.
 ```json
 {
   "file": "/path/to/data.csv",
-  "columns_row": 0,
+  "columns_row": 1,
   "columns_name": "user_id"
 }
 ```
@@ -123,7 +123,7 @@ Once configured, you can use the tool in conversations with your MCP client:
 ```json
 {
   "file": "/data/users.csv",
-  "columns_row": 0,
+  "columns_row": 1,
   "columns_name": "user_id"
 }
 ```
@@ -132,7 +132,7 @@ Once configured, you can use the tool in conversations with your MCP client:
 
 ### Example 2: Data Validation
 
-**User:** I'm working with a product catalog at /data/products.csv. The column names are on row 0. Please verify that the SKU column contains only unique values.
+**User:** I'm working with a product catalog at /data/products.csv. The column names are on row 1. Please verify that the SKU column contains only unique values.
 
 **Assistant:** The assistant will use the tool to check if SKU is a valid unique identifier for the products.
 

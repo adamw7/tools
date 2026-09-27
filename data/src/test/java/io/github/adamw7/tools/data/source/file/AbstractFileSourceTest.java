@@ -235,18 +235,22 @@ public class AbstractFileSourceTest {
 
 	/**
 	 * Keeps the stream {@link AbstractFileSource#createScanner(String)} opened, so a test can
-	 * ask whether it was closed. The stream constructor opens nothing itself, which leaves
-	 * {@code createScanner(String)} to be called on its own rather than from a constructor
-	 * that throws before handing back the source.
+	 * ask whether it was closed. Its {@code createScanner()} answers an empty scanner, so the
+	 * path constructor opens nothing, which leaves {@code createScanner(String)} to be called
+	 * on its own rather than from a constructor that throws before handing back the source.
 	 */
 	private static final class RecordingSource extends AbstractFileSource {
 
 		private InputStream openedStream;
 
+		/** The path is what ZipUtils reads the magic number from. */
 		private RecordingSource(String fileName) {
-			super(InputStream.nullInputStream());
-			// What ZipUtils reads the magic number from.
-			this.fileName = fileName;
+			super(fileName, AllowedPaths.anywhere());
+		}
+
+		@Override
+		protected Scanner createScanner() {
+			return new Scanner(InputStream.nullInputStream(), StandardCharsets.UTF_8);
 		}
 
 		@Override

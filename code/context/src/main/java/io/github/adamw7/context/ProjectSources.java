@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Loads the source files of a Java or Kotlin project from disk into
+ * Loads the source files of a Java, Kotlin or Scala project from disk into
  * {@link ClassContainer}s, keyed by their {@link Path}. A source file is any
  * regular file whose name ends with the configured {@link Language}'s extension.
  * Centralising the rules for recognising and reading sources here keeps the

@@ -1,5 +1,6 @@
 package io.github.adamw7.tools.data.source.db;
 
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
 import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
 
 /**
@@ -13,8 +14,25 @@ import io.github.adamw7.tools.data.source.interfaces.ColumnarDataSource;
  */
 public class IterableParquetDataSource extends IterableSQLDataSource {
 
+	/**
+	 * Reads {@code filePath} unconfined: the path is canonicalised and refused if it climbs
+	 * out with {@code ..}, but may name any file. Prefer
+	 * {@link #IterableParquetDataSource(String, AllowedPaths)}.
+	 */
 	public IterableParquetDataSource(String filePath) {
-		super(DuckDbParquet.connect(), DuckDbParquet.readQuery(filePath));
+		this(filePath, AllowedPaths.anywhere());
+	}
+
+	/**
+	 * The path is validated before the DuckDB connection is opened, so a refused path leaves
+	 * no connection behind.
+	 *
+	 * @param allowedPaths the directory this source may read from; a path outside it is refused
+	 *                     with a {@link SecurityException}
+	 */
+	public IterableParquetDataSource(String filePath, AllowedPaths allowedPaths) {
+		String query = DuckDbParquet.readQuery(filePath, allowedPaths);
+		super(DuckDbParquet.connect(), query);
 	}
 
 	@Override

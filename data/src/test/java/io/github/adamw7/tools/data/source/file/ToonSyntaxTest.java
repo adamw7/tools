@@ -177,15 +177,6 @@ public class ToonSyntaxTest {
 	}
 
 	@Test
-	public void emitTabularHeaderEmitsCountThenFields() {
-		Map<String, String> sink = new LinkedHashMap<>();
-		ToonSyntax.emitTabularHeader(sink::put, "rows", 3, new String[] { "id", "name" });
-		assertEquals("3", sink.get("rows"));
-		assertEquals("id", sink.get("id"));
-		assertEquals("name", sink.get("name"));
-	}
-
-	@Test
 	public void emitTabularRowFlattensValuesAndIgnoresSurplus() {
 		Map<String, String> sink = new LinkedHashMap<>();
 		ToonSyntax.emitTabularRow(sink::put, "rows", new String[] { "id", "name" }, "7,\"Alice\",extra", 1);

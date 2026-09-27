@@ -1,6 +1,7 @@
 package io.github.adamw7.tools.data.source.file;
 
 import static java.util.Map.entry;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,7 +21,7 @@ import io.github.adamw7.tools.data.Utils;
 
 public class TOONDataSourceTest {
 
-	private static final int FILE_ROW_COUNT = 70;
+	private static final int FILE_ROW_COUNT = 58;
 
 	private static Map<String, String> collect(InMemoryTOONDataSource source) throws IOException {
 		Map<String, String> rows = new LinkedHashMap<>();
@@ -37,9 +38,19 @@ public class TOONDataSourceTest {
 	public void testGetColumnNames() throws IOException {
 		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(Utils.getFileName("test.toon"))) {
 			source.open();
-			String[] columnNames = source.getColumnNames();
-			assertNotNull(columnNames);
-			assertEquals(FILE_ROW_COUNT, columnNames.length);
+			assertArrayEquals(new String[] { "key", "value" }, source.getColumnNames());
+		}
+	}
+
+	@Test
+	public void rowsFollowDocumentOrder() throws IOException {
+		String toon = "zeta: 1\nalpha: 2\ntags[2]: b,a\nmiddle: 3";
+		try (InMemoryTOONDataSource source = new InMemoryTOONDataSource(
+				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
+			source.open();
+
+			assertEquals(List.of("zeta", "alpha", "tags", "tags[0]", "tags[1]", "middle"),
+					List.copyOf(collect(source).keySet()));
 		}
 	}
 
@@ -122,7 +133,6 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			assertTrue(source.getColumnNames().length > 0);
 			assertEquals(Map.of("tags", "3", "tags[0]", "admin", "tags[1]", "ops", "tags[2]", "dev"), collect(source));
 		}
 	}
@@ -134,8 +144,7 @@ public class TOONDataSourceTest {
 				new ByteArrayInputStream(toon.getBytes(StandardCharsets.UTF_8)))) {
 			source.open();
 
-			assertEquals(Map.ofEntries(entry("id", "id"), entry("name", "name"), entry("role", "role"),
-					entry("users", "2"), entry("users[0].id", "1"), entry("users[0].name", "Alice"),
+			assertEquals(Map.ofEntries(entry("users", "2"), entry("users[0].id", "1"), entry("users[0].name", "Alice"),
 					entry("users[0].role", "admin"), entry("users[1].id", "2"), entry("users[1].name", "Bob"),
 					entry("users[1].role", "user")), collect(source));
 		}

@@ -145,11 +145,12 @@ reads as present, and the adoption then failed its own `VerifyStep` — after
 committing and pushing the file. **Read a document through `MarkdownDocument`;
 never re-derive a mask, a fence or a heading on either side.**
 
-What the conformer still copies is `claudeMdFormat`'s *required sections* — data,
-not reading. `ClaudeMdConformerContractTest` holds that copy honest: it runs the
-*real* rule, on a test-scoped dependency, over the conformer's output, and
-asserts the raw fixture is rejected first so a conformer that stopped reshaping
-cannot pass by doing nothing.
+The contract's values — the title, the companion document and `claudeMdFormat`'s
+*required sections* — are `markdown-common`'s `ClaudeMdContract`, which both sides
+read. `ClaudeMdConformerContractTest` still runs the *real* rule, on a
+test-scoped dependency, over the conformer's output, and asserts the raw fixture
+is rejected first so a conformer that stopped reshaping cannot pass by doing
+nothing.
 
 When you touch either side:
 
@@ -227,8 +228,9 @@ in its column before calling it done.
 
 ## References
 - `markdown-common/src/main/java/io/github/adamw7/tools/markdown/`
-  — `MarkdownDocument`, `MarkdownText`; shared by the enforcer and by `adopt`,
-  and dependency-free so it can be
+  — `MarkdownDocument`, `MarkdownText`, `ClaudeMdContract`; shared by the
+  enforcer and by `adopt`, and dependency-free so either can read through it
+  without inheriting the other's dependencies
 - `claude-code-enforcer/src/main/java/io/github/adamw7/tools/enforcer/text/`
   — `FrontMatter`, `FrontMatterFixer`, `NameConvention`
 - `.../enforcer/doc/ImportGraph.java`, `.../enforcer/settings/CommandTokens.java`

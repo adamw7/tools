@@ -78,7 +78,10 @@ A `Main.java` Spring Boot entry point sits next to the configuration
   them to a configured base directory before returning any tool — the uniqueness
   server builds an `AllowedPaths.under(baseDir)` in `tools()` and hands it to the
   tool, defaulting to the working directory, so a client cannot steer it at
-  `/etc/passwd`. Give the boundary to the thing being confined, never to the JVM:
+  `/etc/passwd`; the context server's `PathPolicy` does the same over several
+  roots. Both rest on mcp-common's `PathBoundary` (`io.github.adamw7.tools.path`),
+  so symlinks are followed one way everywhere — confine through it rather than
+  writing another containment check. Give the boundary to the thing being confined, never to the JVM:
   a process-wide setter confines every other source in the host too, and the
   second server to start silently moves the first one's boundary.
 - **The core must not depend on its MCP adapter.** ArchUnit pins this in every

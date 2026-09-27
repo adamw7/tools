@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
  * Drives the {@link ToonFlattener} grammar directly, line by line, capturing every
  * {@code key/value} pair it pushes to the sink. Unlike the data-source tests, which sample the
  * flattened output through a scanner, these assertions pin the exact pairs and their emission
- * order, including the trailing array-count pair a nested array block emits only when it closes.
+ * order, including the array-count pair every array form emits ahead of its elements.
  */
 public class ToonFlattenerTest {
 
@@ -103,16 +103,28 @@ public class ToonFlattenerTest {
 	}
 
 	@Test
-	public void tabularArrayEmitsHeaderThenRows() {
+	public void tabularArrayEmitsCountThenRows() {
 		feed("users[2]{id,name,role}:\n  1,Alice,admin\n  2,Bob,user");
-		Map<String, String> map = asMap();
-		assertEquals("2", map.get("users"));
-		assertEquals("1", map.get("users[0].id"));
-		assertEquals("Alice", map.get("users[0].name"));
-		assertEquals("admin", map.get("users[0].role"));
-		assertEquals("2", map.get("users[1].id"));
-		assertEquals("Bob", map.get("users[1].name"));
-		assertEquals("user", map.get("users[1].role"));
+		assertEquals(List.of(
+				new SimpleEntry<>("users", "2"),
+				new SimpleEntry<>("users[0].id", "1"),
+				new SimpleEntry<>("users[0].name", "Alice"),
+				new SimpleEntry<>("users[0].role", "admin"),
+				new SimpleEntry<>("users[1].id", "2"),
+				new SimpleEntry<>("users[1].name", "Bob"),
+				new SimpleEntry<>("users[1].role", "user")), pairs);
+	}
+
+	/**
+	 * A tabular header's field names used to be emitted as bare {@code field=field} pairs, so a
+	 * field shared by two tables, or named like a top-level key, overwrote that key's value.
+	 */
+	@Test
+	public void tabularFieldNamesDoNotCollideWithKeysOrOtherTables() {
+		feed("name: bob\nusers[1]{id,name}:\n  1,Alice\nroles[1]{name}:\n  admin");
+		assertEquals(Map.of("name", "bob", "users", "1", "users[0].id", "1", "users[0].name", "Alice",
+				"roles", "1", "roles[0].name", "admin"), asMap());
+		assertEquals(6, pairs.size());
 	}
 
 	@Test
@@ -140,20 +152,20 @@ public class ToonFlattenerTest {
 	}
 
 	@Test
-	public void nestedArrayEmitsItemsThenTrailingCount() {
+	public void nestedArrayEmitsCountThenItems() {
 		feed("priorities[3]:\n  - high\n  - medium\n  - low");
 		assertEquals(List.of(
+				new SimpleEntry<>("priorities", "3"),
 				new SimpleEntry<>("priorities[0]", "high"),
 				new SimpleEntry<>("priorities[1]", "medium"),
-				new SimpleEntry<>("priorities[2]", "low"),
-				new SimpleEntry<>("priorities", "3")), pairs);
+				new SimpleEntry<>("priorities[2]", "low")), pairs);
 	}
 
 	@Test
-	public void nestedArrayCountUsesDeclaredSizeEvenWhenFinishClosesEarly() {
+	public void nestedArrayCountUsesDeclaredSizeEvenWhenInputEndsEarly() {
 		feed("items[3]:\n  - only");
 		assertPair("items[0]", "only");
-		// finish() closes the still-open block, emitting the declared count of 3.
+		// The count comes from the header, so an array cut short still reports the declared 3.
 		assertPair("items", "3");
 		assertFalse(asMap().containsKey("items[1]"));
 	}

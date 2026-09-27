@@ -158,13 +158,11 @@ class McpConfigFormatRuleTest {
 	}
 
 	@Test
-	void failsWhenAUrlIsNotAString() {
-		// Skipping it silently let a JSON number stand in for a URL nobody can
-		// connect to: the entry had a 'url', so nothing reported it as missing, and
-		// nothing read it as one either.
-		assertFailure(EnforcerRuleException.class,
-				ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"sse\", \"url\": 8080 } } }")::execute,
-				"has a 'url' that is not a string");
+	void leavesAUrlThatIsNotAStringToMcpServersValid() {
+		// A JSON number standing in for a URL is a transport fault, which
+		// McpServersValidRule reports; this rule saying it too reported it twice.
+		assertDoesNotThrow(
+				ruleFor("{ \"mcpServers\": { \"remote\": { \"type\": \"sse\", \"url\": 8080 } } }")::execute);
 	}
 
 	@Test

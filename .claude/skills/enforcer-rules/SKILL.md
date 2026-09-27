@@ -85,9 +85,9 @@ violations so a new rule can be gated without clearing the backlog first), and
 
 ## Rules the module's own ArchUnit tests pin
 - **Layering is one-directional**: `text` depends on nothing; `rule` may use
-  `text`; the feature packages (`definition`, `doc`, `mcp`, `secret`,
-  `settings`) may use `rule` and `text` — **never each other**. Shared logic
-  goes down into `text` or `rule`, not sideways.
+  `text`; the feature packages (`definition`, `doc`, `mcp`, `okf`, `secret`,
+  `settings`) may use `rule` and `text` — **never each other** — and `project`
+  assembles them. Shared logic goes down into `text` or `rule`, not sideways.
 - Every concrete `*Rule` must extend `ClaudeCodeEnforcerRule`.
 - Packages stay free of cycles, plus the repo-wide `CommonCodingConventions`.
 
@@ -164,10 +164,10 @@ Then document it in the `## CLAUDE.md enforcement` sections of `CLAUDE.md` and
 `AGENTS.md` — that list is the rule catalogue contributors read.
 
 **A rule whose definition directory must exist can only be wired once the
-directory does.** `subAgentFormat` (`.claude/agents`) and `commandFormat`
-(`.claude/commands`) ship but are deliberately unwired here, because a
-configured-but-absent directory is treated as a build-setup mistake. Add the
-directory and the wiring in the same change. `pluginFormat`, `mcpServersValid`
+directory does**, because a configured-but-absent directory is treated as a
+build-setup mistake. That is why `.claude/agents` and `.claude/commands` were
+each added in the same change that wired `subAgentFormat` and `commandFormat`
+here; do the same for a new one. `pluginFormat`, `mcpServersValid`
 and `mcpConfigFormat` differ — they pass on the absent file and start enforcing
 the moment one appears. `okfBundleFormat` follows that second pattern for a
 directory: an absent `bundleDir` is a pass, so it is wired here today against a

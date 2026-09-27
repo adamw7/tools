@@ -23,7 +23,7 @@ Systematic code review for this repo. Leads with the rules the build fails on, t
 
 ```
 > view .claude/skills/java-code-review/SKILL.md
-> "Review the changes in src/main/java/org/example/UserService.java"
+> "Review the changes in data/src/main/java/io/github/adamw7/tools/data/source/file/CSVDataSource.java"
 → Returns findings grouped by severity (Critical → Minor)
 ```
 
@@ -31,17 +31,12 @@ Systematic code review for this repo. Leads with the rules the build fails on, t
 
 ## Checklist Categories
 
-0. **Enforced repo rules** - what ArchUnit and Surefire fail the build on
-1. **Null Safety** - NPE risks, Optional usage
-2. **Exception Handling** - Swallowed exceptions, stack traces
-3. **Collections & Streams** - Iteration, mutability
-4. **Concurrency** - Thread safety, race conditions
-5. **Java Idioms** - equals/hashCode, builders
-6. **Resource Management** - try-with-resources
-7. **API Design** - Boolean params, validation
-8. **Performance** - String concat, N+1 queries
-9. **Defect shapes** - hand-rolled readers, drifting duplicate implementations,
-   command transcripts, success reported for work never done, credential paths
+1. **Repo rules the build enforces** - what ArchUnit and Surefire fail the build on
+2. **Defect shapes this repo ships** - hand-rolled readers, drifting duplicate
+   implementations, command transcripts, success reported for work never done,
+   credential paths
+3. **General Java checks** - null safety, exception handling, collections and
+   streams, concurrency, idioms, resource management, API design, performance
 
 ---
 

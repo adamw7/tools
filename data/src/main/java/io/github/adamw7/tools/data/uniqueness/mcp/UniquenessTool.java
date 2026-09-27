@@ -31,7 +31,7 @@ public class UniquenessTool implements McpTool {
                         "type", "object",
                         "properties", Map.of(
                             "file", Map.of("type", "string", "description", "filename"),
-                            "columns_row", Map.of("type", "integer", "description", "number of the columns row"),
+                            "columns_row", Map.of("type", "integer", "description", "1-based line number of the header row"),
                             "columns_name", Map.of("type", "string", "description", "name of the column to check")
                         ),
                         "required", List.of("file", "columns_row", "columns_name")

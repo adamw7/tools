@@ -1,5 +1,7 @@
 package io.github.adamw7.tools.data.architecture;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.equivalentTo;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
@@ -14,6 +16,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.junit.ArchTests;
 import com.tngtech.archunit.lang.ArchRule;
 
+import io.github.adamw7.tools.data.source.file.AllowedPaths;
 import io.github.adamw7.tools.data.source.interfaces.IterableDataSource;
 import io.github.adamw7.tools.test.architecture.CommonCodingConventions;
 import io.github.adamw7.tools.test.architecture.CommonNamingConventions;
@@ -143,6 +146,9 @@ public class DataArchitectureTest {
 			.whereLayer("FileSources").mayOnlyAccessLayers("Contracts", "Compression")
 			.whereLayer("DbSources").mayOnlyAccessLayers("Contracts")
 			.whereLayer("Compression").mayNotAccessAnyLayer()
+			.ignoreDependency(resideInAPackage(DB_PACKAGE), equivalentTo(AllowedPaths.class))
 			.as("the source layers must depend only downwards: concrete sources on their "
-					+ "contracts (and, for files, on compression), never on each other");
+					+ "contracts (and, for files, on compression), never on each other — except that "
+					+ "the Parquet sources, which read a file through DuckDB, are confined by the same "
+					+ "AllowedPaths every file source is");
 }

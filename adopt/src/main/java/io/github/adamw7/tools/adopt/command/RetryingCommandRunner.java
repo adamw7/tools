@@ -65,6 +65,8 @@ public class RetryingCommandRunner implements CommandRunner {
 	/** The wait the doubling stops at, so a generous {@code --retries} cannot idle a run for minutes. */
 	static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
 
+	private static final Backoff BACKOFF = new Backoff(FIRST_BACKOFF, MAX_BACKOFF);
+
 	private final CommandRunner delegate;
 	private final int retries;
 	private final Pause pause;
@@ -131,7 +133,7 @@ public class RetryingCommandRunner implements CommandRunner {
 	 * the usual reason — a tool handed a credentialled URL echoes it back.
 	 */
 	private void waitBefore(int attempt, CommandResult result) {
-		Duration backoff = backoff(attempt);
+		Duration backoff = BACKOFF.before(attempt);
 		log.warn("{} failed (exit {}) with what reads as a transient network failure; retrying in {}s ({} of {}): {}",
 				result.describe(), result.exitCode(), backoff.toSeconds(), attempt, retries,
 				result.redactedOutput().strip());
@@ -147,11 +149,6 @@ public class RetryingCommandRunner implements CommandRunner {
 			log.info("{} succeeded on attempt {} of {}", result.describe(), attempts, retries + 1);
 		}
 		return result;
-	}
-
-	private Duration backoff(int attempt) {
-		Duration doubled = FIRST_BACKOFF.multipliedBy(1L << (attempt - 1));
-		return doubled.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : doubled;
 	}
 
 	/**

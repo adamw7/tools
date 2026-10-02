@@ -67,13 +67,12 @@ What is worth knowing before changing any of it:
 - **The guard checks the whole configuration by default.** A Maven project gets
   `claudeCodeProject` wired into its `pom.xml`, so the `AGENTS.md` the run
   installs — and, with `--assets`, the `.claude` directory of settings and hooks —
-  is checked by the same build that checks the `CLAUDE.md`. Wiring one rule left
-  what the adoption itself wrote unguarded: a malformed `settings.json`, a skill
-  with no definition, or a credential committed into a hook all passed. `--rules
-  minimal` wires the document rule alone, for a repository whose maintainers want
-  nothing else of theirs read. Either counts as already guarded, so re-adopting a
-  repository adopted before the composite existed leaves its guard alone rather
-  than splicing a second execution in beside it.
+  is checked by the same build that checks the `CLAUDE.md`: a malformed
+  `settings.json`, a skill with no definition, or a credential committed into a
+  hook fails it. `--rules minimal` wires the document rule alone, for a
+  repository whose maintainers want nothing else of theirs read. Either counts as
+  already guarded, so re-adopting a repository guarded by the document rule alone
+  leaves its guard alone rather than splicing a second execution in beside it.
 - **The guard demands the sections the document was conformed to.** They are
   written into the POM rather than left to the rule's defaults, read from the one
   accessor the reshape also reads, so the document and the guard beside it cannot
@@ -88,8 +87,8 @@ What is worth knowing before changing any of it:
   portable `.github/claude-md-guard.sh`, so a build-less repository still keeps a
   guard. `BuildSystem.requiredClaudeMdSections` follows the same choice, so only
   the Maven path — the only one that wires the format rule — demands that rule's
-  Java and Maven headings; stamping them onto a non-Java repository documented
-  nothing and nothing checked them. `BuildSystem.toolProbe` answers the whole
+  Java and Maven headings, and a non-Java repository is not asked for them.
+  `BuildSystem.toolProbe` answers the whole
   probe command rather than a program name, and `toolAdvice` says what to do when
   a probe fails.
 - **A committed build wrapper wins over the `PATH`.** `mvnw`/`gradlew` (and their
@@ -99,11 +98,10 @@ What is worth knowing before changing any of it:
   Windows.
 - **`claude init` is skipped for a checkout that already has a `CLAUDE.md`**: the
   CLI's output is not reproducible, so regenerating would discard edits.
-- **`claude init` is retried on its outcome, not its transcript.** It is the run's
-  most expensive command and was the only one with no recovery: `TransientFailures`
-  leaves `claude` out because its transcript is a model's prose and may discuss a
-  connection reset without one having happened. That objection is about the
-  transcript, so what is judged instead is whether the file exists — a run that
+- **`claude init` is retried on its outcome, not its transcript.**
+  `TransientFailures` leaves `claude` out because its transcript is a model's
+  prose and may discuss a connection reset without one having happened, so what
+  is judged instead is whether the file exists — a run that
   produced it has succeeded whatever it exited with, and one that did not has
   produced nothing to lose. The memory file is moved aside and restored around
   each attempt, since a second attempt must meet the checkout the first one did.
@@ -126,17 +124,15 @@ What is worth knowing before changing any of it:
   Each repository gets its own checkout (claimed inside its own adoption) and its
   own report, and one that fails does not stop the rest; `Main` raises the
   failures together afterwards so the process still exits non-zero.
-- **`--parallel <n>`** adopts several at once (up to 8). The batch was sequential
-  because the tools' output interleaved into a log nobody could attribute, which
-  is a solvable problem rather than a reason: each adoption puts its repository
-  into the logging context of its own thread and both appender patterns print it.
-  The repositories were already independent; `Checkouts` claims through a
-  concurrent map so the test-and-set that stops two of them cloning into one
+- **`--parallel <n>`** adopts several at once (up to 8). Each adoption puts its
+  repository into the logging context of its own thread and both appender
+  patterns print it, so interleaved output stays attributable. `Checkouts` claims
+  through a concurrent map so the test-and-set that stops two of them cloning into one
   directory produces a claim and a refusal rather than two claims. A batch of one,
   or a parallelism of one, starts no pool and runs on the calling thread.
 - **A checkout whose adoption landed is removed**, unless `--keep-workspace`. A
-  batch makes one full clone per repository and nothing used to remove them, so a
-  fifty-repository run left fifty behind under a temporary directory nobody named.
+  batch makes one full clone per repository, so a fifty-repository run would
+  otherwise leave fifty behind under a temporary directory nobody named.
   A failed adoption's checkout is kept — it is the only record of how far the run
   got — and so is a dry run's, which is all a dry run produces. A checkout that
   cannot be removed is a warning, not a reason to report the repository as failed.
@@ -147,7 +143,7 @@ What is worth knowing before changing any of it:
   step is `check-adopted`, which exists because the guard's own command cannot
   answer the question — a build with no guard wired in passes `mvn -N validate`
   precisely because nothing ran, so a repository that was never adopted, or whose
-  guard a later commit removed, verified exactly like one that was. Both halves,
+  guard a later commit removed, would verify exactly like one that was. Both halves,
   the document and the guard, are reported together.
 - **`--dry-run`** assembles the pipeline *without* `PushStep` and
   `PullRequestStep` rather than with steps that decide to do nothing, and asks
@@ -200,9 +196,8 @@ What is worth knowing before changing any of it:
 - **A pom is edited as text, never re-serialised** (`PomDocument`): the addition
   is spliced into the bytes the file already held, at the source offsets
   **jsoup**'s XML parser reports for every start and end tag, so the adoption
-  commit shows only the block that was added. A DOM records nothing about where
-  its elements were read from, which is why this used to pair a JAXP parse with a
-  lexical scan of its own; a pom that leaves an element open is refused, because
+  commit shows only the block that was added (a DOM records nothing about where
+  its elements were read from). A pom that leaves an element open is refused, because
   jsoup repairs what it reads and an edit at a repaired offset would land inside
   an element it was never meant to touch.
 - **`--assets` commits starter configuration** — an `AGENTS.md` pointer, a
@@ -227,9 +222,8 @@ What is worth knowing before changing any of it:
   guard fails a repository where two definitions answer to one name, and the
   name is the project's. The build skill is called `build-and-test` for a
   related reason: a skill's name is a directory name, and `build` is one of the
-  most widely ignored words in a JVM project's `.gitignore`, so four of the
-  seven repositories `ForeignRepositoryAdoptionIT` adopts excluded
-  `.claude/skills/build/SKILL.md` and `CommitStep` rightly refused to commit
+  most widely ignored words in a JVM project's `.gitignore`, which would exclude
+  `.claude/skills/build/SKILL.md` and leave `CommitStep` refusing to commit
   around it. Weigh a new skill's name against what a repository ignores, not
   only against what it already names.
 - **Everything shells out through a `CommandRunner`**, so steps are unit-tested
@@ -240,7 +234,7 @@ What is worth knowing before changing any of it:
   command — and the record enforces it, so a caller assembling the pipeline for
   itself is held to it too.
 - **A command the network refused is tried again**, because an unattended batch
-  otherwise lost a repository — after paying for its `claude init` — to one
+  would otherwise lose a repository — after paying for its `claude init` — to one
   connection reset. `RetryingCommandRunner` decorates the process runner, waiting
   2s, 4s, 8s (capped at 30s) before further attempts:
   `--retries <count>` (`retries`), two by default, zero for none, bounded by
@@ -250,7 +244,7 @@ What is worth knowing before changing any of it:
   a reset — and the transcript must report a transport-level refusal in the tools'
   own words. A 403, a 404, a rejected non-fast-forward, a rate limit that wants
   minutes, and the git queries that answer through a non-zero exit all fail on the
-  first attempt as before; a command that *throws* — an unstartable program, a
+  first attempt; a command that *throws* — an unstartable program, a
   timeout — is never retried. A retried attempt is logged with its redacted
   transcript, since a step only reports the command that stopped it.
 - **One place assembles the toolchain.** `CommandRunners.forRun(options)` builds
@@ -336,9 +330,9 @@ list).
 agree about it: `claude-code-enforcer`'s `claudeMdFormat` rule judges a
 `CLAUDE.md`, and `adopt`'s `ClaudeMdConformer` reshapes one so that rule passes.
 `adopt` cannot depend on `claude-code-enforcer` to share the reader — that would
-put the maven-enforcer API and a shipped rule on every consumer's classpath — so
-each carried a copy, and every way the copies drifted apart let the adoption
-commit and push a file that then failed its own verification. Keep the module
+put the maven-enforcer API and a shipped rule on every consumer's classpath — and
+two copies of the reader drift apart, letting the adoption commit and push a file
+that then fails its own verification. Keep the module
 free of dependencies beyond the JDK; its architecture test pins that, because
 anything added there travels to both consumers and to every repository that
 resolves the enforcer rule.
@@ -350,8 +344,8 @@ Three MCP servers ship here, each a Spring Boot app whose entry point is
 `Main.java` and which supports stdio (default), streamable HTTP
 (`--transport.mode=streamable-http`, served at `/mcp`) or stateless HTTP
 (`--transport.mode=stateless-http`, session-less, also `/mcp`). Any other value
-is refused at startup, naming the three, since a mode no transport matches used
-to leave a server bound to its port with no `/mcp` endpoint at all. Each has an
+is refused at startup, naming the three, since a mode no transport matches would
+leave a server bound to its port with no `/mcp` endpoint at all. Each has an
 `MCP_USAGE.md` next to its `mcp` package:
 
 | Server | Package | Tools |
@@ -392,8 +386,7 @@ variants:
   run, the document and the video being two views of one recording.
 - `adopt-demo-video.py` — renders a captured transcript as the `.mp4` at
   [`docs/adopt-demo.mp4`](docs/adopt-demo.mp4), which the README embeds: H.264 in
-  an `.mp4` is what GitHub plays inline, where the `.mpg` this once wrote only
-  downloaded. The output's suffix picks the codec — `.mpg` still writes MPEG-2 —
+  an `.mp4` is what GitHub plays inline, where an `.mpg` only downloads. The output's suffix picks the codec — `.mpg` still writes MPEG-2 —
   and `--quality` follows it onto that codec's scale. The one Python helper here,
   and cross-platform rather than one of the `linux`/`windows` pairs; it needs
   `ffmpeg` and `Pillow`, neither of which the build depends on, so `adopt-demo`
@@ -475,10 +468,8 @@ with `-Dskip.shellcheck=true`.
 
 `<failBuildIfWarnings>true</failBuildIfWarnings>` is what makes the lint a gate.
 The plugin defaults it to `false`, which prints shellcheck's findings as Maven
-warnings and then passes: a probe script carrying an unquoted expansion and an
-unassigned variable was reported line by line and the build still succeeded, so
-the lint had been running for a log nobody reads. Both source directories are
-clean, so the flag costs nothing today and fails the build on the next finding.
+warnings and then passes, leaving the findings in a log nobody reads. Both source
+directories are clean, and the flag fails the build on the next finding.
 The hooks directory is linted because a mistake there breaks a *session* rather
 than a build, and is found by whoever opened that session: `hooksFormat` checks
 the shebang and the executable bit, and only shellcheck reads what the script
@@ -817,7 +808,7 @@ module's `*IT`s stay unrun until it gets its own copy. Run them with
   above it; never down to make a red build pass. `grpc-example` and
   `code/protogen-maven-plugin-test` opt out with `pitest.skip` (beside the
   `jacoco.skip` they already set): they hold no hand-written production Java,
-  only classes generated from `.proto` files, so PIT was measuring a generator's
+  only classes generated from `.proto` files, so PIT would measure a generator's
   output rather than anybody's tests. The generator itself is mutated in
   `protogen-maven-plugin`.
 
@@ -924,8 +915,7 @@ configuration is `.github/renovate.json`:
 - Artifacts that must move together are **grouped** into one PR: the Maven
   plugins, the coverage and mutation tooling, the test libraries, and the
   protobuf toolchain — the last because `protobuf-java` and the `protoc` the
-  plugin runs share one property, and letting them drift cost two minor versions
-  once already.
+  plugin runs share one property.
 - This project's own `io.github.adamw7:**` modules are **disabled**: they resolve
   inside the reactor at `${revision}`.
 - `pinDigests` is **off** for the **github-actions** manager and **on** for
@@ -1070,12 +1060,9 @@ Personal overrides belong in `.claude/settings.local.json`, which is gitignored;
 Two agent-configuration files are absent by choice: `.mcp.json` (the three
 servers here are *published* for other projects to configure, not consumed by
 this one) and `.claude-plugin/plugin.json`. Both rules are wired and pass on the
-absent file, so they start enforcing the day one is added.
-
-`.claude/agents` and `.claude/commands` were absent for the same reason until the
-definitions above were written, and their rules could not be wired before that:
-a *configured* definition directory must exist. Add the directory and the rule
-together, as that change did.
+absent file, so they start enforcing the day one is added. A *configured*
+definition directory, by contrast, must exist, so a new one is added together
+with the rule that reads it.
 
 ## CLAUDE.md enforcement
 
@@ -1131,9 +1118,8 @@ offers:
 - **`severity`** — `error` (default, fails the build) or `warn` (logs the same
   violations), so a new rule can be adopted gradually. Anything else is refused as
   a build-setup mistake: read as the default, a `<severity>warning</severity>`
-  failed the build while the author who wrote it believed the rule had been
-  downgraded, which is the one misconfiguration whose symptom is
-  indistinguishable from the rule working.
+  would fail the build while its author believed the rule downgraded, the one
+  misconfiguration whose symptom is indistinguishable from the rule working.
 - **`reportFile`** — a self-contained HTML report of what failed and why plus
   per-rule "How to fix" steps, written on pass and fail alike so it always
   reflects the latest run.
@@ -1157,14 +1143,14 @@ offers:
   suppress an identical message from another — and the reports written into one
   gain an `index.html` linking them.
 - **Asking to record a baseline with no `baselineFile`** is refused rather than
-  ignored. It used to read as "no baseline, so check normally", which told the
-  operator the build failed on the very violations they had just asked to accept.
+  ignored: read as "no baseline, so check normally", it would tell the operator
+  the build failed on the very violations they had just asked to accept.
 - **A debug trace of what each rule was pointed at** — `mvn -X` prints one line
   per rule naming its configured input files and how many violations survived the
   baseline, plus the scan counts (`Skills: checking 13 definition(s) in …`) and
   the accepted absences (`mcp.json is absent at …; nothing to check`).
   maven-enforcer's own verdict names only the class, so a rule that read a
-  document and one that passed because it was pointed at nothing read alike. Log
+  document and one that passed because it was pointed at nothing would read alike. Log
   through the base class's `log()`, never `getLog()`: the enforcer injects a
   logger and nothing else does, so `getLog()` is null wherever a rule is built
   directly and `log()` falls back to a silent one.
@@ -1255,9 +1241,8 @@ instead of rounding it to a double, and keeps a key declared twice visible, whic
 every loader that builds a `Map` collapses. Each value is folded onto one line,
 so a block scalar, a wrapped plain scalar and a nested mapping all read back as
 text. A block no loader can read is no front matter at all and `parse` answers
-empty, which is what the rules report best. This replaced a hand-rolled reader
-that had been fixed for real input six or seven times — see the `text-parsers`
-skill before touching it.
+empty, which is what the rules report best. See the `text-parsers` skill before
+touching it.
 
 **Naming a helper after a list parameter breaks the build.** Plexus infers a
 configured list's element type from the **child element name**, trying the rule's
@@ -1341,8 +1326,8 @@ Skill: `maven-conventions`.
   and the `protoc-gen-grpc-java` it adds to that plugin's `<plugins>` would reach
   the modules that generate plain protobuf. `grpc-example` names the gRPC
   generator in its own execution instead. The parent also decides which JUnit
-  generation the tests run on — Boot 4 brings **JUnit 6** (Jupiter), which is why
-  `data-test` needs a slightly larger heap than it did under Boot 3.
+  generation the tests run on — Boot 4 brings **JUnit 6** (Jupiter), and
+  `data-test` sets a slightly larger heap for it.
 - A module that is an example, a test harness or a distribution opts out of
   publication with `maven.deploy.skip` (GitHub Packages) and
   `central.skipPublishing` (Maven Central) — not by redeclaring the `release`
@@ -1520,12 +1505,12 @@ runs it with `java -jar`. Before changing any of it:
   `.dockerignore` excludes everything and re-admits only those two paths.
 - **The distribution is deliberately not a `jar-with-dependencies`.** Merging
   every dependency into one archive collapses same-named metadata, and both
-  `log4j-core` and `spring-boot` ship a `Log4j2Plugins.dat`; the survivor cost
-  log4j2 its plugin registry and dropped it to `DefaultConfiguration` at level
-  `ERROR`, so the app ran and logged nothing. See `assembly/src/assembly/bin.xml`.
+  `log4j-core` and `spring-boot` ship a `Log4j2Plugins.dat`; the survivor would
+  cost log4j2 its plugin registry and drop it to `DefaultConfiguration` at level
+  `ERROR`, so the app would run and log nothing. See `assembly/src/assembly/bin.xml`.
 - **`data` attaches its Spring Boot jar under the `boot` classifier** so its main
-  artifact stays an ordinary library jar. Repackaging in place gave every
-  consumer the nested `BOOT-INF/` layout and broke `Main-Class` resolution.
+  artifact stays an ordinary library jar. Repackaging in place would give every
+  consumer the nested `BOOT-INF/` layout and break `Main-Class` resolution.
 - **Ownership is set by `COPY --chown`, never a later `RUN chown`**, which would
   rewrite the whole distribution into a second layer and store it twice.
 - **A JDK build stage strips the DuckDB driver's macOS and Windows natives**

@@ -112,6 +112,18 @@
       ],
       "depNameTemplate": "org.apache.tomcat.embed:tomcat-embed-core",
       "datasourceTemplate": "maven"
+    },
+    {
+      "description": "No module declares a Jackson 3 artifact - tools.jackson arrives through Boot's starters - so the maven manager never sees the jackson-bom.version override the root pom holds ahead of the BOM for a CVE. Match the property itself, so a new Jackson release arrives as a PR rather than as a red weekly Trivy run.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pom\\.xml$/"
+      ],
+      "matchStrings": [
+        "<jackson-bom\\.version>(?<currentValue>[^<]+)</jackson-bom\\.version>"
+      ],
+      "depNameTemplate": "tools.jackson:jackson-bom",
+      "datasourceTemplate": "maven"
     }
   ]
 }

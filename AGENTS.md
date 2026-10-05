@@ -579,9 +579,18 @@ Repo-wide rules (declared once in `test-common` and imported with
   `Thread.sleep`; a `*Test` that writes a system property is `@Isolated`, since
   the unit run is class-parallel (the `*IT`s failsafe runs one after another are
   exempt).
+- `GeneratedBuilderConventions` — not repository-wide but shared by the two
+  modules that run `protogen-maven-plugin`, and imported from a test analysing
+  only the plugin's `outputpackage`: `build()` is declared only on types
+  assignable to a `*OptionalIfc`, so no required-field stage can build early;
+  every `*Ifc` is an interface and every generated class implements one; every
+  generated field is `final`; and the output depends on nothing but the JDK,
+  protobuf-java, the messages it builds and its own package, so the plugin never
+  reaches a consumer's run-time class path. No rule here allows an empty
+  `should`, so a generation step that silently produced nothing fails.
 
-Adding a repository-wide convention means editing one library, not six tests; an
-exemption means a module not importing a library, which stays visible.
+Adding a repository-wide convention means editing one library, not one test per
+module; an exemption means a module not importing a library, which stays visible.
 
 Per-module rules:
 
@@ -626,6 +635,28 @@ Per-module rules:
   is the only class depending on `ObjectMapper`, so every JSON rule reads through
   the one mapper, configured to reject content after the closing brace and a key
   declared twice — what Claude Code would read differently from its author.
+- **`grpc-example`** (`GrpcExampleArchitectureTest`) — the module has no
+  hand-written main code (the example lives in `src/test` beside the builders
+  generated into `generated-test-sources`), so it analyses test classes, leaving
+  the generated builders out, and holds the client, server and service to the
+  production conventions. No hand-written class depends on protoc's
+  `MessageLite.Builder`, so every message is built through the generated chain
+  the module exists to show; and no `*Test` depends on `GreeterServer`,
+  `GreeterClient`, `io.grpc.Grpc` or Netty, which bind the fixed port 50051 — the
+  unit test stays on the in-process transport. `GeneratedBuildersArchitectureTest`
+  applies `GeneratedBuilderConventions` to `io.github.adamw7.tools.grpc.builders`.
+- **`protogen-maven-plugin-test`** (`GeneratedBuildersArchitectureTest`) —
+  `GeneratedBuilderConventions` and `CommonCodingConventions` over the builders
+  generated into `org.output.generated`, for every message shape its protos
+  cover, so code nobody writes by hand meets the bar code somebody does.
+- **`test-common`** (`TestCommonArchitectureTest`) — the test-jar is on every
+  module's test class path, so it depends on nothing beyond the JDK, JUnit and
+  ArchUnit; the assertions outside `architecture` do not depend on ArchUnit,
+  and are `final` with only private constructors, called rather than extended;
+  a rule library carries no `@AnalyzeClasses` of its own; and every `@ArchTest`
+  field is `static final`. The shared `CommonTestConventions` apply to it too —
+  its two `@Testable`-method rules allow an empty `should`, since this module
+  has no test methods.
 
 `TestConventionsArchitectureTest` (same package, analysing only test classes via
 `ImportOption.OnlyIncludeTests`) adds the shared test conventions plus, in

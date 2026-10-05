@@ -1349,6 +1349,26 @@ design:
   implement the `AdoptionStep` contract. The pipeline also carries the shared
   baseline in full, including that it reports failure by throwing
   `AdoptionException` and never calls `System.exit`.
+- **[`grpc-example`](grpc-example/src/test/java/io/github/adamw7/tools/grpc/architecture/GrpcExampleArchitectureTest.java)** — the example lives in `src/test`
+  beside the builders generated into `generated-test-sources`, so its rules
+  analyse test classes: no hand-written class may depend on protoc's own
+  `MessageLite.Builder`, so every message goes through the generated chain the
+  module exists to show, and the unit test may not reach `GreeterServer`,
+  `GreeterClient` or Netty, keeping it on the in-process transport rather than
+  the fixed port 50051.
+- **[`protogen-maven-plugin-test`](code/protogen-maven-plugin-test/src/test/java/io/github/adamw7/tools/code/usecase/architecture/GeneratedBuildersArchitectureTest.java)** — the plugin's *output* is
+  checked as compiled classes: `build()` may be declared only on a type
+  assignable to a `*OptionalIfc`, so no required-field stage can build early;
+  every `*Ifc` is an interface that every generated class implements; every
+  generated field is `final`; and the generated code depends on nothing but the
+  JDK, protobuf-java and the messages it builds, never on the plugin. These
+  rules live in `test-common`'s `GeneratedBuilderConventions`, which
+  `grpc-example` applies to its own builders too.
+- **[`test-common`](test-common/src/test/java/io/github/adamw7/tools/test/architecture/TestCommonArchitectureTest.java)** — the shared scaffolding every module's
+  tests depend on needs nothing beyond the JDK, JUnit and ArchUnit; its
+  assertions are `final` static helpers that do not need ArchUnit; a rule
+  library carries no `@AnalyzeClasses` of its own; and every `@ArchTest` field
+  is `static final`.
 
 Alongside the production rules, each module carries a companion
 `TestConventionsArchitectureTest` that analyses only the *test* classes (via

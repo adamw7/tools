@@ -24,6 +24,12 @@ import com.tngtech.archunit.lang.ArchRule;
  * from a test annotated
  * {@code @AnalyzeClasses(importOptions = ImportOption.OnlyIncludeTests.class)},
  * which is what narrows these rules to that module's test classes.
+ * <p>
+ * The two rules about {@code @Testable} methods allow an empty {@code should},
+ * because {@code test-common} holds only rules and helpers and so has no test
+ * method for them to check. The class-level rules still fail on an empty
+ * import, which is what catches an {@code @AnalyzeClasses} naming the wrong
+ * package.
  *
  * @see ImportOption.OnlyIncludeTests
  */
@@ -37,7 +43,8 @@ public class CommonTestConventions {
 			.should().beDeclaredInClassesThat().haveSimpleNameEndingWith("Test")
 			.orShould().beDeclaredInClassesThat().haveSimpleNameEndingWith("IT")
 			.because("surefire only runs *Test classes and failsafe only runs *IT classes, "
-					+ "so a test method in a differently named class silently never runs");
+					+ "so a test method in a differently named class silently never runs")
+			.allowEmptyShould(true);
 
 	@ArchTest
 	static final ArchRule noDisabledTestMethods = noMethods()
@@ -95,5 +102,6 @@ public class CommonTestConventions {
 			.that().areMetaAnnotatedWith(TESTABLE_ANNOTATION)
 			.should().notBePrivate()
 			.andShould().notBeStatic()
-			.because("Jupiter silently ignores a private or static test method, so it never runs");
+			.because("Jupiter silently ignores a private or static test method, so it never runs")
+			.allowEmptyShould(true);
 }

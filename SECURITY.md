@@ -8,8 +8,8 @@ patching the older one, so upgrading is the remediation.
 
 | Version | Supported |
 |---------|-----------|
-| 2.6.0   | ✅ |
-| < 2.6.0 | ❌ |
+| 2.7.0   | ✅ |
+| < 2.7.0 | ❌ |
 
 Releases are listed at
 [github.com/adamw7/tools/releases](https://github.com/adamw7/tools/releases).

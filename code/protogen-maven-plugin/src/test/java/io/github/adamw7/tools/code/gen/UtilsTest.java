@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
+
+import io.github.adamw7.tools.code.protos.Person;
 
 public class UtilsTest {
 
@@ -83,19 +84,18 @@ public class UtilsTest {
 		assertEquals("", className7);
 	}
 
+	// Real descriptors, not mocks: FieldDescriptor is final, and Mockito's first inline
+	// mock of it is a cold start that overran the 5-second deadline on a loaded runner.
 	@Test
 	public void testGetNext() {
-		FieldDescriptor desc1 = Mockito.mock(FieldDescriptor.class);
-		FieldDescriptor desc2 = Mockito.mock(FieldDescriptor.class);
-		FieldDescriptor desc3 = Mockito.mock(FieldDescriptor.class);
-
 		String className = "TestClass";
-		List<FieldDescriptor> fields = List.of(desc1, desc2, desc3);
+		List<FieldDescriptor> fields = Person.getDescriptor().getFields().subList(0, 3);
+		FieldDescriptor notInFields = Person.getDescriptor().findFieldByName("department");
 
-		String result = Utils.getNextImpl(className, fields, Mockito.mock(FieldDescriptor.class));
+		String result = Utils.getNextImpl(className, fields, notInFields);
 		assertEquals("TestClassOptionalImpl", result);
 
-		result = Utils.getNextIfc(className, fields, Mockito.mock(FieldDescriptor.class));
+		result = Utils.getNextIfc(className, fields, notInFields);
 		assertEquals("TestClassOptionalIfc", result);
 	}
 

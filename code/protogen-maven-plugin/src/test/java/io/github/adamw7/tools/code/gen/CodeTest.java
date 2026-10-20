@@ -11,11 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.apache.maven.plugin.logging.Log;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
@@ -55,10 +57,18 @@ public class CodeTest {
 	 * of them to {@code refusesEditionsSyntax}, which then overran the 5-second
 	 * per-test deadline under the parallel build's contention while its siblings
 	 * ran in milliseconds. Running one full generation here pays all three against
-	 * the 10-second lifecycle-method deadline, the one meant to cover shared setup,
-	 * so each test then measures only the work it is asserting on.
+	 * the lifecycle-method deadline, the one meant to cover shared setup, so each
+	 * test then measures only the work it is asserting on.
+	 *
+	 * <p>That deadline is MojoTest's 30 seconds rather than the 10-second default,
+	 * because this is the same work as each MojoTest method — a generation pass
+	 * through a cold JDT parser — and not the light setup the default is sized for.
+	 * About a second idle, it overran 10 seconds inside its first JDT parse when the
+	 * nightly build started this class, UtilsTest and MojoTest together on a loaded
+	 * runner.
 	 */
 	@BeforeAll
+	@Timeout(value = 30, unit = TimeUnit.SECONDS)
 	static void warmUpTheGeneratorAndItsDependencies(@TempDir Path warmUp) {
 		log = mock(Log.class);
 		generate(warmUp, Proto2Message.class);

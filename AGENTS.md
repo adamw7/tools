@@ -955,10 +955,9 @@ configuration is `.github/renovate.json`:
   images stay pinned and current. What Renovate still raises for actions is the
   major move — `@v7` to `@v8` — as one grouped PR, and that is the one to read
   release notes for.
-- Two **customManagers** track `tomcat.version` and `jackson-bom.version` in the
-  root pom, the versions here that no dependency declaration names — see the
-  `tomcat.version` paragraph under *Maven conventions* for why they are pinned and
-  how they get retired.
+- No **customManagers** are configured today. One is added alongside a Boot
+  property override, which the maven manager cannot see — see the paragraph on
+  overriding Boot ahead of its BOM under *Maven conventions*.
 - A **major** bump of the Maven API artifacts or of Spring Boot needs dependency
   dashboard approval — a Maven 4 API is wired in on purpose while the build is
   pinned to 3.9.x, and the framework the MCP servers boot on deserves a review.
@@ -1333,26 +1332,22 @@ Skill: `maven-conventions`.
   `derby.version` and `log4j2.version` are Spring Boot's own property names on
   purpose — the BOM manages the rest of each family from them, so pinning only
   the artifacts declared here would leave the siblings on Boot's older version.
-- `tomcat.version` is the same mechanism used for a different reason: no module
-  declares a Tomcat artifact at all, but the embedded Tomcat the MCP servers'
-  web starter pulls in reaches the distribution's `lib/`, where `docker.yml`'s
-  Trivy scan sees it. Overriding Boot's property is how a Tomcat CVE gets fixed
-  ahead of the BOM; remove the override once Boot ships that version or later.
-  Neither half of that is left to memory, because the same thing that makes the
-  override necessary — no declaration anywhere — is what hides it. Renovate's
-  maven manager cannot see a property no dependency mentions, so
-  `.github/renovate.json` matches this one with a **customManager** against
-  `org.apache.tomcat.embed:tomcat-embed-core`; the next Tomcat release arrives as
-  a pull request rather than as a red weekly Trivy run. `jackson-bom.version` is
-  overridden the same way and for the same reason — Jackson 3 (`tools.jackson`)
-  reaches `lib/` only through Boot's starters — with its own customManager against
-  `tools.jackson:jackson-bom`. And the root-only
-  `enforce-boot-overrides` execution names the Boot release the overrides were
-  measured against, as a `requireProperty` regex over `project.parent.version`,
-  so the next Boot bump fails the build carrying the decision with it: delete each
-  override the BOM has caught up with, raise the named Boot version if any has not.
-  That execution is `inherited=false` — every other module's parent is this pom,
-  not Boot's, so inherited it would fail in all twelve.
+- Setting one of Boot's own properties is also how a CVE in an artifact no module
+  declares gets fixed ahead of the BOM — the embedded Tomcat (`tomcat.version`)
+  and Jackson 3 (`jackson-bom.version`) reach the distribution's `lib/` only
+  through Boot's starters, where `docker.yml`'s Trivy scan sees them. No such
+  override is in force today: Spring Boot 4.1.2 caught up with the last two. The
+  next one comes with two guards, because the same thing that makes it necessary
+  — no declaration anywhere — is what hides it. Renovate's maven manager cannot
+  see a property no dependency mentions, so add a regex **customManager** to
+  `.github/renovate.json` matching the property against the artifact it pins;
+  the next release then arrives as a pull request rather than as a red weekly
+  Trivy run. And add a root-only (`inherited=false`) `maven-enforcer-plugin`
+  execution whose `requireProperty` regex over `project.parent.version` names the
+  Boot release the override was measured against, so the next Boot bump fails
+  the build carrying the decision with it: delete the override once the BOM
+  catches up, or raise the named Boot version if it has not. Remove the
+  override, the customManager and the execution together.
 - The root pom's parent is `spring-boot-starter-parent`, so its
   `<dependencyManagement>` and `<pluginManagement>` reach every module. Two of
   its entries are deliberately neutralised in the root pom rather than lived

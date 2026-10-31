@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.1</version>
+		<version>4.1.2</version>
 		<relativePath/>
 	</parent>
 	
@@ -22,30 +22,14 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<!-- Read back by the adopt pipeline, which wires this same plugin into other poms. -->
-		<maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
+		<maven-enforcer-plugin.version>3.7.0</maven-enforcer-plugin.version>
 		<!-- One version for the whole toolchain: the protobuf-java runtime and protoc. -->
 		<protobuf.version>4.36.2</protobuf.version>
 		<grpc.version>1.85.1</grpc.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j2.version>2.26.1</log4j2.version>
-		<!-- Ahead of the Boot BOM's 11.0.24, which Trivy fails the Docker workflow on:
-		     CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 are all fixed in 11.0.25.
-		     Drop this once the BOM reaches that version or later; the root-only
-		     `enforce-boot-overrides` execution below fails the build the moment Boot
-		     moves, so noticing is not left to whoever reads this comment next. No module
-		     declares a Tomcat artifact, so Renovate raises a new Tomcat release here
-		     through the `tomcat.version` customManager in `.github/renovate.json`. -->
-		<tomcat.version>11.0.25</tomcat.version>
-		<!-- Ahead of the Boot BOM's Jackson 3.1.5, which Trivy fails the Docker workflow on:
-		     CVE-2026-89407, CVE-2026-89425, CVE-2026-68497, CVE-2026-91776 and
-		     CVE-2026-91777 are all fixed in 3.1.7. Boot's own property name, so the BOM moves
-		     every tools.jackson artifact together. Same lifecycle as tomcat.version: the
-		     `enforce-boot-overrides` execution below fails the build when Boot moves, and
-		     the `jackson-bom.version` customManager in `.github/renovate.json` raises the
-		     next release, since no module declares a Jackson 3 artifact either. -->
-		<jackson-bom.version>3.1.7</jackson-bom.version>
 		<!-- Not maven.version: Maven exposes that as the running Maven's own version. -->
-		<maven.api.version>4.0.0-rc-6</maven.api.version>
+		<maven.api.version>4.0.0-rc-7</maven.api.version>
 		<argLine/>
 		<!-- Per-test timeout for unit tests, sized above the cold-fork warmup a parallel build pays. -->
 		<unit.test.method.timeout>5 s</unit.test.method.timeout>
@@ -115,7 +99,7 @@
 			<dependency>
 				<groupId>org.apache.maven.enforcer</groupId>
 				<artifactId>enforcer-api</artifactId>
-				<version>3.6.3</version>
+				<version>3.7.0</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
@@ -523,29 +507,6 @@
 								<!-- Maven ignores an unknown -P id silently, so a typo looks like a
 								     clean run that skipped the work. -->
 								<requireProfileIdsExist />
-							</rules>
-						</configuration>
-					</execution>
-					<!-- Root only: this reads the parent's version, and every other module's
-					     parent is this pom rather than Boot's. -->
-					<execution>
-						<id>enforce-boot-overrides</id>
-						<inherited>false</inherited>
-						<goals>
-							<goal>enforce</goal>
-						</goals>
-						<configuration>
-							<rules>
-								<!-- The tomcat.version and jackson-bom.version overrides are
-								     hand-held pins, and the only thing that can make them stale
-								     is Boot shipping a newer BOM.
-								     Fail on that move rather than leaving it to the weekly Trivy
-								     run, which only ever reports the opposite mistake. -->
-								<requireProperty>
-									<property>project.parent.version</property>
-									<regex>^4\.1\.1$</regex>
-									<regexMessage>The tomcat.version and jackson-bom.version overrides in this pom were measured against spring-boot-starter-parent 4.1.1, whose BOM manages Tomcat 11.0.24 and Jackson 3.1.5. Boot has moved, so re-read spring-boot-dependencies' own tomcat.version and jackson-bom.version: delete each override the BOM has caught up with (and this execution once none is left); if any is still behind, raise this regex to the new Boot version.</regexMessage>
-								</requireProperty>
 							</rules>
 						</configuration>
 					</execution>

@@ -21,7 +21,7 @@
 # readable: a tag is mutable, and ADR 0002 commits this project to a build
 # anyone can reproduce byte for byte from a commit. Renovate refreshes both the
 # digest and the tag.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk@sha256:8c0a84ea11c8f6ed52600fc19f1040121f2a162998e9f50a5faebbbad9172dcc AS trim
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk@sha256:83f4a7fc27df94dcc7b8de04d14cbbba8da14406f921e966969c3b09000aa507 AS trim
 WORKDIR /work
 COPY assembly/target/tools.assembly-*-dist/ ./dist/
 RUN set -eux; \
@@ -34,7 +34,7 @@ RUN set -eux; \
     jar cfm "${driver}" MANIFEST.MF -C unpacked .
 
 # Use the slimmer JRE variant since we only need to run the app, not compile.
-FROM eclipse-temurin:25-jre@sha256:fcd7fd7b387f94bb2ac461478a7436ad8e349924c374ea8313919624dceae636
+FROM eclipse-temurin:25-jre@sha256:ecdc0adb37bde1a281c4d245a3cd535004b1fc8322d560f5b09463b248c81df0
 
 # Build metadata, supplied by docker.yml; the defaults keep a local
 # `docker build` working without --build-arg.

@@ -51,16 +51,30 @@ LABEL org.opencontainers.image.title="tools" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}"
 
-# Ubuntu 26.04 — what eclipse-temurin:25-jre is built on — ships Canonical's
-# Pebble service manager at /usr/bin/pebble. Nothing here uses it: the entrypoint
-# below is the JVM itself. It is a statically linked Go binary carrying its own
-# copy of golang.org/x/net and the Go standard library, and it is not tracked by
-# dpkg, so a `apt-get upgrade` cannot patch it and every CVE fixed upstream stays
-# reported against this image — enough on its own to fail the Trivy scan in
-# docker.yml, which is set to fail on fixable HIGH/CRITICAL findings. Deleting it
-# drops that dead code and its findings; it reclaims no space, since the file
-# lives in a base-image layer this only whites out.
-RUN rm -f /usr/bin/pebble && rm -rf /var/lib/pebble
+# Strip what the base image ships but this image never runs: the entrypoint
+# below is the JVM itself. Each of these is dead code whose CVEs are on their
+# own enough to fail the Trivy scan in docker.yml, which is set to fail on
+# fixable HIGH/CRITICAL findings. Deleting them reclaims no space, since the
+# files live in a base-image layer this only whites out.
+#
+# Pebble: Ubuntu 26.04 — what eclipse-temurin:25-jre is built on — ships
+# Canonical's Pebble service manager at /usr/bin/pebble. It is a statically
+# linked Go binary carrying its own copy of golang.org/x/net and the Go standard
+# library, and it is not tracked by dpkg, so an upgrade cannot patch it and every
+# CVE fixed upstream stays reported against this image.
+#
+# apt: the package manager has nothing to do at run time — the image runs as an
+# unprivileged user, and k8s/ mounts its root filesystem read-only — yet every
+# apt CVE fails the scan until Temurin rebuilds the base, as CVE-2026-109518 did.
+# Nothing else in the base depends on apt, and only apt depends on libapt-pkg,
+# so purging the two leaves dpkg consistent; the sources list and log directory
+# it leaves behind go with it. The library is looked up rather than named,
+# because its package name carries the soname (libapt-pkg7.0 today) and dpkg
+# silently ignores a purge of a package that is not installed. Extend the image
+# FROM its base, not FROM this image, if a package is ever needed.
+RUN rm -f /usr/bin/pebble && rm -rf /var/lib/pebble \
+    && dpkg --purge apt $(dpkg-query --show --showformat='${db:Status-Abbrev} ${Package}\n' 'libapt-pkg*' | awk '$1 == "ii" { print $2 }') \
+    && rm -rf /etc/apt /var/log/apt
 
 # Create the unprivileged user before copying, so COPY --chown can set ownership
 # as it writes. A `RUN chown` afterwards would rewrite every copied file into a

@@ -1554,6 +1554,15 @@ runs it with `java -jar`. Before changing any of it:
   there; this image never runs it, and as a static Go binary outside dpkg's
   control the Go CVEs it vendors cannot be patched by an upgrade and fail Trivy
   on their own. Expect the same of any future unused binary the base adds.
+- **The runtime stage purges `apt` and its `libapt-pkg` library.** The image
+  runs the JVM as an unprivileged user, so the package manager has nothing to do
+  at run time, yet an apt CVE fails Trivy until Temurin rebuilds the base
+  (CVE-2026-109518 did, while the pinned digest was already the newest). Nothing else
+  in the base depends on either package, so the purge leaves dpkg consistent. The
+  library is found by `dpkg-query` rather than named, because its package name
+  carries the soname and dpkg silently skips a purge of one that is not
+  installed. A base upgrade that adds a dependant on apt makes the purge fail the
+  image build.
 - **Logging goes through `docker/log4j2-console.properties`**, selected with
   `-Dlog4j2.configurationFile` in `JDK_JAVA_OPTIONS`. The `data` module's own
   config is file-only on purpose: its MCP server speaks JSON-RPC over stdio, and

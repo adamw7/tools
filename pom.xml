@@ -527,6 +527,10 @@
 						<configuration>
 							<updatePomFile>true</updatePomFile>
 							<flattenMode>oss</flattenMode>
+							<!-- Pinned rather than left to the default, which moved from the module
+							     directory to target/ in 1.10.0: claude-code-enforcer's *ITs install
+							     the jar with this file and name its path. -->
+							<outputDirectory>${project.build.directory}</outputDirectory>
 						</configuration>
 					</execution>
 					<execution>

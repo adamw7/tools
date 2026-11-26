@@ -64,7 +64,7 @@
 								<enforcer.it.localRepository>${settings.localRepository}</enforcer.it.localRepository>
 								<enforcer.it.version>${project.version}</enforcer.it.version>
 								<enforcer.it.jar>${project.build.directory}/${project.build.finalName}.jar</enforcer.it.jar>
-								<enforcer.it.pom>${project.basedir}/.flattened-pom.xml</enforcer.it.pom>
+								<enforcer.it.pom>${project.build.directory}/.flattened-pom.xml</enforcer.it.pom>
 								<enforcer.it.repositoryRoot>${project.basedir}/..</enforcer.it.repositoryRoot>
 							</systemPropertyVariables>
 						</configuration>
